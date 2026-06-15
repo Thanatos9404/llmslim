@@ -28,6 +28,8 @@
 [![Works With](https://img.shields.io/badge/works%20with-GPT%20%7C%20Claude%20%7C%20Gemini-10b981?style=for-the-badge&logo=openai&logoColor=white)](#-works-with-every-llm)
 [![Zero Config](https://img.shields.io/badge/zero%20config-just%20works-f59e0b?style=for-the-badge&logo=zap&logoColor=white)](#-quickstart)
 
+
+
 <br/>
 
 <!-- Hero Code Block -->

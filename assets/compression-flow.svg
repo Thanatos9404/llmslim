@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080b10" />
+      <stop offset="100%" stop-color="#121824" />
+    </linearGradient>
+
+    <!-- Scanner Laser Gradient -->
+    <linearGradient id="laser-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#58a6ff" stop-opacity="0" />
+      <stop offset="15%" stop-color="#58a6ff" stop-opacity="0.3" />
+      <stop offset="50%" stop-color="#58a6ff" stop-opacity="1" />
+      <stop offset="85%" stop-color="#58a6ff" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#58a6ff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Connector Flow Gradient -->
+    <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#f778ba" />
+    </linearGradient>
+
+    <!-- Glow Filters -->
+    <filter id="glow-blue" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    /* Font style */
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Keyframe Animations */
+    
+    /* Laser Scanner Sweeping down */
+    @keyframes laser-sweep {
+      0%, 10% { transform: translateY(0px); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      90%, 100% { transform: translateY(200px); opacity: 0; }
+    }
+
+    /* Input filler lines fading away */
+    @keyframes fade-filler {
+      0%, 35% { opacity: 0.8; }
+      55%, 90% { opacity: 0.08; filter: grayscale(1); }
+      95%, 100% { opacity: 0.8; }
+    }
+
+    /* Flowing dots along connection lines */
+    @keyframes flow-dots {
+      0% { stroke-dashoffset: 40; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    /* Output lines sliding into place */
+    @keyframes slide-in-output {
+      0%, 40% { transform: scaleX(0); opacity: 0; }
+      55%, 90% { transform: scaleX(1); opacity: 1; }
+      95%, 100% { transform: scaleX(0); opacity: 0; }
+    }
+
+    /* Stats numbers updating */
+    @keyframes stats-update-before {
+      0%, 45% { opacity: 1; }
+      55%, 100% { opacity: 0; }
+    }
+    @keyframes stats-update-after {
+      0%, 45% { opacity: 0; }
+      55%, 90% { opacity: 1; }
+      95%, 100% { opacity: 0; }
+    }
+
+    /* Engine rotating/pulsing */
+    @keyframes engine-pulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(124, 58, 237, 0.4)); }
+      50% { transform: scale(1.06); filter: drop-shadow(0 0 12px rgba(247, 120, 186, 0.8)); }
+    }
+
+    /* Classes mapped to elements */
+    .scan-bar {
+      animation: laser-sweep 6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .line-filler {
+      animation: fade-filler 6s infinite ease-in-out;
+      transform-origin: left;
+    }
+    .flow-line {
+      stroke-dasharray: 8, 4;
+      animation: flow-dots 2s infinite linear;
+    }
+    .output-line {
+      animation: slide-in-output 6s infinite cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: left;
+    }
+    .stats-before {
+      animation: stats-update-before 6s infinite ease-in-out;
+    }
+    .stats-after {
+      animation: stats-update-after 6s infinite ease-in-out;
+    }
+    .engine-core {
+      animation: engine-pulse 3s infinite ease-in-out;
+      transform-origin: 400px 170px;
+    }
+  </style>
+
+  <!-- Container Box -->
+  <rect width="800" height="340" rx="16" fill="url(#bg-grad)" stroke="#2f363d" stroke-width="1.5" />
+
+  <!-- Terminal Window Header -->
+  <path d="M1,16 A15,15 0 0,1 16,1 L784,1 A15,15 0 0,1 799,16 L799,40 L1,40 Z" fill="#0b0e14" />
+  <circle cx="24" cy="20" r="6" fill="#ff5f56" />
+  <circle cx="44" cy="20" r="6" fill="#ffbd2e" />
+  <circle cx="64" cy="20" r="6" fill="#27c93f" />
+  <text x="400" y="25" fill="#8b949e" font-size="12" font-weight="600" text-anchor="middle" letter-spacing="0.5">CONTEXT-COMPRESSOR PIPELINE DEMO</text>
+
+  <!-- LEFT PANEL: RAW PROMPT -->
+  <g transform="translate(30, 60)">
+    <!-- Panel Background -->
+    <rect width="280" height="230" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="1" />
+    <!-- Panel Header -->
+    <rect width="280" height="30" rx="8" fill="#161b22" />
+    <path d="M0,8 A8,8 0 0,1 8,0 L272,0 A8,8 0 0,1 280,8 L280,30 L0,30 Z" fill="#161b22" />
+    <text x="12" y="19" fill="#c9d1d9" font-size="11" font-weight="bold">📄 raw_prompt.txt</text>
+    <text x="268" y="19" fill="#f778ba" font-size="10" font-weight="600" text-anchor="end" class="stats-before">2,847 tokens</text>
+    <text x="268" y="19" fill="#8b949e" font-size="10" font-weight="600" text-anchor="end" class="stats-after" opacity="0">2,847 tokens</text>
+
+    <!-- Text Lines Mock -->
+    <!-- Green = Instructions/Must Keep -->
+    <rect x="15" y="45" width="220" height="10" rx="3" fill="#10b981" opacity="0.9" />
+    <text x="15" y="40" fill="#8b949e" font-size="8" font-weight="bold" letter-spacing="0.5">SYSTEM RULES (100% KEPT)</text>
+    
+    <!-- Gray = Filler -->
+    <rect x="15" y="65" width="250" height="10" rx="3" fill="#8b949e" class="line-filler" />
+    
+    <!-- Blue = Entities -->
+    <rect x="15" y="85" width="180" height="10" rx="3" fill="#58a6ff" opacity="0.9" />
+    <text x="15" y="110" fill="#8b949e" font-size="8" font-weight="bold" letter-spacing="0.5">REDUNDANT CONTEXT (STRIPPED)</text>
+
+    <!-- Gray = Filler -->
+    <rect x="15" y="120" width="230" height="10" rx="3" fill="#8b949e" class="line-filler" />
+    <rect x="15" y="140" width="200" height="10" rx="3" fill="#8b949e" class="line-filler" />
+
+    <!-- Green = Instructions -->
+    <rect x="15" y="160" width="240" height="10" rx="3" fill="#10b981" opacity="0.9" />
+
+    <!-- Blue = Entities -->
+    <rect x="15" y="180" width="150" height="10" rx="3" fill="#58a6ff" opacity="0.9" />
+    <rect x="15" y="200" width="120" height="10" rx="3" fill="#58a6ff" opacity="0.9" />
+
+    <!-- Laser Scanner Line -->
+    <rect x="2" y="35" width="276" height="3" fill="url(#laser-grad)" class="scan-bar" filter="url(#glow-blue)" />
+  </g>
+
+  <!-- MIDDLE: COMPRESSION ENGINE -->
+  <g>
+    <!-- Flow Connectors -->
+    <path d="M310,170 L350,170" stroke="url(#flow-grad)" stroke-width="2" class="flow-line" />
+    <path d="M450,170 L490,170" stroke="url(#flow-grad)" stroke-width="2" class="flow-line" />
+
+    <!-- Pulsing Engine Core -->
+    <g class="engine-core">
+      <circle cx="400" cy="170" r="32" fill="#161b22" stroke="#7c3aed" stroke-width="2" />
+      <circle cx="400" cy="170" r="24" fill="#0d1117" stroke="#f778ba" stroke-width="1.5" />
+      <!-- Inner Symbol -->
+      <path d="M392,170 L398,162 L398,168 L408,168 L408,172 L398,172 L398,178 Z" fill="#58a6ff" />
+      <path d="M408,170 L402,178 L402,172 L392,172 L392,168 L402,168 L402,162 Z" fill="#f778ba" />
+    </g>
+    <text x="400" y="222" fill="#c9d1d9" font-size="10" font-weight="bold" text-anchor="middle" letter-spacing="1">SEMANTIC ENGINE</text>
+    <text x="400" y="235" fill="#8b949e" font-size="8" text-anchor="middle">LexRank + Embedding Filter</text>
+  </g>
+
+  <!-- RIGHT PANEL: COMPRESSED OUTPUT -->
+  <g transform="translate(490, 60)">
+    <!-- Panel Background -->
+    <rect width="280" height="230" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="1" />
+    <!-- Panel Header -->
+    <rect width="280" height="30" rx="8" fill="#161b22" />
+    <path d="M0,8 A8,8 0 0,1 8,0 L272,0 A8,8 0 0,1 280,8 L280,30 L0,30 Z" fill="#161b22" />
+    <text x="12" y="19" fill="#c9d1d9" font-size="11" font-weight="bold">✨ compressed.txt</text>
+    
+    <!-- Token count updates dynamically in the loop -->
+    <text x="268" y="19" fill="#8b949e" font-size="10" font-weight="600" text-anchor="end" class="stats-before">Waiting...</text>
+    <text x="268" y="19" fill="#10b981" font-size="10" font-weight="bold" text-anchor="end" class="stats-after" opacity="0" filter="url(#glow-green)">1,138 tokens (-60%)</text>
+
+    <!-- Compressed Text Lines (Fades/Slides In) -->
+    <!-- Line 1: Green Instructions -->
+    <rect x="15" y="45" width="220" height="10" rx="3" fill="#10b981" opacity="0.9" class="output-line" />
+    
+    <!-- Line 2: Blue Entity (Originally Line 3) -->
+    <rect x="15" y="65" width="180" height="10" rx="3" fill="#58a6ff" opacity="0.9" class="output-line" />
+    
+    <!-- Line 3: Green Instructions (Originally Line 6) -->
+    <rect x="15" y="85" width="240" height="10" rx="3" fill="#10b981" opacity="0.9" class="output-line" />
+
+    <!-- Line 4: Blue Entity (Originally Line 7) -->
+    <rect x="15" y="105" width="150" height="10" rx="3" fill="#58a6ff" opacity="0.9" class="output-line" />
+
+    <!-- Line 5: Blue Entity (Originally Line 8) -->
+    <rect x="15" y="125" width="120" height="10" rx="3" fill="#58a6ff" opacity="0.9" class="output-line" />
+
+    <!-- Savings & Retention Badges -->
+    <g class="stats-after" opacity="0" transform="translate(15, 155)">
+      <!-- Box border -->
+      <rect width="250" height="60" rx="6" fill="#161b22" stroke="#238636" stroke-width="1" />
+      <text x="12" y="22" fill="#58a6ff" font-size="10" font-weight="bold">✓ 100% Directive Retention</text>
+      <text x="12" y="38" fill="#10b981" font-size="10" font-weight="bold">✓ 60% Budget Saved</text>
+      <text x="12" y="50" fill="#8b949e" font-size="8">Instruction &amp; entities preserved</text>
+      <!-- Big green checkmark -->
+      <circle cx="218" cy="30" r="16" fill="#10b981" fill-opacity="0.1" stroke="#10b981" stroke-width="1.5" />
+      <path d="M211,30 L216,35 L226,24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+</svg>

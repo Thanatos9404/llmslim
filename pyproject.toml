@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "context-compressor"
+version = "0.1.0"
+description = "Cut your LLM prompt size by 40-70% in one line of code -- semantic chunking + extractive summarization that preserves meaning, instructions, and key entities."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Yashvardhan Thanvi", email = "thanatos9404@users.noreply.github.com" }]
+keywords = [
+    "llm",
+    "prompt-engineering",
+    "token-optimization",
+    "rag",
+    "nlp",
+    "summarization",
+    "openai",
+    "anthropic",
+    "gemini",
+    "context-window",
+    "cost-optimization",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "numpy>=1.21",
+    "scikit-learn>=1.0",
+]
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=2.2"]
+fast-tokens = ["tiktoken>=0.5"]
+nlp = ["nltk>=3.8"]
+all = ["sentence-transformers>=2.2", "tiktoken>=0.5", "nltk>=3.8"]
+dev = ["pytest>=7.0", "pytest-cov"]
+
+[project.urls]
+Homepage = "https://github.com/Thanatos9404/context-compressor"
+Repository = "https://github.com/Thanatos9404/context-compressor"
+"Bug Tracker" = "https://github.com/Thanatos9404/context-compressor/issues"
+
+[project.scripts]
+context-compressor = "context_compressor.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["context_compressor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

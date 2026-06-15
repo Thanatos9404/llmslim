@@ -1,0 +1,8 @@
+# Core (required) dependencies -- fully offline, no model downloads needed.
+numpy>=1.21
+scikit-learn>=1.0
+
+# Optional extras (install via `pip install "context-compressor[all]"`):
+#   sentence-transformers>=2.2   -> higher-quality semantic embeddings
+#   tiktoken>=0.5                -> exact token counts for OpenAI models
+#   nltk>=3.8                    -> higher-accuracy sentence tokenization

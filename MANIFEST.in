@@ -10,12 +10,12 @@ include pyproject.toml
 include llmslim/py.typed
 
 recursive-include assets *.svg *.png *.jpg
-recursive-include datasets *.json *.csv *.txt
 recursive-include llmslim *.py
 
 # Exclude scratch, build, test, and hidden cache directories from source packages
 recursive-exclude tests *
 recursive-exclude benchmarks *
+recursive-exclude datasets *
 recursive-exclude notebooks *
 recursive-exclude .github *
 recursive-exclude .pytest_cache *

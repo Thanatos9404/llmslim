@@ -5,17 +5,17 @@
 
 <!-- Animated Typing Effect -->
 <a href="https://github.com/Thanatos9404/llmslim">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=24&duration=3000&pause=1000&color=58A6FF&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=80&lines=%F0%9F%94%A5+Semantic+Compression+for+LLM+Prompts;%E2%9A%A1+40-70%25+Token+Reduction+%7C+Zero+Meaning+Loss;%F0%9F%92%B0+Save+Thousands+on+API+Costs+Instantly" alt="Typing SVG" />
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=24&duration=3000&pause=1000&color=58A6FF&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=120&lines=%F0%9F%94%A5+Semantic+Compression+for+LLM+Prompts;%E2%9A%A1+40-70%25+Token+Reduction+%7C+Zero+Meaning+Loss;%F0%9F%92%B0+Save+Thousands+on+API+Costs+Instantly" alt="Typing SVG" />
 </a>
 
-<br/>
+<br/><br/>
 
 <!-- Animated Flow Diagram -->
 <p align="center">
   <img src="assets/compression-flow.svg" width="95%" alt="LLMSlim Pipeline Live Animation" />
 </p>
 
-<br/>
+<br/><br/>
 
 <!-- Badges Row 1: CI & Status -->
 [![CI Workflow](https://img.shields.io/github/actions/workflow/status/Thanatos9404/llmslim/ci.yml?branch=main&style=for-the-badge&logo=github-actions&logoColor=white&label=CI)](https://github.com/Thanatos9404/llmslim/actions/workflows/ci.yml)

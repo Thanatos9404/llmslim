@@ -49,10 +49,21 @@ benchmark_results.csv
 benchmark_results.json
 benchmark_report.md
 
+# Datasets & Notebooks
+datasets/
+benchmarks/datasets/
+notebooks/
+
+# Guidance Markdown files
+.github/LABEL_RECOMMENDATION.md
+.github/SETTINGS_RECOMMENDATIONS.md
+
 # Coverage & Logs
 coverage.xml
 *.log
 
 # Scratch / Manual local test scripts
 test_llmslim.py
+
+
 

@@ -57,7 +57,6 @@ _INSTRUCTION_PATTERNS = [
     r"\bverify\b",
     r"\bvalidate\b",
     r"\bconfirm\b",
-
     # --- Prohibition language ---
     r"\bnever\b",
     r"\bdo not\b",
@@ -65,7 +64,6 @@ _INSTRUCTION_PATTERNS = [
     r"\bavoid\b",
     r"\brefrain\b",
     r"\bprohibit(?:ed)?\b",
-
     # --- Emphasis / importance ---
     r"\balways\b",
     r"\bimportant\b",
@@ -73,7 +71,6 @@ _INSTRUCTION_PATTERNS = [
     r"\bremember\b",
     r"\bcritical\b",
     r"\bplease\b",
-
     # --- Role definitions (missed in v0.1 -- caused 80% instruction
     #     retention on Chat Prompt where "You are an expert..." was
     #     not boosted) ---
@@ -81,7 +78,6 @@ _INSTRUCTION_PATTERNS = [
     r"\bact as\b",
     r"\byour role\b",
     r"\byou will\b",
-
     # --- Output format requirements ---
     r"\brespond in\b",
     r"\bformat (?:as|your|the|in)\b",
@@ -90,16 +86,13 @@ _INSTRUCTION_PATTERNS = [
     r"\bJSON\b",
     r"\bYAML\b",
     r"\bmarkdown\b",
-
     # --- Warning / constraint labels ---
     r"^(?:WARNING|CAUTION|IMPORTANT|NOTE|ATTENTION)\s*:",
     r"^(?:System|Instructions?|Rules?|Guidelines?|Constraints?)\s*:",
-
     # --- Tool / function usage ---
     r"\buse the (?:tool|function|API)\b",
     r"\bcall the\b",
     r"\binvoke\b",
-
     # --- Quantified constraints ---
     r"\bat most\b",
     r"\bno more than\b",
@@ -107,13 +100,10 @@ _INSTRUCTION_PATTERNS = [
     r"\blimit(?:ed)? to\b",
     r"\bmaximum\b",
     r"\bminimum\b",
-
     # --- Questions (often instructions in disguise) ---
     r"\?\s*$",
 ]
-_INSTRUCTION_RE = re.compile(
-    "|".join(_INSTRUCTION_PATTERNS), re.IGNORECASE | re.MULTILINE
-)
+_INSTRUCTION_RE = re.compile("|".join(_INSTRUCTION_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 _CRITICAL_PATTERNS = [
     r"\bmust\b",
@@ -170,7 +160,9 @@ _MEDIUM_PRIORITY_PATTERNS = [
 _MEDIUM_PRIORITY_RE = re.compile("|".join(_MEDIUM_PRIORITY_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 
-def get_sentence_priority(sentence: str, preserve_res: Optional[Sequence[re.Pattern]] = None) -> int:
+def get_sentence_priority(
+    sentence: str, preserve_res: Optional[Sequence[re.Pattern]] = None
+) -> int:
     """Return priority level 1 (NORMAL), 2 (MEDIUM), 3 (HIGH), or 4 (CRITICAL)."""
     if preserve_res and any(p.search(sentence) for p in preserve_res):
         return 4  # CRITICAL (user preserve_patterns)
@@ -180,12 +172,10 @@ def get_sentence_priority(sentence: str, preserve_res: Optional[Sequence[re.Patt
         return 3  # HIGH (roles & obligations)
     if _MEDIUM_PRIORITY_RE.search(sentence) or _entity_score(sentence) >= 0.30:
         return 2  # MEDIUM (format constraints, steps, entity density)
-    return 1     # NORMAL (prose)
-
+    return 1  # NORMAL (prose)
 
 
 _CODE_PATTERN = re.compile(r"```|`[^`\n]+`")
-
 
 
 # =====================================================================
@@ -226,7 +216,10 @@ _ENTITY_PATTERNS: List[re.Pattern] = [
     # camelCase identifiers (e.g. "camelCase", "getId")
     re.compile(r"\b[a-z]+[A-Z][a-zA-Z0-9]*\b"),
     # File names with extensions (e.g. "config.yaml", "app.py")
-    re.compile(r"\b\w+\.(?:py|js|ts|json|yaml|yml|toml|md|txt|csv|html|css|xml|sql|sh|bat|cfg|ini|env|log)\b", re.IGNORECASE),
+    re.compile(
+        r"\b\w+\.(?:py|js|ts|json|yaml|yml|toml|md|txt|csv|html|css|xml|sql|sh|bat|cfg|ini|env|log)\b",
+        re.IGNORECASE,
+    ),
     # Environment variables (e.g. "DATABASE_URL", "API_KEY")
     re.compile(r"\b[A-Z][A-Z0-9_]{2,}\b"),
     # Inline code spans (e.g. `some_code`)
@@ -332,9 +325,7 @@ def _is_must_keep(sentence: str, preserve_res: Sequence[re.Pattern]) -> bool:
     return any(pattern.search(sentence) for pattern in preserve_res)
 
 
-def _query_similarities(
-    embeddings: np.ndarray, query_embedding: np.ndarray
-) -> np.ndarray:
+def _query_similarities(embeddings: np.ndarray, query_embedding: np.ndarray) -> np.ndarray:
     """Compute cosine similarity of each embedding to the query.
 
     v0.2: Replaces N individual ``_cosine_matrix(vstack(...))`` calls
@@ -428,4 +419,3 @@ def score_chunk_sentences(
         )
 
     return results
-

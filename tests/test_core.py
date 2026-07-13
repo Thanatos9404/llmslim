@@ -196,9 +196,7 @@ class TestRanking:
         chunk = self._make_chunk(sentences)
         embs = np.ones((2, 8))
         scored = score_chunk_sentences(chunk, embs)
-        assert scored[0]["score"] > scored[1]["score"], (
-            "Instruction sentence should score higher"
-        )
+        assert scored[0]["score"] > scored[1]["score"], "Instruction sentence should score higher"
 
     def test_must_keep_for_critical(self):
         sentences = [
@@ -224,13 +222,18 @@ class TestRanking:
         sentences = ["Regular sentence.", "Contains SECRET_TOKEN value."]
         chunk = self._make_chunk(sentences)
         embs = np.ones((2, 8))
-        scored = score_chunk_sentences(
-            chunk, embs, preserve_patterns=[r"SECRET_TOKEN"]
-        )
+        scored = score_chunk_sentences(chunk, embs, preserve_patterns=[r"SECRET_TOKEN"])
         assert scored[1]["must_keep"] is True
 
     def test_default_weights_keys(self):
-        expected_keys = {"centrality", "position", "entity", "instruction", "query", "length_penalty"}
+        expected_keys = {
+            "centrality",
+            "position",
+            "entity",
+            "instruction",
+            "query",
+            "length_penalty",
+        }
         assert set(DEFAULT_WEIGHTS.keys()) == expected_keys
 
 
@@ -341,9 +344,7 @@ class TestContextCompressor:
         assert result.backend == "deterministic-test"
 
     def test_custom_weights(self):
-        compressor = ContextCompressor(
-            weights={"centrality": 0.5, "instruction": 0.5}
-        )
+        compressor = ContextCompressor(weights={"centrality": 0.5, "instruction": 0.5})
         result = compressor.compress(LONG_TEXT, target_ratio=0.5)
         assert isinstance(result, CompressionResult)
 
@@ -421,9 +422,7 @@ class TestDocumentCompression:
         assert all(isinstance(r, CompressionResult) for r in results)
 
     def test_query_aware(self):
-        results = compress_documents(
-            [LONG_TEXT], query="neural networks", target_ratio=0.5
-        )
+        results = compress_documents([LONG_TEXT], query="neural networks", target_ratio=0.5)
         assert len(results) == 1
         assert results[0].compressed_tokens < results[0].original_tokens
 
@@ -589,21 +588,25 @@ class TestInstructionDetection:
 
     def test_role_definition_detected(self):
         from llmslim.ranking import _instruction_score
+
         score = _instruction_score("You are an expert Python developer.")
         assert score > 0.0, "Role definition 'You are' should be detected"
 
     def test_output_format_detected(self):
         from llmslim.ranking import _instruction_score
+
         score = _instruction_score("Respond in JSON format only.")
         assert score > 0.0, "'Respond in' should be detected as instruction"
 
     def test_warning_label_detected(self):
         from llmslim.ranking import _instruction_score
+
         score = _instruction_score("WARNING: Do not use deprecated APIs.")
         assert score > 0.0, "'WARNING:' label should be detected"
 
     def test_quantified_constraint_detected(self):
         from llmslim.ranking import _instruction_score
+
         score = _instruction_score("Return at most 5 results.")
         assert score > 0.0, "'at most' should be detected as instruction"
 
@@ -618,10 +621,12 @@ class TestInstructionDetection:
 
     def test_role_definition_is_must_keep(self):
         from llmslim.ranking import _is_must_keep
+
         assert _is_must_keep("You are an AI assistant.", [])
 
     def test_warning_label_is_must_keep(self):
         from llmslim.ranking import _is_must_keep
+
         assert _is_must_keep("WARNING: This action is irreversible.", [])
 
 
@@ -635,31 +640,37 @@ class TestEntityDetection:
 
     def test_short_acronym_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("The HPA scales pods automatically.")
         assert score > 0.0, "Short acronym 'HPA' should be detected"
 
     def test_snake_case_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("Set the target_ratio parameter to 0.5.")
         assert score > 0.0, "snake_case identifier should be detected"
 
     def test_version_string_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("Requires PostgreSQL 16 or Python 3.8.")
         assert score > 0.0, "Version strings should be detected"
 
     def test_file_name_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("Edit the config.yaml file.")
         assert score > 0.0, "File names should be detected"
 
     def test_env_var_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("Set DATABASE_URL in your .env file.")
         assert score > 0.0, "Environment variables should be detected"
 
     def test_inline_code_detected(self):
         from llmslim.ranking import _entity_score
+
         score = _entity_score("Use the `compress` function.")
         assert score > 0.0, "Inline code spans should be detected"
 
@@ -701,10 +712,10 @@ class TestEdgeCases:
     def test_json_prompt(self):
         """JSON-like structured prompts should not crash."""
         json_prompt = (
-            'You must respond in JSON format. '
+            "You must respond in JSON format. "
             'The schema is: {"name": "string", "age": "number"}. '
-            'Always include all required fields. '
-            'Never return null values.'
+            "Always include all required fields. "
+            "Never return null values."
         )
         result = compress(json_prompt, target_ratio=0.5)
         assert len(result.compressed_text) > 0
@@ -737,5 +748,9 @@ class TestEdgeCases:
         )
         result = compress(text, target_ratio=0.7)
         # All instruction sentences should be kept at 70% ratio
-        assert "must" in result.compressed_text.lower() or "always" in result.compressed_text.lower()
-        assert "never" in result.compressed_text.lower() or "ensure" in result.compressed_text.lower()
+        assert (
+            "must" in result.compressed_text.lower() or "always" in result.compressed_text.lower()
+        )
+        assert (
+            "never" in result.compressed_text.lower() or "ensure" in result.compressed_text.lower()
+        )

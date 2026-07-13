@@ -25,7 +25,7 @@ ENTITY_EXAMPLES = {
     "Environment variables": "Configure DATABASE_URL, API_KEY, and LOG_LEVEL in AWS Secrets Manager.",
     "Quoted strings": "Ensure 'X-Total-Count' and 'Authorization' headers are present.",
     "Inline code": "Execute `pytest --cov` and `python -m build` to package.",
-    "Technical acronyms": "Supports JWT, OAuth, REST, HPA, GIN, and TLS protocols."
+    "Technical acronyms": "Supports JWT, OAuth, REST, HPA, GIN, and TLS protocols.",
 }
 
 

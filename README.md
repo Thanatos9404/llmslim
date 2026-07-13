@@ -197,12 +197,12 @@ response = client.chat.completions.create(
 
 ```mermaid
 graph LR
-    A["📝 Input Text<br/><i>3,000 tokens</i>"] --> B["✂️ Sentence<br/>Splitting"]
+    A["📝 Input Text<br/><i>3,000 tokens</i>"] --> B["✂️ Protected<br/>Sentence Split"]
     B --> C["🧩 Semantic<br/>Chunking"]
-    C --> D["📊 Extractive<br/>Ranking"]
-    D --> E["🔒 Instruction<br/>Preservation"]
-    E --> F["🎯 Budget-Aware<br/>Selection"]
-    F --> G["✨ Output<br/><i>1,500 tokens</i>"]
+    C --> D["📊 Multi-Signal<br/>Ranking"]
+    D --> E["🏷️ Priority Tier<br/>Classification"]
+    E --> F["🎯 2-Pass Budget<br/>Allocation"]
+    F --> G["✨ Reassembled<br/><i>1,500 tokens</i>"]
 
     style A fill:#1a1b27,stroke:#58a6ff,color:#c9d1d9
     style B fill:#1a1b27,stroke:#7c3aed,color:#c9d1d9
@@ -215,16 +215,16 @@ graph LR
 
 </div>
 
-### The 6-Step Pipeline
+### The 6-Step v0.2.0 Pipeline
 
-| Step | What Happens | Why It Matters |
-|:-----|:-------------|:---------------|
-| **1. Sentence Splitting** | Text → individual sentences via NLTK/regex, preserving code blocks and markdown | Clean atomic units for analysis |
-| **2. Semantic Chunking** | Group sentences by topic using embedding similarity with drift detection | Per-topic ranking is far more accurate than global |
-| **3. Centrality Ranking** | LexRank-style cosine similarity to chunk centroid — find the "core" sentences | Removes peripheral/redundant sentences |
-| **4. Entity & Instruction Detection** | Boost sentences with named entities, numbers, code, directives ("must", "never") | Never lose critical information |
-| **5. Budget-Aware Selection** | Greedily select top-scored sentences within the target token budget | Precise compression ratio control |
-| **6. Ordered Reassembly** | Reconstruct in original sentence order, preserving paragraph structure | Maintains logical flow and readability |
+| Step | What Happens | Technical Implementation |
+|:-----|:-------------|:-------------------------|
+| **1. Protected Sentence Splitting** | Splits text into sentence boundaries while protecting fenced code blocks, markdown titles, and URLs | Regex & placeholder substitution preventing broken code spans |
+| **2. Semantic Topic Chunking** | Groups sentences into semantic topic chunks using cosine similarity thresholding with soft token caps | `similarity_threshold` (0.10 TF-IDF / 0.35 Transformers) & `max_chunk_tokens=300` |
+| **3. Multi-Signal Scoring** | Scores sentences combining LexRank degree centrality, position bias, entity density, and instruction patterns | Weighted combination of 5 relevance signals + query similarity in RAG mode |
+| **4. Priority Tier Classification** | Classifies sentences into Priority 4 (Critical/Safety), Priority 3 (High Directives/Roles), Priority 2 (Medium Formats), and Priority 1 (Prose) | Rule-based regex heuristics guaranteeing high-value sentence retention |
+| **5. Two-Pass Budget Allocation** | Pass 1 selects sentences locally per chunk; Pass 2 rebalances tokens globally across chunks to hit exact target ratio | Two-pass priority-aware selection algorithm with global token margin |
+| **6. Ordered Reassembly** | Re-joins selected sentences in original document order, maintaining original paragraph structure | Natural text flow and optimal context window utilization |
 
 ---
 
@@ -356,22 +356,22 @@ At 50,000 requests/day:
 
 <div align="center">
 
-### 💸 Annual Savings by Model & Volume
+### 💸 Annual Savings by Model & Volume (50% Prompt Compression)
 
-| Model                                   | 1K req/day | 10K req/day | 50K req/day | 100K req/day | Pricing (1M tokens) |
-| --------------------------------------- | ---------- | ----------- | ----------- | ------------ | ------------------- |
-| **GPT-5** (latest flagship)                 | $717       | $7,170      | $35,848     | $71,696      | $1.25 / $10.00      |
-| **GPT-4o**                                  | $913       | $9,125      | $45,625     | $91,250      | $2.50 / $10.00      |
-| **GPT-5.4** (prev. flagship)                | $1,173     | $11,732     | $58,661     | $117,321     | $2.50 / $15.00      |
-| **Claude Opus 4.8** (flagship)              | $2,086     | $20,857     | $104,286    | $208,571     | $5.00 / $25.00      |
-| **Claude Sonnet 4.6** (mid-tier)            | $1,251     | $12,514     | $62,571     | $125,142     | $3.00 / $15.00      |
-| **Claude Haiku 4.5** (fast/cheap)           | $417       | $4,171      | $20,857     | $41,714      | $1.00 / $5.00       |
-| **Gemini 2.5 Pro**                          | $522       | $5,220      | $26,099     | $52,198      | $1.25 / $5.00       |
-| **Gemini 2.5 Flash**                        | $31        | $313        | $1,566      | $3,132       | $0.075 / $0.30      |
-| **DeepSeek-V3**                             | $58        | $585        | $2,925      | $5,850       | $0.14 / $0.28       |
-| **Mistral Large 3**                         | $417       | $4,171      | $20,857     | $41,714      | $1.00 / $3.00       |
+| Model | 1K req/day | 10K req/day | 50K req/day | 100K req/day | Input Price (1M tokens) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Claude Opus 4.8** (flagship reasoning) | **$913** | **$9,125** | **$45,625** | **$91,250** | $5.00 / 1M |
+| **Claude Sonnet 4.6** (mid-tier) | **$548** | **$5,475** | **$27,375** | **$54,750** | $3.00 / 1M |
+| **GPT-4o** | **$456** | **$4,563** | **$22,813** | **$45,625** | $2.50 / 1M |
+| **GPT-5.4** (prev. flagship) | **$456** | **$4,563** | **$22,813** | **$45,625** | $2.50 / 1M |
+| **GPT-5** (latest flagship) | **$228** | **$2,281** | **$11,406** | **$22,813** | $1.25 / 1M |
+| **Gemini 2.5 Pro** | **$228** | **$2,281** | **$11,406** | **$22,813** | $1.25 / 1M |
+| **Claude Haiku 4.5** (fast/cheap) | **$183** | **$1,825** | **$9,125** | **$18,250** | $1.00 / 1M |
+| **Mistral Large 3** | **$183** | **$1,825** | **$9,125** | **$18,250** | $1.00 / 1M |
+| **DeepSeek-V3** | **$26** | **$256** | **$1,278** | **$2,555** | $0.14 / 1M |
+| **Gemini 2.5 Flash** | **$14** | **$137** | **$684** | **$1,369** | $0.075 / 1M |
 
-<sub>Based on 50% compression of 1,000-token prompts at listed model pricing. Actual savings depend on your text and compression ratio.</sub>
+<sub>Calculated for a 1,000-token prompt compressed by 50% (500 tokens saved per request) using official pricing as of July 14, 2026.</sub>
 
 </div>
 
@@ -458,27 +458,27 @@ from llmslim import ContextCompressor
 
 compressor = ContextCompressor(
     # Chunking parameters
-    max_chunk_tokens=180,          # soft cap per semantic chunk
-    similarity_threshold=0.35,     # topic drift sensitivity (lower = larger chunks)
+    max_chunk_tokens=300,          # soft token cap per semantic chunk (default: 300)
+    similarity_threshold=0.10,     # topic drift threshold (0.10 for TF-IDF, 0.35 for sentence-transformers)
 
     # Compression behavior
-    min_tokens_for_compression=40, # skip tiny texts
+    min_tokens_for_compression=40, # skip compression for short prompts (default: 40)
 
-    # Scoring weights (tune to your use case)
+    # Scoring weights (override llmslim.ranking.DEFAULT_WEIGHTS)
     weights={
-        "centrality": 0.35,        # how representative of the chunk
-        "position": 0.15,          # first/last sentence bonus
-        "entity": 0.15,            # named entities, numbers, URLs
-        "instruction": 0.25,       # directive language boost
-        "query": 0.35,             # query relevance (RAG mode)
-        "length_penalty": 0.20,    # penalize very short sentences
+        "centrality": 0.20,        # LexRank degree centrality weight
+        "position": 0.10,          # first/last sentence bonus in chunk
+        "entity": 0.40,            # named entities, acronyms, numbers, URLs
+        "instruction": 0.40,       # imperative directives & role markers
+        "query": 0.35,             # query relevance similarity (RAG mode)
+        "length_penalty": 0.20,    # penalty weight for short filler sentences
     },
 
-    # Custom preservation rules
+    # Custom preservation rules (sentences matching any regex are Priority 4 Critical)
     preserve_patterns=[
-        r"API_KEY",                # always keep sentences mentioning API keys
-        r"^WARNING:",              # keep warning lines
-        r"https?://",              # keep sentences with URLs
+        r"API_KEY",                # always retain sentences mentioning API keys
+        r"^(?:WARNING|CAUTION):",  # retain warning markers
+        r"https?://\S+",           # retain sentences containing URLs
     ],
 )
 

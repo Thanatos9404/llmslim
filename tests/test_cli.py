@@ -36,12 +36,7 @@ def test_cli_file_input_and_output(tmp_path):
     )
     input_file.write_text(content, encoding="utf-8")
 
-    exit_code = main([
-        str(input_file),
-        "-r", "0.5",
-        "-o", str(output_file),
-        "--stats"
-    ])
+    exit_code = main([str(input_file), "-r", "0.5", "-o", str(output_file), "--stats"])
 
     assert exit_code == 0
     assert output_file.exists()

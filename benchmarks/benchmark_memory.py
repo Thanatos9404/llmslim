@@ -39,7 +39,7 @@ def measure_memory_usage(sample_id: str, text: str, category: str) -> MemoryMetr
         original_tokens=original_tokens,
         compressed_tokens=result.compressed_tokens,
         peak_memory_kb=round(peak_kb, 2),
-        memory_kb_per_1k_tokens=round(kb_per_1k, 2)
+        memory_kb_per_1k_tokens=round(kb_per_1k, 2),
     )
 
 
@@ -63,9 +63,7 @@ def run_memory_benchmarks(dataset_dir: str = "datasets") -> List[MemoryMetrics]:
 
             if text.strip():
                 metrics = measure_memory_usage(
-                    sample_id=sample_id,
-                    text=text,
-                    category=filename.replace(".json", "")
+                    sample_id=sample_id, text=text, category=filename.replace(".json", "")
                 )
                 results.append(metrics)
 

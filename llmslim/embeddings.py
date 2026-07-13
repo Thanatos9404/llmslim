@@ -61,7 +61,6 @@ class TfidfEmbeddingBackend(EmbeddingBackend):
         return matrix.toarray()
 
 
-
 class SentenceTransformerEmbeddingBackend(EmbeddingBackend):
     """High-quality semantic embeddings via ``sentence-transformers``.
 
@@ -124,4 +123,3 @@ def reset_default_backend() -> None:
     """Clear the cached default backend (mainly useful for testing)."""
     global _DEFAULT_BACKEND
     _DEFAULT_BACKEND = None
-

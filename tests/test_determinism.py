@@ -21,7 +21,7 @@ DETERMINISM_CORPUS = [
         "JSON Web Tokens (JWT) are used for stateless authentication in REST APIs. "
         "JWTs consist of header, payload, and signature components. "
         "Always use HTTPS to transmit tokens and set short access token expiration limits."
-    )
+    ),
 ]
 
 

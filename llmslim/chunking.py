@@ -33,7 +33,9 @@ class Chunk:
 
     def __repr__(self) -> str:
         preview = self.sentences[0][:40] + "..." if self.sentences else ""
-        return f"Chunk(n_sentences={len(self)}, tokens={self.total_tokens}, starts_with={preview!r})"
+        return (
+            f"Chunk(n_sentences={len(self)}, tokens={self.total_tokens}, starts_with={preview!r})"
+        )
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -80,9 +82,9 @@ def semantic_chunk(
         similarity = _cosine(embeddings[i], centroid)
 
         starts_new_chunk = (
-            (similarity < similarity_threshold and (current_tokens >= 15 or len(current_indices) >= 2))
-            or (current_tokens + sent_tokens > max_chunk_tokens)
-        )
+            similarity < similarity_threshold
+            and (current_tokens >= 15 or len(current_indices) >= 2)
+        ) or (current_tokens + sent_tokens > max_chunk_tokens)
 
         if starts_new_chunk and current_indices:
             chunks.append(_build_chunk(current_indices, sentences, token_counts))

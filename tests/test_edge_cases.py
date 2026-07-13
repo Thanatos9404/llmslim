@@ -68,24 +68,55 @@ def test_edge_case_multilingual_unicode():
     assert len(result.compressed_text) > 0
 
 
-@pytest.mark.parametrize("format_name,sample_code", [
-    ("Markdown", "# Title\n\n- Item 1\n- Item 2\n\n```python\nprint('hello')\n```"),
-    ("HTML", "<div class='container'><h1>Header</h1><p>You must keep this paragraph.</p></div>"),
-    ("XML", "<config><server host='localhost' port='8080'/><rules><must_keep>true</must_keep></rules></config>"),
-    ("JSON", '{\n  "status": "active",\n  "database": "postgresql",\n  "port": 5432\n}'),
-    ("YAML", "server:\n  port: 8080\n  database:\n    type: postgresql\n    host: localhost\n"),
-    ("SQL", "SELECT customer_id, SUM(amount) FROM transactions WHERE status = 'COMPLETED' GROUP BY customer_id;"),
-    ("Python", "def compress_text(text: str) -> str:\n    \"\"\"Docstring.\"\"\"\n    return text.strip()\n"),
-    ("JavaScript", "function processRequest(req, res) {\n    if (!req.body) return res.status(400).end();\n}\n"),
-    ("C++", "int main() {\n    std::cout << \"Hello World\" << std::endl;\n    return 0;\n}\n"),
-    ("Logs", "[2026-07-13 10:15:30] [ERROR] Failed to connect to Redis at 10.0.0.5:6379 after 3 retries."),
-    ("Emails", "From: alice@example.com\nTo: bob@example.com\nSubject: Critical System Update required."),
-    ("URLs & Tables", "Endpoint: https://api.service.io/v1/users\n\n| Param | Type | Required |\n| id | int | yes |")
-])
+@pytest.mark.parametrize(
+    "format_name,sample_code",
+    [
+        ("Markdown", "# Title\n\n- Item 1\n- Item 2\n\n```python\nprint('hello')\n```"),
+        (
+            "HTML",
+            "<div class='container'><h1>Header</h1><p>You must keep this paragraph.</p></div>",
+        ),
+        (
+            "XML",
+            "<config><server host='localhost' port='8080'/><rules><must_keep>true</must_keep></rules></config>",
+        ),
+        ("JSON", '{\n  "status": "active",\n  "database": "postgresql",\n  "port": 5432\n}'),
+        ("YAML", "server:\n  port: 8080\n  database:\n    type: postgresql\n    host: localhost\n"),
+        (
+            "SQL",
+            "SELECT customer_id, SUM(amount) FROM transactions WHERE status = 'COMPLETED' GROUP BY customer_id;",
+        ),
+        (
+            "Python",
+            'def compress_text(text: str) -> str:\n    """Docstring."""\n    return text.strip()\n',
+        ),
+        (
+            "JavaScript",
+            "function processRequest(req, res) {\n    if (!req.body) return res.status(400).end();\n}\n",
+        ),
+        ("C++", 'int main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n'),
+        (
+            "Logs",
+            "[2026-07-13 10:15:30] [ERROR] Failed to connect to Redis at 10.0.0.5:6379 after 3 retries.",
+        ),
+        (
+            "Emails",
+            "From: alice@example.com\nTo: bob@example.com\nSubject: Critical System Update required.",
+        ),
+        (
+            "URLs & Tables",
+            "Endpoint: https://api.service.io/v1/users\n\n| Param | Type | Required |\n| id | int | yes |",
+        ),
+    ],
+)
 def test_edge_case_text_formats(format_name, sample_code):
     """Verify various text formats do not crash compression engine."""
     # Repeat format sample to reach min token threshold if needed
-    full_text = sample_code + "\n" + ("Extra detail sentence for format testing. You must ensure correctness. " * 3)
+    full_text = (
+        sample_code
+        + "\n"
+        + ("Extra detail sentence for format testing. You must ensure correctness. " * 3)
+    )
     result = compress(full_text, target_ratio=0.5)
     assert isinstance(result.compressed_text, str)
     assert len(result.compressed_text) > 0
@@ -162,4 +193,3 @@ def test_tokenization_abbreviation_merging_and_regex_fallback():
 
     regex_splits = _regex_split("Sentence one! Sentence two? Sentence three.\nSentence four.")
     assert len(regex_splits) >= 3
-

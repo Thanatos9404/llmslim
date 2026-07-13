@@ -133,7 +133,6 @@ class ContextCompressor:
         self.weights = weights
         self.preserve_patterns = list(preserve_patterns or [])
 
-
     def compress(
         self,
         text: str,
@@ -173,7 +172,9 @@ class ContextCompressor:
             para_end_indices.append(len(all_sentences))
 
         if len(all_sentences) <= 1:
-            return self._passthrough(text, original_tokens, target_ratio, sentences_total=len(all_sentences))
+            return self._passthrough(
+                text, original_tokens, target_ratio, sentences_total=len(all_sentences)
+            )
 
         embeddings, query_embedding = self._encode(all_sentences, query)
 
@@ -203,18 +204,26 @@ class ContextCompressor:
             all_chunk_scored.append((chunk, scored))
 
             chunk_target = max(1, round(chunk.total_tokens * target_ratio_eff))
-            sorted_scored = sorted(scored, key=lambda s: (s.get("priority", 1), s["score"]), reverse=True)
+            sorted_scored = sorted(
+                scored, key=lambda s: (s.get("priority", 1), s["score"]), reverse=True
+            )
 
             used = 0
             for s in sorted_scored:
                 global_idx = chunk.sentence_indices[s["index"]]
                 tok = sentence_token_counts[global_idx]
-                if s.get("priority", 1) >= 3 or used + tok <= chunk_target or not any(kept_mask[chunk.sentence_indices]):
+                if (
+                    s.get("priority", 1) >= 3
+                    or used + tok <= chunk_target
+                    or not any(kept_mask[chunk.sentence_indices])
+                ):
                     kept_mask[global_idx] = True
                     used += tok
 
         # Pass 2: Global Cross-Chunk Budget Re-balancing
-        current_total = sum(sentence_token_counts[i] for i in range(len(all_sentences)) if kept_mask[i])
+        current_total = sum(
+            sentence_token_counts[i] for i in range(len(all_sentences)) if kept_mask[i]
+        )
 
         if current_total < global_target_tokens:
             unselected = []
@@ -222,8 +231,12 @@ class ContextCompressor:
                 for s in scored:
                     g_idx = chunk.sentence_indices[s["index"]]
                     if not kept_mask[g_idx]:
-                        combo_score = s["score"] + s["instruction_score"] * 0.5 + s["entity_score"] * 0.5
-                        unselected.append((g_idx, s.get("priority", 1), combo_score, sentence_token_counts[g_idx]))
+                        combo_score = (
+                            s["score"] + s["instruction_score"] * 0.5 + s["entity_score"] * 0.5
+                        )
+                        unselected.append(
+                            (g_idx, s.get("priority", 1), combo_score, sentence_token_counts[g_idx])
+                        )
 
             unselected.sort(key=lambda item: (item[1], item[2]), reverse=True)
             for g_idx, _prio, _score, tok in unselected:
@@ -236,7 +249,9 @@ class ContextCompressor:
                 for s in scored:
                     g_idx = chunk.sentence_indices[s["index"]]
                     if kept_mask[g_idx] and s.get("priority", 1) < 4:
-                        selected.append((g_idx, s.get("priority", 1), s["score"], sentence_token_counts[g_idx]))
+                        selected.append(
+                            (g_idx, s.get("priority", 1), s["score"], sentence_token_counts[g_idx])
+                        )
 
             selected.sort(key=lambda item: (item[1], item[2]))  # lowest score/priority first
             for g_idx, _prio, _score, tok in selected:
@@ -246,7 +261,9 @@ class ContextCompressor:
 
         chunk_results: List[ChunkResult] = []
         for chunk, scored in all_chunk_scored:
-            kept_local = [s["index"] for s in scored if kept_mask[chunk.sentence_indices[s["index"]]]]
+            kept_local = [
+                s["index"] for s in scored if kept_mask[chunk.sentence_indices[s["index"]]]
+            ]
             kept_tokens = sum(chunk.token_counts[i] for i in kept_local)
             chunk_results.append(
                 ChunkResult(
@@ -274,7 +291,9 @@ class ContextCompressor:
             chunk_results=chunk_results,
         )
 
-    def _passthrough(self, text: str, original_tokens: int, target_ratio: float, sentences_total: int) -> CompressionResult:
+    def _passthrough(
+        self, text: str, original_tokens: int, target_ratio: float, sentences_total: int
+    ) -> CompressionResult:
         return CompressionResult(
             original_text=text,
             compressed_text=text,
@@ -346,7 +365,9 @@ class ContextCompressor:
             remaining_budget = target_tokens - used_tokens
             if remaining_budget > 0:
                 dp_selected = ContextCompressor._knapsack_select(
-                    optional, token_counts, remaining_budget,
+                    optional,
+                    token_counts,
+                    remaining_budget,
                 )
                 selected.update(dp_selected)
 
@@ -382,11 +403,7 @@ class ContextCompressor:
         values = [item["score"] for item in items]
 
         # Filter items that individually exceed the budget.
-        feasible = [
-            (i, w, v)
-            for i, (w, v) in enumerate(zip(weights, values))
-            if w <= budget
-        ]
+        feasible = [(i, w, v) for i, (w, v) in enumerate(zip(weights, values)) if w <= budget]
         if not feasible:
             return set()
 
@@ -442,12 +459,16 @@ class ContextCompressor:
         return selected
 
     @staticmethod
-    def _reassemble(sentences: List[str], kept_mask: np.ndarray, para_end_indices: List[int]) -> str:
+    def _reassemble(
+        sentences: List[str], kept_mask: np.ndarray, para_end_indices: List[int]
+    ) -> str:
         """Rebuild paragraphs from kept sentences, preserving list formatting."""
         paragraphs_out: List[str] = []
         start = 0
         for end in para_end_indices:
-            kept_sentences = [s for s, keep in zip(sentences[start:end], kept_mask[start:end]) if keep]
+            kept_sentences = [
+                s for s, keep in zip(sentences[start:end], kept_mask[start:end]) if keep
+            ]
             start = end
             if not kept_sentences:
                 continue

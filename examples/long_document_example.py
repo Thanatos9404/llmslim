@@ -137,12 +137,18 @@ def main():
 
         # Check if key entities survived
         key_entities = [
-            "Kubernetes", "PostgreSQL", "SOC 2", "GraphQL",
-            "99.97%", "Q1 2026",
+            "Kubernetes",
+            "PostgreSQL",
+            "SOC 2",
+            "GraphQL",
+            "99.97%",
+            "Q1 2026",
         ]
         preserved = [e for e in key_entities if e in result.compressed_text]
-        print(f"  Key entities preserved: {len(preserved)}/{len(key_entities)} "
-              f"({', '.join(preserved)})")
+        print(
+            f"  Key entities preserved: {len(preserved)}/{len(key_entities)} "
+            f"({', '.join(preserved)})"
+        )
 
     # --- Detailed view of 50% compression ---
     print("\n" + "=" * 60)

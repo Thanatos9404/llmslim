@@ -42,7 +42,7 @@ class QualityMetrics:
 def compute_ngram_counts(tokens: List[str], n: int) -> Counter:
     if len(tokens) < n:
         return Counter()
-    return Counter([tuple(tokens[i:i+n]) for i in range(len(tokens) - n + 1)])
+    return Counter([tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1)])
 
 
 def compute_bleu_4(reference: str, candidate: str) -> float:
@@ -103,10 +103,10 @@ def compute_rouge_l(reference: str, candidate: str) -> float:
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     for i in range(1, m + 1):
         for j in range(1, n + 1):
-            if ref_tokens[i-1] == cand_tokens[j-1]:
-                dp[i][j] = dp[i-1][j-1] + 1
+            if ref_tokens[i - 1] == cand_tokens[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
             else:
-                dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
 
     lcs_len = dp[m][n]
     precision = lcs_len / n
@@ -131,7 +131,9 @@ def extract_instructions(text: str) -> set:
     return instructions
 
 
-def evaluate_sample_quality(sample_id: str, text: str, category: str, target_ratio: float = 0.5) -> QualityMetrics:
+def evaluate_sample_quality(
+    sample_id: str, text: str, category: str, target_ratio: float = 0.5
+) -> QualityMetrics:
     result = compress(text, target_ratio=target_ratio)
     compressed = result.compressed_text
 
@@ -149,7 +151,11 @@ def evaluate_sample_quality(sample_id: str, text: str, category: str, target_rat
 
     ref_words = set(re.findall(r"\w+", text.lower()))
     cand_words = set(re.findall(r"\w+", compressed.lower()))
-    jaccard = len(ref_words.intersection(cand_words)) / len(ref_words.union(cand_words)) if ref_words else 1.0
+    jaccard = (
+        len(ref_words.intersection(cand_words)) / len(ref_words.union(cand_words))
+        if ref_words
+        else 1.0
+    )
 
     rouge1 = compute_rouge_1(text, compressed)
     rougel = compute_rouge_l(text, compressed)
@@ -177,7 +183,7 @@ def evaluate_sample_quality(sample_id: str, text: str, category: str, target_rat
         jaccard_similarity=round(jaccard, 4),
         rouge_1_f1=rouge1,
         rouge_l_f1=rougel,
-        bleu_4=bleu4
+        bleu_4=bleu4,
     )
 
 
@@ -204,7 +210,7 @@ def run_quality_benchmarks(dataset_dir: str = "datasets") -> List[QualityMetrics
                     sample_id=sample_id,
                     text=text,
                     category=filename.replace(".json", ""),
-                    target_ratio=0.5
+                    target_ratio=0.5,
                 )
                 results.append(metrics)
 

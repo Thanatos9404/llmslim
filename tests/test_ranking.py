@@ -16,7 +16,7 @@ def sample_chunk():
         "You are an AI assistant designed to summarize text.",
         "The project relies on PostgreSQL 16 and Redis v7.0.",
         "Always format code blocks using triple backticks.",
-        "This is an extra sentence explaining general background details."
+        "This is an extra sentence explaining general background details.",
     ]
     indices = list(range(len(sentences)))
     token_counts = [count_tokens(s) for s in sentences]
@@ -47,11 +47,7 @@ def test_score_chunk_sentences_critical_must_keep(sample_chunk):
 def test_score_chunk_sentences_preserve_patterns(sample_chunk):
     """Verify user preserve_patterns force sentence to be must_keep."""
     embeddings = np.random.rand(len(sample_chunk.sentences), 64)
-    scored = score_chunk_sentences(
-        sample_chunk,
-        embeddings,
-        preserve_patterns=[r"PostgreSQL 16"]
-    )
+    scored = score_chunk_sentences(sample_chunk, embeddings, preserve_patterns=[r"PostgreSQL 16"])
 
     postgres_sentence = [s for s in scored if "PostgreSQL 16" in s["sentence"]][0]
     assert postgres_sentence["must_keep"] is True
@@ -63,11 +59,7 @@ def test_score_chunk_sentences_with_query(sample_chunk):
     # Query embedding identical to 2nd sentence (index 1)
     query_embedding = embeddings[1]
 
-    scored = score_chunk_sentences(
-        sample_chunk,
-        embeddings,
-        query_embedding=query_embedding
-    )
+    scored = score_chunk_sentences(sample_chunk, embeddings, query_embedding=query_embedding)
 
     # Index 1 sentence should have high score due to query match
     query_matched_sentence = [s for s in scored if s["index"] == 1][0]

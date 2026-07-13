@@ -18,13 +18,13 @@ def create_bar_chart_svg(title, items, xlabel, filename):
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="{height}">',
-        '  <style>',
-        '    .bg { fill: #0d1117; rx: 8px; }',
+        "  <style>",
+        "    .bg { fill: #0d1117; rx: 8px; }",
         '    .title { fill: #58a6ff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; }',
         '    .label { fill: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }',
         '    .val { fill: #ffffff; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }',
         '    .axis-label { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; }',
-        '  </style>',
+        "  </style>",
         f'  <rect width="{width}" height="{height}" class="bg" stroke="#30363d" stroke-width="1"/>',
         f'  <text x="24" y="36" class="title">{title}</text>',
     ]
@@ -41,11 +41,11 @@ def create_bar_chart_svg(title, items, xlabel, filename):
         svg.append(f'    <text x="0" y="14" class="label">{label}</text>')
         svg.append(f'    <rect x="220" y="2" width="{bar_w}" height="18" fill="{color}" rx="4"/>')
         svg.append(f'    <text x="{230 + bar_w}" y="15" class="val">{display_val}</text>')
-        svg.append('  </g>')
+        svg.append("  </g>")
         y += row_height
 
     svg.append(f'  <text x="24" y="{height - 12}" class="axis-label">{xlabel}</text>')
-    svg.append('</svg>')
+    svg.append("</svg>")
 
     out_path = Path("assets") / filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +66,7 @@ def main():
         "⚡ Processing Latency by Corpus Type (Lower is Faster)",
         latency_data,
         "Measured on Python 3.12 with TF-IDF Centrality Engine",
-        "latency_comparison.svg"
+        "latency_comparison.svg",
     )
 
     # 2. Compression Ratio vs Token Reduction
@@ -80,7 +80,7 @@ def main():
         "📈 Actual Token Reduction Achieved across Ratios",
         ratio_data,
         "Measured across 159 evaluation samples",
-        "compression_ratio.svg"
+        "compression_ratio.svg",
     )
 
     # 3. Retention Metrics
@@ -95,7 +95,7 @@ def main():
         "🔒 Information & Instruction Retention Metrics",
         retention_data,
         "Evaluated via entity recognition and instruction regex validation",
-        "retention_metrics.svg"
+        "retention_metrics.svg",
     )
 
     # 4. Memory Footprint Comparison
@@ -108,7 +108,7 @@ def main():
         "🧠 Peak RAM Footprint by Compression Engine",
         memory_data,
         "Peak RAM allocation measured during 10K token compression",
-        "memory_usage.svg"
+        "memory_usage.svg",
     )
 
 

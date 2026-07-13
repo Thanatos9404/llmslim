@@ -19,7 +19,7 @@ INSTRUCTION_PATTERNS = {
     "Tool usage": "Use the tool python_interpreter to execute complex math calculations.",
     "Code block directive": "Always format code using triple backticks: ```python",
     "Safety directive": "Refrain from generating harmful, offensive, or illegal content.",
-    "System label": "System: Respond only with exact entity matches."
+    "System label": "System: Respond only with exact entity matches.",
 }
 
 
@@ -35,7 +35,9 @@ def test_critical_pattern_matching(category, sentence):
     """Verify that high-confidence directive patterns match _CRITICAL_RE."""
     # Sentences containing must, never, you are, WARNING:, etc. match critical patterns
     if category in ["Role definition", "Prohibition", "Obligation", "Requirement", "Warning label"]:
-        assert _CRITICAL_RE.search(sentence) is not None, f"Category '{category}' should match critical directive pattern"
+        assert (
+            _CRITICAL_RE.search(sentence) is not None
+        ), f"Category '{category}' should match critical directive pattern"
 
 
 def test_instruction_preservation_ratio():

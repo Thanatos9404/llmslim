@@ -16,9 +16,29 @@ _CODE_BLOCK_PATTERN = re.compile(r"```.*?```", re.DOTALL)
 
 # Common abbreviations that should not be treated as sentence boundaries.
 ABBREVIATIONS = {
-    "mr.", "mrs.", "ms.", "dr.", "prof.", "sr.", "jr.", "vs.", "etc.",
-    "e.g.", "i.e.", "fig.", "eq.", "al.", "no.", "vol.", "approx.",
-    "inc.", "ltd.", "co.", "st.", "a.m.", "p.m.",
+    "mr.",
+    "mrs.",
+    "ms.",
+    "dr.",
+    "prof.",
+    "sr.",
+    "jr.",
+    "vs.",
+    "etc.",
+    "e.g.",
+    "i.e.",
+    "fig.",
+    "eq.",
+    "al.",
+    "no.",
+    "vol.",
+    "approx.",
+    "inc.",
+    "ltd.",
+    "co.",
+    "st.",
+    "a.m.",
+    "p.m.",
 }
 
 # Split on '.', '!' or '?' followed by whitespace and an uppercase letter,

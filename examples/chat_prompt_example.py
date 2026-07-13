@@ -100,7 +100,7 @@ def main():
     # --- Compress the conversation ---
     compressed = compress_chat_messages(
         conversation,
-        target_ratio=0.5,            # Keep ~50% of tokens
+        target_ratio=0.5,  # Keep ~50% of tokens
         compressible_roles=("user", "assistant"),  # Don't touch system prompt
     )
 
@@ -123,7 +123,8 @@ def main():
     print("\n--- Cost Savings at Scale ---")
     for model in ["gpt-5", "claude-sonnet-4.6", "gemini-2.5-pro"]:
         est = estimate_cost_savings(
-            total_original, total_compressed,
+            total_original,
+            total_compressed,
             model=model,
             requests_per_day=10_000,
         )

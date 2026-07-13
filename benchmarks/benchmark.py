@@ -62,24 +62,37 @@ def run_unit_tests() -> Tuple[int, int]:
         return 154, 5
 
 
-
 def compute_scores(
     quality_list: List[Any],
     speed_list: List[Any],
     memory_list: List[Any],
     regression_list: List[Any],
-    test_failures: int
+    test_failures: int,
 ) -> Dict[str, float]:
-    avg_inst = (sum(q.instruction_retention_rate for q in quality_list) / len(quality_list)) if quality_list else 0.96
-    avg_ent = (sum(q.entity_retention_rate for q in quality_list) / len(quality_list)) if quality_list else 0.88
-    avg_red = (sum(q.reduction_percent for q in quality_list) / len(quality_list)) if quality_list else 52.0
+    avg_inst = (
+        (sum(q.instruction_retention_rate for q in quality_list) / len(quality_list))
+        if quality_list
+        else 0.96
+    )
+    avg_ent = (
+        (sum(q.entity_retention_rate for q in quality_list) / len(quality_list))
+        if quality_list
+        else 0.88
+    )
+    avg_red = (
+        (sum(q.reduction_percent for q in quality_list) / len(quality_list))
+        if quality_list
+        else 52.0
+    )
     avg_lat = (sum(s.total_latency_ms for s in speed_list) / len(speed_list)) if speed_list else 6.5
-    avg_mem = (sum(m.peak_memory_kb for m in memory_list) / len(memory_list)) if memory_list else 120.0
+    avg_mem = (
+        (sum(m.peak_memory_kb for m in memory_list) / len(memory_list)) if memory_list else 120.0
+    )
 
     quality_score = min(100.0, (avg_inst * 45.0 + avg_ent * 45.0 + (avg_red / 50.0) * 10.0))
     perf_score = min(100.0, max(0.0, 100.0 - (avg_lat - 5.0) * 5.0 - (avg_mem / 50.0)))
     reliability_score = 100.0 if test_failures == 0 else max(70.0, 100.0 - test_failures * 5.0)
-    readiness_score = (quality_score * 0.4 + perf_score * 0.3 + reliability_score * 0.3)
+    readiness_score = quality_score * 0.4 + perf_score * 0.3 + reliability_score * 0.3
     overall_score = (quality_score + perf_score + reliability_score + readiness_score) / 4.0
 
     return {
@@ -87,7 +100,7 @@ def compute_scores(
         "quality_score": round(quality_score, 1),
         "performance_score": round(perf_score, 1),
         "reliability_score": round(reliability_score, 1),
-        "production_readiness_score": round(readiness_score, 1)
+        "production_readiness_score": round(readiness_score, 1),
     }
 
 
@@ -119,9 +132,13 @@ def main():
     # 5. Regression & Baseline Comparison
     print_colored("\n[5/5] Running Regression Comparison vs v0.1 Baselines...", BOLD + BLUE)
     regression_results = run_regression_benchmarks()
-    print_colored(f"[OK] Regression analysis complete across {len(regression_results)} metrics.", GREEN)
+    print_colored(
+        f"[OK] Regression analysis complete across {len(regression_results)} metrics.", GREEN
+    )
 
-    scores = compute_scores(quality_results, speed_results, memory_results, regression_results, failed_tests)
+    scores = compute_scores(
+        quality_results, speed_results, memory_results, regression_results, failed_tests
+    )
 
     # Console Summary Output
     print_colored("\n================================================================", BOLD + BLUE)
@@ -131,15 +148,23 @@ def main():
     print_colored("\n--- PASS SECTIONS ---", BOLD + GREEN)
     for comp in regression_results:
         if comp.status == "PASS":
-            print_colored(f"  [PASS] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f} ({comp.improvement_pct:+6.1f}%)", GREEN)
-    print_colored(f"  [PASS] Unit Tests: {passed_tests} passed out of {passed_tests + failed_tests}", GREEN)
+            print_colored(
+                f"  [PASS] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f} ({comp.improvement_pct:+6.1f}%)",
+                GREEN,
+            )
+    print_colored(
+        f"  [PASS] Unit Tests: {passed_tests} passed out of {passed_tests + failed_tests}", GREEN
+    )
     print_colored("  [PASS] Determinism: 100% byte-identical across 10 repeated runs", GREEN)
 
     warnings = [comp for comp in regression_results if comp.status == "WARN"]
     if warnings:
         print_colored("\n--- WARN SECTIONS ---", BOLD + YELLOW)
         for comp in warnings:
-            print_colored(f"  [WARN] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f} ({comp.improvement_pct:+6.1f}%)", YELLOW)
+            print_colored(
+                f"  [WARN] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f} ({comp.improvement_pct:+6.1f}%)",
+                YELLOW,
+            )
     else:
         print_colored("\n--- WARN SECTIONS ---", BOLD + YELLOW)
         print_colored("  None", YELLOW)
@@ -148,7 +173,10 @@ def main():
     if fails or failed_tests > 0:
         print_colored("\n--- FAIL SECTIONS ---", BOLD + RED)
         for comp in fails:
-            print_colored(f"  [FAIL] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f}", RED)
+            print_colored(
+                f"  [FAIL] {comp.metric_name:25s} | v0.1: {comp.v01_baseline:6.1f} | v0.2: {comp.v02_actual:6.1f}",
+                RED,
+            )
         if failed_tests > 0:
             print_colored(f"  [FAIL] Unit Tests: {failed_tests} tests failed", RED)
     else:
@@ -156,16 +184,30 @@ def main():
         print_colored("  None", GREEN)
 
     print_colored("\n--- FINAL SCORES ---", BOLD + BLUE)
-    print_colored(f"  Overall Score             : {scores['overall_score']:5.1f} / 100", BOLD + GREEN)
+    print_colored(
+        f"  Overall Score             : {scores['overall_score']:5.1f} / 100", BOLD + GREEN
+    )
     print_colored(f"  Quality Score             : {scores['quality_score']:5.1f} / 100", GREEN)
     print_colored(f"  Performance Score         : {scores['performance_score']:5.1f} / 100", GREEN)
     print_colored(f"  Reliability Score         : {scores['reliability_score']:5.1f} / 100", GREEN)
-    print_colored(f"  Production Readiness Score: {scores['production_readiness_score']:5.1f} / 100", BOLD + GREEN)
+    print_colored(
+        f"  Production Readiness Score: {scores['production_readiness_score']:5.1f} / 100",
+        BOLD + GREEN,
+    )
 
     # Generate Export Files
-    generate_json_results(quality_results, speed_results, memory_results, regression_results, scores)
+    generate_json_results(
+        quality_results, speed_results, memory_results, regression_results, scores
+    )
     generate_csv_results(quality_results, speed_results, memory_results)
-    generate_markdown_report(quality_results, speed_results, memory_results, regression_results, scores, time.time() - start_time)
+    generate_markdown_report(
+        quality_results,
+        speed_results,
+        memory_results,
+        regression_results,
+        scores,
+        time.time() - start_time,
+    )
 
     print_colored("\n✓ Reports written successfully:", BOLD + GREEN)
     print_colored("  - benchmark_report.md", GREEN)
@@ -182,7 +224,7 @@ def generate_json_results(quality, speed, memory, regression, scores):
         "regression_comparison": [asdict(r) for r in regression],
         "quality_metrics": [asdict(q) for q in quality],
         "speed_metrics": [asdict(s) for s in speed],
-        "memory_metrics": [asdict(m) for m in memory]
+        "memory_metrics": [asdict(m) for m in memory],
     }
     with open("benchmark_results.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
@@ -191,31 +233,53 @@ def generate_json_results(quality, speed, memory, regression, scores):
 def generate_csv_results(quality, speed, memory):
     with open("benchmark_results.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "Sample ID", "Category", "Target Ratio", "Actual Ratio",
-            "Original Tokens", "Compressed Tokens", "Reduction %",
-            "Entity Retention %", "Instruction Retention %",
-            "Latency (ms)", "Peak Memory (KB)"
-        ])
+        writer.writerow(
+            [
+                "Sample ID",
+                "Category",
+                "Target Ratio",
+                "Actual Ratio",
+                "Original Tokens",
+                "Compressed Tokens",
+                "Reduction %",
+                "Entity Retention %",
+                "Instruction Retention %",
+                "Latency (ms)",
+                "Peak Memory (KB)",
+            ]
+        )
         speed_map = {s.sample_id: s for s in speed}
         memory_map = {m.sample_id: m for m in memory}
 
         for q in quality:
             s = speed_map.get(q.sample_id)
             m = memory_map.get(q.sample_id)
-            writer.writerow([
-                q.sample_id, q.category, q.target_ratio, q.actual_ratio,
-                q.original_tokens, q.compressed_tokens, q.reduction_percent,
-                round(q.entity_retention_rate * 100, 1),
-                round(q.instruction_retention_rate * 100, 1),
-                s.total_latency_ms if s else 0.0,
-                m.peak_memory_kb if m else 0.0
-            ])
+            writer.writerow(
+                [
+                    q.sample_id,
+                    q.category,
+                    q.target_ratio,
+                    q.actual_ratio,
+                    q.original_tokens,
+                    q.compressed_tokens,
+                    q.reduction_percent,
+                    round(q.entity_retention_rate * 100, 1),
+                    round(q.instruction_retention_rate * 100, 1),
+                    s.total_latency_ms if s else 0.0,
+                    m.peak_memory_kb if m else 0.0,
+                ]
+            )
 
 
 def generate_markdown_report(quality, speed, memory, regression, scores, total_duration_sec):
-    avg_inst = (sum(q.instruction_retention_rate for q in quality) / len(quality) * 100.0) if quality else 0.0
-    avg_ent = (sum(q.entity_retention_rate for q in quality) / len(quality) * 100.0) if quality else 0.0
+    avg_inst = (
+        (sum(q.instruction_retention_rate for q in quality) / len(quality) * 100.0)
+        if quality
+        else 0.0
+    )
+    avg_ent = (
+        (sum(q.entity_retention_rate for q in quality) / len(quality) * 100.0) if quality else 0.0
+    )
     avg_red = (sum(q.reduction_percent for q in quality) / len(quality)) if quality else 0.0
     avg_lat = (sum(s.total_latency_ms for s in speed) / len(speed)) if speed else 0.0
     avg_mem = (sum(m.peak_memory_kb for m in memory) / len(memory)) if memory else 0.0

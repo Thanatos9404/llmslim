@@ -41,7 +41,10 @@ def test_semantic_chunk_single_sentence():
 
 def test_semantic_chunk_max_tokens_split():
     """Verify semantic_chunk splits chunks when max_chunk_tokens is exceeded."""
-    sentences = [f"This is sentence number {i} with several extra words to increase token count." for i in range(10)]
+    sentences = [
+        f"This is sentence number {i} with several extra words to increase token count."
+        for i in range(10)
+    ]
     embeddings = np.ones((10, 128))  # All identical embeddings
 
     # Set max_chunk_tokens low so it forces splitting
@@ -58,15 +61,10 @@ def test_semantic_chunk_similarity_threshold():
         "Python is a great programming language.",
         "Python code is clean and readable.",
         "The recipe calls for flour, eggs, and sugar.",
-        "Bake the cake at 350 degrees for 30 minutes."
+        "Bake the cake at 350 degrees for 30 minutes.",
     ]
     # Create distinct orthogonal embeddings for topic change
-    embeddings = np.array([
-        [1.0, 0.0],
-        [0.9, 0.1],
-        [0.0, 1.0],
-        [0.1, 0.9]
-    ])
+    embeddings = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]])
 
     chunks = semantic_chunk(sentences, embeddings, max_chunk_tokens=500, similarity_threshold=0.5)
 
@@ -82,5 +80,3 @@ def test_semantic_chunk_mismatched_lengths():
 
     with pytest.raises(IndexError):
         semantic_chunk(sentences, embeddings)
-
-

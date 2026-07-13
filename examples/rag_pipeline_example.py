@@ -100,8 +100,8 @@ def main():
     # --- Compress with query awareness ---
     results = compress_documents(
         retrieved_chunks,
-        query=user_query,       # Favor sentences relevant to authentication
-        target_ratio=0.4,       # Aggressive 60% reduction
+        query=user_query,  # Favor sentences relevant to authentication
+        target_ratio=0.4,  # Aggressive 60% reduction
     )
 
     # --- Show per-chunk results ---
@@ -126,13 +126,16 @@ def main():
     # --- Build the compressed context ---
     compressed_context = "\n\n---\n\n".join(r.compressed_text for r in results)
     print("\n--- Compressed Context (ready for LLM) ---")
-    print(compressed_context[:500] + "...\n" if len(compressed_context) > 500 else compressed_context)
+    print(
+        compressed_context[:500] + "...\n" if len(compressed_context) > 500 else compressed_context
+    )
 
     # --- Cost savings ---
     print("--- Annual Cost Savings ---")
     for model in ["gpt-5", "claude-opus-4.8", "gemini-2.5-pro"]:
         est = estimate_cost_savings(
-            total_orig, total_comp,
+            total_orig,
+            total_comp,
             model=model,
             requests_per_day=50_000,
         )

@@ -56,7 +56,7 @@ def measure_speed_breakdown(sample_id: str, text: str, category: str) -> SpeedMe
             ranking_latency_ms=0.0,
             assembly_latency_ms=0.0,
             throughput_tokens_per_sec=(original_tokens / (t1 - t0)) if (t1 - t0) > 0 else 0.0,
-            throughput_chars_per_sec=(char_count / (t1 - t0)) if (t1 - t0) > 0 else 0.0
+            throughput_chars_per_sec=(char_count / (t1 - t0)) if (t1 - t0) > 0 else 0.0,
         )
 
     embeddings, query_emb = compressor._encode(all_sentences, None)
@@ -95,7 +95,7 @@ def measure_speed_breakdown(sample_id: str, text: str, category: str) -> SpeedMe
         ranking_latency_ms=round(ranking_ms, 3),
         assembly_latency_ms=round(assembly_ms, 3),
         throughput_tokens_per_sec=round(throughput_tok, 1),
-        throughput_chars_per_sec=round(throughput_char, 1)
+        throughput_chars_per_sec=round(throughput_char, 1),
     )
 
 
@@ -119,9 +119,7 @@ def run_speed_benchmarks(dataset_dir: str = "datasets") -> List[SpeedMetrics]:
 
             if text.strip():
                 metrics = measure_speed_breakdown(
-                    sample_id=sample_id,
-                    text=text,
-                    category=filename.replace(".json", "")
+                    sample_id=sample_id, text=text, category=filename.replace(".json", "")
                 )
                 results.append(metrics)
 

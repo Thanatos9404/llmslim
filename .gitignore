@@ -43,5 +43,16 @@ desktop.ini
 # Model caches (sentence-transformers downloads)
 .cache/
 
-# Benchmark outputs
+# Benchmark outputs & reports
 benchmarks/output/
+benchmark_results.csv
+benchmark_results.json
+benchmark_report.md
+
+# Coverage & Logs
+coverage.xml
+*.log
+
+# Scratch / Manual local test scripts
+test_llmslim.py
+

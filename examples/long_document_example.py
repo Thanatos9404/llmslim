@@ -12,7 +12,6 @@ Usage:
 
 from llmslim import compress, estimate_cost_savings
 
-
 # A realistic long document (~2,500 tokens) simulating a technical report
 LONG_DOCUMENT = """
 # Quarterly Engineering Report — Q4 2025
@@ -151,7 +150,7 @@ def main():
     print("=" * 60)
     result = compress(LONG_DOCUMENT, target_ratio=0.5)
 
-    print(f"\n--- Compressed Document ---\n")
+    print("\n--- Compressed Document ---\n")
     print(result.compressed_text)
 
     # --- Cost savings for a document processing pipeline ---

@@ -56,7 +56,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.input:
-        with open(args.input, "r", encoding="utf-8") as f:
+        with open(args.input, encoding="utf-8") as f:
             text = f.read()
     else:
         text = sys.stdin.read()

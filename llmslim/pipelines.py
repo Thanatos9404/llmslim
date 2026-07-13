@@ -8,7 +8,8 @@ pipeline.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Dict, List, Optional
 
 from .core import CompressionResult, compress
 

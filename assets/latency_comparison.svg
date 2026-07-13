@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 290" width="100%" height="290">
+  <style>
+    .bg { fill: #0d1117; rx: 8px; }
+    .title { fill: #58a6ff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; }
+    .label { fill: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }
+    .val { fill: #ffffff; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+    .axis-label { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; }
+  </style>
+  <rect width="700" height="290" class="bg" stroke="#30363d" stroke-width="1"/>
+  <text x="24" y="36" class="title">⚡ Processing Latency by Corpus Type (Lower is Faster)</text>
+  <g transform="translate(24, 75)">
+    <text x="0" y="14" class="label">Chat Prompt (2K tokens)</text>
+    <rect x="220" y="2" width="43" height="18" fill="#58a6ff" rx="4"/>
+    <text x="273" y="15" class="val">45 ms</text>
+  </g>
+  <g transform="translate(24, 115)">
+    <text x="0" y="14" class="label">System Prompt (3K tokens)</text>
+    <rect x="220" y="2" width="27" height="18" fill="#7c3aed" rx="4"/>
+    <text x="257" y="15" class="val">28 ms</text>
+  </g>
+  <g transform="translate(24, 155)">
+    <text x="0" y="14" class="label">RAG Context (5 docs, 5K tokens)</text>
+    <rect x="220" y="2" width="116" height="18" fill="#10b981" rx="4"/>
+    <text x="346" y="15" class="val">120 ms</text>
+  </g>
+  <g transform="translate(24, 195)">
+    <text x="0" y="14" class="label">Technical Doc (8K tokens)</text>
+    <rect x="220" y="2" width="179" height="18" fill="#ffa657" rx="4"/>
+    <text x="409" y="15" class="val">185 ms</text>
+  </g>
+  <g transform="translate(24, 235)">
+    <text x="0" y="14" class="label">Long Book Chapter (12K tokens)</text>
+    <rect x="220" y="2" width="330" height="18" fill="#f778ba" rx="4"/>
+    <text x="560" y="15" class="val">340 ms</text>
+  </g>
+  <text x="24" y="278" class="axis-label">Measured on Python 3.12 with TF-IDF Centrality Engine</text>
+</svg>

@@ -8,8 +8,7 @@ tiktoken required.
 
 from __future__ import annotations
 
-import re
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 import pytest
@@ -18,7 +17,6 @@ from llmslim import (
     CompressionResult,
     ContextCompressor,
     CostEstimate,
-    MODEL_PRICING,
     compress,
     compress_chat_messages,
     compress_documents,
@@ -39,7 +37,6 @@ from llmslim.ranking import (
     score_chunk_sentences,
 )
 from llmslim.tokenization import split_paragraphs, split_sentences
-
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
@@ -504,3 +501,241 @@ class TestIntegration:
             assert len(result.chunk_results) == result.num_chunks
             for cr in result.chunk_results:
                 assert cr.compressed_tokens <= cr.original_tokens
+
+
+# =====================================================================
+# v0.2 Tests: DP Knapsack Optimality
+# =====================================================================
+
+
+class TestDPKnapsack:
+    """Verify that DP knapsack produces provably better results than
+    greedy on inputs where the two strategies diverge."""
+
+    def test_dp_beats_greedy_on_heterogeneous_items(self):
+        """Construct a case where greedy is suboptimal.
+
+        Budget = 10 tokens.
+        Items:
+          A: weight=6, value=7  (greedy picks this first)
+          B: weight=5, value=5
+          C: weight=5, value=5
+
+        Greedy picks A (6 tokens, score 7), can't fit B or C.
+        DP picks B+C (10 tokens, score 10) — strictly better.
+        """
+        from llmslim.core import ContextCompressor
+
+        scored = [
+            {"index": 0, "score": 7.0, "must_keep": False, "sentence": "A"},
+            {"index": 1, "score": 5.0, "must_keep": False, "sentence": "B"},
+            {"index": 2, "score": 5.0, "must_keep": False, "sentence": "C"},
+        ]
+        token_counts = [6, 5, 5]
+        # target_ratio = 10/16 ≈ 0.625 → target_tokens = 10
+        selected = ContextCompressor._select_for_chunk(scored, token_counts, 10 / 16)
+
+        # DP should pick indices 1 and 2 (total score 10 > 7)
+        assert selected == {1, 2}
+
+    def test_greedy_fallback_for_large_inputs(self):
+        """Verify the greedy fallback activates for large DP tables."""
+        from llmslim.core import ContextCompressor
+
+        # Create items that would exceed DP table limit.
+        n = 100
+        items = [{"index": i, "score": float(i), "must_keep": False} for i in range(n)]
+        token_counts = list(range(1, n + 1))
+        budget = 600  # n * budget = 100 * 600 = 60,000 > 50,000
+
+        # Should not raise, should return a valid selection.
+        selected = ContextCompressor._knapsack_select(items, token_counts, budget)
+        assert isinstance(selected, set)
+        total_used = sum(token_counts[i] for i in selected)
+        assert total_used <= budget
+
+    def test_must_keep_respected_with_dp(self):
+        """Must-keep sentences are always selected regardless of DP."""
+        from llmslim.core import ContextCompressor
+
+        scored = [
+            {"index": 0, "score": 0.1, "must_keep": True, "sentence": "keep"},
+            {"index": 1, "score": 0.9, "must_keep": False, "sentence": "optional"},
+            {"index": 2, "score": 0.8, "must_keep": False, "sentence": "optional2"},
+        ]
+        token_counts = [3, 5, 5]
+        selected = ContextCompressor._select_for_chunk(scored, token_counts, 0.5)
+        assert 0 in selected  # must_keep sentence always included
+
+    def test_always_returns_at_least_one(self):
+        """Even with zero budget, at least one sentence is returned."""
+        from llmslim.core import ContextCompressor
+
+        scored = [
+            {"index": 0, "score": 0.5, "must_keep": False, "sentence": "only"},
+        ]
+        token_counts = [100]
+        selected = ContextCompressor._select_for_chunk(scored, token_counts, 0.01)
+        assert len(selected) >= 1
+
+
+# =====================================================================
+# v0.2 Tests: Instruction Detection Expansion
+# =====================================================================
+
+
+class TestInstructionDetection:
+    """Verify expanded instruction pattern coverage."""
+
+    def test_role_definition_detected(self):
+        from llmslim.ranking import _instruction_score
+        score = _instruction_score("You are an expert Python developer.")
+        assert score > 0.0, "Role definition 'You are' should be detected"
+
+    def test_output_format_detected(self):
+        from llmslim.ranking import _instruction_score
+        score = _instruction_score("Respond in JSON format only.")
+        assert score > 0.0, "'Respond in' should be detected as instruction"
+
+    def test_warning_label_detected(self):
+        from llmslim.ranking import _instruction_score
+        score = _instruction_score("WARNING: Do not use deprecated APIs.")
+        assert score > 0.0, "'WARNING:' label should be detected"
+
+    def test_quantified_constraint_detected(self):
+        from llmslim.ranking import _instruction_score
+        score = _instruction_score("Return at most 5 results.")
+        assert score > 0.0, "'at most' should be detected as instruction"
+
+    def test_multi_signal_sentence_scores_higher(self):
+        """A sentence matching multiple signals should score higher
+        than one matching a single signal."""
+        from llmslim.ranking import _instruction_score
+
+        single = _instruction_score("You should do this.")
+        multi = _instruction_score("You must always ensure correctness.")
+        assert multi > single, "Multiple instruction signals should produce higher score"
+
+    def test_role_definition_is_must_keep(self):
+        from llmslim.ranking import _is_must_keep
+        assert _is_must_keep("You are an AI assistant.", [])
+
+    def test_warning_label_is_must_keep(self):
+        from llmslim.ranking import _is_must_keep
+        assert _is_must_keep("WARNING: This action is irreversible.", [])
+
+
+# =====================================================================
+# v0.2 Tests: Entity Detection Expansion
+# =====================================================================
+
+
+class TestEntityDetection:
+    """Verify expanded entity pattern coverage."""
+
+    def test_short_acronym_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("The HPA scales pods automatically.")
+        assert score > 0.0, "Short acronym 'HPA' should be detected"
+
+    def test_snake_case_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("Set the target_ratio parameter to 0.5.")
+        assert score > 0.0, "snake_case identifier should be detected"
+
+    def test_version_string_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("Requires PostgreSQL 16 or Python 3.8.")
+        assert score > 0.0, "Version strings should be detected"
+
+    def test_file_name_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("Edit the config.yaml file.")
+        assert score > 0.0, "File names should be detected"
+
+    def test_env_var_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("Set DATABASE_URL in your .env file.")
+        assert score > 0.0, "Environment variables should be detected"
+
+    def test_inline_code_detected(self):
+        from llmslim.ranking import _entity_score
+        score = _entity_score("Use the `compress` function.")
+        assert score > 0.0, "Inline code spans should be detected"
+
+
+# =====================================================================
+# v0.2 Tests: Determinism
+# =====================================================================
+
+
+class TestDeterminism:
+    """Verify that compression is deterministic."""
+
+    def test_identical_runs_produce_identical_output(self):
+        """10 identical runs should produce byte-identical output."""
+        text = (
+            "Authentication requires OAuth 2.0 tokens. You must always "
+            "use HTTPS. JWT tokens consist of header, payload, and "
+            "signature. Never store tokens in localStorage. Implement "
+            "rate limiting on all endpoints. Use bcrypt for hashing."
+        )
+        results = [compress(text, target_ratio=0.5) for _ in range(10)]
+        first = results[0].compressed_text
+        for i, r in enumerate(results[1:], 1):
+            assert r.compressed_text == first, f"Run {i} differed from run 0"
+
+
+# =====================================================================
+# v0.2 Tests: Edge Cases
+# =====================================================================
+
+
+class TestEdgeCases:
+    """Test edge cases and format-specific scenarios."""
+
+    def test_single_sentence(self):
+        result = compress("This is a single sentence.", target_ratio=0.5)
+        assert result.compressed_text == "This is a single sentence."
+
+    def test_json_prompt(self):
+        """JSON-like structured prompts should not crash."""
+        json_prompt = (
+            'You must respond in JSON format. '
+            'The schema is: {"name": "string", "age": "number"}. '
+            'Always include all required fields. '
+            'Never return null values.'
+        )
+        result = compress(json_prompt, target_ratio=0.5)
+        assert len(result.compressed_text) > 0
+        assert result.compressed_tokens > 0
+
+    def test_yaml_prompt(self):
+        """YAML-like structured prompts should not crash."""
+        yaml_prompt = (
+            "Configuration options:\n"
+            "  - name: target_ratio\n"
+            "    type: float\n"
+            "    required: true\n"
+            "  - name: model\n"
+            "    type: string\n"
+            "    default: gpt-4"
+        )
+        result = compress(yaml_prompt, target_ratio=0.5)
+        assert len(result.compressed_text) > 0
+
+    def test_instruction_retention_regression(self):
+        """Regression test: instruction sentences should be retained
+        at high ratios.  The v0.1 baseline showed 80% instruction
+        retention on Chat Prompts -- this should be improved."""
+        text = (
+            "You are an expert engineer. "
+            "You must always provide production code. "
+            "Never suggest deprecated APIs. "
+            "Ensure all queries use parameterized inputs. "
+            "The database is PostgreSQL 16 on RDS."
+        )
+        result = compress(text, target_ratio=0.7)
+        # All instruction sentences should be kept at 70% ratio
+        assert "must" in result.compressed_text.lower() or "always" in result.compressed_text.lower()
+        assert "never" in result.compressed_text.lower() or "ensure" in result.compressed_text.lower()

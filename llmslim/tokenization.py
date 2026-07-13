@@ -40,7 +40,7 @@ def _protect_code_blocks(text: str):
     """Replace fenced code blocks with placeholders so they survive splitting."""
     blocks: List[str] = []
 
-    def _store(match: "re.Match") -> str:
+    def _store(match: re.Match) -> str:
         blocks.append(match.group(0))
         return f"\x00BLOCK{len(blocks) - 1}\x00"
 

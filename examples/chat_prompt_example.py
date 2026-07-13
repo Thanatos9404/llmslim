@@ -10,7 +10,7 @@ Usage:
     python examples/chat_prompt_example.py
 """
 
-from llmslim import compress_chat_messages, estimate_cost_savings, count_tokens
+from llmslim import compress_chat_messages, count_tokens, estimate_cost_savings
 
 
 def main():
@@ -109,7 +109,7 @@ def main():
     saved = total_original - total_compressed
     reduction = round((saved / total_original) * 100, 1)
 
-    for i, (orig, comp) in enumerate(zip(conversation, compressed)):
+    for _i, (orig, comp) in enumerate(zip(conversation, compressed)):
         role = orig["role"]
         orig_tokens = count_tokens(orig["content"])
         comp_tokens = count_tokens(comp["content"])

@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "llmslim: High-Performance Semantic Prompt Compression & Token Optimization for LLMs"
+message: "If you use llmslim in your academic research or production systems, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "Thanvi"
+    given-names: "Yashvardhan"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/Thanatos9404/llmslim"
+url: "https://pypi.org/project/llmslim/"
+abstract: "llmslim is a lightweight, high-performance Python library for cutting LLM prompt size by 40-70% through semantic chunking, TF-IDF sentence centrality ranking, instruction preservation, and named entity retention."
+keywords:
+  - llm
+  - prompt compression
+  - token optimization
+  - rag
+  - sentence centrality
+  - nlp
+license: MIT
+version: 0.2.0
+date-released: 2025-07-13
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.0000000"
+    description: "Zenodo DOI archive placeholder"

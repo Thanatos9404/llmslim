@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cut your LLM prompt size by 40-70% in one line of code -- semantic chunking + extractive summarization that preserves meaning, instructions, and key entities."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Yashvardhan Thanvi", email = "thanatos9404@users.noreply.github.com" }]
 keywords = [
     "llm",
@@ -24,9 +24,8 @@ keywords = [
     "cost-optimization",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -61,5 +60,83 @@ llmslim = "llmslim.cli:main"
 [tool.setuptools.packages.find]
 include = ["llmslim*"]
 
+[tool.setuptools.package-data]
+llmslim = ["py.typed"]
+
 [tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=llmslim --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=90"
 testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["llmslim"]
+branch = true
+omit = ["tests/*", "benchmarks/*"]
+
+[tool.coverage.report]
+show_missing = true
+precision = 2
+fail_under = 90.0
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["llmslim", "tests", "benchmarks"]
+exclude = ["notebooks", "venv", ".venv", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "C",   # convention
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501", # line too long (handled by black)
+    "B008", # do not perform function calls in argument defaults
+    "E402", # module level import not at top of file
+    "C901", # function complexity
+    "W291", # trailing whitespace in templates
+]
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["llmslim"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "nltk.*",
+    "sklearn.*",
+    "sentence_transformers.*",
+    "tiktoken.*",
+]
+ignore_missing_imports = true
+
+

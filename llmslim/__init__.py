@@ -8,11 +8,11 @@ Quickstart:
 """
 
 from .core import CompressionResult, ContextCompressor, compress
-from .cost import CostEstimate, MODEL_PRICING, estimate_cost_savings, list_supported_models
+from .cost import MODEL_PRICING, CostEstimate, estimate_cost_savings, list_supported_models
 from .pipelines import compress_chat_messages, compress_documents
 from .tokens import count_tokens, count_tokens_batch
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "compress",

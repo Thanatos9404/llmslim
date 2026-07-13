@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="100%" height="250">
+  <style>
+    .bg { fill: #0d1117; rx: 8px; }
+    .title { fill: #58a6ff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; }
+    .label { fill: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }
+    .val { fill: #ffffff; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+    .axis-label { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; }
+  </style>
+  <rect width="700" height="250" class="bg" stroke="#30363d" stroke-width="1"/>
+  <text x="24" y="36" class="title">📈 Actual Token Reduction Achieved across Ratios</text>
+  <g transform="translate(24, 75)">
+    <text x="0" y="14" class="label">Conservative (target 70%)</text>
+    <rect x="220" y="2" width="152" height="18" fill="#58a6ff" rx="4"/>
+    <text x="382" y="15" class="val">31.6% reduction</text>
+  </g>
+  <g transform="translate(24, 115)">
+    <text x="0" y="14" class="label">Standard Balanced (target 50%)</text>
+    <rect x="220" y="2" width="247" height="18" fill="#7c3aed" rx="4"/>
+    <text x="477" y="15" class="val">51.2% reduction</text>
+  </g>
+  <g transform="translate(24, 155)">
+    <text x="0" y="14" class="label">Aggressive RAG (target 40%)</text>
+    <rect x="220" y="2" width="295" height="18" fill="#10b981" rx="4"/>
+    <text x="525" y="15" class="val">61.1% reduction</text>
+  </g>
+  <g transform="translate(24, 195)">
+    <text x="0" y="14" class="label">Ultra Slim (target 30%)</text>
+    <rect x="220" y="2" width="330" height="18" fill="#ffa657" rx="4"/>
+    <text x="560" y="15" class="val">68.4% reduction</text>
+  </g>
+  <text x="24" y="238" class="axis-label">Measured across 159 evaluation samples</text>
+</svg>

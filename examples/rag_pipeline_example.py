@@ -125,7 +125,7 @@ def main():
 
     # --- Build the compressed context ---
     compressed_context = "\n\n---\n\n".join(r.compressed_text for r in results)
-    print(f"\n--- Compressed Context (ready for LLM) ---")
+    print("\n--- Compressed Context (ready for LLM) ---")
     print(compressed_context[:500] + "...\n" if len(compressed_context) > 500 else compressed_context)
 
     # --- Cost savings ---

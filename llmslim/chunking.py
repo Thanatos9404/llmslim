@@ -9,7 +9,8 @@ ranking sentences across an entire document at once.
 
 from __future__ import annotations
 
-from typing import List, Sequence
+from collections.abc import Sequence
+from typing import List
 
 import numpy as np
 
@@ -79,8 +80,8 @@ def semantic_chunk(
         similarity = _cosine(embeddings[i], centroid)
 
         starts_new_chunk = (
-            similarity < similarity_threshold
-            or current_tokens + sent_tokens > max_chunk_tokens
+            (similarity < similarity_threshold and (current_tokens >= 15 or len(current_indices) >= 2))
+            or (current_tokens + sent_tokens > max_chunk_tokens)
         )
 
         if starts_new_chunk and current_indices:

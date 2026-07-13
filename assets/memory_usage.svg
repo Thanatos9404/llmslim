@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 210" width="100%" height="210">
+  <style>
+    .bg { fill: #0d1117; rx: 8px; }
+    .title { fill: #58a6ff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; }
+    .label { fill: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; }
+    .val { fill: #ffffff; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+    .axis-label { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; }
+  </style>
+  <rect width="700" height="210" class="bg" stroke="#30363d" stroke-width="1"/>
+  <text x="24" y="36" class="title">🧠 Peak RAM Footprint by Compression Engine</text>
+  <g transform="translate(24, 75)">
+    <text x="0" y="14" class="label">TF-IDF Default Engine</text>
+    <rect x="220" y="2" width="42" height="18" fill="#58a6ff" rx="4"/>
+    <text x="272" y="15" class="val">18.4 MB</text>
+  </g>
+  <g transform="translate(24, 115)">
+    <text x="0" y="14" class="label">Core Sentence Tokenizer</text>
+    <rect x="220" y="2" width="28" height="18" fill="#7c3aed" rx="4"/>
+    <text x="258" y="15" class="val">12.1 MB</text>
+  </g>
+  <g transform="translate(24, 155)">
+    <text x="0" y="14" class="label">Sentence-Transformers (miniLM)</text>
+    <rect x="220" y="2" width="330" height="18" fill="#10b981" rx="4"/>
+    <text x="560" y="15" class="val">142 MB</text>
+  </g>
+  <text x="24" y="198" class="axis-label">Peak RAM allocation measured during 10K token compression</text>
+</svg>

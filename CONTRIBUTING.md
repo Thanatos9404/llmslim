@@ -1,43 +1,146 @@
 # Contributing to llmslim
 
-Thanks for your interest in contributing! Here's how to get started.
+Thank you for your interest in contributing to `llmslim`! We welcome contributions from developers, researchers, and open-source enthusiasts.
 
-## Development Setup
+---
+
+## Code of Conduct
+
+All contributors are expected to adhere to the project's [Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
+
+---
+
+## Environment Setup
+
+### Prerequisites
+- Python 3.9, 3.10, 3.11, 3.12, or 3.13
+- Git
+
+### Initializing Virtual Environment
 
 ```bash
+# Clone the repository
 git clone https://github.com/Thanatos9404/llmslim.git
 cd llmslim
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Linux/macOS:
+source venv/bin/activate
+# On Windows:
+.\venv\Scripts\activate
+
+# Upgrade packaging tools & install development dependencies in editable mode
+pip install --upgrade pip build setuptools wheel
 pip install -e ".[all,dev]"
 ```
 
-## Running Tests
+---
 
+## Code Standards & Tooling
+
+We enforce strict formatting and typing standards to maintain codebase health.
+
+### 1. Formatting & Linting
+Run **Ruff** and **Black** before committing:
 ```bash
-pytest tests/ -v
+# Check and auto-fix linting issues with Ruff
+ruff check --fix .
+
+# Format code with Black
+black .
 ```
 
-## Code Style
+### 2. Static Type Checking
+Run **MyPy** to ensure type hints are valid:
+```bash
+mypy llmslim
+```
 
-- Follow PEP 8 conventions.
-- Use type hints for all public function signatures.
-- Write docstrings for public classes and functions (Google style).
-- Keep imports sorted: stdlib → third-party → local.
+### 3. Test Suite & Code Coverage
+All PRs must maintain or improve the **90% code coverage** threshold:
+```bash
+# Run pytest with full coverage report
+pytest
+```
 
-## Submitting a Pull Request
+---
 
-1. Fork the repo and create a feature branch from `main`.
-2. Add tests for any new functionality.
-3. Ensure all tests pass: `pytest tests/ -v`
-4. Write a clear PR description explaining the change.
-5. Submit!
+## Running Benchmarks
 
-## Reporting Bugs
+Before submitting PRs that modify compression or chunking logic, verify performance impact:
 
-Open an issue at [github.com/Thanatos9404/llmslim/issues](https://github.com/Thanatos9404/llmslim/issues) with:
-- A minimal code example reproducing the bug.
-- Expected vs. actual behavior.
-- Python version and installed extras.
+```bash
+# Run regression smoke test
+python benchmarks/benchmark_regression.py
 
-## Feature Requests
+# Run full performance benchmark suite
+python benchmarks/benchmark.py
 
-Open an issue with the `enhancement` label. Describe the use case, proposed API, and why it matters.
+# Benchmark memory footprint
+python benchmarks/benchmark_memory.py
+```
+
+---
+
+## Git Workflow & Conventions
+
+### Branch Naming Conventions
+- `feature/feature-name` (e.g., `feature/onnx-embeddings`)
+- `fix/bug-description` (e.g., `fix/sentence-boundary-split`)
+- `docs/topic` (e.g., `docs/benchmarks-update`)
+- `perf/optimization` (e.g., `perf/speedup-tfidf-matrix`)
+
+### Commit Message Format
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat: add streaming compression support`
+- `fix: correct entity regex for technical identifiers`
+- `docs: update roadmap for v0.3.0`
+- `test: add edge cases for empty prompt strings`
+- `perf: optimize TF-IDF vectorization`
+- `chore: update CI matrix`
+
+---
+
+## Pull Request Checklist
+
+Before submitting a Pull Request, verify that:
+
+- [ ] Branch is updated relative to latest `main`.
+- [ ] Code follows formatting rules (`ruff check .`, `black --check .`).
+- [ ] Type hints pass cleanly (`mypy llmslim`).
+- [ ] Test suite passes with >=90% coverage (`pytest`).
+- [ ] Benchmarks pass without performance regressions (`python benchmarks/benchmark_regression.py`).
+- [ ] Docstrings follow Google style guide for all public classes/functions.
+- [ ] `CHANGELOG.md` has been updated under `[Unreleased]` if applicable.
+
+---
+
+## Reporting Issues
+
+### Bug Reports
+Use the [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.md) with:
+1. Minimal reproducible Python code snippet.
+2. Expected output vs actual behavior.
+3. Environment context (Python version, OS, installed dependencies).
+
+### Feature Requests
+Use the [Feature Request Template](.github/ISSUE_TEMPLATE/feature_request.md) describing the problem, proposed solution, and alternative designs considered.
+
+---
+
+## Documentation Standards
+
+- Write clean, accurate Markdown with explicit line links where applicable.
+- Ensure docstrings provide clear parameter descriptions, type annotations, return types, and code usage examples.
+
+---
+
+## Release Process (Maintainer Info)
+
+Releases are published automatically via GitHub Actions:
+1. Create a release tag matching `v*.*.*` (e.g. `v0.2.0`).
+2. Draft a GitHub Release on the repository.
+3. CI automatically validates artifacts and publishes the sdist & wheel to PyPI.

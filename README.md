@@ -617,9 +617,14 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 If this project saved you money, star it! ⭐
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Thanatos9404/llmslim&type=Date)](https://star-history.com/#Thanatos9404/llmslim&Date)
 
-<br/>
+<a href="https://www.star-history.com/?repos=Thanatos9404%2Fllmslim&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Thanatos9404/llmslim&type=date&theme=dark&legend=top-left&sealed_token=h0SEHeW9TIQ4PRaY8p28_ALmeqv-rqIZvJ_R92F_PT4lYcHfM0eCW4sBO7qjY-Ay90YYdvTGdsMDTxazi1DIzEgfFB1ohUu3-9k1VFno7M6YMGNillpI57F6fOTb0TOpTr8N4T63i9SyfG07LEnDVhE7BKPcN6iTJGhTfULRXTdtqtxIIWzfwOp6IGlg" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Thanatos9404/llmslim&type=date&legend=top-left&sealed_token=h0SEHeW9TIQ4PRaY8p28_ALmeqv-rqIZvJ_R92F_PT4lYcHfM0eCW4sBO7qjY-Ay90YYdvTGdsMDTxazi1DIzEgfFB1ohUu3-9k1VFno7M6YMGNillpI57F6fOTb0TOpTr8N4T63i9SyfG07LEnDVhE7BKPcN6iTJGhTfULRXTdtqtxIIWzfwOp6IGlg" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Thanatos9404/llmslim&type=date&legend=top-left&sealed_token=h0SEHeW9TIQ4PRaY8p28_ALmeqv-rqIZvJ_R92F_PT4lYcHfM0eCW4sBO7qjY-Ay90YYdvTGdsMDTxazi1DIzEgfFB1ohUu3-9k1VFno7M6YMGNillpI57F6fOTb0TOpTr8N4T63i9SyfG07LEnDVhE7BKPcN6iTJGhTfULRXTdtqtxIIWzfwOp6IGlg" />
+ </picture>
+</a><br/>
 
 ### Built with ❤️ by [Yashvardhan Thanvi](https://github.com/Thanatos9404)
 

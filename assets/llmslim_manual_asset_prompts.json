@@ -1,0 +1,122 @@
+{
+  "project": "LLMSlim Website Asset Generation",
+  "style_guide": {
+    "title": "Unified Visual Identity",
+    "description": "Use this art direction consistently across every asset.",
+    "style": [
+      "Premium AI infrastructure startup",
+      "Dark mode only",
+      "Deep navy (#060816)",
+      "Electric blue (#4F8CFF)",
+      "Cyan (#3DD9FF)",
+      "Violet (#7C5CFF)",
+      "Glassmorphism",
+      "Frosted acrylic",
+      "Soft bloom",
+      "Minimal",
+      "Apple × Vercel × Validation Cloud",
+      "No cyberpunk",
+      "No neon overload",
+      "No sci-fi clichés",
+      "No floating robots",
+      "Clean SVG/vector aesthetic"
+    ]
+  },
+  "assets": [
+    {
+      "id": 1,
+      "task": "Hero Animation",
+      "priority": "★★★★★",
+      "recommended_output": [
+        "Rive",
+        "Lottie",
+        "SVG Animation"
+      ],
+      "prompt": "Design a premium hero animation for the landing page of an AI infrastructure product called LLMSlim.\n\nThe animation should loop seamlessly in 6–8 seconds.\n\nVisual Story\n\nA large developer prompt appears inside a beautiful code editor.\n\n↓\n\nThe prompt flows into a semantic processing engine.\n\n↓\n\nThe text intelligently separates into semantic chunks.\n\n↓\n\nChunks travel through an animated ranking engine.\n\n↓\n\nLow-priority chunks fade away.\n\n↓\n\nImportant instructions glow and remain.\n\n↓\n\nEverything recombines into a much smaller prompt.\n\n↓\n\nA metric dashboard animates:\n\n• -52% Tokens\n• Instructions Preserved ✓\n• Entities Preserved ✓\n• $ Saved increases smoothly\n\n↓\n\nA glowing badge appears:\n\n40–70% Token Reduction\n\nStyle\n\nPremium developer tools.\nMinimal.\nElegant.\nNo cheesy AI effects.\nNo robots.\nNo brains.\nNo holograms.\nUse subtle gradients.\nRounded geometry.\nGlassmorphism.\nBlue/cyan/violet accents.\nDark background.\nAnimation should feel like Stripe, Vercel and Validation Cloud.\n\nOutput should be vector-friendly and easily exportable as SVG animation, Lottie or Rive."
+    },
+    {
+      "id": 2,
+      "task": "Aurora / Mesh Backgrounds",
+      "priority": "★★★★★",
+      "recommended_output": [
+        "4K PNG"
+      ],
+      "prompt": "Generate an ultra-high-quality 4K abstract background for a premium AI developer platform.\n\nStyle\n\nMinimal.\nLuxurious.\nModern SaaS.\nDark mode.\n\nNo objects.\nNo shapes with clear outlines.\nNo text.\nNo logos.\nNo particles.\nNo stars.\nNo galaxies.\nNo cyberpunk.\n\nOnly smooth glowing gradients.\n\nPalette\n\nDeep navy\nElectric blue\nSoft cyan\nMuted violet\n\nVery soft bloom\n\nLarge flowing gradient mesh\n\nBeautiful light diffusion\n\nSubtle depth\n\nLarge empty areas for UI placement.\n\nLooks like Apple keynote backgrounds mixed with Validation Cloud and Vercel.\n\nShould compress well.\n\nNo obvious AI artifacts.\n\nPerfect for hero backgrounds.\n\nUltra clean.\n\n16:9\n\n4K"
+    },
+    {
+      "id": 3,
+      "task": "Semantic Pipeline Illustration",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "SVG"
+      ],
+      "prompt": "Create a premium isometric vector illustration explaining semantic prompt compression.\n\nFlow\n\nPrompt\n\n↓\n\nSentence Split\n\n↓\n\nSemantic Chunks\n\n↓\n\nRanking Engine\n\n↓\n\nPriority Engine\n\n↓\n\nCompressed Prompt\n\nEach stage should be represented by minimal geometric blocks connected with elegant animated arrows.\n\nVisual language\n\nClean vector\n\nRounded corners\n\nGlass panels\n\nGradient borders\n\nSoft glows\n\nNo clipart\n\nNo humans\n\nNo AI brains\n\nNo futuristic city\n\nMinimal labels.\n\nEverything should feel like a premium developer diagram.\n\nDark mode.\n\nBlue/cyan/violet palette.\n\nDesigned as an SVG illustration for a SaaS landing page."
+    },
+    {
+      "id": 4,
+      "task": "Custom Feature Icons",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "SVG Icon Set"
+      ],
+      "prompt": "Design a complete premium icon family for an AI infrastructure product.\n\nCreate icons for\n\nCompression\nSemantic Search\nCost Savings\nRAG\nCLI\nEmbeddings\nStreaming\nBenchmarking\nInstruction Preservation\nNamed Entity Protection\nArchitecture\nPerformance\n\nRequirements\n\nConsistent design language.\n\nRounded geometry.\n\nGradient glass style.\n\nBlue cyan violet accents.\n\nNo emoji style.\n\nNo cartoon style.\n\nNo skeuomorphism.\n\nSimple enough to become SVG icons.\n\nEvery icon should look like it belongs in the same family.\n\nHigh contrast on dark backgrounds.\n\nMinimal.\n\nProfessional.\n\nSuitable for enterprise software."
+    },
+    {
+      "id": 5,
+      "task": "Floating Glass Objects",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "Transparent PNG"
+      ],
+      "prompt": "Create a collection of premium floating decorative 3D objects for a luxury AI SaaS website.\n\nGenerate\n\nGlass spheres\n\nGlass capsules\n\nRounded cubes\n\nSoft torus rings\n\nAbstract blobs\n\nFloating acrylic panels\n\nMaterial\n\nFrosted glass\n\nSemi-transparent\n\nSubtle reflections\n\nVery soft bloom\n\nNo bright highlights.\n\nNo rainbow reflections.\n\nPalette\n\nBlue\n\nCyan\n\nViolet\n\nWhite\n\nMinimal lighting.\n\nDark background.\n\nNo shadows touching the floor.\n\nDesigned as isolated PNG assets with transparency.\n\nShould blend into premium website hero sections."
+    },
+    {
+      "id": 6,
+      "task": "Noise Texture",
+      "priority": "★★☆☆☆",
+      "recommended_output": [
+        "Tileable PNG"
+      ],
+      "prompt": "Generate a seamless monochrome procedural noise texture.\n\nRequirements\n\n4096x4096\n\nTileable\n\nVery fine grain\n\nFilm grain style\n\nAlmost invisible\n\nDark gray on transparent\n\nDesigned to overlay websites at 2–4% opacity.\n\nNo scratches.\n\nNo dust.\n\nNo paper texture.\n\nNo fabric texture.\n\nNo visible repeating pattern.\n\nPremium UI texture similar to Apple, Vercel and Linear."
+    },
+    {
+      "id": 7,
+      "task": "Open Graph Image",
+      "priority": "★★★★★",
+      "recommended_output": [
+        "1200x630 PNG"
+      ],
+      "prompt": "Design a premium Open Graph image for an open-source Python package called LLMSlim.\n\nCanvas\n\n1200 × 630\n\nDark premium background.\n\nBeautiful aurora gradients.\n\nCenterpiece\n\nA massive prompt transforms into a compact prompt.\n\nLarge typography\n\nLLMSlim\n\nBelow\n\nCompress LLM prompts by 40–70%\n\nSmall metrics\n\n✓ Instructions Preserved\n\n✓ Entity Preservation\n\n✓ Lower API Costs\n\nVery clean.\n\nNo clutter.\n\nNo logos except LLMSlim.\n\nNo screenshots.\n\nLooks like a startup launching on Product Hunt.\n\nDesigned for Twitter, LinkedIn and GitHub sharing."
+    },
+    {
+      "id": 8,
+      "task": "Favicon",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "SVG",
+        "16x16",
+        "32x32",
+        "64x64"
+      ],
+      "prompt": "Design a modern favicon for LLMSlim.\n\nRequirements\n\nSimple.\n\nMemorable.\n\nWorks at 16×16 pixels.\n\nRepresents intelligent compression.\n\nAvoid letters unless absolutely necessary.\n\nNo tiny details.\n\nUse rounded geometric forms.\n\nBlue and cyan gradients.\n\nDark mode optimized.\n\nLooks like an icon from Linear, Raycast or Vercel.\n\nGenerate variants for\n\n16×16\n\n32×32\n\n64×64\n\nSVG"
+    },
+    {
+      "id": 9,
+      "task": "Logo & Wordmark",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "SVG"
+      ],
+      "prompt": "Design a premium logo and wordmark for LLMSlim.\n\nBrand personality\n\nFast\n\nIntelligent\n\nDeveloper-first\n\nMinimal\n\nModern\n\nTrustworthy\n\nLuxury SaaS\n\nAvoid\n\nBrains\n\nRobots\n\nCircuit boards\n\nHexagons\n\nAI clichés\n\nUse geometric abstraction inspired by semantic compression.\n\nCreate\n\nLogomark\n\nHorizontal logo\n\nStacked logo\n\nMonochrome version\n\nGradient version\n\nSVG-ready.\n\nLooks like Vercel, Anthropic, OpenAI or Linear branding."
+    },
+    {
+      "id": 10,
+      "task": "Product Screenshot Mockup",
+      "priority": "★★★★☆",
+      "recommended_output": [
+        "4K PNG"
+      ],
+      "prompt": "Create a beautiful product mockup of an AI developer platform called LLMSlim Studio.\n\nDark glass UI.\n\nThree-panel layout.\n\nLeft\n\nLarge prompt editor.\n\nCenter\n\nSemantic compression visualization.\n\nRight\n\nCompressed output.\n\nBottom\n\nLive metrics\n\nToken reduction\n\nCost savings\n\nInstruction retention\n\nBeautiful code editor.\n\nPremium charts.\n\nGlass cards.\n\nSubtle gradients.\n\nMinimal.\n\nLooks like a real SaaS product.\n\nPerspective slightly tilted.\n\nDesigned for landing page hero usage.\n\nUltra realistic.\n\nNo browser chrome.\n\nNo fake text.\n\nEverything should look functional."
+    }
+  ]
+}

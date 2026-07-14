@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark Mode Baseline Canvas */
+  --bg-void: #030508;
+  --bg-surface-base: #070a0f;
+  --bg-surface-tier1: #0d121c;
+  --bg-surface-tier2: #141b29;
+  --bg-surface-tier3: #1c2638;
+
+  /* Accent Signals */
+  --accent-emerald: #00f59b;
+  --accent-emerald-glow: rgba(0, 245, 155, 0.25);
+  --accent-cyan: #00e5ff;
+  --accent-violet: #a855f7;
+  --accent-violet-glow: rgba(168, 85, 247, 0.25);
+  --accent-pink: #f778ba;
+
+  /* Typography Colors */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-disabled: #475569;
+  --text-pruned: #475569;
+
+  /* Structural Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-active: rgba(0, 245, 155, 0.4);
+}
+
+@theme inline {
+  --color-void: var(--bg-void);
+  --color-surface-base: var(--bg-surface-base);
+  --color-surface-tier1: var(--bg-surface-tier1);
+  --color-surface-tier2: var(--bg-surface-tier2);
+  --color-surface-tier3: var(--bg-surface-tier3);
+
+  --color-emerald: var(--accent-emerald);
+  --color-cyan: var(--accent-cyan);
+  --color-violet: var(--accent-violet);
+  --color-pink: var(--accent-pink);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-pruned: var(--text-pruned);
+
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "JetBrains Mono", monospace;
+}
+
+/* Base Body System — Hard Dark Mode Only & Overflow Prevention */
+html, body {
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  touch-action: manipulation;
+}
+
+/* Focus Rings & Keyboard Accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-emerald) !important;
+  outline-offset: 2px !important;
+  border-radius: 8px;
+}
+
+/* Reduced Motion Optimization */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom Sleek Dark Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #030508;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1c2638;
+  border-radius: 4px;
+  border: 2px solid #030508;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-emerald);
+}
+
+/* Glassmorphism & Specular Border Utilities */
+.glass-panel {
+  background: rgba(13, 18, 28, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8);
+}
+
+.glass-panel-interactive {
+  background: rgba(13, 18, 28, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-interactive:hover {
+  background: rgba(20, 27, 41, 0.85);
+  border-color: rgba(0, 245, 155, 0.3);
+  border-top-color: rgba(0, 245, 155, 0.5);
+  box-shadow: 0 20px 40px -10px rgba(0, 245, 155, 0.12), 0 0 20px rgba(0, 229, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Edge-Lit Specular Lighting Lines */
+.border-specular-emerald {
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 245, 155, 0.5) 50%, transparent 100%) 1;
+}
+
+.border-specular-cyan {
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 229, 255, 0.5) 50%, transparent 100%) 1;
+}
+
+.border-specular-violet {
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(168, 85, 247, 0.5) 50%, transparent 100%) 1;
+}
+
+/* Custom Premium Glass Sliders (Phase B) */
+input[type="range"].custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  outline: none;
+  transition: background 0.3s ease;
+}
+
+input[type="range"].custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  border: 2px solid #030508;
+  box-shadow: 0 0 12px var(--accent-emerald);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"].custom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px var(--accent-emerald);
+}
+
+/* Glow Engine Utilities */
+.glow-emerald {
+  box-shadow: 0 0 35px rgba(0, 245, 155, 0.3), 0 0 70px rgba(0, 229, 255, 0.15);
+}
+
+.glow-violet {
+  box-shadow: 0 0 35px rgba(168, 85, 247, 0.3), 0 0 70px rgba(247, 120, 186, 0.15);
+}
+
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #00f59b 0%, #00e5ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-violet {
+  background: linear-gradient(135deg, #a855f7 0%, #f778ba 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #00e5ff 0%, #00f59b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Tabular Monospace Metrics & Scientific Tracking (Phase D) */
+.font-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.badge-scientific {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}

@@ -58,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Print a cost-savings estimate for MODEL. Options: {', '.join(list_supported_models())}",
     )
     parser.add_argument(
+        "-b",
+        "--backend",
+        type=str,
+        default="tfidf",
+        help="Embedding backend for semantic ranking: 'tfidf' (fast, default) or 'semantic'/'sentence-transformers'.",
+    )
+    parser.add_argument(
         "--requests-per-day",
         type=int,
         default=1000,
@@ -76,7 +83,7 @@ def main(argv=None) -> int:
     else:
         text = sys.stdin.read()
 
-    result = compress(text, target_ratio=args.ratio, query=args.query)
+    result = compress(text, target_ratio=args.ratio, query=args.query, embedding_backend=args.backend)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:

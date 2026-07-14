@@ -73,6 +73,20 @@ html, body {
   border-radius: 8px;
 }
 
+/* Infinite Marquee Animation System */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+
 /* Reduced Motion Optimization */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
@@ -80,6 +94,9 @@ html, body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .animate-marquee {
+    animation: none !important;
   }
 }
 

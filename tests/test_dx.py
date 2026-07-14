@@ -2,15 +2,8 @@
 
 from __future__ import annotations
 
-import io
-import sys
-from unittest.mock import patch
-
-import pytest
-
 import llmslim
 from llmslim.cli import main
-
 
 TEST_TEXT = (
     "Machine learning is a field of computer science. "

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from .analysis import ContentProfile, ContentType
+    from .analysis import ContentProfile
 
 
 # =====================================================================

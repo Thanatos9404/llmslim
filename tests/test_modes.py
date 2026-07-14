@@ -8,18 +8,14 @@ from llmslim.analysis import ContentProfile, ContentType
 from llmslim.modes import (
     MODE_AGGRESSIVE,
     MODE_BALANCED,
-    MODE_CHAT,
     MODE_CODE,
-    MODE_DOCUMENTATION,
     MODE_QUALITY,
-    MODE_RAG,
     MODE_SYSTEM,
     OptimizationMode,
     get_mode,
     list_modes,
     resolve_mode,
 )
-
 
 # =====================================================================
 # Built-in modes
@@ -198,7 +194,6 @@ class TestOptimizationMode:
 
 # Import the actual compress function to test mode integration
 from llmslim import compress
-
 
 _LONG_TEXT = (
     "Machine learning is a subset of artificial intelligence. "

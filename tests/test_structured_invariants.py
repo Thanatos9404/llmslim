@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from llmslim.optimizers import optimize_json, optimize_markdown, optimize_xml, optimize_yaml
+from llmslim.optimizers import optimize_json, optimize_markdown, optimize_xml
 
 
 class TestStructuredInvariants:

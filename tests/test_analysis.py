@@ -8,7 +8,6 @@ import pytest
 
 from llmslim.analysis import ContentProfile, ContentType, analyze
 
-
 # =====================================================================
 # Representative samples
 # =====================================================================

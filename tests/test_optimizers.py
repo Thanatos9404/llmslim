@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pytest
 
 from llmslim import compress
 from llmslim.analysis import ContentType
@@ -14,7 +13,6 @@ from llmslim.optimizers import (
     optimize_xml,
     optimize_yaml,
 )
-
 
 JSON_TEST_DATA = """{
     "users": [

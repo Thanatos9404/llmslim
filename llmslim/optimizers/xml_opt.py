@@ -47,7 +47,7 @@ def optimize_xml(text: str, target_ratio: float = 0.5) -> Optional[str]:
         return None
 
     _prune_element(root, target_ratio)
-    
+
     try:
         xml_bytes = ET.tostring(root, encoding="utf-8")
         res = xml_bytes.decode("utf-8")

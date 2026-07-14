@@ -6,10 +6,7 @@ exact byte-identical results as v0.2.0.
 
 from __future__ import annotations
 
-import pytest
-
 from llmslim import CompressionResult, ContextCompressor, compress
-
 
 SAMPLE_PROMPT_1 = (
     "You are a helpful assistant. Please answer the user's question clearly. "

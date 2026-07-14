@@ -60,7 +60,7 @@ def optimize_yaml(text: str, target_ratio: float = 0.5) -> Optional[str]:
                 dumped = yaml.dump(data[0], default_flow_style=False, sort_keys=False)
             else:
                 dumped = yaml.dump_all(data, default_flow_style=False, sort_keys=False)
-            
+
             dumped_tokens = count_tokens(dumped)
             orig_tokens = count_tokens(text)
             if orig_tokens > 0 and dumped_tokens / orig_tokens <= target_ratio:

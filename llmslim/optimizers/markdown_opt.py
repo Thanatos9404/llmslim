@@ -43,25 +43,24 @@ def optimize_markdown(text: str, target_ratio: float = 0.5) -> Optional[str]:
         output_lines: List[str] = []
         prose_buffer: List[str] = []
 
-        def flush_prose():
-            if not prose_buffer:
+        def flush_prose(buf: List[str], out: List[str]) -> None:
+            if not buf:
                 return
-            prose_text = "\n".join(prose_buffer)
             # Retain non-empty prose lines up to target_ratio
-            non_empty = [line for line in prose_buffer if line.strip()]
+            non_empty = [line for line in buf if line.strip()]
             if non_empty:
                 keep_count = max(1, round(len(non_empty) * target_ratio))
                 kept_prose = "\n".join(non_empty[:keep_count])
-                output_lines.append(kept_prose)
-            prose_buffer.clear()
+                out.append(kept_prose)
+            buf.clear()
 
         for line in lines:
             if _HEADING_RE.match(line):
-                flush_prose()
+                flush_prose(prose_buffer, output_lines)
                 output_lines.append(line)
             else:
                 prose_buffer.append(line)
-        flush_prose()
+        flush_prose(prose_buffer, output_lines)
 
         optimized_parts.append("\n".join(output_lines))
 

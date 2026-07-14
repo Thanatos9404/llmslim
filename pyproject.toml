@@ -118,7 +118,7 @@ ignore = [
 
 
 [tool.ruff.lint.isort]
-known-first-party = ["llmslim"]
+known-first-party = ["llmslim", "benchmarks"]
 
 [tool.mypy]
 python_version = "3.12"

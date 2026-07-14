@@ -16,15 +16,16 @@ import time
 from dataclasses import asdict
 from typing import Any, Dict, List, Tuple
 
-# Ensure local workspace import path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import pytest
+
 from benchmarks.benchmark_memory import run_memory_benchmarks
 from benchmarks.benchmark_quality import run_quality_benchmarks
 from benchmarks.benchmark_regression import run_regression_benchmarks
 from benchmarks.benchmark_speed import run_speed_benchmarks
+
+# Ensure local workspace import path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Terminal Color Codes
 GREEN = "\033[92m"

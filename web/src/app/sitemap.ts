@@ -3,6 +3,7 @@ import { siteConfig } from "@/config/site";
 import { DOCS_REGISTRY } from "@/data/docs";
 import { ARTICLES_REGISTRY } from "@/data/articles";
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations";
+import { BENCHMARK_SUITES } from "@/data/benchmarks";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = siteConfig.url;
@@ -23,6 +24,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const integrationEntries: MetadataRoute.Sitemap = Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ({
     url: `${baseUrl}/integrations/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.85,
+  }));
+
+  const benchmarkEntries: MetadataRoute.Sitemap = Object.keys(BENCHMARK_SUITES).map((slug) => ({
+    url: `${baseUrl}/benchmarks/${slug}`,
     lastModified: new Date(),
     changeFrequency: "weekly",
     priority: 0.85,
@@ -53,9 +61,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    {
+      url: `${baseUrl}/benchmarks`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
     ...docEntries,
     ...articleEntries,
     ...integrationEntries,
+    ...benchmarkEntries,
     {
       url: `${baseUrl}/#features`,
       lastModified: new Date(),

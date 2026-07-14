@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Thanvi"
     given-names: "Yashvardhan"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0009-0001-2441-2507"
 repository-code: "https://github.com/Thanatos9404/llmslim"
 url: "https://pypi.org/project/llmslim/"
 abstract: "llmslim is a lightweight, high-performance Python library for cutting LLM prompt size by 40-70% through semantic chunking, TF-IDF sentence centrality ranking, instruction preservation, and named entity retention."
@@ -18,7 +18,7 @@ keywords:
   - nlp
 license: MIT
 version: 0.2.0
-date-released: 2025-07-13
+date-released: 2026-07-13
 identifiers:
   - type: doi
     value: "10.5281/zenodo.0000000"

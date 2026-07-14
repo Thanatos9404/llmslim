@@ -11,7 +11,6 @@ export * from "./ui/Card";
 export * from "./ui/MetricCard";
 export * from "./ui/ComparisonCard";
 export * from "./ui/CodeWindow";
-export * from "./ui/CommandPalette";
 export * from "./ui/Pipeline";
 export * from "./ui/Timeline";
 export * from "./ui/FeatureCard";

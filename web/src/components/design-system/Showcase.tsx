@@ -13,7 +13,6 @@ import {
   MetricsGrid,
   ComparisonCard,
   CodeWindow,
-  CommandPalette,
   Pipeline,
   Timeline,
   FeatureCard,
@@ -32,17 +31,13 @@ import {
   DollarSign,
   Sparkles,
   ChevronRight,
-  Command,
 } from "lucide-react";
 
 export function DesignSystemShowcase() {
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-
   return (
     <AuroraBackground className="min-h-screen py-12 px-4 sm:px-8 max-w-7xl mx-auto space-y-16">
       <NoiseOverlay opacity={0.03} />
       <CursorGlow color="emerald" size={400} />
-      <CommandPalette isOpen={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
 
       {/* Header Title Section */}
       <div className="text-center space-y-4 pt-8">
@@ -57,16 +52,6 @@ export function DesignSystemShowcase() {
           Production-grade Next.js, TypeScript, Tailwind CSS v4, and Framer Motion component specs designed for LLMSlim.
         </p>
 
-        {/* Command Palette Trigger */}
-        <div className="pt-2 flex justify-center">
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-mono text-slate-300 transition-all cursor-pointer shadow-lg"
-          >
-            <Command className="w-4 h-4 text-emerald-400" />
-            <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10 text-white font-bold">⌘K</kbd> to open Command Palette</span>
-          </button>
-        </div>
       </div>
 
       {/* 1. BUTTONS SYSTEM SECTION */}

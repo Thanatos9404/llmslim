@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.2.0"
+version = "0.3.0"
 description = "Cut your LLM prompt size by 40-70% in one line of code -- semantic chunking + extractive summarization that preserves meaning, instructions, and key entities."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -46,7 +46,8 @@ dependencies = [
 semantic = ["sentence-transformers>=2.2"]
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
-all = ["sentence-transformers>=2.2", "tiktoken>=0.5", "nltk>=3.8"]
+structured = ["pyyaml>=6.0"]
+all = ["sentence-transformers>=2.2", "tiktoken>=0.5", "nltk>=3.8", "pyyaml>=6.0"]
 dev = ["pytest>=7.0", "pytest-cov"]
 
 [project.urls]

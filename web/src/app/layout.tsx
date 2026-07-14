@@ -41,6 +41,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Yashvardhan Thanvi", url: "https://github.com/Thanatos9404" }],
   creator: "Yashvardhan Thanvi",
+  verification: {
+    google: "google372537cef67c55b3",
+  },
   icons: {
     icon: [
       { url: "/llmslim_logo.png", type: "image/png" },

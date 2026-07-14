@@ -8,9 +8,10 @@ extractive ranking, and budget-aware selection into the main
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -45,6 +46,12 @@ class CompressionResult:
     The compressed text is available both as ``.compressed_text`` and via
     ``str(result)``, so it can often be dropped directly into an existing
     prompt-building pipeline.
+
+    .. versionchanged:: 0.3.0
+       Added optional fields: ``content_type``, ``content_confidence``,
+       ``mode``, ``elapsed_ms``, ``instructions_found``,
+       ``instructions_kept``, ``entities_found``, ``entities_kept``,
+       ``structure_preserved``.
     """
 
     original_text: str
@@ -57,6 +64,17 @@ class CompressionResult:
     num_chunks: int
     backend: str = ""
     chunk_results: List[ChunkResult] = field(default_factory=list, repr=False)
+
+    # --- v0.3 optional telemetry (all default None for backwards compat) ---
+    content_type: Optional[str] = None
+    content_confidence: Optional[float] = None
+    mode: Optional[str] = None
+    elapsed_ms: Optional[float] = None
+    instructions_found: Optional[int] = None
+    instructions_kept: Optional[int] = None
+    entities_found: Optional[int] = None
+    entities_kept: Optional[int] = None
+    structure_preserved: Optional[bool] = None
 
     @property
     def actual_ratio(self) -> float:
@@ -86,6 +104,52 @@ class CompressionResult:
             f"Embedding backend: {self.backend}"
         )
 
+    def detailed_summary(self) -> str:
+        """Extended summary including v0.3 telemetry when available."""
+        parts = [self.summary()]
+        if self.content_type is not None:
+            confidence = f" ({self.content_confidence:.0%})" if self.content_confidence else ""
+            parts.append(f"Content type     : {self.content_type}{confidence}")
+        if self.mode is not None:
+            parts.append(f"Mode             : {self.mode}")
+        if self.elapsed_ms is not None:
+            parts.append(f"Elapsed          : {self.elapsed_ms:.1f}ms")
+        if self.instructions_found is not None:
+            parts.append(
+                f"Instructions     : {self.instructions_kept}/{self.instructions_found} kept"
+            )
+        if self.entities_found is not None:
+            parts.append(
+                f"Entities         : {self.entities_kept}/{self.entities_found} kept"
+            )
+        if self.structure_preserved is not None:
+            parts.append(f"Structure kept   : {self.structure_preserved}")
+        return "\n".join(parts)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialise all fields to a plain dictionary."""
+        d: Dict[str, Any] = {
+            "original_tokens": self.original_tokens,
+            "compressed_tokens": self.compressed_tokens,
+            "target_ratio": self.target_ratio,
+            "actual_ratio": round(self.actual_ratio, 4),
+            "reduction_percent": self.reduction_percent,
+            "tokens_saved": self.tokens_saved,
+            "sentences_total": self.sentences_total,
+            "sentences_kept": self.sentences_kept,
+            "num_chunks": self.num_chunks,
+            "backend": self.backend,
+        }
+        for key in (
+            "content_type", "content_confidence", "mode", "elapsed_ms",
+            "instructions_found", "instructions_kept",
+            "entities_found", "entities_kept", "structure_preserved",
+        ):
+            val = getattr(self, key)
+            if val is not None:
+                d[key] = val
+        return d
+
     def __str__(self) -> str:
         return self.compressed_text
 
@@ -113,6 +177,12 @@ class ContextCompressor:
         preserve_patterns: Optional list of regex strings; any sentence
             matching one of these is always retained (e.g.
             ``[r"API_KEY", r"^System:"]``).
+        mode: Optimization mode name (e.g. ``"balanced"``,
+            ``"quality"``, ``"aggressive"``).  When set, mode-specific
+            ranking weights are applied.  Use ``"auto"`` together with
+            ``detect_content=True`` for fully automatic optimisation.
+        detect_content: When ``True``, analyse the input to detect its
+            content type and populate telemetry fields on the result.
     """
 
     def __init__(
@@ -123,6 +193,8 @@ class ContextCompressor:
         min_tokens_for_compression: int = DEFAULT_MIN_TOKENS_FOR_COMPRESSION,
         weights: Optional[Dict[str, float]] = None,
         preserve_patterns: Optional[Sequence[str]] = None,
+        mode: Optional[str] = None,
+        detect_content: bool = False,
     ):
         self.backend = get_backend(embedding_backend)
         if similarity_threshold is None:
@@ -132,6 +204,8 @@ class ContextCompressor:
         self.min_tokens_for_compression = min_tokens_for_compression
         self.weights = weights
         self.preserve_patterns = list(preserve_patterns or [])
+        self.mode = mode
+        self.detect_content = detect_content
 
     def compress(
         self,
@@ -156,10 +230,53 @@ class ContextCompressor:
         if not (0.0 < target_ratio <= 1.0):
             raise ValueError("target_ratio must be in the range (0, 1]")
 
+        t_start = time.perf_counter()
+
+        # --- v0.3: content detection & mode resolution ---
+        profile = None
+        resolved_mode = None
+        effective_weights = self.weights
+
+        if self.detect_content or self.mode is not None:
+            from .analysis import analyze
+            from .modes import resolve_mode
+
+            if self.detect_content:
+                profile = analyze(text)
+            resolved_mode = resolve_mode(self.mode, profile)
+
+            # Mode sets effective weights: merge mode weights under
+            # caller-specified weights (caller wins on conflicts).
+            if resolved_mode.ranking_weights:
+                merged = dict(resolved_mode.ranking_weights)
+                if self.weights:
+                    merged.update(self.weights)
+                effective_weights = merged
+
+            # Apply mode's default target ratio when caller uses 0.5.
+            if target_ratio == 0.5 and resolved_mode.target_ratio_default != 0.5:
+                target_ratio = resolved_mode.target_ratio_default
+
         original_tokens = count_tokens(text)
 
         if original_tokens <= self.min_tokens_for_compression:
-            return self._passthrough(text, original_tokens, target_ratio, sentences_total=0)
+            return self._passthrough(
+                text, original_tokens, target_ratio, sentences_total=0,
+                profile=profile, resolved_mode=resolved_mode, t_start=t_start,
+            )
+
+        # --- v0.3: structured content fast-path ---
+        if (
+            profile is not None
+            and profile.has_structure
+            and resolved_mode is not None
+            and resolved_mode.preserve_structure
+        ):
+            structured_result = self._try_structured(
+                text, target_ratio, profile, resolved_mode, original_tokens, t_start,
+            )
+            if structured_result is not None:
+                return structured_result
 
         paragraphs = split_paragraphs(text)
         all_sentences: List[str] = []
@@ -173,7 +290,9 @@ class ContextCompressor:
 
         if len(all_sentences) <= 1:
             return self._passthrough(
-                text, original_tokens, target_ratio, sentences_total=len(all_sentences)
+                text, original_tokens, target_ratio,
+                sentences_total=len(all_sentences),
+                profile=profile, resolved_mode=resolved_mode, t_start=t_start,
             )
 
         embeddings, query_embedding = self._encode(all_sentences, query)
@@ -198,7 +317,7 @@ class ContextCompressor:
                 chunk,
                 chunk_embeddings,
                 query_embedding=query_embedding,
-                weights=self.weights,
+                weights=effective_weights,
                 preserve_patterns=self.preserve_patterns,
             )
             all_chunk_scored.append((chunk, scored))
@@ -259,6 +378,26 @@ class ContextCompressor:
                     kept_mask[g_idx] = False
                     current_total -= tok
 
+        # --- v0.3: compute retention telemetry ---
+        instructions_found = instructions_kept = None
+        entities_found = entities_kept = None
+        if resolved_mode is not None:
+            instructions_found = 0
+            instructions_kept = 0
+            entities_found = 0
+            entities_kept = 0
+            for chunk, scored in all_chunk_scored:
+                for s in scored:
+                    g_idx = chunk.sentence_indices[s["index"]]
+                    if s["instruction_score"] > 0:
+                        instructions_found += 1
+                        if kept_mask[g_idx]:
+                            instructions_kept += 1
+                    if s["entity_score"] > 0:
+                        entities_found += 1
+                        if kept_mask[g_idx]:
+                            entities_kept += 1
+
         chunk_results: List[ChunkResult] = []
         for chunk, scored in all_chunk_scored:
             kept_local = [
@@ -277,6 +416,7 @@ class ContextCompressor:
 
         compressed_text = self._reassemble(all_sentences, kept_mask, para_end_indices)
         compressed_tokens = count_tokens(compressed_text)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
 
         return CompressionResult(
             original_text=text,
@@ -289,11 +429,29 @@ class ContextCompressor:
             num_chunks=len(chunks),
             backend=self.backend.name,
             chunk_results=chunk_results,
+            content_type=profile.content_type.value if profile else None,
+            content_confidence=profile.confidence if profile else None,
+            mode=resolved_mode.name if resolved_mode else None,
+            elapsed_ms=round(elapsed_ms, 2) if resolved_mode else None,
+            instructions_found=instructions_found,
+            instructions_kept=instructions_kept,
+            entities_found=entities_found,
+            entities_kept=entities_kept,
         )
 
     def _passthrough(
-        self, text: str, original_tokens: int, target_ratio: float, sentences_total: int
+        self,
+        text: str,
+        original_tokens: int,
+        target_ratio: float,
+        sentences_total: int,
+        profile: Optional[object] = None,
+        resolved_mode: Optional[object] = None,
+        t_start: Optional[float] = None,
     ) -> CompressionResult:
+        elapsed_ms = None
+        if t_start is not None and resolved_mode is not None:
+            elapsed_ms = round((time.perf_counter() - t_start) * 1000, 2)
         return CompressionResult(
             original_text=text,
             compressed_text=text,
@@ -304,6 +462,50 @@ class ContextCompressor:
             sentences_kept=sentences_total,
             num_chunks=0,
             backend=self.backend.name,
+            content_type=getattr(profile, 'content_type', None) and profile.content_type.value if profile else None,
+            content_confidence=getattr(profile, 'confidence', None) if profile else None,
+            mode=getattr(resolved_mode, 'name', None) if resolved_mode else None,
+            elapsed_ms=elapsed_ms,
+        )
+
+    def _try_structured(
+        self,
+        text: str,
+        target_ratio: float,
+        profile: object,
+        resolved_mode: object,
+        original_tokens: int,
+        t_start: float,
+    ) -> Optional[CompressionResult]:
+        """Attempt structured optimization; returns None if not applicable."""
+        try:
+            from .optimizers import optimize_structured
+        except ImportError:
+            return None
+
+        result_text = optimize_structured(
+            text, profile.content_type, target_ratio,  # type: ignore[union-attr]
+        )
+        if result_text is None or result_text == text:
+            return None
+
+        compressed_tokens = count_tokens(result_text)
+        elapsed_ms = round((time.perf_counter() - t_start) * 1000, 2)
+        return CompressionResult(
+            original_text=text,
+            compressed_text=result_text,
+            original_tokens=original_tokens,
+            compressed_tokens=compressed_tokens,
+            target_ratio=target_ratio,
+            sentences_total=0,
+            sentences_kept=0,
+            num_chunks=0,
+            backend=self.backend.name,
+            content_type=profile.content_type.value,  # type: ignore[union-attr]
+            content_confidence=profile.confidence,  # type: ignore[union-attr]
+            mode=resolved_mode.name,  # type: ignore[union-attr]
+            elapsed_ms=elapsed_ms,
+            structure_preserved=True,
         )
 
     def _encode(self, sentences: List[str], query: Optional[str]):
@@ -493,6 +695,8 @@ def compress(
     text: str,
     target_ratio: float = 0.5,
     query: Optional[str] = None,
+    mode: Optional[str] = None,
+    detect_content: bool = False,
     **kwargs,
 ) -> CompressionResult:
     """Compress ``text``, retaining approximately ``target_ratio`` of its tokens.
@@ -507,6 +711,14 @@ def compress(
             for a ~50% reduction, ``0.3`` for a ~70% reduction).
         query: Optional query string for relevance-aware compression
             (useful for RAG contexts).
+        mode: Optimization mode name (e.g. ``"balanced"``,
+            ``"quality"``, ``"aggressive"``, ``"rag"``, ``"chat"``,
+            ``"system"``, ``"code"``, ``"documentation"``).  Use
+            ``"auto"`` with ``detect_content=True`` for fully automatic
+            optimisation.  See :func:`llmslim.modes.list_modes`.
+        detect_content: When ``True``, analyse the input to detect its
+            content type (JSON, YAML, Python, chat, etc.) and populate
+            telemetry fields on the result.  Adds < 1 ms overhead.
         **kwargs: Passed to :class:`ContextCompressor` if provided (e.g.
             ``max_chunk_tokens``, ``similarity_threshold``,
             ``preserve_patterns``). If no kwargs are given, a shared
@@ -521,6 +733,13 @@ def compress(
         >>> result = compress(my_long_prompt, target_ratio=0.5)
         >>> send_to_llm(result.compressed_text)
         >>> print(f"Saved {result.tokens_saved} tokens ({result.reduction_percent}%)")
+
+    .. versionchanged:: 0.3.0
+       Added ``mode`` and ``detect_content`` parameters.
     """
+    if mode is not None or detect_content:
+        kwargs["mode"] = mode
+        kwargs["detect_content"] = detect_content
+
     compressor = ContextCompressor(**kwargs) if kwargs else _get_default_compressor()
     return compressor.compress(text, target_ratio=target_ratio, query=query)

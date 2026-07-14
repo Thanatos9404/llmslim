@@ -2,6 +2,8 @@
 
 Usage:
     llmslim input.txt -r 0.5 -o compressed.txt --stats
+    llmslim input.txt --detect --mode quality
+    llmslim input.txt --analyze
     cat prompt.txt | llmslim --ratio 0.4 --cost gpt-5
 """
 
@@ -10,8 +12,10 @@ from __future__ import annotations
 import argparse
 import sys
 
+from .analysis import analyze as run_analysis
 from .core import compress
 from .cost import estimate_cost_savings, list_supported_models
+from .modes import list_modes
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,6 +34,23 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="Target fraction of tokens to keep, e.g. 0.5 = 50%% reduction (default: 0.5).",
+    )
+    parser.add_argument(
+        "-m",
+        "--mode",
+        type=str,
+        default=None,
+        help=f"Optimisation mode. Options: 'auto', {', '.join(list_modes())}",
+    )
+    parser.add_argument(
+        "--detect",
+        action="store_true",
+        help="Auto-detect input content type and populate detailed telemetry.",
+    )
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Run content analysis only and print the profile (does not perform compression).",
     )
     parser.add_argument(
         "-q",
@@ -83,7 +104,28 @@ def main(argv=None) -> int:
     else:
         text = sys.stdin.read()
 
-    result = compress(text, target_ratio=args.ratio, query=args.query, embedding_backend=args.backend)
+    if args.analyze:
+        profile = run_analysis(text)
+        print("--- Content Analysis Profile ---")
+        print(f"Content Type     : {profile.content_type.value}")
+        print(f"Confidence       : {profile.confidence:.0%}")
+        print(f"Secondary Types  : {', '.join(s.value for s in profile.secondary_types) or 'None'}")
+        print(f"Has Structure    : {profile.has_structure}")
+        print(f"Estimated Tokens : {profile.estimated_tokens}")
+        print(f"Language Hint    : {profile.language_hint or 'None'}")
+        print(f"Structure Depth  : {profile.structure_depth}")
+        print(f"Instruction Dens.: {profile.instruction_density:.2f}")
+        print(f"Entity Density   : {profile.entity_density:.2f}")
+        return 0
+
+    result = compress(
+        text,
+        target_ratio=args.ratio,
+        query=args.query,
+        mode=args.mode,
+        detect_content=args.detect,
+        embedding_backend=args.backend,
+    )
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
@@ -93,7 +135,10 @@ def main(argv=None) -> int:
 
     if args.stats:
         print("\n--- Compression Stats ---", file=sys.stderr)
-        print(result.summary(), file=sys.stderr)
+        if result.mode is not None or result.content_type is not None:
+            print(result.detailed_summary(), file=sys.stderr)
+        else:
+            print(result.summary(), file=sys.stderr)
 
     if args.cost:
         print("\n--- Cost Savings Estimate ---", file=sys.stderr)

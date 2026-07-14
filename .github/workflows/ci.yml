@@ -43,8 +43,8 @@ jobs:
       - name: Run Ruff Linter
         run: ruff check .
 
-      - name: Run Black Code Formatter Check
-        run: black --check .
+      - name: Run Ruff Code Formatter Check
+        run: ruff format --check .
 
       - name: Run MyPy Type Checker
         run: mypy llmslim

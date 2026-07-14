@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sliders, Cpu, Sparkles, RefreshCw, Layers } from "lucide-react";
+import { Sliders, Cpu, Sparkles, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StudioModel {
@@ -50,9 +50,9 @@ export function StudioHeader({
         <div>
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <h3 className="text-lg font-bold text-white tracking-tight font-sans">
+            <h2 className="text-lg font-bold text-white tracking-tight font-sans">
               LLMSlim Studio Playground
-            </h3>
+            </h2>
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
               v0.2.0 Engine
             </span>
@@ -66,7 +66,8 @@ export function StudioHeader({
         <div className="flex items-center gap-3">
           <button
             onClick={onReset}
-            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs font-mono flex items-center gap-1.5 min-h-[40px]"
+            aria-label="Reset input prompt template"
+            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs font-mono flex items-center gap-1.5 min-h-[40px] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             title="Reset Active Preset"
           >
             <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
@@ -76,7 +77,8 @@ export function StudioHeader({
           <button
             onClick={onCompress}
             disabled={isProcessing}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 text-[#030508] font-bold text-xs flex items-center gap-2 hover:shadow-[0_0_25px_rgba(0,245,155,0.45)] transition-all cursor-pointer disabled:opacity-50 min-h-[40px]"
+            aria-label="Run prompt compression engine"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 text-[#030508] font-bold text-xs flex items-center gap-2 hover:shadow-[0_0_25px_rgba(0,245,155,0.45)] transition-all cursor-pointer disabled:opacity-50 min-h-[40px] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           >
             <Sparkles className={cn("w-4 h-4", isProcessing && "animate-spin")} />
             <span>{isProcessing ? "Executing Compression..." : "Run Compression"}</span>
@@ -88,11 +90,12 @@ export function StudioHeader({
       <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/5 text-xs">
         {/* Prompt Presets */}
         <div className="flex items-center gap-1.5 bg-white/[0.03] p-1.5 rounded-xl border border-white/10">
-          <span className="text-[11px] text-slate-500 px-2 font-mono font-bold">Presets:</span>
+          <span className="text-[11px] text-slate-400 px-2 font-mono font-bold">Presets:</span>
           <button
             onClick={() => setActiveMode("prompt")}
+            aria-label="Switch to System Prompt mode"
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold",
+              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
               activeMode === "prompt"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(0,245,155,0.2)]"
                 : "text-slate-400 hover:text-slate-200"
@@ -102,8 +105,9 @@ export function StudioHeader({
           </button>
           <button
             onClick={() => setActiveMode("chat")}
+            aria-label="Switch to Chat History mode"
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold",
+              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
               activeMode === "chat"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(0,245,155,0.2)]"
                 : "text-slate-400 hover:text-slate-200"
@@ -113,8 +117,9 @@ export function StudioHeader({
           </button>
           <button
             onClick={() => setActiveMode("rag")}
+            aria-label="Switch to RAG Contexts mode"
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold",
+              "px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
               activeMode === "rag"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(0,245,155,0.2)]"
                 : "text-slate-400 hover:text-slate-200"
@@ -129,14 +134,18 @@ export function StudioHeader({
           {/* Target Model Selector */}
           <div className="flex items-center gap-2 bg-white/[0.03] px-3.5 py-2 rounded-xl border border-white/10 min-h-[40px]">
             <Cpu className="w-4 h-4 text-emerald-400" />
-            <span className="text-[11px] text-slate-400">Target Model:</span>
+            <label htmlFor="target-model-select" className="text-[11px] text-slate-400 cursor-pointer">
+              Target Model:
+            </label>
             <select
+              id="target-model-select"
+              aria-label="Target LLM Model Selection"
               value={selectedModel.id}
               onChange={(e) => {
                 const m = STUDIO_MODELS.find((x) => x.id === e.target.value);
                 if (m) setSelectedModel(m);
               }}
-              className="bg-transparent text-xs text-white font-bold cursor-pointer focus:outline-none"
+              className="bg-transparent text-xs text-white font-bold cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded"
             >
               {STUDIO_MODELS.map((m) => (
                 <option key={m.id} value={m.id} className="bg-[#0D121C] text-slate-200">
@@ -149,15 +158,19 @@ export function StudioHeader({
           {/* Custom Retain Target Slider */}
           <div className="flex items-center gap-3 bg-white/[0.03] px-3.5 py-2 rounded-xl border border-white/10 min-h-[40px]">
             <Sliders className="w-4 h-4 text-emerald-400" />
-            <span className="text-[11px] text-slate-400">Retain Target:</span>
+            <label htmlFor="target-retain-slider" className="text-[11px] text-slate-400 cursor-pointer">
+              Retain Target:
+            </label>
             <input
+              id="target-retain-slider"
+              aria-label="Target Compression Retain Percentage Slider"
               type="range"
               min="0.2"
               max="0.8"
               step="0.05"
               value={targetRatio}
               onChange={(e) => setTargetRatio(parseFloat(e.target.value))}
-              className="w-28 custom-slider cursor-pointer"
+              className="w-28 custom-slider cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             />
             <span className="text-xs font-bold text-emerald-400 font-tabular min-w-[36px]">
               {Math.round(targetRatio * 100)}%

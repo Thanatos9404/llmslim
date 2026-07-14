@@ -41,7 +41,7 @@ export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-20 px-4 sm:px-8 max-w-4xl mx-auto space-y-12">
+    <section id="faq" aria-label="Frequently Asked Questions Section" className="py-20 px-4 sm:px-8 max-w-4xl mx-auto space-y-12">
       <div className="text-center space-y-4">
         <span className="badge-scientific text-cyan-400 text-xs">
           Frequently Answered Telemetry
@@ -63,8 +63,11 @@ export function FaqSection() {
               className="rounded-xl bg-[#0D121C] border border-white/10 overflow-hidden transition-all duration-300 hover:border-emerald-500/30"
             >
               <button
+                id={`faq-button-${idx}`}
+                aria-expanded={isOpen}
+                aria-controls={`faq-answer-${idx}`}
                 onClick={() => setOpenIndex(isOpen ? null : idx)}
-                className="w-full px-6 py-4.5 flex items-center justify-between text-left cursor-pointer hover:bg-white/[0.03] transition-colors min-h-[52px]"
+                className="w-full px-6 py-4.5 flex items-center justify-between text-left cursor-pointer hover:bg-white/[0.03] transition-colors min-h-[52px] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               >
                 <span className="text-base font-bold text-white font-sans flex items-center gap-3">
                   <HelpCircle className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -80,6 +83,9 @@ export function FaqSection() {
               <AnimatePresence initial={false}>
                 {isOpen && (
                   <motion.div
+                    id={`faq-answer-${idx}`}
+                    role="region"
+                    aria-labelledby={`faq-button-${idx}`}
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}

@@ -1,14 +1,11 @@
-"use client";
-
 import React from "react";
-import { motion } from "framer-motion";
 
 export function MarqueeSection() {
   const logos = [
     {
       name: "OpenAI",
       svg: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-auto" aria-hidden="true">
           <path d="M12 2a10 10 0 0 0-7.3 3.2m14.6 0A10 10 0 0 0 12 2M2.5 9.5a10 10 0 0 0 1.2 7.8m16.6-7.8a10 10 0 0 1 1.2 7.8M6.2 20.3A10 10 0 0 0 12 22m5.8-1.7a10 10 0 0 0 0-16.6" />
           <path d="M12 6v12m-5.2-9 10.4 6m0-6L6.8 15" />
         </svg>
@@ -17,7 +14,7 @@ export function MarqueeSection() {
     {
       name: "Anthropic",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto" aria-hidden="true">
           <path d="M14.2 3.5h3.6L24 20.5h-3.6l-1.6-3.8h-5.6l-1.6 3.8H8l6.2-17zm3.1 10.3l-2-4.9-2 4.9h4zM0 20.5l6.2-17h3.6L3.6 20.5H0z" />
         </svg>
       ),
@@ -25,7 +22,7 @@ export function MarqueeSection() {
     {
       name: "Google Gemini",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto" aria-hidden="true">
           <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12C17.373 12 12 6.627 12 0z" />
         </svg>
       ),
@@ -33,7 +30,7 @@ export function MarqueeSection() {
     {
       name: "DeepSeek",
       svg: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
           <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-30 12 12)" />
           <circle cx="12" cy="12" r="3" fill="currentColor" />
@@ -43,7 +40,7 @@ export function MarqueeSection() {
     {
       name: "Meta Llama",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto" aria-hidden="true">
           <path d="M17.5 3c-2.4 0-4.6 1.4-5.5 3.4C11.1 4.4 8.9 3 6.5 3 2.9 3 0 5.9 0 9.5c0 4.9 6.2 10.4 11.4 11.4h1.2C17.8 19.9 24 14.4 24 9.5 24 5.9 21.1 3 17.5 3zm-11 11c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm11 0c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" />
         </svg>
       ),
@@ -51,7 +48,7 @@ export function MarqueeSection() {
     {
       name: "Mistral AI",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto" aria-hidden="true">
           <path d="M2 3h4v4H2V3zm14 0h4v4h-4V3zm-7 7h4v4H9v-4zM2 17h4v4H2v-4zm14 0h4v4h-4v-4zM2 10h4v4H2v-4zm14 0h4v4h-4v-4zM9 3h4v4H9V3z" />
         </svg>
       ),
@@ -59,7 +56,7 @@ export function MarqueeSection() {
     {
       name: "Cohere",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto" aria-hidden="true">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l7 4.5-7 4.5z" />
         </svg>
       ),
@@ -67,7 +64,7 @@ export function MarqueeSection() {
     {
       name: "xAI",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto" aria-hidden="true">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
       ),
@@ -75,7 +72,7 @@ export function MarqueeSection() {
     {
       name: "Qwen",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto" aria-hidden="true">
           <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5L17.5 12 12 17.5 6.5 12 12 6.5z" />
         </svg>
       ),
@@ -83,7 +80,7 @@ export function MarqueeSection() {
     {
       name: "Microsoft Azure AI",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-auto" aria-hidden="true">
           <path d="M0 0h11v11H0V0zm13 0h11v11H13V0zM0 13h11v11H0V13zm13 0h11v11H13V13z" />
         </svg>
       ),
@@ -91,7 +88,7 @@ export function MarqueeSection() {
     {
       name: "LangChain",
       svg: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto" aria-hidden="true">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
         </svg>
@@ -100,7 +97,7 @@ export function MarqueeSection() {
     {
       name: "LlamaIndex",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto" aria-hidden="true">
           <path d="M4 2h16v4H4V2zm0 7h16v4H4V9zm0 7h10v4H4v-4z" />
         </svg>
       ),
@@ -108,7 +105,7 @@ export function MarqueeSection() {
     {
       name: "CrewAI",
       svg: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto" aria-hidden="true">
           <circle cx="6" cy="12" r="3" />
           <circle cx="18" cy="6" r="3" />
           <circle cx="18" cy="18" r="3" />
@@ -119,7 +116,7 @@ export function MarqueeSection() {
     {
       name: "Haystack",
       svg: (
-        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-auto" aria-hidden="true">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
         </svg>
       ),
@@ -127,7 +124,7 @@ export function MarqueeSection() {
     {
       name: "DSPy",
       svg: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-auto" aria-hidden="true">
           <rect x="3" y="3" width="18" height="18" rx="4" />
           <path d="M7 8h10M7 12h7M7 16h4" />
         </svg>
@@ -136,12 +133,12 @@ export function MarqueeSection() {
   ];
 
   return (
-    <section className="py-14 border-y border-white/10 bg-[#070A0F]/80 overflow-hidden select-none">
-      {/* Subtle Section Subtitle Heading */}
+    <section aria-label="Ecosystem Compatibility Marquee" className="py-14 border-y border-white/10 bg-[#070A0F]/80 overflow-hidden select-none">
+      {/* Section Subtitle Heading */}
       <div className="max-w-7xl mx-auto px-4 text-center mb-8">
-        <span className="badge-scientific text-slate-400 text-xs tracking-widest uppercase">
+        <h2 className="badge-scientific text-slate-400 text-xs tracking-widest uppercase font-mono">
           Works with every major LLM ecosystem
-        </span>
+        </h2>
       </div>
 
       {/* Infinite Seamless Marquee with CSS Mask Feathering & Hover Pause */}

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/design-system";
-import { Calculator, DollarSign, Sparkles, TrendingUp, Sliders } from "lucide-react";
+import { DollarSign, Sparkles, Sliders } from "lucide-react";
 
 export function CalculatorSection() {
   const models = [
@@ -28,9 +28,9 @@ export function CalculatorSection() {
   const annualSavingsUSD = dailySavingsUSD * 365;
 
   return (
-    <section id="calculator" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
+    <section id="calculator" aria-label="Enterprise Token Savings Calculator" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
       <div className="text-center space-y-4 max-w-3xl mx-auto">
-        <span className="text-xs font-mono uppercase tracking-widest text-emerald-400">
+        <span className="badge-scientific text-emerald-400 text-xs">
           Enterprise ROI Calculator
         </span>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
@@ -47,17 +47,19 @@ export function CalculatorSection() {
           <div className="space-y-6">
             {/* Model Select */}
             <div className="space-y-2">
-              <label className="text-xs font-mono uppercase text-slate-300 flex items-center gap-2">
+              <label htmlFor="calc-model-select" className="text-xs font-mono uppercase text-slate-300 flex items-center gap-2 cursor-pointer">
                 <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                 Select LLM Model Provider
               </label>
               <select
+                id="calc-model-select"
+                aria-label="Select LLM Model Provider for Cost Calculation"
                 value={selectedModel.name}
                 onChange={(e) => {
                   const m = models.find((x) => x.name === e.target.value);
                   if (m) setSelectedModel(m);
                 }}
-                className="w-full bg-[#070A0F] border border-white/15 rounded-xl px-4 py-3 text-sm text-slate-100 font-mono focus:outline-none focus:border-emerald-500/50 cursor-pointer"
+                className="w-full bg-[#070A0F] border border-white/15 rounded-xl px-4 py-3 text-sm text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer"
               >
                 {models.map((m) => (
                   <option key={m.name} value={m.name}>
@@ -70,57 +72,63 @@ export function CalculatorSection() {
             {/* Requests Per Day Slider */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Daily API Request Volume:</span>
-                <span className="text-emerald-400 font-bold">
+                <label htmlFor="requests-per-day-slider" className="text-slate-400 cursor-pointer">Daily API Request Volume:</label>
+                <span className="text-emerald-400 font-bold font-tabular">
                   {requestsPerDay.toLocaleString()} requests/day
                 </span>
               </div>
               <input
+                id="requests-per-day-slider"
+                aria-label="Daily API Request Volume Slider"
                 type="range"
                 min="1000"
                 max="200000"
                 step="1000"
                 value={requestsPerDay}
                 onChange={(e) => setRequestsPerDay(parseInt(e.target.value))}
-                className="w-full accent-emerald-400 cursor-pointer"
+                className="w-full custom-slider cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
             </div>
 
             {/* Prompt Tokens Slider */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Average Prompt Length:</span>
-                <span className="text-cyan-400 font-bold">
+                <label htmlFor="prompt-length-slider" className="text-slate-400 cursor-pointer">Average Prompt Length:</label>
+                <span className="text-cyan-400 font-bold font-tabular">
                   {promptTokens.toLocaleString()} tokens
                 </span>
               </div>
               <input
+                id="prompt-length-slider"
+                aria-label="Average Prompt Token Length Slider"
                 type="range"
                 min="300"
                 max="8000"
                 step="100"
                 value={promptTokens}
                 onChange={(e) => setPromptTokens(parseInt(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
+                className="w-full custom-slider cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
             </div>
 
             {/* Target Retain Ratio */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Compression Target Ratio:</span>
-                <span className="text-violet-400 font-bold">
+                <label htmlFor="calc-target-ratio-slider" className="text-slate-400 cursor-pointer">Compression Target Ratio:</label>
+                <span className="text-violet-400 font-bold font-tabular">
                   {Math.round((1 - targetRatio) * 100)}% token reduction ({Math.round(targetRatio * 100)}% retained)
                 </span>
               </div>
               <input
+                id="calc-target-ratio-slider"
+                aria-label="Compression Target Retain Ratio Slider"
                 type="range"
                 min="0.2"
                 max="0.8"
                 step="0.05"
                 value={targetRatio}
                 onChange={(e) => setTargetRatio(parseFloat(e.target.value))}
-                className="w-full accent-violet-400 cursor-pointer"
+                className="w-full custom-slider cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
             </div>
           </div>
@@ -132,21 +140,21 @@ export function CalculatorSection() {
                 <Sparkles className="w-4 h-4" />
                 Live Telemetry Calculations
               </span>
-              <span className="text-xs font-mono text-slate-500">{selectedModel.name}</span>
+              <span className="text-xs font-mono text-slate-500 font-tabular">{selectedModel.name}</span>
             </div>
 
             <div className="space-y-4 font-mono">
-              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2 font-tabular">
                 <span className="text-slate-400">Tokens Saved / Request:</span>
                 <span className="text-slate-200 font-bold">{savedTokensPerReq.toLocaleString()} tokens</span>
               </div>
-              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2 font-tabular">
                 <span className="text-slate-400">Daily Savings:</span>
                 <span className="text-emerald-400 font-bold">
                   ${dailySavingsUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+              <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2 font-tabular">
                 <span className="text-slate-400">Monthly Savings:</span>
                 <span className="text-cyan-400 font-bold">
                   ${monthlySavingsUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -155,16 +163,16 @@ export function CalculatorSection() {
 
               {/* Big Annual ROI Card */}
               <div className="pt-2">
-                <div className="text-[11px] uppercase text-slate-400 mb-1">Total Projected Annual Savings</div>
+                <div className="text-[11px] uppercase text-slate-400 mb-1 badge-scientific">Total Projected Annual Savings</div>
                 <motion.div
                   key={annualSavingsUSD}
                   initial={{ scale: 0.95 }}
                   animate={{ scale: 1 }}
-                  className="text-4xl sm:text-5xl font-extrabold text-emerald-400 font-mono tracking-tight"
+                  className="text-4xl sm:text-5xl font-extrabold text-emerald-400 font-mono tracking-tight font-tabular"
                 >
                   ${annualSavingsUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </motion.div>
-                <div className="text-[11px] text-slate-500 mt-2">
+                <div className="text-[11px] text-slate-500 mt-2 font-mono font-tabular">
                   *Based on official pricing models as of July 2026.
                 </div>
               </div>

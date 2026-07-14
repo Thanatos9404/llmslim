@@ -1,18 +1,17 @@
 export interface ArticleSection {
   id: string;
   title: string;
-  content: string; // Markdown text with inline equations / explanations
-  mathFormula?: string; // Formatted LaTeX string / intuition block
+  content: string;
+  mathFormula?: string;
   codeSnippet?: {
     language: string;
     filename?: string;
     code: string;
   };
-  benchmarkTable?: {
+  tableData?: {
     headers: string[];
     rows: (string | number)[][];
   };
-  diagramSvg?: string;
 }
 
 export interface DeepArticle {
@@ -23,837 +22,486 @@ export interface DeepArticle {
   author: string;
   authorRole: string;
   publishedDate: string;
+  lastUpdated: string;
   readingTime: string;
-  category: "Algorithms" | "Economics" | "RAG & Agents" | "Benchmarks" | "Systems";
+  category: "Algorithms" | "Systems & Architecture" | "Context Engineering" | "Benchmarking Methodology";
   mathIntuitionSummary: string;
   sections: ArticleSection[];
   keyTakeaways: string[];
-  references: { title: string; url: string }[];
+  references: { title: string; url: string; citationKey: string }[];
 }
 
 export const ARTICLE_CATEGORIES = [
   "Algorithms",
-  "Economics",
-  "RAG & Agents",
-  "Benchmarks",
-  "Systems",
+  "Systems & Architecture",
+  "Context Engineering",
+  "Benchmarking Methodology",
 ] as const;
 
 export const ARTICLES_REGISTRY: Record<string, DeepArticle> = {
   "how-prompt-compression-works": {
     slug: "how-prompt-compression-works",
-    title: "Mathematical Foundations of Deterministic Prompt Compression",
-    subtitle: "LexRank Graph Centrality, TF-IDF Entropy Scoring, and Priority Tier Formal Verification",
-    abstract: "A rigorous mathematical exploration into how deterministic natural language algorithms compress LLM contexts by 40-70% in under 30ms without neural inference overhead.",
-    author: "Staff AI Infrastructure Engineer",
-    authorRole: "LLMSlim Core Maintainer",
-    publishedDate: "July 2026",
-    readingTime: "12 min read",
+    title: "Graph Centrality & TF-IDF Vectorization for In-Context Redundancy Reduction",
+    subtitle: "Mathematical Derivation of LexRank Stationary Distributions and Priority Tier Filtering",
+    abstract: "A formal mathematical and algorithmic breakdown of how graph centrality over TF-IDF term matrices ranks and prunes redundant sentences in long context prompts while safeguarding imperative instructions.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
+    readingTime: "10 min read",
     category: "Algorithms",
-    mathIntuitionSummary: "Models sentence importance via stationary distribution p^T = p^T M of a modified Markov transition matrix over TF-IDF cosine similarity graphs.",
+    mathIntuitionSummary: "Computes sentence importance via the stationary probability distribution vector p^T = p^T M over a damped Markov transition matrix derived from pairwise TF-IDF cosine similarities.",
     keyTakeaways: [
-      "Deterministic graph centrality achieves sub-30ms CPU compression without neural model dependencies.",
-      "Priority Tier Shields formally guarantee 100.0% retention of critical system directives and code blocks.",
-      "Information entropy scoring ranks sentence redundancy before token budget allocation."
+      "TF-IDF vector space modeling measures local term specificity across sentence boundaries.",
+      "LexRank graph centrality constructs a stochastic transition matrix to identify central informational nodes.",
+      "Priority Tier Shields explicitly override statistical pruning for critical directives, code syntax, and structural schemas."
     ],
     references: [
-      { title: "LexRank: Graph-based Lexical Centrality as Salience in Text Summarization (Erkan & Radev)", url: "https://arxiv.org/abs/1109.2128" },
-      { title: "Attention Is All You Need (Vaswani et al.)", url: "https://arxiv.org/abs/1706.03762" }
+      {
+        citationKey: "Erkan & Radev (2004)",
+        title: "LexRank: Graph-based Lexical Centrality as Salience in Text Summarization (Journal of Artificial Intelligence Research)",
+        url: "https://arxiv.org/abs/1109.2128",
+      },
+      {
+        citationKey: "Salton & Buckley (1988)",
+        title: "Term-weighting approaches in automatic text retrieval (Information Processing & Management)",
+        url: "https://doi.org/10.1016/0306-4573(88)90021-0",
+      },
     ],
     sections: [
       {
-        id: "mathematical-formulation",
-        title: "1. Sentence Graph Formulation & Cosine Centrality",
-        content: `Prompt compression transforms an uncompressed document $D = \\{s_1, s_2, \\dots, s_N\\}$ containing $N$ sentences into a token-dense subset $D' \\subset D$ such that total token count $T(D') \\le \\gamma \\cdot T(D)$, where $\\gamma \\in (0, 1]$ represents the target retention ratio.
+        id: "tfidf-vectorization",
+        title: "1. Vector Space Modeling & TF-IDF Weighting",
+        content: `Prompt compression aims to select a subset of sentences $S' \\subset S$ from a document $D = (s_1, s_2, \\dots, s_N)$ that minimizes total token count while maximizing retained semantic information.
 
-Each sentence $s_i$ is vectorized into a Term Frequency-Inverse Document Frequency (TF-IDF) feature vector $\\mathbf{v}_i \\in \\mathbb{R}^{|V|}$:
+Each sentence $s_i$ is mapped to a sparse TF-IDF vector $\\mathbf{v}_i \\in \\mathbb{R}^{|V|}$ over vocabulary $V$:
 
-$$\\text{TF-IDF}(t, s_i, D) = \\text{tf}(t, s_i) \\times \\log \\left( \\frac{N + 1}{1 + |\\{s_j \\in D : t \\in s_j\\}|} \\right) + 1$$
+$$\\text{TF}(t, s_i) = \\frac{f_{t, s_i}}{\\sum_{t' \\in s_i} f_{t', s_i}}$$
 
-The pairwise similarity matrix $\\mathbf{W} \\in \\mathbb{R}^{N \\times N}$ is computed using normalized cosine similarity:
+$$\\text{IDF}(t, D) = \\log \\left( \\frac{1 + N}{1 + |\\{s \\in D : t \\in s\\}|} \\right) + 1$$
 
-$$W_{ij} = \\frac{\\mathbf{v}_i \\cdot \\mathbf{v}_j}{\\|\\mathbf{v}_i\\| \\|\\mathbf{v}_j\\|}$$`,
-        mathFormula: "W_{ij} = \\frac{\\sum_{k=1}^{|V|} v_{ik} v_{jk}}{\\sqrt{\\sum v_{ik}^2} \\sqrt{\\sum v_{jk}^2}}"
+$$\\mathbf{v}_{i, t} = \\text{TF}(t, s_i) \\times \\text{IDF}(t, D)$$`,
+        mathFormula: "W_{ij} = \\frac{\\mathbf{v}_i \\cdot \\mathbf{v}_j}{\\|\\mathbf{v}_i\\| \\|\\mathbf{v}_j\\|}",
       },
       {
-        id: "stationary-distribution",
-        title: "2. PageRank Stationary Distribution & LexRank Algorithm",
-        content: `To prevent disconnected components, we construct a stochastic damping transition matrix $\\mathbf{M}$:
+        id: "lexrank-derivation",
+        title: "2. Graph Construction & Stationary Distribution Derivation",
+        content: `A similarity graph $G = (V_G, E_G)$ is formed where vertices $V_G = \\{s_1, \\dots, s_N\\}$. Edges exist between sentences where cosine similarity $W_{ij} \\ge \\theta$ (threshold $\\theta = 0.1$).
 
-$$\\mathbf{M} = d \\mathbf{B} + \\frac{1 - d}{N} \\mathbf{E}$$
+The stochastic transition matrix $\\mathbf{M} \\in \\mathbb{R}^{N \\times N}$ is formulated with a damping factor $d = 0.85$:
 
-where $d \\in (0, 1)$ is the damping factor (typically $0.85$), $\\mathbf{B}$ is the row-normalized adjacency matrix where $B_{ij} = W_{ij} / \\sum_k W-[#030508]ik$ if $W_{ij} > \\theta$ (threshold $\\theta = 0.1$), and $\\mathbf{E}$ is an all-ones matrix.
+$$\\mathbf{M} = d \\mathbf{B} + \\frac{1 - d}{N} \\mathbf{1}_{N \\times N}$$
 
-The stationary probability vector $\\mathbf{p}$ satisfies the eigenvector equation:
+where $B_{ij} = \\frac{W_{ij}}{\\sum_{k} W_{ik}}$.
 
-$$\\mathbf{p}^T = \\mathbf{p}^T \\mathbf{M}$$
+The stationary probability vector $\\mathbf{p}$ is solved using power iteration until convergence:
 
-Sentences with high stationary probability $p_i$ occupy central information nodes in the document graph and are prioritized for inclusion in the final compressed prompt.`,
+$$\\mathbf{p}^{(k+1)} = \\mathbf{M}^T \\mathbf{p}^{(k)}$$`,
         codeSnippet: {
           language: "python",
           filename: "lexrank_core.py",
           code: `import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-def compute_lexrank_scores(sentences: list[str], threshold: float = 0.1, damping: float = 0.85) -> np.ndarray:
-    """Computes LexRank graph centrality stationary probability distribution vector."""
+def compute_sentence_centrality(sentences: list[str], threshold: float = 0.1, damping: float = 0.85) -> np.ndarray:
+    """Computes LexRank stationary probability distribution vector over sentence TF-IDF cosine matrix."""
     vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(sentences)
+    tfidf = vectorizer.fit_transform(sentences)
     
-    # Pairwise Cosine Similarity
-    sim_matrix = (tfidf_matrix * tfidf_matrix.T).toarray()
+    # Compute pairwise similarity matrix
+    sim_matrix = (tfidf * tfidf.T).toarray()
     n = len(sentences)
     
-    # Binarize threshold
-    adj_matrix = np.where(sim_matrix >= threshold, sim_matrix, 0.0)
-    row_sums = adj_matrix.sum(axis=1, keepdims=True)
+    # Apply similarity threshold
+    adj = np.where(sim_matrix >= threshold, sim_matrix, 0.0)
+    row_sums = adj.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1.0
     
-    # Row Normalization
-    stochastic_matrix = adj_matrix / row_sums
-    matrix = damping * stochastic_matrix + (1 - damping) / n * np.ones((n, n))
+    # Stochastic matrix formulation
+    b_matrix = adj / row_sums
+    m_matrix = damping * b_matrix + ((1.0 - damping) / n) * np.ones((n, n))
     
-    # Power Iteration for Eigenvector P
+    # Power iteration
     p = np.ones(n) / n
     for _ in range(50):
-        next_p = matrix.T @ p
+        next_p = m_matrix.T @ p
         if np.linalg.norm(next_p - p) < 1e-6:
             break
         p = next_p
-    return p`
-        }
+    return p`,
+        },
       },
       {
-        id: "priority-tier-verification",
-        title: "3. Priority Tier Retention Mechanics",
-        content: `Pure TF-IDF risks dropping low-frequency but critical instructions (e.g., "Must return valid JSON"). LLMSlim injects a 4-tier Priority Shield evaluation prior to sentence scoring:
+        id: "priority-shield-integration",
+        title: "3. Priority Tier Rule Layer",
+        content: `Statistical centrality alone cannot distinguish an essential imperative instruction (e.g., "Must return valid JSON") from background prose. 
 
-- **Tier 4 (Critical Directive - Retention 100%)**: Contains imperative anchors (\`must\`, \`never\`, \`ensure\`), code fences (\`\`\`\`), or system prompt markers.
-- **Tier 3 (Domain Entity - High Priority)**: Contains proper nouns, numbers, financial metrics, or URLs.
-- **Tier 2 (Contextual Explanation)**: Standard informative prose scored via LexRank graph centrality.
-- **Tier 1 (Fluff/Boilerplate)**: Low centrality, repetitive conversational padding.`,
-        benchmarkTable: {
-          headers: ["Method", "Execution Latency", "Fidelity Retention", "Token Reduction"],
-          rows: [
-            ["Uncompressed Prompt", "0 ms", "100.0%", "0%"],
-            ["LLMSlim (Deterministic Graph)", "24 ms", "100.0%", "54.2%"],
-            ["LLMLingua (Neural Small)", "340 ms", "96.4%", "50.1%"],
-            ["Random Sentence Truncation", "2 ms", "61.3%", "50.0%"]
-          ]
-        }
-      }
-    ]
+LLMSlim integrates a deterministic priority map $f: s_i \\mapsto \\{1, 2, 3, 4\\}$ evaluated prior to token selection:
+- **Tier 4 (Locked Directive)**: System role definitions, imperative constraint words (\`must\`, \`never\`, \`always\`), code fences (\`\`\`\`).
+- **Tier 3 (Entity Protection - High Priority)**: Sentences containing proper nouns, numbers, currency symbols, and technical identifiers.
+- **Tier 2 (Informative Prose)**: Sentences ranked strictly by LexRank probability $p_i$.
+- **Tier 1 (Redundant Padding)**: Sentences below similarity cutoff.`,
+      },
+    ],
   },
 
-  "semantic-compression": {
-    slug: "semantic-compression",
-    title: "Deep Semantic Compression: Graph Centrality vs. Neural Embedding Distillation",
-    subtitle: "Tradeoffs in Execution Latency, Memory Footprint, and Semantic Integrity",
-    abstract: "Comparative analysis of rule-guided graph centrality algorithms versus neural small language models for real-time prompt context reduction.",
-    author: "Principal ML Engineer",
-    authorRole: "LLM Systems Specialist",
-    publishedDate: "July 2026",
-    readingTime: "10 min read",
+  "attention-economics-and-complexity": {
+    slug: "attention-economics-and-complexity",
+    title: "Quadratic Attention Scaling O(N^2) & In-Context Token Reduction Economics",
+    subtitle: "Deriving Computation Savings in Transformer Self-Attention Layers",
+    abstract: "A mathematical analysis of Transformer self-attention complexity and how input token reduction directly lowers prefill floating-point operations (FLOPs) and provider billing metrics.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
+    readingTime: "8 min read",
     category: "Algorithms",
-    mathIntuitionSummary: "Neural methods compute token-level perplexity entropy H(x_i | x_<i), whereas graph methods compute global sentence similarity eigenvectors.",
+    mathIntuitionSummary: "Self-attention matrix multiplication QK^T requires O(N^2 d) operations for sequence length N, yielding quadratic FLOP reductions when prompt sequence length is compressed.",
     keyTakeaways: [
-      "Deterministic graph compression requires 0 GPU RAM and executes in < 30ms.",
-      "Neural entropy methods add 300ms+ inference latency and require local GPU memory allocations.",
-      "Hybrid priority tier filtering combined with TF-IDF outperforms pure perplexity pruning on instruction retention."
+      "Self-attention compute complexity scales quadratically O(N^2) with prompt length N.",
+      "Compressing prompt length by retention factor gamma reduces query-key matrix multiplication FLOPs to gamma^2 N^2.",
+      "API provider billing scales linearly with billed tokens while serving latency decreases during the prefill phase."
     ],
     references: [
-      { title: "LLMLingua: Compressing Prompts for Accelerated Inference", url: "https://arxiv.org/abs/2310.05736" }
+      {
+        citationKey: "Vaswani et al. (2017)",
+        title: "Attention Is All You Need (Advances in Neural Information Processing Systems)",
+        url: "https://arxiv.org/abs/1706.03762",
+      },
+      {
+        citationKey: "Dao et al. (2022)",
+        title: "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness",
+        url: "https://arxiv.org/abs/2205.14135",
+      },
     ],
     sections: [
       {
-        id: "neural-vs-graph",
-        title: "1. Algorithmic Comparison: Perplexity vs Centrality",
-        content: `Neural prompt compression evaluates conditional perplexity $P(x_i | x_{<i})$ using a small language model (e.g., Llama-3-8B or GPT-2 Small). Tokens with low surprise (low entropy) are candidates for deletion.
-
-However, conditional perplexity is directional and prone to dropping critical structural markers in non-standard prompt formats. Graph centrality, by contrast, views context bidirectionally as an interconnected information semantic graph.`,
-        codeSnippet: {
-          language: "python",
-          filename: "hybrid_pipeline.py",
-          code: `from llmslim import ContextCompressor
-
-# Initialize high-performance hybrid compressor
-compressor = ContextCompressor(
-    target_ratio=0.45,
-    mode="auto",
-    preserve_code=True,
-    preserve_entities=True
-)
-
-prompt = "System: Always output valid YAML schema. Details: Customer subscription plan renewed on 2026-07-15..."
-res = compressor.compress(prompt)
-print(f"Compressed in {res.execution_time_ms:.2f}ms with {res.savings_percent:.1f}% reduction")`
-        }
-      }
-    ]
-  },
-
-  "token-reduction": {
-    slug: "token-reduction",
-    title: "Token Reduction Economics: Mitigating Quadratic Attention Costs in RAG",
-    subtitle: "Understanding Transformer Attention Overhead O(N^2) and API Billing Thresholds",
-    abstract: "An architectural deep-dive into how reducing prompt length directly optimizes transformer matrix multiplication overhead and overall cloud deployment expenses.",
-    author: "Staff Infrastructure Engineer",
-    authorRole: "Enterprise Scaling Lead",
-    publishedDate: "July 2026",
-    readingTime: "11 min read",
-    category: "Economics",
-    mathIntuitionSummary: "Self-attention computational complexity scales as O(N^2 d) for sequence length N, making token reduction exponentially beneficial for TTFT.",
-    keyTakeaways: [
-      "Reducing sequence length by 50% cuts query-key matrix multiplication operations by 75%.",
-      "Enterprise API savings scale linearly with billing tokens and quadratically with self-attention FLOPs.",
-      "Prompt pruning dramatically lowers prefill latency (TTFT) on dedicated vLLM and TensorRT-LLM clusters."
-    ],
-    references: [
-      { title: "Efficient Transformers: A Survey", url: "https://arxiv.org/abs/2009.06732" }
-    ],
-    sections: [
-      {
-        id: "attention-complexity",
-        title: "1. The Mathematics of Attention Scaling",
+        id: "attention-flops-derivation",
+        title: "1. Mathematical Derivation of Attention FLOPs",
         content: `Standard Scaled Dot-Product Attention computes:
 
 $$\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V$$
 
-For input token length $N$ and hidden dimension $d$, matrix multiplication $QK^T$ requires $O(N^2 \\cdot d)$ floating-point operations.
+For sequence length $N$, batch size $B=1$, number of heads $H$, and head dimension $d_k$:
+1. $Q K^T$: Matrix multiplication between $(N \\times d_k)$ and $(d_k \\times N)$ yields $(N \\times N)$. This operation requires $2 N^2 d_k$ FLOPs per head.
+2. Softmax multiplication with $V$: Matrix multiplication between $(N \\times N)$ and $(N \\times d_k)$ requires $2 N^2 d_k$ FLOPs per head.
 
-When sequence length $N$ is reduced by $50\\%$ via LLMSlim ($N' = 0.5N$), matrix operations shrink by:
+Total multi-head self-attention prefill FLOPs:
 
-$$(0.5N)^2 = 0.25 N^2 \\implies \\mathbf{75\\% \\text{ Reduction in Attention FLOPs}}$$`,
-        mathFormula: "\\text{FLOPs}_{\\text{Attention}} = 2 \cdot b \cdot h \cdot N^2 \cdot d_k + 2 \cdot b \cdot h \cdot N \cdot d_k \cdot d_v"
-      }
-    ]
-  },
+$$\\text{FLOPs}_{\\text{Attn}} = 4 H N^2 d_k = 4 N^2 d_{\\text{model}}$$
 
-  "openai-cost-optimization": {
-    slug: "openai-cost-optimization",
-    title: "Cutting OpenAI API Expenses by 60%: Production Integration Patterns",
-    subtitle: "Real-world Engineering Architecture for High-Volume GPT-4o & GPT-5 Applications",
-    abstract: "Concrete implementation blueprints for integrating LLMSlim prompt compression into high-throughput OpenAI API services.",
-    author: "Staff Solutions Architect",
-    authorRole: "LLM Operations Specialist",
-    publishedDate: "July 2026",
-    readingTime: "9 min read",
-    category: "Economics",
-    mathIntuitionSummary: "Daily USD savings formula: Savings = (Tokens_raw - Tokens_slim) * (Req/day / 1M) * PricePer1M.",
-    keyTakeaways: [
-      "Compressing long RAG documents prior to OpenAI dispatch saves up to $15,000/month at 100k daily requests.",
-      "System prompt pre-compression caches static directives at startup for zero runtime overhead.",
-      "Preserving structured output schemas prevents invalid JSON responses from downstream GPT models."
-    ],
-    references: [
-      { title: "OpenAI Pricing Schedule & Developer Guidance", url: "https://openai.com/api/pricing" }
-    ],
-    sections: [
+When sequence length $N$ is compressed to $N' = \\gamma N$ (where $\\gamma \\in (0, 1)$):
+
+$$\\text{FLOPs}_{\\text{Attn}}' = 4 (\\gamma N)^2 d_{\\text{model}} = \\gamma^2 \\cdot \\text{FLOPs}_{\\text{Attn}}$$`,
+        mathFormula: "\\text{Ratio}_{\\text{FLOPs}} = \\frac{\\text{FLOPs}'}{\\text{FLOPs}} = \\gamma^2",
+      },
       {
-        id: "openai-wrapper",
-        title: "1. Production Middleware Call Pattern",
-        content: "Implement pre-dispatch context compression in standard OpenAI client code:",
-        codeSnippet: {
-          language: "python",
-          filename: "openai_gateway.py",
-          code: `from openai import OpenAI
-from llmslim import compress
-
-class OptimizedOpenAIClient:
-    def __init__(self):
-        self.client = OpenAI()
-        
-    def generate_summary(self, verbose_context: str, query: str) -> str:
-        # Surgically compress input RAG context to 40% target size
-        res = compress(verbose_context, target_ratio=0.4, mode="auto")
-        
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "You are an enterprise financial analyst."},
-                {"role": "user", "content": f"Context:\\n{res.compressed_text}\\n\\nQuery: {query}"}
-            ]
-        )
-        return response.choices[0].message.content`
-        }
-      }
-    ]
-  },
-
-  "claude-prompt-optimization": {
-    slug: "claude-prompt-optimization",
-    title: "Claude 3.5 Sonnet Prompt Optimization: Needle-in-a-Haystack Enhancement",
-    subtitle: "Eliminating Context Noise to Sharpen Anthropic Model Attention Focus",
-    abstract: "How context pruning mitigates attention distraction in 200k+ token windows on Anthropic Claude 3.5 Sonnet.",
-    author: "Principal AI Researcher",
-    authorRole: "Cognitive Systems Specialist",
-    publishedDate: "July 2026",
-    readingTime: "10 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Attentional entropy increases with noisy tokens; pruning increases softmax sharp probability on target answer tokens.",
-    keyTakeaways: [
-      "Extremely long context windows exhibit degraded retrieval accuracy when flooded with repetitive prose.",
-      "LLMSlim increases needle retrieval accuracy by isolating high-entropy information nodes.",
-      "System prompts written for Claude 3.5 Sonnet maintain 100% XML structural syntax during compression."
-    ],
-    references: [
-      { title: "Needle in a Haystack Performance Analysis", url: "https://anthropic.com/research" }
-    ],
-    sections: [
-      {
-        id: "claude-xml",
-        title: "1. XML Tag Retention in Claude System Prompts",
-        content: "Claude heavily relies on `<instructions>` and `<context>` tags. Priority Tier 4 automatically locks XML boundaries.",
-        codeSnippet: {
-          language: "python",
-          filename: "claude_xml_demo.py",
-          code: `from llmslim import compress
-
-claude_prompt = """
-<instructions>
-You MUST extract user entities strictly into <output> tags.
-</instructions>
-<context>
-The customer reported an incident on 2026-07-15 involving order ID #99281.
-Additional non-essential filler details describing background conversation...
-</context>
-"""
-
-result = compress(claude_prompt, target_ratio=0.5, mode="xml")
-print(result.compressed_text)`
-        }
-      }
-    ]
-  },
-
-  "gemini-prompt-compression": {
-    slug: "gemini-prompt-compression",
-    title: "Taming 1M+ Token Context Windows in Gemini 2.5 Pro",
-    subtitle: "High-Density Context Engineering for Multimodal & Massive Monolith Prompts",
-    abstract: "Strategies for managing million-token contexts in Gemini Pro pipelines to maintain fast response times and low API costs.",
-    author: "Staff AI Engineer",
-    authorRole: "LLMSlim Core Contributor",
-    publishedDate: "July 2026",
-    readingTime: "8 min read",
-    category: "Systems",
-    mathIntuitionSummary: "Large context windows amplify latency linearly in prefill; compressing input to 300k tokens yields ~3x faster TTFT.",
-    keyTakeaways: [
-      "1M+ context windows allow massive document inputs but suffer from high latency and cost.",
-      "Preprocessing input text with LLMSlim guarantees vital parameters are never diluted.",
-      "Works seamlessly across Google Vertex AI and Gemini REST SDKs."
-    ],
-    references: [
-      { title: "Google Gemini 1.5 & 2.5 Infrastructure Whitepaper", url: "https://deepmind.google/technologies/gemini" }
-    ],
-    sections: [
-      {
-        id: "gemini-pipeline",
-        title: "1. Vertex AI Pre-Compression Integration",
-        content: "Pass large document text through LLMSlim before invoking Google Generative AI bindings."
-      }
-    ]
-  },
-
-  "context-window-engineering": {
-    slug: "context-window-engineering",
-    title: "Context Window Engineering: Preventing Lost-in-the-Middle Attention Decay",
-    subtitle: "Empirical Analysis of U-Shaped Attention Loss in Deep Context Boundaries",
-    abstract: "Mitigating U-shaped attention degradation in long Transformer models using information centrality re-ordering.",
-    author: "Senior NLP Scientist",
-    authorRole: "Context Systems Group",
-    publishedDate: "July 2026",
-    readingTime: "11 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Transformers attend heavily to the initial tokens (head) and final tokens (tail), neglecting middle regions.",
-    keyTakeaways: [
-      "The 'Lost in the Middle' phenomenon degrades recall when facts reside in middle context tokens.",
-      "LLMSlim re-orders and prunes middle-density boilerplate, forcing key facts into high-attention head/tail positions.",
-      "Reduces hallucination probability by up to 34% on long-context QA datasets."
-    ],
-    references: [
-      { title: "Lost in the Middle: How Language Models Use Long Contexts (Liu et al.)", url: "https://arxiv.org/abs/2307.03172" }
-    ],
-    sections: [
-      {
-        id: "middle-decay",
-        title: "1. The Lost-in-the-Middle Curve",
-        content: "Transformers exhibit maximum retrieval probability at positions $0-15\\%$ and $85-100\\%$ of the prompt window. Information residing in $30-70\\%$ exhibits sharp recall degradation.",
-        benchmarkTable: {
-          headers: ["Fact Position in Context", "Uncompressed Recall Rate", "LLMSlim Compressed Recall"],
+        id: "flop-table",
+        title: "2. Relative FLOP Reduction Factor Table",
+        content: "Theoretical compute scaling factor relative to baseline sequence length $N$:",
+        tableData: {
+          headers: ["Retention Factor (gamma)", "Token Reduction (1 - gamma)", "Attention Compute Factor (gamma^2)", "FLOP Savings"],
           rows: [
-            ["0 - 10% (Head)", "98.2%", "99.1%"],
-            ["20 - 40% (Early Middle)", "74.1%", "94.5%"],
-            ["40 - 60% (Deep Middle)", "58.6%", "92.8%"],
-            ["60 - 80% (Late Middle)", "71.3%", "95.2%"],
-            ["90 - 100% (Tail)", "97.5%", "98.8%"]
-          ]
-        }
-      }
-    ]
+            ["1.0 (Baseline)", "0%", "1.00", "0%"],
+            ["0.8", "20%", "0.64", "36%"],
+            ["0.6", "40%", "0.36", "64%"],
+            ["0.5", "50%", "0.25", "75%"],
+            ["0.3", "70%", "0.09", "91%"],
+          ],
+        },
+      },
+    ],
   },
 
-  "llm-memory-optimization": {
-    slug: "llm-memory-optimization",
-    title: "LLM Memory Optimization: Multi-Turn Agent Trajectory Truncation",
-    subtitle: "Maintaining State Continuity Across 100+ Step Agent Executions",
-    abstract: "Engineering dynamic message sliding windows with semantic compression for continuous autonomous agent operations.",
-    author: "Staff Autonomous Agent Engineer",
-    authorRole: "Agent Infrastructure Lead",
-    publishedDate: "July 2026",
-    readingTime: "10 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "State persistence is preserved by shielding observation key-value results while pruning step-by-step intermediate chat dialogue.",
-    keyTakeaways: [
-      "Unbounded agent trajectories cause exponential token growth and context limit exhaustion.",
-      "compress_chat_messages() preserves initial goal directives and recent tool outputs.",
-      "Enables autonomous agents to run 100+ turns without exceeding 8k context bounds."
-    ],
-    references: [
-      { title: "Building Effective Agents (Anthropic Engineering)", url: "https://anthropic.com/research/building-effective-agents" }
-    ],
-    sections: [
-      {
-        id: "agent-state",
-        title: "1. Compressing Message Trajectories",
-        content: "Use `compress_chat_messages` to maintain conversation continuity:",
-        codeSnippet: {
-          language: "python",
-          filename: "agent_memory.py",
-          code: `from llmslim import compress_chat_messages
-
-history = [
-    {"role": "system", "content": "Goal: Refactor enterprise database schema."},
-    {"role": "user", "content": "Step 1: Execute SQL inspection query."},
-    {"role": "assistant", "content": "Execution result: [2,000 lines of raw table schema output...]"},
-    {"role": "user", "content": "Step 2: Generate migration script."}
-]
-
-# Compress past interaction history by 60% while shielding goal directives
-slim_history = compress_chat_messages(history, target_ratio=0.4)
-print(slim_history)`
-        }
-      }
-    ]
-  },
-
-  "compression-benchmarks": {
-    slug: "compression-benchmarks",
-    title: "Comprehensive Benchmarks: LLMSlim Evaluation Across GSM8K and HumanEval",
-    subtitle: "Empirical Rigor: Evaluating Instruction Fidelity, Entity Retention, and Latency Metrics",
-    abstract: "Comprehensive benchmark suite evaluating LLMSlim across reasoning, code synthesis, and factual recall benchmarks.",
-    author: "Principal Benchmarking Engineer",
-    authorRole: "Evaluation & Quality Group",
-    publishedDate: "July 2026",
+  "lost-in-the-middle-mitigation": {
+    slug: "lost-in-the-middle-mitigation",
+    title: "Mitigating U-Shaped Attention Recall Decay in Long Context Prompts",
+    subtitle: "Structuring Information Density to Overcome Position-Dependent Attention Loss",
+    abstract: "An examination of empirical attention position bias in Transformer architectures and how sentence-level centrality ranking repositions core information relative to head and tail context bounds.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
     readingTime: "9 min read",
-    category: "Benchmarks",
-    mathIntuitionSummary: "Accuracy retention delta = Acc(Compressed) / Acc(Uncompressed) >= 99.2%.",
+    category: "Context Engineering",
+    mathIntuitionSummary: "Transformers exhibit maximum retrieval fidelity at context boundaries (0-15% and 85-100%). Pruning redundant middle prose elevates critical sentences into higher attention regions.",
     keyTakeaways: [
-      "GSM8K math reasoning retains 99.4% accuracy under 50% prompt token reduction.",
-      "HumanEval python code synthesis retains 100.0% pass@1 rate when preserve_code=True.",
-      "CPU latency overhead averages 24.8ms per call."
+      "Information positioned in the middle 30-70% of long context prompts suffers from systematic recall degradation.",
+      "Extracting central informational sentences reduces total prompt volume and moves key facts closer to instruction boundaries.",
+      "Combines query relevance scoring with position preservation to maintain narrative coherence."
     ],
     references: [
-      { title: "GSM8K: Training Verifiers to Solve Math Word Problems", url: "https://arxiv.org/abs/2110.14168" },
-      { title: "Evaluating Large Language Models Trained on Code (HumanEval)", url: "https://arxiv.org/abs/2107.03374" }
+      {
+        citationKey: "Liu et al. (2023)",
+        title: "Lost in the Middle: How Language Models Use Long Contexts (Transactions of the Association for Computational Linguistics)",
+        url: "https://arxiv.org/abs/2307.03172",
+      },
     ],
     sections: [
       {
-        id: "benchmark-results",
-        title: "1. Benchmark Matrix Table",
-        content: "Results computed across 1,000 test cases per benchmark dataset:",
-        benchmarkTable: {
-          headers: ["Benchmark Dataset", "Uncompressed Score", "LLMSlim 50% Compressed", "Retention Rate"],
-          rows: [
-            ["GSM8K Math Reasoning", "92.4%", "91.8%", "99.35%"],
-            ["HumanEval Python Pass@1", "88.4%", "88.4%", "100.00%"],
-            ["MMLU Multi-Task Benchmark", "86.1%", "85.4%", "99.18%"],
-            ["SQuAD 2.0 Reading Comp", "89.7%", "89.2%", "99.44%"]
-          ]
-        }
-      }
-    ]
-  },
+        id: "middle-bias-phenomenon",
+        title: "1. The Lost-in-the-Middle Phenomenon",
+        content: `Research by Liu et al. (2023) established that decoder language models exhibit a U-shaped performance curve when retrieving information from input documents:
 
-  "building-ai-agents-efficiently": {
-    slug: "building-ai-agents-efficiently",
-    title: "Building High-Throughput Autonomous AI Agents with Sub-30ms Gateways",
-    subtitle: "High-Performance Architecture for Multi-Agent Orchestration Frameworks",
-    abstract: "Architecture pattern for deploying prompt compression gateways in CrewAI, AutoGen, and LangChain multi-agent loops.",
-    author: "Staff Autonomous Systems Engineer",
-    authorRole: "Distributed AI Architecture",
-    publishedDate: "July 2026",
-    readingTime: "11 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Multi-agent systems suffer N_agents * N_turns exponential token accumulation; gateway compression controls growth to O(1).",
-    keyTakeaways: [
-      "Inter-agent messaging rapidly causes context bloat in consensus networks.",
-      "Deploying LLMSlim as a sidecar proxy keeps prompt sizes stable across multi-agent turns.",
-      "Reduces total swarm operational costs by over 65%."
-    ],
-    references: [
-      { title: "AutoGen: Enabling Next-Gen LLM Applications", url: "https://arxiv.org/abs/2308.08155" }
-    ],
-    sections: [
-      {
-        id: "swarm-architecture",
-        title: "1. Swarm Gateway Compression Architecture",
-        content: "Intercept communication payloads between Manager and Worker agents to prune redundant conversation history."
-      }
-    ]
-  },
+- **Head Bias**: High recall accuracy when target information resides near the initial system directives ($0-15\\%$ of context).
+- **Tail Bias**: High recall accuracy when target information resides adjacent to the final prompt query ($85-100\\%$ of context).
+- **Middle Degradation**: Statistically significant drop in recall performance when critical facts reside in the middle $30-70\\%$ region.
 
-  "rag-context-pruning": {
-    slug: "rag-context-pruning",
-    title: "Vector Database to LLM Pipeline: Surgical RAG Context Pruning",
-    subtitle: "Ranking and Stripping Irrelevant Vector Retrieval Chunks Prior to LLM Prefill",
-    abstract: "Combining HNSW vector similarity search with query-aware sentence-level compression for ultra-dense RAG contexts.",
-    author: "Senior RAG Infrastructure Engineer",
-    authorRole: "Search Systems Group",
-    publishedDate: "July 2026",
-    readingTime: "9 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Vector search returns block-level chunks; LLMSlim performs sub-chunk sentence ranking using cross-entropy and query similarity.",
-    keyTakeaways: [
-      "Vector search chunks often contain 70% irrelevant filler surrounding the single target sentence.",
-      "compress_documents() extracts high-relevance sentences across top-K vector results.",
-      "Improves answer fidelity while cutting input payload size by 60%."
-    ],
-    references: [
-      { title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks", url: "https://arxiv.org/abs/2005.11401" }
-    ],
-    sections: [
+By identifying and removing non-essential filler sentences from document contexts, LLMSlim reduces overall sequence length, effectively moving mid-document facts closer to high-attention boundaries.`,
+      },
       {
-        id: "vector-pruning-code",
-        title: "1. Integration Code for Vector Retrievers",
-        content: "Wrap vector search results before sending to the model:",
+        id: "rag-document-compression",
+        title: "2. Query-Aware Document Compression Implementation",
+        content: "Using `compress_documents()` to extract relevant sentences across retrieved vector chunks:",
         codeSnippet: {
           language: "python",
           filename: "rag_pruner.py",
           code: `from llmslim import compress_documents
 
-def build_rag_payload(query: str, retrieved_chunks: list[str]) -> str:
-    # Perform query-focused sentence extraction across all retrieved chunks
-    compressed_docs = compress_documents(retrieved_chunks, query=query, target_ratio=0.35)
-    
-    # Reassemble high-density prompt context
-    return "\\n---\\n".join([doc.compressed_text for doc in compressed_docs])`
-        }
-      }
-    ]
+retrieved_chunks = [
+    "Doc Chunk 1: Background corporate history founded in 2012...",
+    "Doc Chunk 2: Q3 Financial Results: Net operating income reached $4.2M, representing a 14% YoY increase...",
+    "Doc Chunk 3: Additional administrative overhead details and disclaimers..."
+]
+
+query = "What was the Q3 net operating income?"
+
+# Compress documents with query-focused sentence scoring
+compressed_docs = compress_documents(retrieved_chunks, query=query, target_ratio=0.4)
+
+for idx, doc in enumerate(compressed_docs):
+    print(f"--- Chunk {idx+1} ---")
+    print(doc.compressed_text)`,
+        },
+      },
+    ],
   },
 
   "priority-tier-protection": {
     slug: "priority-tier-protection",
-    title: "Formal Verification of Priority Tier Shields: Protecting Code Syntax & Directives",
-    subtitle: "Rule-Based Deterministic Safety Guarantees under 70% Context Reductions",
-    abstract: "Technical specification of LLMSlim's Priority Tier engine and formal AST syntax protection rules.",
-    author: "Staff Security & Safety Engineer",
-    authorRole: "Fidelity Verification Team",
-    publishedDate: "July 2026",
-    readingTime: "8 min read",
-    category: "Algorithms",
-    mathIntuitionSummary: "Priority assignment function map f: S -> {1,2,3,4} overrides TF-IDF weights when tier(s_i) = 4.",
-    keyTakeaways: [
-      "Imperative system instructions (MUST, NEVER, RETURN JSON) are hard-locked to Tier 4.",
-      "Code blocks (```python ... ```) maintain AST syntactic validity without broken syntax trees.",
-      "Prevents prompt injection or accidental constraint stripping."
-    ],
-    references: [
-      { title: "Formal Verification in Software Engineering", url: "https://acm.org" }
-    ],
-    sections: [
-      {
-        id: "tier-map",
-        title: "1. Priority Mapping Logic",
-        content: "Priority assignment executes before graph centrality scoring, creating explicit hard retention bounds."
-      }
-    ]
-  },
-
-  "structured-output-compression": {
-    slug: "structured-output-compression",
-    title: "Compressing JSON, XML, and YAML Structures without Invocation Failures",
-    subtitle: "Syntax-Aware Context Compression for Function Calling & Schema Prompts",
-    abstract: "How LLMSlim prunes JSON and YAML data payloads while preserving strict syntactic validity and key hierarchy.",
-    author: "Senior Software Engineer",
-    authorRole: "Structured Data Tools",
-    publishedDate: "July 2026",
+    title: "Deterministic Safety Shields: Priority Tier Protection Mechanisms",
+    subtitle: "Formal Syntactic Safeguards for Directives, Code Blocks, and Structured Data",
+    abstract: "Technical breakdown of how LLMSlim prevents the accidental deletion of system rules, code syntax, and imperative directives during statistical context pruning.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
     readingTime: "7 min read",
-    category: "Systems",
-    mathIntuitionSummary: "AST parser strips redundant keys and empty arrays while maintaining schema node invariants.",
+    category: "Systems & Architecture",
+    mathIntuitionSummary: "Overrides TF-IDF and centrality scores for sentences matching Tier 4 deterministic regex patterns and AST code fence boundaries.",
     keyTakeaways: [
-      "Compressing raw JSON via standard regex breaks structure; LLMSlim uses AST syntax-aware normalization.",
-      "Strips repeated dictionary entries while preserving mandatory schema fields.",
-      "Ideal for compressing large API payloads fed into LLMs."
+      "Pure statistical sentence scoring risks dropping low-frequency imperative directives.",
+      "Priority Tier 4 locks system role definitions, constraint keywords (MUST, NEVER), and code fences.",
+      "Ensures AST syntactic integrity for Python, JavaScript, and JSON code snippets embedded in prompts."
     ],
     references: [
-      { title: "JSON Schema Specification & AST Parsing", url: "https://json-schema.org" }
+      {
+        citationKey: "LLMSlim Core Docs",
+        title: "LLMSlim Core Engine Architecture & Priority Shield Implementation",
+        url: "https://llmslim.app/docs/core-concepts",
+      },
     ],
     sections: [
       {
-        id: "json-mode-demo",
-        title: "1. Syntax-Aware JSON Compression",
-        content: "Example of compressing large payload arrays:",
+        id: "priority-tier-specification",
+        title: "1. Priority Tier Classification Specification",
+        content: `To ensure prompt compression never breaks application invariants, sentences are classified into four discrete priority tiers:
+
+- **Tier 4 (Hard Lock - 100% Retention)**: Imperative keywords (\`must\`, \`never\`, \`always\`, \`required\`), role declarations (\`System:\`, \`User:\`), and fenced code blocks.
+- **Tier 3 (Entity Protection - High Priority)**: Sentences containing proper nouns, numbers, currency symbols, and technical identifiers.
+- **Tier 2 (Informative Content - Scored)**: Standard informative sentences evaluated by graph centrality.
+- **Tier 1 (Structural Padding - Eligible for Pruning)**: Low-centrality conversational fluff.`,
         codeSnippet: {
           language: "python",
-          filename: "json_opt_demo.py",
-          code: `from llmslim import compress
+          filename: "llmslim/modes.py",
+          code: `import re
 
-json_payload = '''{
-  "status": "success",
-  "data": [
-    {"id": 101, "event": "click", "timestamp": "2026-07-15T00:00:00Z", "metadata": {"ip": "1.1.1.1", "agent": "Mozilla"}},
-    {"id": 102, "event": "click", "timestamp": "2026-07-15T00:01:00Z", "metadata": {"ip": "1.1.1.1", "agent": "Mozilla"}}
-  ]
-}'''
-
-res = compress(json_payload, mode="json", target_ratio=0.5)
-print(res.compressed_text)`
-        }
-      }
-    ]
-  },
-
-  "offline-vs-neural-compression": {
-    slug: "offline-vs-neural-compression",
-    title: "Offline Deterministic Compression vs. Neural Models: Production Tradeoffs",
-    subtitle: "Architectural Comparison Across Throughput, Cost, and Maintenance Overhead",
-    abstract: "Comparing offline C-extension/TF-IDF architectures against neural compressor models like LLMLingua-2 in production gateways.",
-    author: "Principal Systems Architect",
-    authorRole: "Infrastructure Lead",
-    publishedDate: "July 2026",
-    readingTime: "10 min read",
-    category: "Systems",
-    mathIntuitionSummary: "Offline TF-IDF requires O(N) memory; Neural small LM requires GPU VRAM allocation and batching queue overhead.",
-    keyTakeaways: [
-      "Offline compression eliminates cold starts and GPU infrastructure billing.",
-      "Deterministic algorithms yield 100% predictable execution times with zero variance.",
-      "Neural models offer slightly higher fluency but introduce heavy deployment complexity."
-    ],
-    references: [
-      { title: "High-Performance Systems Design for ML Infrastructure", url: "https://systems.stanford.edu" }
-    ],
-    sections: [
-      {
-        id: "tradeoff-matrix",
-        title: "1. Architectural Comparison Matrix",
-        content: "Evaluate key operational metrics across deployment models:",
-        benchmarkTable: {
-          headers: ["Metric", "LLMSlim (Offline Graph)", "LLMLingua-2 (Neural Small LM)", "Raw Uncompressed"],
-          rows: [
-            ["GPU VRAM Required", "0 MB", "4,096 MB", "0 MB"],
-            ["Average P99 Latency", "28 ms", "380 ms", "0 ms"],
-            ["Infrastructure Cost", "$0.00 / mo", "$180 / mo GPU node", "$0.00 / mo"],
-            ["Instruction Fidelity Shield", "100.0% Guaranteed", "Probabilistic", "100.0%"]
-          ]
-        }
-      }
-    ]
-  },
-
-  "multi-turn-chat-distillation": {
-    slug: "multi-turn-chat-distillation",
-    title: "Conversational History Distillation: Compressing 100-Turn Support Logs",
-    subtitle: "Maintaining State Continuity in Customer Service and Technical Support Bots",
-    abstract: "Techniques for condensing long multi-turn support chats into token-dense context windows while retaining customer intent.",
-    author: "Lead Conversational AI Engineer",
-    authorRole: "Support Automation Team",
-    publishedDate: "July 2026",
-    readingTime: "8 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Retains customer goal declarations and agent resolution steps while discarding repetitive conversational pleasantries.",
-    keyTakeaways: [
-      "100-turn support transcripts rapidly exhaust model context limits.",
-      "LLMSlim prunes greeting fluff while locking diagnostic facts and account numbers.",
-      "Cuts conversational token costs by up to 65%."
-    ],
-    references: [
-      { title: "State Management in Conversational AI Agents", url: "https://arxiv.org" }
-    ],
-    sections: [
-      {
-        id: "support-chat-recipe",
-        title: "1. Chat Distillation Script",
-        content: "Process multi-turn message histories:",
-        codeSnippet: {
-          language: "python",
-          filename: "distill_chat.py",
-          code: `from llmslim import compress_chat_messages
-
-chat_transcript = [
-    {"role": "system", "content": "You are a customer support agent."},
-    {"role": "user", "content": "Hi there! I am having an issue with my subscription payment."},
-    {"role": "assistant", "content": "Hello! I would be glad to help you. Could you please provide your account email?"},
-    {"role": "user", "content": "Sure, it is alex@example.com and the error code is ERR_PAYMENT_FAILED_502."}
+TIER_4_PATTERNS = [
+    re.compile(r"\\b(must|never|always|required|strictly|do not|shall not)\\b", re.IGNORECASE),
+    re.compile(r"^(system|developer|user|assistant):", re.IGNORECASE),
 ]
 
-slim_chat = compress_chat_messages(chat_transcript, target_ratio=0.5)
-print(slim_chat)`
-        }
-      }
-    ]
+def evaluate_sentence_priority(sentence: str, is_inside_code_fence: bool) -> int:
+    """Evaluates deterministic priority tier for a given sentence boundary."""
+    if is_inside_code_fence:
+        return 4
+    for pattern in TIER_4_PATTERNS:
+        if pattern.search(sentence):
+            return 4
+    return 2  # Default candidate for centrality scoring`,
+        },
+      },
+    ],
   },
 
-  "fine-tuning-vs-compression": {
-    slug: "fine-tuning-vs-compression",
-    title: "Fine-Tuning vs. In-Context Compression: Cost & Operational Analysis",
-    subtitle: "When to Fine-Tune vs. When to Prune Prompts in Enterprise AI Architecture",
-    abstract: "Financial and engineering comparison between custom model fine-tuning and in-context prompt compression.",
-    author: "Director of AI Engineering",
-    authorRole: "Enterprise AI Strategy",
-    publishedDate: "July 2026",
-    readingTime: "9 min read",
-    category: "Economics",
-    mathIntuitionSummary: "Fine-tuning requires upfront training capital T_train + maintenance; In-context compression reduces operational API costs immediately.",
+  "structured-output-normalization": {
+    slug: "structured-output-normalization",
+    title: "AST Syntax-Aware Normalization for JSON, XML, and YAML Prompts",
+    subtitle: "Compressing Structural Data Payloads Without Invocation Failures",
+    abstract: "A deep dive into format-specific optimizers for JSON, XML, and Markdown prompts that preserve schema definitions while removing whitespace and duplicate metadata.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
+    readingTime: "7 min read",
+    category: "Systems & Architecture",
+    mathIntuitionSummary: "Parses structured inputs into AST node trees, normalizes formatting whitespace, and prunes low-entropy array elements while validating schema structure.",
     keyTakeaways: [
-      "Fine-tuning bakes static knowledge into weights but requires continuous re-training for dynamic data.",
-      "In-context compression enables dynamic knowledge insertion while mitigating token cost penalties.",
-      "Combining lightweight fine-tuning with prompt compression delivers the highest ROI."
+      "Compressing JSON or XML via raw text token truncation causes syntax errors and parse failures.",
+      "LLMSlim format optimizers validate AST integrity before and after structural reduction.",
+      "Safely compresses large JSON API payloads passed into function-calling LLMs."
     ],
     references: [
-      { title: "The Economics of Large Language Models (SemiAnalysis)", url: "https://semianalysis.com" }
+      {
+        citationKey: "ECMA-404",
+        title: "The JSON Data Interchange Syntax Standard (Ecma International)",
+        url: "https://www.json.org",
+      },
     ],
     sections: [
       {
-        id: "cost-model",
-        title: "1. Total Cost of Ownership (TCO) Model",
-        content: "Calculate break-even operational thresholds across volume scales."
-      }
-    ]
-  },
-
-  "attention-saliency-mapping": {
-    slug: "attention-saliency-mapping",
-    title: "Mapping LLM Attention Saliency to Compress Prompts Without Hallucination",
-    subtitle: "Aligning Context Pruning with Multi-Head Attention Weight Distributions",
-    abstract: "Correlating LLMSlim sentence centrality rankings with multi-head self-attention saliency maps across Llama-3 and Qwen models.",
-    author: "Research Scientist",
-    authorRole: "Interpretability Group",
-    publishedDate: "July 2026",
-    readingTime: "11 min read",
-    category: "Algorithms",
-    mathIntuitionSummary: "Saliency S(s_i) = ||grad_s_i L|| * ||s_i|| correlates strongly (r > 0.82) with LLMSlim LexRank centrality scores.",
-    keyTakeaways: [
-      "LLM attention heads focus overwhelmingly on high-centrality sentence nodes.",
-      "Pruning sentences with low attention saliency causes zero metric hallucination increase.",
-      "Provides interpretability verification for automated context compression."
-    ],
-    references: [
-      { title: "What Does BERT Look At? An Analysis of Attention Matrices", url: "https://arxiv.org/abs/1906.04341" }
-    ],
-    sections: [
-      {
-        id: "saliency-correlation",
-        title: "1. Saliency Alignment Analysis",
-        content: "Sentences identified as low-centrality by LLMSlim exhibit under 2% attention activation across Transformer heads."
-      }
-    ]
-  },
-
-  "token-budgeting-algorithms": {
-    slug: "token-budgeting-algorithms",
-    title: "Token Budgeting Algorithms for Multi-Agent Consensus Networks",
-    subtitle: "Dynamic Token Allocation and Priority Quota Management in Agent Systems",
-    abstract: "Algorithmic resource management for allocating token budgets across cooperating AI agent nodes.",
-    author: "Staff Distributed Systems Engineer",
-    authorRole: "Swarm Intelligence Infrastructure",
-    publishedDate: "July 2026",
-    readingTime: "10 min read",
-    category: "RAG & Agents",
-    mathIntuitionSummary: "Knapsack formulation: Maximize sum(Utility_i * x_i) subject to sum(Tokens_i * x_i) <= Token_Budget.",
-    keyTakeaways: [
-      "Unconstrained multi-agent loops cause sudden token budget exhaustion.",
-      "LLMSlim dynamic budgeting allocates token caps per agent based on task criticality.",
-      "Prevents runaway API billing spikes in autonomous workflows."
-    ],
-    references: [
-      { title: "Distributed Consensus and Resource Allocation in Agent Networks", url: "https://ieee.org" }
-    ],
-    sections: [
-      {
-        id: "knapsack-budgeting",
-        title: "1. Knapsack Token Allocation Algorithm",
-        content: "Solve dynamic token distribution across worker agent sub-tasks:"
-      }
-    ]
-  },
-
-  "python-high-performance-extensions": {
-    slug: "python-high-performance-extensions",
-    title: "Accelerating Prompt Compression with C-Extensions, SIMD, and Rust FFI",
-    subtitle: "Achieving Sub-5ms Context Reduction on High-Throughput CPU Clusters",
-    abstract: "Technical guide to LLMSlim's C-extension and SIMD vectorization implementations for maximum processing throughput.",
-    author: "Principal Performance Engineer",
-    authorRole: "Core C/Rust Systems Team",
-    publishedDate: "July 2026",
-    readingTime: "9 min read",
-    category: "Systems",
-    mathIntuitionSummary: "AVX-512 SIMD vectorization computes dot products across 16 float32 values in a single CPU instruction cycle.",
-    keyTakeaways: [
-      "Python CPU bottlenecks in TF-IDF sparse matrix multiplication are bypassed via C-extensions.",
-      "AVX-512 vectorization reduces sentence scoring time from 28ms to 4.2ms.",
-      "Zero allocation memory reuse minimizes Python garbage collection overhead."
-    ],
-    references: [
-      { title: "Intel AVX-512 Vectorization Architecture Guide", url: "https://intel.com" }
-    ],
-    sections: [
-      {
-        id: "simd-acceleration",
-        title: "1. SIMD Dot Product Optimization",
-        content: "Implementation highlights of C-accelerated similarity scoring engine."
-      }
-    ]
-  },
-
-  "enterprise-llm-gateway-architecture": {
-    slug: "enterprise-llm-gateway-architecture",
-    title: "Enterprise LLM Gateway Architecture: Reverse Proxy Context Pruning at 100k QPS",
-    subtitle: "Building High-Availability Prompt Compression Proxy Infrastructure in Go / Rust / Envoy",
-    abstract: "Architecture blueprint for placing LLMSlim as a transparent reverse proxy in enterprise LLM API traffic paths.",
-    author: "Distinguished Enterprise Architect",
-    authorRole: "Global Infrastructure Group",
-    publishedDate: "July 2026",
-    readingTime: "12 min read",
-    category: "Systems",
-    mathIntuitionSummary: "Transparent reverse proxy intercepts POST /v1/chat/completions payloads, applies streaming compression, and forwards to target provider.",
-    keyTakeaways: [
-      "Deploying compression as an API Gateway proxy requires zero code changes from application developers.",
-      "Transparently reduces total enterprise OpenAI & Anthropic invoices by 50%+.",
-      "Built with high-availability load balancing, health checks, and fallback circuits."
-    ],
-    references: [
-      { title: "Envoy Proxy Architecture & Filter Subsystem", url: "https://envoyproxy.io" }
-    ],
-    sections: [
-      {
-        id: "gateway-proxy-design",
-        title: "1. Reverse Proxy System Blueprint",
-        content: "The gateway transparently intercepts outgoing provider requests:",
+        id: "json-optimizer-code",
+        title: "1. Structural JSON Compression Pattern",
+        content: "Using format-specific modes in LLMSlim:",
         codeSnippet: {
           language: "python",
-          filename: "proxy_gateway.py",
+          filename: "json_opt_example.py",
+          code: `from llmslim import compress
+
+json_prompt = """{
+  "request_id": "req_99281a",
+  "instructions": "Extract entities from payload",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "user_name": {"type": "string"},
+      "user_id": {"type": "integer"}
+    }
+  }
+}"""
+
+# Perform AST syntax-aware normalization and compression
+result = compress(json_prompt, mode="json", target_ratio=0.5)
+
+print(f"Original Tokens: {result.original_tokens}")
+print(f"Compressed Tokens: {result.compressed_tokens}")
+print(result.compressed_text)`,
+        },
+      },
+    ],
+  },
+
+  "offline-graph-vs-neural-compression": {
+    slug: "offline-graph-vs-neural-compression",
+    title: "Architectural Comparison: Offline Graph Methods vs. Neural Perplexity Pruning",
+    subtitle: "Evaluating Throughput, Hardware Footprint, and Latency Metrics for Edge & Cloud Gateways",
+    abstract: "An objective engineering analysis comparing zero-dependency offline algorithms (TF-IDF/LexRank) against neural language model prompt compressors (e.g., LLMLingua).",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
+    readingTime: "9 min read",
+    category: "Benchmarking Methodology",
+    mathIntuitionSummary: "Neural methods calculate conditional perplexity H(x_i | x_<i) using a small local model; offline graph methods compute TF-IDF cosine centrality over CPU matrices.",
+    keyTakeaways: [
+      "Offline graph compression incurs zero GPU memory allocations and minimal CPU overhead.",
+      "Neural compression uses small LMs to evaluate token perplexity but introduces model cold-start and VRAM dependencies.",
+      "Hybrid architectures combine rule-based priority locking with CPU graph centrality for reliable API gateways."
+    ],
+    references: [
+      {
+        citationKey: "Jiang et al. (2023)",
+        title: "LLMLingua: Compressing Prompts for Accelerated Inference (EMNLP 2023)",
+        url: "https://arxiv.org/abs/2310.05736",
+      },
+    ],
+    sections: [
+      {
+        id: "architectural-comparison",
+        title: "1. Operational Tradeoff Matrix",
+        content: "System requirements and trade-offs between offline graph compressors and neural perplexity models:",
+        tableData: {
+          headers: ["Dimension", "Offline Graph (LLMSlim)", "Neural Perplexity (LLMLingua)"],
+          rows: [
+            ["GPU VRAM Requirement", "0 MB (Pure CPU)", "2,048 MB - 8,192 MB"],
+            ["External Dependencies", "None (Standard NumPy / SciPy)", "PyTorch / Transformers Model Weights"],
+            ["Execution Characteristics", "Deterministic P99 Latency", "Varied by Batch Size & GPU Queue"],
+            ["Instruction Shielding", "Explicit Rule-Based Locking", "Probabilistic Perplexity Threshold"],
+            ["Deployment Targets", "Lambda, Edge, CLI, Microservices", "GPU Node Clusters"],
+          ],
+        },
+      },
+    ],
+  },
+
+  "enterprise-gateway-integration": {
+    slug: "enterprise-gateway-integration",
+    title: "Reverse Proxy Gateway Integration: Context Compression in Production Python Gateways",
+    subtitle: "Deploying Transparent Pre-Dispatch Context Optimization in Enterprise Services",
+    abstract: "A complete step-by-step engineering blueprint for deploying LLMSlim context compression inside FastAPI API gateways and async HTTP clients.",
+    author: "Yashvardhan Thanvi",
+    authorRole: "LLMSlim Author & Core Maintainer",
+    publishedDate: "July 15, 2026",
+    lastUpdated: "July 15, 2026",
+    readingTime: "8 min read",
+    category: "Systems & Architecture",
+    mathIntuitionSummary: "Intercepts POST payloads, measures prompt token length, applies compression if length exceeds threshold N_min, and forwards payload to provider.",
+    keyTakeaways: [
+      "Gateway proxy patterns decouple prompt optimization logic from downstream application code.",
+      "Threshold-based routing compresses long RAG contexts while bypassing short query requests.",
+      "Preserves original system messages and API request/response contracts."
+    ],
+    references: [
+      {
+        citationKey: "FastAPI Documentation",
+        title: "FastAPI Middleware & Asynchronous Routing Architecture",
+        url: "https://fastapi.tiangolo.com/tutorial/middleware/",
+      },
+    ],
+    sections: [
+      {
+        id: "fastapi-gateway-code",
+        title: "1. Production FastAPI Interceptor Implementation",
+        content: "Implementing a transparent reverse proxy route:",
+        codeSnippet: {
+          language: "python",
+          filename: "gateway_proxy.py",
           code: `from fastapi import FastAPI, Request, Response
 import httpx
 from llmslim import compress
 
 app = FastAPI()
-client = httpx.AsyncClient()
+http_client = httpx.AsyncClient()
+
+MIN_COMPRESSION_THRESHOLD = 500  # Only compress prompts over 500 tokens
 
 @app.post("/v1/chat/completions")
 async def proxy_chat_completions(request: Request):
-    body = await request.json()
+    payload = await request.json()
+    messages = payload.get("messages", [])
     
-    # Transparently compress system & user messages
-    for msg in body.get("messages", []):
-        if len(msg.get("content", "")) > 1000:
-            msg["content"] = compress(msg["content"], target_ratio=0.5).compressed_text
-            
-    # Forward to target LLM provider API
-    resp = await client.post("https://api.openai.com/v1/chat/completions", json=body, headers=dict(request.headers))
-    return Response(content=resp.content, status_code=resp.status_code, headers=dict(resp.headers))`
-        }
-      }
-    ]
-  }
+    # Process system and context messages
+    for msg in messages:
+        content = msg.get("content", "")
+        if len(content) > MIN_COMPRESSION_THRESHOLD:
+            compressed = compress(content, target_ratio=0.5).compressed_text
+            msg["content"] = compressed
+
+    # Forward to target LLM provider (e.g. OpenAI)
+    headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+    provider_res = await http_client.post(
+        "https://api.openai.com/v1/chat/completions",
+        json=payload,
+        headers=headers
+    )
+    
+    return Response(
+        content=provider_res.content,
+        status_code=provider_res.status_code,
+        headers=dict(provider_res.headers)
+    )`,
+        },
+      },
+    ],
+  },
 };

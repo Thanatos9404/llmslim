@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { constructMetadata } from "@/lib/seo";
 import { ARTICLES_REGISTRY } from "@/data/articles";
 import { DocCodeBlock } from "@/components/docs/DocCodeBlock";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, Cpu, FileText, Sigma, CheckCircle2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Clock, Sigma, CheckCircle2, ExternalLink, Calendar, User } from "lucide-react";
 import { Card } from "@/components/design-system";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   return constructMetadata({
-    title: `${article.title} — LLMSlim Engineering Papers`,
+    title: `${article.title} — LLMSlim Technical Papers`,
     description: `${article.subtitle}. ${article.abstract}`,
   });
 }
@@ -45,10 +45,12 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
     description: article.abstract,
     url: `https://llmslim.app/articles/${article.slug}`,
     datePublished: "2026-07-15",
+    dateModified: "2026-07-15",
     author: {
       "@type": "Person",
       name: article.author,
       jobTitle: article.authorRole,
+      url: "https://github.com/Thanatos9404",
     },
     publisher: {
       "@type": "Organization",
@@ -70,21 +72,29 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
 
       {/* Top Navigation Back Link */}
       <Link href="/articles" className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-emerald-400 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Engineering Index
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Technical Papers Index
       </Link>
 
-      {/* Article Header */}
+      {/* Article Header & Rigorous Metadata */}
       <div className="space-y-5 border-b border-white/10 pb-8">
         <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-400">
           <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
-            {article.category} Track
+            {article.category}
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {article.readingTime}
           </span>
           <span>•</span>
-          <span>By {article.author} ({article.authorRole})</span>
+          <span className="flex items-center gap-1 text-slate-300">
+            <User className="w-3.5 h-3.5 text-emerald-400" />
+            <strong>{article.author}</strong> ({article.authorRole})
+          </span>
+          <span>•</span>
+          <span className="flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5" />
+            Published: {article.publishedDate} (Updated: {article.lastUpdated})
+          </span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
@@ -100,17 +110,17 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
       <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-sans text-sm space-y-2">
         <div className="flex items-center gap-2 font-mono text-xs font-bold text-emerald-400 uppercase tracking-widest">
           <Sigma className="w-4 h-4" />
-          Mathematical Intuition Summary
+          Mathematical Intuition & Formal Derivation
         </div>
         <p className="pl-6 font-mono text-xs leading-relaxed text-emerald-200">
           {article.mathIntuitionSummary}
         </p>
       </div>
 
-      {/* Key Takeaways Card */}
+      {/* Key Architectural Takeaways Card */}
       <Card glowColor="emerald" className="p-6 space-y-4">
         <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> Key Architectural Takeaways
+          <CheckCircle2 className="w-4 h-4" /> Key Takeaways
         </h2>
         <ul className="space-y-2 text-xs font-sans text-slate-300">
           {article.keyTakeaways.map((takeaway, idx) => (
@@ -130,14 +140,14 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
               {section.title}
             </h2>
 
-            <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-line space-y-4">
+            <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-line space-y-4 font-sans">
               {section.content}
             </div>
 
             {/* LaTeX Math Formula Block */}
             {section.mathFormula && (
-              <div className="my-6 p-4 rounded-xl bg-[#0D121C] border border-white/10 font-mono text-xs text-center text-cyan-300 overflow-x-auto shadow-xl">
-                <span className="text-[10px] uppercase text-slate-500 block mb-1">Equation Formulation</span>
+              <div className="my-6 p-4.5 rounded-2xl bg-[#0D121C] border border-white/10 font-mono text-xs text-center text-cyan-300 overflow-x-auto shadow-xl">
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Mathematical Formula</span>
                 <code>{section.mathFormula}</code>
               </div>
             )}
@@ -151,13 +161,13 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
               />
             )}
 
-            {/* Benchmark Data Table */}
-            {section.benchmarkTable && (
+            {/* Data Table */}
+            {section.tableData && (
               <div className="my-6 overflow-x-auto rounded-2xl border border-white/10 bg-[#0D121C] font-mono text-xs">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/10 bg-[#070A0F] text-emerald-400">
-                      {section.benchmarkTable.headers.map((header, idx) => (
+                      {section.tableData.headers.map((header, idx) => (
                         <th key={idx} className="px-4 py-3 font-bold uppercase tracking-wider">
                           {header}
                         </th>
@@ -165,7 +175,7 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-slate-200">
-                    {section.benchmarkTable.rows.map((row, rIdx) => (
+                    {section.tableData.rows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-white/[0.02] transition-colors font-tabular">
                         {row.map((cell, cIdx) => (
                           <td key={cIdx} className="px-4 py-3">
@@ -182,22 +192,23 @@ export default async function ArticleSlugPage({ params }: { params: Promise<{ sl
         ))}
       </div>
 
-      {/* References Section */}
+      {/* Peer-Reviewed References & Citations */}
       {article.references.length > 0 && (
         <div className="pt-10 border-t border-white/10 space-y-4">
           <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-slate-400">
-            Academic & Technical References
+            Academic Literature & Peer-Reviewed References
           </h3>
           <ul className="space-y-2 font-mono text-xs">
             {article.references.map((ref, idx) => (
-              <li key={idx}>
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-slate-500">[{ref.citationKey}]</span>
                 <a
                   href={ref.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-400 hover:underline inline-flex items-center gap-1"
                 >
-                  [{idx + 1}] {ref.title} <ExternalLink className="w-3 h-3" />
+                  {ref.title} <ExternalLink className="w-3 h-3" />
                 </a>
               </li>
             ))}

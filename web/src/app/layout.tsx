@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://llmslim.com"),
+  metadataBase: new URL("https://llmslim.vercel.app"),
   title: {
     default: "LLMSlim — Semantic Prompt & Context Compression Engine for LLM Infrastructure",
     template: "%s | LLMSlim",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     title: "LLMSlim — Cut LLM Token Costs by 50% in 1 Line of Code",
     description:
       "Surgically compresses LLM prompts, RAG document contexts, and multi-turn chat histories while preserving guaranteed 100% instruction fidelity.",
-    url: "https://llmslim.com",
+    url: "https://llmslim.vercel.app",
     siteName: "LLMSlim",
     images: [
       {
@@ -104,7 +104,7 @@ const jsonLd = {
   description:
     "Open-source Python package for semantic prompt compression, context optimization, and token reduction in LLM pipelines.",
   url: "https://github.com/Thanatos9404/llmslim",
-  logo: "https://llmslim.com/llmslim_logo.png",
+  logo: "https://llmslim.vercel.app/llmslim_logo.png",
 };
 
 export default function RootLayout({

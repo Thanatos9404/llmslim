@@ -1,5 +1,7 @@
 import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { constructMetadata, getStructuredDataGraph } from "@/lib/seo";
 
@@ -59,6 +61,10 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+
+        {/* Vercel Web Analytics & Real User Speed Insights Tracking */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -54,7 +54,7 @@ jobs:
         run: pytest --cov=llmslim --cov-report=term-missing --cov-report=xml --cov-fail-under=90
 
       - name: Run Benchmark Smoke Test
-        run: python benchmarks/benchmark_regression.py
+        run: python -m benchmarks.benchmark_regression
 
       - name: Build Package Artifacts (Wheel & Sdist)
         run: python -m build

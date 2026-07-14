@@ -18,6 +18,7 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
 
   return (
     <motion.header
+      role="banner"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -29,11 +30,13 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between">
         {/* Official LLMSlim Brand Logo — Zero Padding Full Bleed */}
-        <a href="#" className="flex items-center gap-3 group">
+        <a href="#" aria-label="LLMSlim Homepage" title="LLMSlim — Semantic Prompt & Context Compression Engine" className="flex items-center gap-3 group">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-400 via-cyan-400 to-emerald-500 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.35)] group-hover:shadow-[0_0_25px_rgba(0,245,155,0.6)] transition-all overflow-hidden flex items-center justify-center bg-[#070A0F]">
             <img
               src="/llmslim_logo.png"
-              alt="LLMSlim Logo"
+              alt="LLMSlim Logomark"
+              width={32}
+              height={32}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
           </div>
@@ -46,23 +49,23 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
         </a>
 
         {/* Center Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-7 text-xs font-mono text-slate-400">
-          <a href="#features" className="hover:text-white transition-colors">
+        <nav aria-label="Main Navigation" className="hidden lg:flex items-center gap-7 text-xs font-mono text-slate-400">
+          <a href="#features" title="Features & Core Engine" className="hover:text-white transition-colors">
             Features
           </a>
-          <a href="#pipeline" className="hover:text-white transition-colors">
+          <a href="#pipeline" title="6-Step Compression DAG Architecture" className="hover:text-white transition-colors">
             Pipeline
           </a>
-          <a href="#benchmarks" className="hover:text-white transition-colors">
+          <a href="#benchmarks" title="Empirical Benchmarks & Quality Matrix" className="hover:text-white transition-colors">
             Benchmarks
           </a>
-          <a href="#calculator" className="hover:text-white transition-colors">
+          <a href="#calculator" title="Enterprise Token Savings ROI Calculator" className="hover:text-white transition-colors">
             Savings ROI
           </a>
-          <a href="#code" className="hover:text-white transition-colors">
+          <a href="#code" title="Python SDK Code Examples & API References" className="hover:text-white transition-colors">
             API Docs
           </a>
-          <a href="#faq" className="hover:text-white transition-colors">
+          <a href="#faq" title="Frequently Asked Questions & Telemetry" className="hover:text-white transition-colors">
             FAQ
           </a>
         </nav>
@@ -71,7 +74,8 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
         <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenCommandPalette}
-            aria-label="Open Command Palette"
+            aria-label="Open Command Search Overlay"
+            title="Open Command Palette (⌘K)"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-300 transition-colors cursor-pointer min-h-[36px]"
           >
             <Command className="w-3.5 h-3.5 text-emerald-400" />
@@ -82,7 +86,8 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
             href="https://github.com/Thanatos9404/llmslim"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub Repository"
+            aria-label="GitHub Repository for LLMSlim"
+            title="View LLMSlim Source Code on GitHub"
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-300 transition-colors"
           >
             <GithubIcon className="w-3.5 h-3.5" />
@@ -92,7 +97,7 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
           <AnimatedButton
             variant="quantum"
             size="sm"
-            onClick={() => window.open("https://pypi.org/project/llmslim/", "_blank")}
+            onClick={() => window.open("https://pypi.org/project/llmslim/", "_blank", "noopener,noreferrer")}
           >
             pip install
           </AnimatedButton>
@@ -100,7 +105,8 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label="Toggle Navigation Menu"
+            aria-label="Toggle Mobile Navigation Menu"
+            title="Toggle Menu"
             className="lg:hidden p-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:text-white min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
           >
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}

@@ -1,6 +1,7 @@
-import type { Metadata, Viewport } from "next";
+import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { constructMetadata, getStructuredDataGraph } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,97 +22,15 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://www.llmslim.app"),
-  title: {
-    default: "LLMSlim — Semantic Prompt & Context Compression Engine for LLM Infrastructure",
-    template: "%s | LLMSlim",
-  },
-  description:
-    "Open-source Python package cutting LLM token costs by 40-70% in 1 line of code. Guaranteed 100% instruction fidelity, entity preservation, and sub-50ms offline execution.",
-  keywords: [
-    "LLM prompt compression",
-    "Context compressor",
-    "LLMSlim",
-    "RAG context optimization",
-    "Token reduction",
-    "OpenAI prompt optimizer",
-    "Claude context compression",
-    "Python AI infrastructure",
-  ],
-  authors: [{ name: "Yashvardhan Thanvi", url: "https://github.com/Thanatos9404" }],
-  creator: "Yashvardhan Thanvi",
-  verification: {
-    google: "google372537cef67c55b3",
-  },
-  icons: {
-    icon: [
-      { url: "/llmslim_logo.png", type: "image/png" },
-      { url: "/favicon.png", type: "image/png" },
-    ],
-    shortcut: "/llmslim_logo.png",
-    apple: "/llmslim_logo.png",
-  },
-  openGraph: {
-    title: "LLMSlim — Cut LLM Token Costs by 50% in 1 Line of Code",
-    description:
-      "Surgically compresses LLM prompts, RAG document contexts, and multi-turn chat histories while preserving guaranteed 100% instruction fidelity.",
-    url: "https://www.llmslim.app",
-    siteName: "LLMSlim",
-    images: [
-      {
-        url: "/llmslim_brand_id.png",
-        width: 1200,
-        height: 630,
-        alt: "LLMSlim Brand Identity",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "LLMSlim — Cut LLM Token Costs by 50% in 1 Line of Code",
-    description:
-      "Semantic prompt compression built for enterprise LLM pipelines. Works offline out-of-the-box.",
-    images: ["/llmslim_brand_id.png"],
-    creator: "@Thanatos9404",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-};
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "LLMSlim",
-  operatingSystem: "Platform Independent",
-  applicationCategory: "DeveloperApplication",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  description:
-    "Open-source Python package for semantic prompt compression, context optimization, and token reduction in LLM pipelines.",
-  url: "https://www.llmslim.app",
-  logo: "https://www.llmslim.app/llmslim_logo.png",
-};
+export const metadata = constructMetadata();
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLdGraph = getStructuredDataGraph();
+
   return (
     <html
       lang="en"
@@ -119,11 +38,17 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
+      <head>
+        {/* Performance Preconnect Resource Hints */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+      </head>
       <body className="min-h-full flex flex-col bg-[#030508] text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
-        {/* JSON-LD Structured Data Schema */}
+        {/* Schema.org Complete JSON-LD Graph for Google AI Overviews, Perplexity & Rich Snippets */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
         />
 
         {/* Accessibility Skip Link */}

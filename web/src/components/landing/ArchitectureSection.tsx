@@ -6,7 +6,7 @@ import { Cpu, ShieldCheck, Zap, Layers, GitMerge } from "lucide-react";
 
 export function ArchitectureSection() {
   return (
-    <section className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
+    <section id="architecture" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
       <div className="text-center space-y-4 max-w-3xl mx-auto">
         <span className="text-xs font-mono uppercase tracking-widest text-violet-400">
           Core Scoring Mechanics

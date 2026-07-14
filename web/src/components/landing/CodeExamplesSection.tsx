@@ -86,7 +86,7 @@ result = compressor.compress(text, target_ratio=0.5)`,
   ];
 
   return (
-    <section id="code" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
+    <section id="studio-playground" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
       <div className="text-center space-y-4 max-w-3xl mx-auto">
         <span className="text-xs font-mono uppercase tracking-widest text-cyan-400">
           Developer Experience

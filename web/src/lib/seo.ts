@@ -10,12 +10,14 @@ export function constructMetadata({
     { url: "/favicon.png", type: "image/png" },
   ],
   noIndex = false,
+  canonicalUrl,
 }: {
   title?: string;
   description?: string;
   image?: string;
   icons?: Array<{ url: string; type?: string }>;
   noIndex?: boolean;
+  canonicalUrl?: string;
 } = {}): Metadata {
   return {
     metadataBase: new URL(siteConfig.url),
@@ -31,7 +33,7 @@ export function constructMetadata({
     category: siteConfig.category,
     applicationName: siteConfig.name,
     alternates: {
-      canonical: siteConfig.url,
+      canonical: canonicalUrl || siteConfig.url,
     },
     verification: {
       google: siteConfig.googleSiteVerification,
@@ -44,7 +46,7 @@ export function constructMetadata({
     openGraph: {
       title,
       description,
-      url: siteConfig.url,
+      url: canonicalUrl || siteConfig.url,
       siteName: siteConfig.name,
       images: [
         {
@@ -154,14 +156,14 @@ export function getStructuredDataGraph() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Interactive Studio",
-        item: `${siteConfig.url}/#studio-playground`,
+        name: "Playground",
+        item: `${siteConfig.url}/playground`,
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Benchmarks",
-        item: `${siteConfig.url}/#benchmarks`,
+        item: `${siteConfig.url}/benchmarks`,
       },
     ],
   };

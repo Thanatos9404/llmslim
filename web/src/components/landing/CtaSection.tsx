@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { AnimatedButton, Card } from "@/components/design-system";
-import { Terminal, Copy, Check, Sparkles } from "lucide-react";
+import { Terminal, Copy, Check, Sparkles, ArrowRight } from "lucide-react";
 import { GithubIcon } from "@/components/icons/GithubIcon";
 
 export function CtaSection() {
@@ -30,11 +31,11 @@ export function CtaSection() {
             Ready to Cut Your <span className="text-gradient-emerald">API Invoices?</span>
           </h2>
           <p className="text-slate-400 text-base sm:text-lg leading-relaxed font-normal">
-            Install LLMSlim in 30 seconds and start compressing RAG contexts, prompt instructions, and chat histories with zero setup complexity.
+            Install LLMSlim in 30 seconds or launch the interactive playground to test live prompt compression scenarios.
           </p>
         </div>
 
-        {/* Terminal Copy Box */}
+        {/* Terminal Copy Box & Playground CTA */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
           <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-[#070A0F] border border-emerald-500/30 font-mono text-sm text-slate-200 shadow-2xl">
             <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -54,13 +55,24 @@ export function CtaSection() {
             </button>
           </div>
 
+          <Link href="/playground" prefetch={true}>
+            <AnimatedButton
+              variant="quantum"
+              size="lg"
+              icon={<ArrowRight className="w-4 h-4" />}
+              iconPosition="right"
+            >
+              Launch Interactive Playground
+            </AnimatedButton>
+          </Link>
+
           <AnimatedButton
-            variant="quantum"
+            variant="glass"
             size="lg"
             icon={<GithubIcon className="w-4 h-4" />}
             onClick={() => window.open("https://github.com/Thanatos9404/llmslim", "_blank")}
           >
-            Star Repository on GitHub
+            GitHub
           </AnimatedButton>
         </div>
       </Card>

@@ -19,6 +19,7 @@ import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { Footer } from "@/components/landing/Footer";
+import { FloatingSectionNavigator } from "@/components/landing/FloatingSectionNavigator";
 
 export default function Home() {
   return (
@@ -28,6 +29,9 @@ export default function Home() {
 
       {/* Sticky Header Nav */}
       <Navbar />
+
+      {/* Floating ChatGPT-Style In-Page Navigator */}
+      <FloatingSectionNavigator />
 
       {/* Main Flow Canvas */}
       <AuroraBackground showRadialGradient={true}>

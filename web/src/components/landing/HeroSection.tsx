@@ -1,19 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import dynamic from "next/dynamic";
-import { Sparkles, Terminal, Copy, Check, ShieldCheck, ArrowRight, Cpu } from "lucide-react";
+import Link from "next/link";
+import { Terminal, Copy, Check, ShieldCheck, ArrowRight } from "lucide-react";
 import { AnimatedButton } from "@/components/design-system";
-import { StudioSkeleton } from "@/components/studio/StudioSkeleton";
-
-// Dynamic lazy load for heavy Monaco Studio bundle
-const DynamicLLMSlimStudio = dynamic(
-  () => import("@/components/studio/LLMSlimStudio").then((mod) => mod.LLMSlimStudio),
-  {
-    ssr: false,
-    loading: () => <StudioSkeleton />,
-  }
-);
 
 export function HeroSection() {
   const [copied, setCopied] = useState(false);
@@ -25,11 +15,11 @@ export function HeroSection() {
   };
 
   return (
-    <section aria-label="Hero Section" className="relative pt-32 sm:pt-40 pb-20 sm:pb-28 px-4 sm:px-8 max-w-7xl mx-auto flex flex-col items-center text-center space-y-12 sm:space-y-14">
+    <section id="hero" aria-label="Hero Section" className="relative pt-32 sm:pt-40 pb-16 sm:pb-20 px-4 sm:px-8 max-w-7xl mx-auto flex flex-col items-center text-center space-y-12 sm:space-y-14">
       {/* Top Release Pill Badge */}
       <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono shadow-[0_0_20px_rgba(0,245,155,0.15)] mb-2 animate-fade-in">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span>LLMSlim Studio & Engine v0.2.0</span>
+        <span>LLMSlim Engine v0.2.0</span>
         <span className="text-slate-500 hidden sm:inline">|</span>
         <span className="text-slate-300 font-semibold hidden sm:flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -69,36 +59,17 @@ export function HeroSection() {
           </button>
         </div>
 
-        <AnimatedButton
-          variant="quantum"
-          size="lg"
-          aria-label="Launch Interactive LLMSlim Studio"
-          icon={<ArrowRight className="w-4 h-4" />}
-          iconPosition="right"
-          onClick={() => {
-            const el = document.getElementById("studio-playground");
-            if (el) el.scrollIntoView({ behavior: "smooth" });
-          }}
-        >
-          Launch Interactive Studio
-        </AnimatedButton>
-      </div>
-
-      {/* Interactive Studio Playground Centerpiece */}
-      <div
-        id="studio-playground"
-        className="w-full pt-6 sm:pt-8 text-left"
-      >
-        <div className="flex items-center justify-between mb-3 px-1 font-mono text-xs">
-          <span className="text-emerald-400 font-bold flex items-center gap-2">
-            <Cpu className="w-4 h-4" />
-            LLMSlim Studio Playground (OpenAI x Vercel AI Style)
-          </span>
-          <span className="text-slate-500 hidden sm:inline">
-            Interactive 3-Panel Compression Sandbox
-          </span>
-        </div>
-        <DynamicLLMSlimStudio />
+        <Link href="/playground" prefetch={true}>
+          <AnimatedButton
+            variant="quantum"
+            size="lg"
+            aria-label="Launch Interactive LLMSlim Studio Playground"
+            icon={<ArrowRight className="w-4 h-4" />}
+            iconPosition="right"
+          >
+            Launch Interactive Playground
+          </AnimatedButton>
+        </Link>
       </div>
     </section>
   );

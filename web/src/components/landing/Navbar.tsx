@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Command, Menu, X } from "lucide-react";
 import { AnimatedButton, CommandPalette } from "@/components/design-system";
@@ -11,12 +13,22 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const navLinks = [
+    { name: "Home", href: "/" },
+    { name: "Docs", href: "/docs" },
+    { name: "Playground", href: "/playground" },
+    { name: "Articles", href: "/articles" },
+    { name: "Benchmarks", href: "/benchmarks" },
+    { name: "Integrations", href: "/integrations" },
+  ];
 
   return (
     <>
@@ -39,8 +51,8 @@ export function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between">
           {/* Official LLMSlim Brand Logo */}
-          <a
-            href="#"
+          <Link
+            href="/"
             aria-label="LLMSlim Homepage"
             title="LLMSlim — Semantic Prompt & Context Compression Engine"
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-xl"
@@ -61,28 +73,28 @@ export function Navbar() {
                 v0.2.0
               </span>
             </span>
-          </a>
+          </Link>
 
-          {/* Center Desktop Navigation */}
-          <nav aria-label="Main Navigation" className="hidden lg:flex items-center gap-7 text-xs font-mono text-slate-400">
-            <a href="#features" title="Features & Core Engine" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              Features
-            </a>
-            <a href="#pipeline" title="6-Step Compression DAG Architecture" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              Pipeline
-            </a>
-            <a href="#benchmarks" title="Empirical Benchmarks & Quality Matrix" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              Benchmarks
-            </a>
-            <a href="#calculator" title="Enterprise Token Savings ROI Calculator" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              Savings ROI
-            </a>
-            <a href="#code" title="Python SDK Code Examples & API References" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              API Docs
-            </a>
-            <a href="#faq" title="Frequently Asked Questions & Telemetry" className="hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded">
-              FAQ
-            </a>
+          {/* Center Desktop Navigation Pages */}
+          <nav aria-label="Main Navigation" className="hidden lg:flex items-center gap-7 text-xs font-mono">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  prefetch={true}
+                  title={`${link.name} Page`}
+                  className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 px-1 py-0.5 rounded ${
+                    isActive
+                      ? "text-emerald-400 font-bold"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Right Action Controls */}
@@ -139,48 +151,21 @@ export function Navbar() {
               exit={{ opacity: 0, height: 0 }}
               className="lg:hidden bg-[#070A0F] border-b border-white/10 px-6 py-4 space-y-3 font-mono text-xs text-slate-300"
             >
-              <a
-                href="#features"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 border-b border-white/5 hover:text-emerald-400"
-              >
-                Features
-              </a>
-              <a
-                href="#pipeline"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 border-b border-white/5 hover:text-emerald-400"
-              >
-                Pipeline Architecture
-              </a>
-              <a
-                href="#benchmarks"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 border-b border-white/5 hover:text-emerald-400"
-              >
-                Empirical Benchmarks
-              </a>
-              <a
-                href="#calculator"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 border-b border-white/5 hover:text-emerald-400"
-              >
-                Enterprise ROI Calculator
-              </a>
-              <a
-                href="#code"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 border-b border-white/5 hover:text-emerald-400"
-              >
-                Python API References
-              </a>
-              <a
-                href="#faq"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 hover:text-emerald-400"
-              >
-                FAQ
-              </a>
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block py-2 border-b border-white/5 ${
+                      isActive ? "text-emerald-400 font-bold" : "hover:text-emerald-400"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>

@@ -56,7 +56,10 @@ export function LLMSlimStudio() {
   const tokenCount = Math.max(10, Math.round(editorText.length / 4.2));
 
   return (
-    <Card glowColor="emerald" className="p-0 overflow-hidden border-emerald-500/30 shadow-[0_0_50px_rgba(0,245,155,0.12)] border-specular-emerald">
+    <Card
+      glowColor="emerald"
+      className="p-0 overflow-hidden border-emerald-500/30 shadow-[0_0_50px_rgba(0,245,155,0.12)] border-specular-emerald rounded-3xl"
+    >
       {/* Studio Header Bar */}
       <StudioHeader
         activeMode={activeMode}
@@ -73,10 +76,10 @@ export function LLMSlimStudio() {
         onReset={handleReset}
       />
 
-      {/* Hierarchical Column Layout Ratio (5 : 4 : 3 Split) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 min-h-[580px]">
-        {/* Panel 1: Monaco Prompt Editor (Span 5) */}
-        <div className="md:col-span-6 lg:col-span-5 min-h-[350px]">
+      {/* True IDE Grid Layout across Viewports */}
+      <div className="grid grid-cols-1 md:grid-cols-12 items-stretch min-h-[600px] divide-y md:divide-y-0 md:divide-x divide-white/10">
+        {/* Panel 1: Monaco Prompt Editor (Desktop: 5 cols, Tablet: Full 12 cols) */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col min-h-[450px] lg:min-h-[600px]">
           <StudioPromptEditor
             value={editorText}
             onChange={setEditorText}
@@ -87,8 +90,8 @@ export function LLMSlimStudio() {
           />
         </div>
 
-        {/* Panel 2: Compression Visualization (Span 4) */}
-        <div className="md:col-span-6 lg:col-span-4 min-h-[350px]">
+        {/* Panel 2: Compression Visualization Centerpiece (Desktop: 4 cols, Tablet: 6 cols) */}
+        <div className="col-span-12 md:col-span-6 lg:col-span-4 flex flex-col min-h-[450px] lg:min-h-[600px]">
           <StudioVisualization
             originalText={editorText}
             targetRatio={targetRatio}
@@ -96,8 +99,8 @@ export function LLMSlimStudio() {
           />
         </div>
 
-        {/* Panel 3: Telemetry & Exporters (Span 3) */}
-        <div className="md:col-span-12 lg:col-span-3 min-h-[320px]">
+        {/* Panel 3: Structured Results & ROI Exporter (Desktop: 3 cols, Tablet: 6 cols) */}
+        <div className="col-span-12 md:col-span-6 lg:col-span-3 flex flex-col min-h-[450px] lg:min-h-[600px]">
           <StudioResultsPanel
             originalTokens={tokenCount}
             targetRatio={targetRatio}

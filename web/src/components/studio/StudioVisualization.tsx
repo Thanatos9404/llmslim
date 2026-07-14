@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Layers, Sparkles, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Layers, Sparkles, CheckCircle2, Sliders } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StudioVisualizationProps {
@@ -59,31 +59,36 @@ export function StudioVisualization({
     totalInstructions > 0 ? Math.round((preservedInstructionCount / totalInstructions) * 100) : 100;
 
   return (
-    <div className="flex flex-col h-full bg-[#0D121C] border-r border-white/10 overflow-hidden font-mono text-xs">
-      {/* Top Bar with Tabs */}
-      <div className="px-4 py-3 bg-[#070A0F] border-b border-white/10 flex items-center justify-between select-none">
+    <div className="flex flex-col h-full bg-[#0D121C] overflow-hidden font-mono text-xs">
+      {/* Chrome Header Bar */}
+      <div className="px-5 py-3.5 bg-[#070A0F] border-b border-white/10 flex items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-400" />
+          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-            Compression Visualization
+            Compression Centerpiece
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-lg border border-white/10">
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10">
           <button
             onClick={() => setActiveTab("diff")}
             className={cn(
-              "px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer",
-              activeTab === "diff" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"
+              "px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer",
+              activeTab === "diff"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "text-slate-400 hover:text-slate-200"
             )}
           >
-            Diff Highlight
+            Diff Matrix
           </button>
           <button
             onClick={() => setActiveTab("chunks")}
             className={cn(
-              "px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer",
-              activeTab === "chunks" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"
+              "px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer",
+              activeTab === "chunks"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "text-slate-400 hover:text-slate-200"
             )}
           >
             Topic Chunks
@@ -91,8 +96,10 @@ export function StudioVisualization({
           <button
             onClick={() => setActiveTab("pipeline")}
             className={cn(
-              "px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer",
-              activeTab === "pipeline" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"
+              "px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer",
+              activeTab === "pipeline"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "text-slate-400 hover:text-slate-200"
             )}
           >
             6-Step DAG
@@ -100,29 +107,29 @@ export function StudioVisualization({
         </div>
       </div>
 
-      {/* Badges Banner */}
-      <div className="px-4 py-2 bg-[#070A0F]/80 border-b border-white/10 flex items-center justify-between text-[11px] font-tabular">
+      {/* Telemetry Shield Banner */}
+      <div className="px-5 py-2.5 bg-[#070A0F]/80 border-b border-white/10 flex items-center justify-between text-[11px] font-tabular">
         <div className="flex items-center gap-2 text-emerald-400 font-bold">
-          <ShieldCheck className="w-3.5 h-3.5" />
+          <ShieldCheck className="w-4 h-4" />
           <span>Instruction Shield: {instructionRetentionPercent}.0% Preserved</span>
         </div>
         <div className="flex items-center gap-2 text-emerald-400 font-bold">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>Entities Retained: 100%</span>
+          <CheckCircle2 className="w-4 h-4" />
+          <span>Entity Preservation: 100%</span>
         </div>
       </div>
 
-      {/* Panel Content Body */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
+      {/* Centerpiece Content Area */}
+      <div className="flex-1 p-6 sm:p-8 overflow-y-auto space-y-6">
         {isProcessing ? (
-          <div className="h-full flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="h-full flex flex-col items-center justify-center space-y-4 text-center py-16">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-10 h-10 rounded-full border-2 border-emerald-400 border-t-transparent"
+              className="w-12 h-12 rounded-full border-2 border-emerald-400 border-t-transparent shadow-[0_0_20px_rgba(0,245,155,0.4)]"
             />
-            <div className="text-sm font-bold text-white font-mono">Surgically Pruning Sentences...</div>
-            <div className="text-xs text-slate-500 font-mono">Running LexRank Graph Degree Centrality</div>
+            <div className="text-base font-bold text-white font-mono">Pruning Prompt Sentences...</div>
+            <div className="text-xs text-slate-400 font-mono">Executing Two-Pass LexRank Priority Allocation</div>
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -132,34 +139,36 @@ export function StudioVisualization({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-4"
+                className="space-y-6"
               >
-                <div className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                  Sentences highlighted in <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">Emerald</span> are retained signal; muted sentences in slate are pruned filler.
+                <div className="text-xs text-slate-400 leading-relaxed font-sans border-l-2 border-emerald-400 pl-3 py-1">
+                  Sentences in <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">Emerald</span> are retained high-signal directives; muted slate sentences are pruned filler.
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#070A0F] border border-white/10 space-y-2 leading-relaxed">
+                <div className="p-5 rounded-2xl bg-[#070A0F] border border-white/10 space-y-3 leading-relaxed">
                   {sentencesWithScores.map((item) => {
                     const isSelected = selectedIndices.has(item.index);
                     return (
-                      <motion.span
+                      <motion.div
                         key={item.index}
                         initial={{ opacity: 0.8 }}
                         animate={{ opacity: isSelected ? 1 : 0.45 }}
                         className={cn(
-                          "inline-block mr-1.5 p-1.5 rounded transition-all duration-300",
+                          "p-3 rounded-xl transition-all duration-300 font-mono text-xs",
                           isSelected
-                            ? "bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 font-semibold shadow-[0_0_12px_rgba(0,245,155,0.1)]"
-                            : "text-[#475569] opacity-50 bg-transparent select-none font-normal"
+                            ? "bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 shadow-[0_0_15px_rgba(0,245,155,0.1)] font-semibold"
+                            : "text-[#475569] opacity-50 bg-transparent border border-transparent font-normal"
                         )}
                       >
-                        {item.text}
-                        {item.isInstruction && isSelected && (
-                          <span className="ml-1 text-[9px] uppercase px-1 rounded bg-emerald-400/20 text-emerald-300 font-mono font-bold">
-                            🔒 Rule
-                          </span>
-                        )}
-                      </motion.span>
+                        <div className="flex items-start justify-between gap-2">
+                          <span>{item.text}</span>
+                          {item.isInstruction && isSelected && (
+                            <span className="shrink-0 text-[9px] uppercase px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 font-mono font-bold border border-emerald-400/30">
+                              🔒 Rule
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -174,29 +183,29 @@ export function StudioVisualization({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-[11px] text-slate-400 font-sans">
-                  Semantic Topic Chunking divides documents into topic drift regions (max 300 tokens/chunk).
+                <div className="text-xs text-slate-400 font-sans leading-relaxed">
+                  Topic drift detection segments long document inputs into cohesive semantic chunks (max 300 tokens).
                 </div>
 
-                <div className="space-y-3 font-mono">
-                  <div className="p-4 rounded-xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
+                <div className="space-y-4 font-mono">
+                  <div className="p-5 rounded-2xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
                     <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> Chunk 01 // Directives & Security
+                        <Layers className="w-4 h-4" /> Chunk 01 // Directives & Security Rules
                       </span>
-                      <span className="font-tabular">Cosine Similarity: 0.88</span>
+                      <span className="font-tabular text-[11px]">Cosine Similarity: 0.88</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                      Contains core system prompt instructions, API key headers, and warning constraints. Retained at 100% capacity.
+                      Contains primary system constraints, authentication requirements, and error handling bounds. Retained at 100% capacity.
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
+                  <div className="p-5 rounded-2xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
                     <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> Chunk 02 // Formatting & Rules
+                        <Layers className="w-4 h-4" /> Chunk 02 // Output Formatting Guidelines
                       </span>
-                      <span className="font-tabular">Cosine Similarity: 0.64</span>
+                      <span className="font-tabular text-[11px]">Cosine Similarity: 0.64</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">
                       Markdown formatting guidelines, edge case handling, and step-by-step reasoning rules.
@@ -224,15 +233,15 @@ export function StudioVisualization({
                 ].map((item, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-[#070A0F] border border-white/10 flex items-center justify-between text-xs font-mono"
+                    className="p-4 rounded-xl bg-[#070A0F] border border-white/10 flex items-center justify-between text-xs font-mono"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[10px]">
+                      <span className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
                         {item.step}
                       </span>
                       <span className="text-slate-200 font-bold">{item.name}</span>
                     </div>
-                    <span className="text-emerald-400 font-bold font-tabular">{item.status}</span>
+                    <span className="text-emerald-400 font-bold font-tabular text-xs">{item.status}</span>
                   </div>
                 ))}
               </motion.div>

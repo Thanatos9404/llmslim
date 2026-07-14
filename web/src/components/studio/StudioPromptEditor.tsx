@@ -2,7 +2,7 @@
 
 import React from "react";
 import Editor from "@monaco-editor/react";
-import { FileCode } from "lucide-react";
+import { FileCode, GripHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const SAMPLE_PROMPT_SINGLE = `You are an expert AI software engineer designed to help developers solve high-throughput coding tasks. You should be helpful, honest, and harmless. 
@@ -65,62 +65,31 @@ export function StudioPromptEditor({
   activePreset = "single",
 }: StudioPromptEditorProps) {
   return (
-    <div className="flex flex-col h-full bg-[#070A0F] border-r border-white/10 overflow-hidden font-mono text-xs">
-      {/* Panel Top Bar */}
-      <div className="px-4 py-3 bg-[#0D121C] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 select-none">
+    <div className="flex flex-col h-full bg-[#070A0F] overflow-hidden font-mono text-xs">
+      {/* Panel Top Chrome Bar */}
+      <div className="px-5 py-3.5 bg-[#0D121C] border-b border-white/10 flex items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-2">
-          <FileCode className="w-4 h-4 text-emerald-400" />
+          <FileCode className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-            Input Prompt Editor
+            Input Prompt Workspace
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Preset Tabs */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onLoadPreset("single")}
-              className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer",
-                activePreset === "single"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"
-                  : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
-              )}
-            >
-              System Prompt
-            </button>
-            <button
-              onClick={() => onLoadPreset("chat")}
-              className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer",
-                activePreset === "chat"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"
-                  : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
-              )}
-            >
-              Chat Log
-            </button>
-            <button
-              onClick={() => onLoadPreset("rag")}
-              className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer",
-                activePreset === "rag"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"
-                  : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
-              )}
-            >
-              RAG Docs
-            </button>
-          </div>
-
-          <span className="px-2.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300 text-[11px] font-mono font-bold font-tabular">
+          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-[11px] font-mono font-bold font-tabular">
             {tokenCount.toLocaleString()} tokens
           </span>
         </div>
       </div>
 
-      {/* Monaco Container with Mobile Scroll Fix (#22) */}
-      <div className="flex-1 w-full relative min-h-[350px]">
+      {/* Touch Handle for Mobile Viewports to Avoid Page Scroll Lock */}
+      <div className="sm:hidden px-4 py-1 bg-white/[0.02] border-b border-white/5 flex items-center justify-center text-slate-500 text-[10px]">
+        <GripHorizontal className="w-4 h-4" />
+        <span className="ml-1">Touch to scroll editor</span>
+      </div>
+
+      {/* Primary Editor Canvas Area */}
+      <div className="flex-1 w-full relative min-h-[420px]">
         <Editor
           height="100%"
           language={mode === "chat" ? "json" : "markdown"}
@@ -129,14 +98,14 @@ export function StudioPromptEditor({
           onChange={(v) => onChange(v || "")}
           options={{
             minimap: { enabled: false },
-            fontSize: 12,
+            fontSize: 12.5,
             fontFamily: "'JetBrains Mono', 'Geist Mono', monospace",
             lineNumbers: "on",
             wordWrap: "on",
             scrollBeyondLastLine: false,
             overviewRulerLanes: 0,
             overviewRulerBorder: false,
-            padding: { top: 12, bottom: 12 },
+            padding: { top: 16, bottom: 16 },
             smoothScrolling: true,
             cursorBlinking: "smooth",
             renderLineHighlight: "all",

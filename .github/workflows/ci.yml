@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip build setuptools wheel
-          pip install ruff black mypy pytest pytest-cov twine
+          pip install ruff mypy pytest pytest-cov twine types-PyYAML
           pip install -e ".[all,dev]"
 
       - name: Run Ruff Linter
@@ -47,6 +47,7 @@ jobs:
         run: ruff format --check .
 
       - name: Run MyPy Type Checker
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         run: mypy llmslim
 
       - name: Run Pytest Suite with Coverage (Minimum 90%)

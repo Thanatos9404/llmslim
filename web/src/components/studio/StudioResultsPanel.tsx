@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { StudioModel } from "./StudioHeader";
 import { CodeWindow } from "@/components/design-system";
-import { DollarSign, Zap, Copy, Check, Terminal, Shield, BarChart3, Cpu, Code2 } from "lucide-react";
+import { DollarSign, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StudioResultsPanelProps {
@@ -19,7 +20,7 @@ export function StudioResultsPanel({
   selectedModel,
   mode,
 }: StudioResultsPanelProps) {
-  const [activeTab, setActiveTab] = useState<"stats" | "code" | "cli" | "benchmarks">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "code" | "cli">("stats");
   const [copiedCli, setCopiedCli] = useState(false);
 
   const compressedTokens = Math.max(10, Math.round(originalTokens * targetRatio));
@@ -31,7 +32,6 @@ export function StudioResultsPanel({
   const dailySavingsUSD = (savedTokens * dailyRequests * (selectedModel.pricePerM / 1000000));
   const annualSavingsUSD = dailySavingsUSD * 365;
 
-  // Auto-generate Python snippet based on current state
   const generatedPythonCode = `from llmslim import ${
     mode === "chat" ? "compress_chat_messages" : mode === "rag" ? "compress_documents" : "compress"
   }
@@ -75,23 +75,23 @@ print(result.compressed_text)`
             onClick={() => setActiveTab("code")}
             className={cn(
               "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              activeTab === "code" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-white"
+              activeTab === "code" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"
             )}
           >
-            Python Generator
+            Python Code
           </button>
           <button
             onClick={() => setActiveTab("cli")}
             className={cn(
               "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-              activeTab === "cli" ? "bg-violet-500/20 text-violet-400 border border-violet-500/30" : "text-slate-400 hover:text-white"
+              activeTab === "cli" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"
             )}
           >
-            CLI Builder
+            CLI Command
           </button>
         </div>
 
-        <span className="text-[10px] text-slate-500 font-bold uppercase">LLMSlim Studio v0.2.0</span>
+        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">Telemetry</span>
       </div>
 
       {/* Main Body */}
@@ -102,46 +102,55 @@ print(result.compressed_text)`
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-[#0D121C] border border-white/10">
                 <div className="text-[10px] text-slate-500 uppercase font-mono">Original Tokens</div>
-                <div className="text-xl font-bold text-white mt-1">{originalTokens.toLocaleString()}</div>
+                <div className="text-xl font-bold text-white mt-1 font-tabular">{originalTokens.toLocaleString()}</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-[#0D121C] border border-emerald-500/30">
                 <div className="text-[10px] text-emerald-400 uppercase font-mono">Compressed Tokens</div>
-                <div className="text-xl font-bold text-emerald-400 mt-1">{compressedTokens.toLocaleString()}</div>
+                <div className="text-xl font-bold text-emerald-400 mt-1 font-tabular">{compressedTokens.toLocaleString()}</div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#0D121C] border border-cyan-500/30">
-                <div className="text-[10px] text-cyan-400 uppercase font-mono">Tokens Saved</div>
-                <div className="text-xl font-bold text-cyan-400 mt-1">{savedTokens.toLocaleString()}</div>
+              <div className="p-3.5 rounded-xl bg-[#0D121C] border border-emerald-500/30">
+                <div className="text-[10px] text-emerald-400 uppercase font-mono">Tokens Saved</div>
+                <div className="text-xl font-bold text-emerald-400 mt-1 font-tabular">{savedTokens.toLocaleString()}</div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#0D121C] border border-violet-500/30">
-                <div className="text-[10px] text-violet-400 uppercase font-mono">Reduction %</div>
-                <div className="text-xl font-bold text-violet-400 mt-1">{reductionPercent}%</div>
+              <div className="p-3.5 rounded-xl bg-[#0D121C] border border-emerald-500/30">
+                <div className="text-[10px] text-emerald-400 uppercase font-mono">Reduction %</div>
+                <div className="text-xl font-bold text-emerald-400 mt-1 font-tabular">{reductionPercent}%</div>
               </div>
             </div>
 
-            {/* Financial Telemetry Banner */}
-            <div className="p-5 rounded-xl bg-gradient-to-br from-[#0D121C] to-[#141B29] border border-emerald-500/30 space-y-3">
+            {/* Rolling ROI Counter Container (#7) */}
+            <div className="p-5 rounded-xl bg-gradient-to-br from-[#0D121C] to-[#141B29] border border-emerald-500/30 space-y-3 shadow-[0_0_30px_rgba(0,245,155,0.08)]">
               <div className="flex items-center justify-between text-xs text-emerald-400 font-bold border-b border-white/10 pb-2">
-                <span className="flex items-center gap-1.5">
-                  <DollarSign className="w-4 h-4" /> Projected ROI ({selectedModel.name})
+                <span className="flex items-center gap-1.5 font-mono">
+                  <DollarSign className="w-4 h-4 text-emerald-400" /> Projected ROI Savings
                 </span>
-                <span>@ 50k reqs/day</span>
+                <span className="text-slate-500 text-[10px] font-mono font-tabular">50k reqs/day</span>
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-xs text-slate-300">
+              <div className="space-y-2 pt-1 font-mono">
+                <div className="flex justify-between text-xs text-slate-300 font-tabular">
                   <span>Daily Savings:</span>
                   <span className="font-bold text-emerald-400">${dailySavingsUSD.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-xs text-slate-300">
+                <div className="flex justify-between text-xs text-slate-300 font-tabular">
                   <span>Monthly Savings:</span>
-                  <span className="font-bold text-cyan-400">${(dailySavingsUSD * 30).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
+                  <span className="font-bold text-emerald-400">${(dailySavingsUSD * 30).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-white/10">
-                  <span>Annual Dollar Savings:</span>
-                  <span className="text-emerald-400 font-mono text-lg">${annualSavingsUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                <div className="flex justify-between items-baseline text-base font-bold text-white pt-2 border-t border-white/10">
+                  <span className="text-xs text-slate-400">Annual Savings:</span>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={annualSavingsUSD}
+                      initial={{ opacity: 0.6, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-emerald-400 font-mono text-xl font-extrabold font-tabular"
+                    >
+                      ${annualSavingsUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </motion.span>
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
@@ -151,21 +160,21 @@ print(result.compressed_text)`
         {activeTab === "code" && (
           <div className="space-y-3">
             <div className="text-xs text-slate-400 font-sans leading-relaxed">
-              Auto-generated Python client snippet based on your interactive studio parameters:
+              Auto-generated Python client snippet tuned to active parameters:
             </div>
-            <CodeWindow singleCode={generatedPythonCode} title="llmslim_studio_export.py" />
+            <CodeWindow singleCode={generatedPythonCode} title="llmslim_export.py" />
           </div>
         )}
 
         {activeTab === "cli" && (
           <div className="space-y-4">
             <div className="text-xs text-slate-400 font-sans leading-relaxed">
-              Run prompt compression directly from terminal stdin/stdout:
+              Terminal command line execution string:
             </div>
 
             <div className="p-4 rounded-xl bg-[#0D121C] border border-white/15 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase text-slate-500">CLI Execution Command</span>
+                <span className="text-[10px] uppercase text-slate-500 font-mono">CLI Command</span>
                 <button
                   onClick={handleCopyCli}
                   className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 cursor-pointer"
@@ -175,7 +184,7 @@ print(result.compressed_text)`
                 </button>
               </div>
 
-              <div className="p-3 rounded-lg bg-[#070A0F] border border-white/10 text-emerald-300 select-all overflow-x-auto">
+              <div className="p-3 rounded-lg bg-[#070A0F] border border-white/10 text-emerald-300 select-all overflow-x-auto font-mono">
                 {generatedCliCommand}
               </div>
             </div>

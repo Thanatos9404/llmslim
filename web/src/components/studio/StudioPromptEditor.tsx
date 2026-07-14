@@ -67,7 +67,7 @@ export function StudioPromptEditor({
   return (
     <div className="flex flex-col h-full bg-[#070A0F] border-r border-white/10 overflow-hidden font-mono text-xs">
       {/* Panel Top Bar */}
-      <div className="px-4 py-3 bg-[#0D121C] border-b border-white/10 flex items-center justify-between select-none">
+      <div className="px-4 py-3 bg-[#0D121C] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 select-none">
         <div className="flex items-center gap-2">
           <FileCode className="w-4 h-4 text-emerald-400" />
           <span className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
@@ -76,7 +76,7 @@ export function StudioPromptEditor({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Preset Buttons with Active State Indicators (Phase B) */}
+          {/* Preset Tabs */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => onLoadPreset("single")}
@@ -94,7 +94,7 @@ export function StudioPromptEditor({
               className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer",
                 activePreset === "chat"
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"
                   : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
               )}
             >
@@ -105,7 +105,7 @@ export function StudioPromptEditor({
               className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer",
                 activePreset === "rag"
-                  ? "bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"
                   : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
               )}
             >
@@ -119,7 +119,7 @@ export function StudioPromptEditor({
         </div>
       </div>
 
-      {/* Adaptive Height Flex Container (Phase B) */}
+      {/* Monaco Container with Mobile Scroll Fix (#22) */}
       <div className="flex-1 w-full relative min-h-[350px]">
         <Editor
           height="100%"
@@ -134,6 +134,8 @@ export function StudioPromptEditor({
             lineNumbers: "on",
             wordWrap: "on",
             scrollBeyondLastLine: false,
+            overviewRulerLanes: 0,
+            overviewRulerBorder: false,
             padding: { top: 12, bottom: 12 },
             smoothScrolling: true,
             cursorBlinking: "smooth",

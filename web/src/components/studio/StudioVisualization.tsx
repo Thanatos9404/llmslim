@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Layers, Sparkles, CheckCircle2, Scissors, Eye, FileText, Zap } from "lucide-react";
+import { ShieldCheck, Layers, Sparkles, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StudioVisualizationProps {
@@ -18,12 +18,10 @@ export function StudioVisualization({
 }: StudioVisualizationProps) {
   const [activeTab, setActiveTab] = useState<"diff" | "chunks" | "pipeline">("diff");
 
-  // Break text into sentences for sentence protection visualization
   const sentences = originalText
     .split(/(?<=[.!?])\s+|\n+/)
     .filter((s) => s.trim().length > 0);
 
-  // Compute retained sentence indices based on target ratio and instruction rule matching
   const totalSentences = sentences.length;
   const targetRetainCount = Math.max(1, Math.round(totalSentences * targetRatio));
 
@@ -33,9 +31,9 @@ export function StudioVisualization({
     const isEntity = /[A-Z0-9_]{3,}|https?:\/\/\S+|\$\d+/i.test(s);
 
     let priorityTier = 1;
-    if (isInstruction) priorityTier = 4; // Priority 4 Critical
-    else if (isEntity) priorityTier = 3; // Priority 3 High
-    else if (idx === 0 || idx === totalSentences - 1) priorityTier = 2; // Position bonus
+    if (isInstruction) priorityTier = 4;
+    else if (isEntity) priorityTier = 3;
+    else if (idx === 0 || idx === totalSentences - 1) priorityTier = 2;
 
     return {
       text: s,
@@ -46,7 +44,6 @@ export function StudioVisualization({
     };
   });
 
-  // Sort by priority tier, select top targetRetainCount, then sort back by index
   const selectedIndices = new Set(
     [...sentencesWithScores]
       .sort((a, b) => b.priorityTier - a.priorityTier)
@@ -63,11 +60,11 @@ export function StudioVisualization({
 
   return (
     <div className="flex flex-col h-full bg-[#0D121C] border-r border-white/10 overflow-hidden font-mono text-xs">
-      {/* Top Bar with Visualization Mode Tabs */}
+      {/* Top Bar with Tabs */}
       <div className="px-4 py-3 bg-[#070A0F] border-b border-white/10 flex items-center justify-between select-none">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-cyan-400" />
-          <span className="font-bold text-white uppercase text-[11px] tracking-wider">
+          <Sparkles className="w-4 h-4 text-emerald-400" />
+          <span className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
             Compression Visualization
           </span>
         </div>
@@ -86,7 +83,7 @@ export function StudioVisualization({
             onClick={() => setActiveTab("chunks")}
             className={cn(
               "px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer",
-              activeTab === "chunks" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200"
+              activeTab === "chunks" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"
             )}
           >
             Topic Chunks
@@ -95,7 +92,7 @@ export function StudioVisualization({
             onClick={() => setActiveTab("pipeline")}
             className={cn(
               "px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer",
-              activeTab === "pipeline" ? "bg-violet-500/20 text-violet-400 border border-violet-500/30" : "text-slate-400 hover:text-slate-200"
+              activeTab === "pipeline" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"
             )}
           >
             6-Step DAG
@@ -104,18 +101,18 @@ export function StudioVisualization({
       </div>
 
       {/* Badges Banner */}
-      <div className="px-4 py-2 bg-[#070A0F]/80 border-b border-white/10 flex items-center justify-between text-[11px]">
+      <div className="px-4 py-2 bg-[#070A0F]/80 border-b border-white/10 flex items-center justify-between text-[11px] font-tabular">
         <div className="flex items-center gap-2 text-emerald-400 font-bold">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Instruction Shield: {instructionRetentionPercent}.0% Preserved</span>
         </div>
-        <div className="flex items-center gap-2 text-cyan-400">
+        <div className="flex items-center gap-2 text-emerald-400 font-bold">
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Entities Retained: 100%</span>
         </div>
       </div>
 
-      {/* Main Panel Content Body */}
+      {/* Panel Content Body */}
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
         {isProcessing ? (
           <div className="h-full flex flex-col items-center justify-center space-y-4 text-center">
@@ -124,7 +121,7 @@ export function StudioVisualization({
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
               className="w-10 h-10 rounded-full border-2 border-emerald-400 border-t-transparent"
             />
-            <div className="text-sm font-bold text-white">Surgically Pruning Sentences...</div>
+            <div className="text-sm font-bold text-white font-mono">Surgically Pruning Sentences...</div>
             <div className="text-xs text-slate-500 font-mono">Running LexRank Graph Degree Centrality</div>
           </div>
         ) : (
@@ -137,8 +134,8 @@ export function StudioVisualization({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-[11px] text-slate-400 leading-relaxed">
-                  Sentences highlighted in <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">Emerald</span> are retained signal; sentences faded in <span className="text-slate-600 line-through">Slate</span> are pruned redundant filler.
+                <div className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  Sentences highlighted in <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">Emerald</span> are retained signal; muted sentences in slate are pruned filler.
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#070A0F] border border-white/10 space-y-2 leading-relaxed">
@@ -148,12 +145,12 @@ export function StudioVisualization({
                       <motion.span
                         key={item.index}
                         initial={{ opacity: 0.8 }}
-                        animate={{ opacity: isSelected ? 1 : 0.4 }}
+                        animate={{ opacity: isSelected ? 1 : 0.45 }}
                         className={cn(
-                          "inline-block mr-1.5 p-1 rounded transition-all duration-300",
+                          "inline-block mr-1.5 p-1.5 rounded transition-all duration-300",
                           isSelected
-                            ? "bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 font-semibold shadow-[0_0_10px_rgba(0,245,155,0.08)]"
-                            : "text-slate-600 line-through bg-transparent opacity-40 select-none"
+                            ? "bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 font-semibold shadow-[0_0_12px_rgba(0,245,155,0.1)]"
+                            : "text-[#475569] opacity-50 bg-transparent select-none font-normal"
                         )}
                       >
                         {item.text}
@@ -177,31 +174,31 @@ export function StudioVisualization({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-[11px] text-slate-400">
-                  Semantic Topic Chunking divides document into topic drift regions (max 300 tokens/chunk).
+                <div className="text-[11px] text-slate-400 font-sans">
+                  Semantic Topic Chunking divides documents into topic drift regions (max 300 tokens/chunk).
                 </div>
 
-                <div className="space-y-3">
-                  <div className="p-4 rounded-xl bg-white/[0.03] border border-cyan-500/30 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-cyan-400 font-bold">
+                <div className="space-y-3 font-mono">
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> Chunk 01 // System Directives & Security
+                        <Layers className="w-3.5 h-3.5" /> Chunk 01 // Directives & Security
                       </span>
-                      <span>Cosine Similarity: 0.88</span>
+                      <span className="font-tabular">Cosine Similarity: 0.88</span>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
                       Contains core system prompt instructions, API key headers, and warning constraints. Retained at 100% capacity.
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-white/[0.03] border border-violet-500/30 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-violet-400 font-bold">
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-emerald-500/30 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
                       <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5" /> Chunk 02 // Formatting & Output Constraints
+                        <Layers className="w-3.5 h-3.5" /> Chunk 02 // Formatting & Rules
                       </span>
-                      <span>Cosine Similarity: 0.64</span>
+                      <span className="font-tabular">Cosine Similarity: 0.64</span>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
                       Markdown formatting guidelines, edge case handling, and step-by-step reasoning rules.
                     </p>
                   </div>
@@ -235,7 +232,7 @@ export function StudioVisualization({
                       </span>
                       <span className="text-slate-200 font-bold">{item.name}</span>
                     </div>
-                    <span className="text-emerald-400 font-bold">{item.status}</span>
+                    <span className="text-emerald-400 font-bold font-tabular">{item.status}</span>
                   </div>
                 ))}
               </motion.div>

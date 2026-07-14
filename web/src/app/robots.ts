@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://llmslim.com/sitemap.xml",
+    sitemap: "https://llmslim.vercel.app/sitemap.xml",
   };
 }

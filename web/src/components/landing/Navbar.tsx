@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Command, Terminal, Menu, X } from "lucide-react";
+import { Command, Menu, X } from "lucide-react";
 import { AnimatedButton } from "@/components/design-system";
 import { GithubIcon } from "@/components/icons/GithubIcon";
 
@@ -29,18 +28,18 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between">
-        {/* Official LLMSlim Brand Logo */}
+        {/* Official LLMSlim Brand Logo — Zero Padding Full Bleed */}
         <a href="#" className="flex items-center gap-3 group">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-400 via-cyan-400 to-emerald-500 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.35)] group-hover:shadow-[0_0_25px_rgba(0,245,155,0.6)] transition-all overflow-hidden flex items-center justify-center bg-[#070A0F]">
             <img
               src="/llmslim_logo.png"
               alt="LLMSlim Logo"
-              className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
           </div>
           <span className="font-sans font-bold text-base sm:text-lg text-white tracking-tight flex items-center gap-1.5">
             LLMSlim
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono badge-scientific">
               v0.2.0
             </span>
           </span>

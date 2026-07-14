@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Copy, Check, Terminal } from "lucide-react";
 
@@ -51,8 +51,7 @@ export function CodeWindow({
   return (
     <div
       className={cn(
-        "rounded-2xl bg-[#0D121C] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-xl font-mono text-xs text-slate-200 select-text",
-        "before:block before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
+        "rounded-2xl bg-[#0D121C] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-xl font-mono text-xs text-slate-200 select-text border-specular-emerald",
         className
       )}
     >
@@ -86,16 +85,20 @@ export function CodeWindow({
           </div>
         </div>
 
-        {/* Copy Button */}
+        {/* Copy Button with Micro-bounce Feedback (#20) */}
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer min-h-[32px]"
         >
           {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400 font-bold">Copied</span>
-            </>
+            <motion.div
+              initial={{ scale: 0.6 }}
+              animate={{ scale: [0.6, 1.25, 1] }}
+              className="flex items-center gap-1 text-emerald-400 font-bold"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Copied</span>
+            </motion.div>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5 text-slate-400" />
@@ -106,16 +109,16 @@ export function CodeWindow({
       </div>
 
       {/* Code Editor Body */}
-      <div className="p-4 sm:p-6 overflow-x-auto bg-[#070A0F]/60">
+      <div className="p-4 sm:p-6 overflow-x-auto bg-[#070A0F]/70 font-mono">
         <pre className="flex flex-col gap-1.5">
           {lines.map((line, idx) => (
             <div key={idx} className="table-row">
               {showLineNumbers && (
-                <span className="table-cell select-none text-right pr-4 text-slate-600 font-mono w-8">
+                <span className="table-cell select-none text-right pr-4 text-slate-600 font-mono w-8 font-tabular">
                   {idx + 1}
                 </span>
               )}
-              <span className="table-cell font-mono leading-relaxed">
+              <span className="table-cell font-mono leading-relaxed font-tabular">
                 {formatCodeLine(line)}
               </span>
             </div>
@@ -126,19 +129,18 @@ export function CodeWindow({
   );
 }
 
-// Custom syntax color formatter matching LLMSlim Palette
+// Syntax Color Formatter with High Contrast Comments (#10)
 function formatCodeLine(line: string) {
   if (line.trim().startsWith("#")) {
-    return <span className="text-slate-500 italic">{line}</span>;
+    return <span className="text-[#94A3B8] italic font-semibold">{line}</span>;
   }
 
-  // Token syntax replaces for standard Python statements
   const tokens = line.split(/(\s+)/);
 
   return tokens.map((token, i) => {
     if (["from", "import", "def", "class", "return", "if", "for", "in", "as"].includes(token)) {
       return (
-        <span key={i} className="text-violet-400 font-semibold">
+        <span key={i} className="text-emerald-400 font-bold">
           {token}
         </span>
       );

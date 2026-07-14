@@ -17,12 +17,12 @@ export function Footer() {
                 <img
                   src="/llmslim_logo.png"
                   alt="LLMSlim Logo"
-                  className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
               <span className="font-bold text-base text-white tracking-tight flex items-center gap-2 font-sans">
                 LLMSlim
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono badge-scientific">
                   v0.2.0
                 </span>
               </span>
@@ -34,7 +34,7 @@ export function Footer() {
 
           {/* Col 2: Product & Engine */}
           <div className="space-y-3 font-mono text-xs">
-            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider">Product Engine</div>
+            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider badge-scientific">Product Engine</div>
             <ul className="space-y-2 text-slate-400">
               <li><a href="#features" className="hover:text-emerald-400 transition-colors">Instruction Shield</a></li>
               <li><a href="#pipeline" className="hover:text-emerald-400 transition-colors">6-Step Compression DAG</a></li>
@@ -45,7 +45,7 @@ export function Footer() {
 
           {/* Col 3: Integrations & API */}
           <div className="space-y-3 font-mono text-xs">
-            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider">SDK & API</div>
+            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider badge-scientific">SDK & API</div>
             <ul className="space-y-2 text-slate-400">
               <li><a href="#code" className="hover:text-cyan-400 transition-colors flex items-center gap-1">PyPI Package <ArrowUpRight className="w-3 h-3 opacity-60" /></a></li>
               <li><a href="#code" className="hover:text-cyan-400 transition-colors">OpenAI Integration</a></li>
@@ -56,7 +56,7 @@ export function Footer() {
 
           {/* Col 4: Community & Legal */}
           <div className="space-y-3 font-mono text-xs">
-            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider">Open Source</div>
+            <div className="text-slate-200 font-bold uppercase text-[11px] tracking-wider badge-scientific">Open Source</div>
             <ul className="space-y-2 text-slate-400">
               <li>
                 <a

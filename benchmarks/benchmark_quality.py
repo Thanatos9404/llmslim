@@ -8,7 +8,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from llmslim import compress
 from llmslim.ranking import _ENTITY_PATTERNS, _INSTRUCTION_PATTERNS
@@ -187,10 +187,19 @@ def evaluate_sample_quality(
     )
 
 
-def run_quality_benchmarks(dataset_dir: str = "datasets") -> List[QualityMetrics]:
+def run_quality_benchmarks(dataset_dir: Optional[str] = None) -> List[QualityMetrics]:
     results: List[QualityMetrics] = []
-    if not os.path.exists(dataset_dir):
-        dataset_dir = os.path.join("benchmarks", "datasets")
+    if dataset_dir is None or not os.path.exists(dataset_dir):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        resolved = os.path.join(base_dir, "datasets")
+        if os.path.exists(resolved):
+            dataset_dir = resolved
+        elif os.path.exists("datasets"):
+            dataset_dir = "datasets"
+        elif os.path.exists(os.path.join("benchmarks", "datasets")):
+            dataset_dir = os.path.join("benchmarks", "datasets")
+        else:
+            dataset_dir = resolved
 
     for filename in sorted(os.listdir(dataset_dir)):
         if not filename.endswith(".json"):

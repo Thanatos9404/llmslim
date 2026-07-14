@@ -6,7 +6,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from llmslim import ContextCompressor
 from llmslim.tokenization import split_paragraphs, split_sentences
@@ -99,10 +99,19 @@ def measure_speed_breakdown(sample_id: str, text: str, category: str) -> SpeedMe
     )
 
 
-def run_speed_benchmarks(dataset_dir: str = "datasets") -> List[SpeedMetrics]:
+def run_speed_benchmarks(dataset_dir: Optional[str] = None) -> List[SpeedMetrics]:
     results: List[SpeedMetrics] = []
-    if not os.path.exists(dataset_dir):
-        dataset_dir = os.path.join("benchmarks", "datasets")
+    if dataset_dir is None or not os.path.exists(dataset_dir):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        resolved = os.path.join(base_dir, "datasets")
+        if os.path.exists(resolved):
+            dataset_dir = resolved
+        elif os.path.exists("datasets"):
+            dataset_dir = "datasets"
+        elif os.path.exists(os.path.join("benchmarks", "datasets")):
+            dataset_dir = os.path.join("benchmarks", "datasets")
+        else:
+            dataset_dir = resolved
 
     for filename in sorted(os.listdir(dataset_dir)):
         if not filename.endswith(".json"):

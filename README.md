@@ -28,6 +28,7 @@
 [![Coverage Status](https://img.shields.io/codecov/c/github/Thanatos9404/llmslim?style=for-the-badge&logo=codecov&logoColor=white&color=10b981)](https://codecov.io/gh/Thanatos9404/llmslim)
 [![PyPI version](https://img.shields.io/pypi/v/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=58a6ff)](https://pypi.org/project/llmslim/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=ffa657)](https://pypi.org/project/llmslim/)
+[![Website](https://img.shields.io/badge/website-llmslim.app-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app/)
 
 <!-- Badges Row 2: Tech & Standards -->
 [![Python Versions](https://img.shields.io/pypi/pyversions/llmslim?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)

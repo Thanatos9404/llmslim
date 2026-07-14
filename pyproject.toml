@@ -51,7 +51,8 @@ all = ["sentence-transformers>=2.2", "tiktoken>=0.5", "nltk>=3.8", "pyyaml>=6.0"
 dev = ["pytest>=7.0", "pytest-cov"]
 
 [project.urls]
-Homepage = "https://github.com/Thanatos9404/llmslim"
+Homepage = "https://www.llmslim.app"
+Documentation = "https://www.llmslim.app"
 Repository = "https://github.com/Thanatos9404/llmslim"
 "Bug Tracker" = "https://github.com/Thanatos9404/llmslim/issues"
 

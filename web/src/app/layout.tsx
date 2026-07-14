@@ -22,6 +22,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://llmslim.com"),
   title: {
     default: "LLMSlim — Semantic Prompt & Context Compression Engine for LLM Infrastructure",
     template: "%s | LLMSlim",
@@ -40,12 +41,28 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Yashvardhan Thanvi", url: "https://github.com/Thanatos9404" }],
   creator: "Yashvardhan Thanvi",
+  icons: {
+    icon: [
+      { url: "/llmslim_logo.png", type: "image/png" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    shortcut: "/llmslim_logo.png",
+    apple: "/llmslim_logo.png",
+  },
   openGraph: {
     title: "LLMSlim — Cut LLM Token Costs by 50% in 1 Line of Code",
     description:
       "Surgically compresses LLM prompts, RAG document contexts, and multi-turn chat histories while preserving guaranteed 100% instruction fidelity.",
     url: "https://llmslim.com",
     siteName: "LLMSlim",
+    images: [
+      {
+        url: "/llmslim_brand_id.png",
+        width: 1200,
+        height: 630,
+        alt: "LLMSlim Brand Identity",
+      },
+    ],
     locale: "en_US",
     type: "website",
   },
@@ -54,6 +71,7 @@ export const metadata: Metadata = {
     title: "LLMSlim — Cut LLM Token Costs by 50% in 1 Line of Code",
     description:
       "Semantic prompt compression built for enterprise LLM pipelines. Works offline out-of-the-box.",
+    images: ["/llmslim_brand_id.png"],
     creator: "@Thanatos9404",
   },
   robots: {
@@ -83,6 +101,7 @@ const jsonLd = {
   description:
     "Open-source Python package for semantic prompt compression, context optimization, and token reduction in LLM pipelines.",
   url: "https://github.com/Thanatos9404/llmslim",
+  logo: "https://llmslim.com/llmslim_logo.png",
 };
 
 export default function RootLayout({

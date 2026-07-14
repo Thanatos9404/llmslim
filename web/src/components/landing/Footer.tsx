@@ -13,12 +13,14 @@ export function Footer() {
           {/* Col 1: Brand & Logomark */}
           <div className="space-y-4 md:col-span-1">
             <a href="#" className="flex items-center gap-2.5 group">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-400 to-cyan-400 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.3)]">
-                <div className="w-full h-full bg-[#070A0F] rounded-[7px] flex items-center justify-center font-mono font-bold text-xs text-white">
-                  S
-                </div>
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-400 to-cyan-400 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.3)] overflow-hidden flex items-center justify-center bg-[#070A0F]">
+                <img
+                  src="/llmslim_logo.png"
+                  alt="LLMSlim Logo"
+                  className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+                />
               </div>
-              <span className="font-bold text-base text-white tracking-tight flex items-center gap-2">
+              <span className="font-bold text-base text-white tracking-tight flex items-center gap-2 font-sans">
                 LLMSlim
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono">
                   v0.2.0

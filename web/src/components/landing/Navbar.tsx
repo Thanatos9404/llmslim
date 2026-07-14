@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Command, Terminal, Menu, X } from "lucide-react";
 import { AnimatedButton } from "@/components/design-system";
@@ -28,12 +29,14 @@ export function Navbar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between">
-        {/* Brand Logomark */}
-        <a href="#" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-400 via-cyan-400 to-violet-500 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.3)] group-hover:shadow-[0_0_25px_rgba(0,245,155,0.5)] transition-all">
-            <div className="w-full h-full bg-[#070A0F] rounded-[11px] flex items-center justify-center font-mono font-bold text-xs text-white">
-              S
-            </div>
+        {/* Official LLMSlim Brand Logo */}
+        <a href="#" className="flex items-center gap-3 group">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-400 via-cyan-400 to-emerald-500 p-[1px] shadow-[0_0_15px_rgba(0,245,155,0.35)] group-hover:shadow-[0_0_25px_rgba(0,245,155,0.6)] transition-all overflow-hidden flex items-center justify-center bg-[#070A0F]">
+            <img
+              src="/llmslim_logo.png"
+              alt="LLMSlim Logo"
+              className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+            />
           </div>
           <span className="font-sans font-bold text-base sm:text-lg text-white tracking-tight flex items-center gap-1.5">
             LLMSlim

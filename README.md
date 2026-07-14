@@ -1,5 +1,11 @@
 <div align="center">
 
+<a href="https://github.com/Thanatos9404/llmslim">
+  <img src="assets/llmslim_logo.png" width="120" alt="LLMSlim Official Logo" />
+</a>
+
+<br/><br/>
+
 <!-- Animated SVG Hero Banner -->
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,50:58a6ff,100:f778ba&height=220&section=header&text=llmslim&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Cut%20your%20LLM%20costs%20by%2050%25%20in%201%20line%20of%20code&descAlignY=55&descSize=18&descColor=c9d1d9" width="100%"/>
 

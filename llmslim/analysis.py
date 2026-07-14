@@ -179,14 +179,10 @@ _SQL_KEYWORD_RE = re.compile(
 _CHAT_ROLE_RE = re.compile(
     r"^\s*(?:User|Assistant|Human|AI|System|Bot)\s*:", re.MULTILINE | re.IGNORECASE
 )
-_CHAT_JSON_ROLE_RE = re.compile(
-    r'"role"\s*:\s*"(?:user|assistant|system)"', re.IGNORECASE
-)
+_CHAT_JSON_ROLE_RE = re.compile(r'"role"\s*:\s*"(?:user|assistant|system)"', re.IGNORECASE)
 
 # --- System prompt ---
-_SYS_YOU_ARE_RE = re.compile(
-    r"\b(?:you are|your role|act as|your task)\b", re.IGNORECASE
-)
+_SYS_YOU_ARE_RE = re.compile(r"\b(?:you are|your role|act as|your task)\b", re.IGNORECASE)
 _SYS_LABEL_RE = re.compile(
     r"^(?:System|Instructions?|Rules?|Guidelines?|Constraints?)\s*:",
     re.MULTILINE | re.IGNORECASE,
@@ -205,9 +201,7 @@ _RAG_SEPARATOR_RE = re.compile(r"(?:^|\n)\s*[-=]{3,}\s*(?:$|\n)")
 
 # --- Log file ---
 _LOG_TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}")
-_LOG_LEVEL_RE = re.compile(
-    r"\b(?:DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL|TRACE)\b"
-)
+_LOG_LEVEL_RE = re.compile(r"\b(?:DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL|TRACE)\b")
 _LOG_BRACKET_LEVEL_RE = re.compile(r"\[(?:DEBUG|INFO|WARN|ERROR|FATAL)\]")
 
 # --- Config file ---
@@ -216,9 +210,7 @@ _CONFIG_INI_SECTION_RE = re.compile(r"^\[[\w.-]+\]\s*$", re.MULTILINE)
 _CONFIG_COMMENT_RE = re.compile(r"^\s*[#;]", re.MULTILINE)
 
 # --- API documentation ---
-_API_METHOD_RE = re.compile(
-    r"\b(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/", re.MULTILINE
-)
+_API_METHOD_RE = re.compile(r"\b(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/", re.MULTILINE)
 _API_ENDPOINT_RE = re.compile(r"/(?:api|v\d)/[\w/{}-]+")
 _API_STATUS_CODE_RE = re.compile(r"\b(?:200|201|400|401|403|404|500)\b")
 _API_SCHEMA_RE = re.compile(
@@ -232,9 +224,7 @@ _PAPER_SECTION_RE = re.compile(
     r"Results?|Discussion|Conclusion|References|Acknowledgments?|Appendix)\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
-_PAPER_CITATION_RE = re.compile(
-    r"\[(?:\d+(?:,\s*\d+)*)\]|\(\w+(?:\s+et\s+al\.?)?,?\s*\d{4}\)"
-)
+_PAPER_CITATION_RE = re.compile(r"\[(?:\d+(?:,\s*\d+)*)\]|\(\w+(?:\s+et\s+al\.?)?,?\s*\d{4}\)")
 
 # --- Technical documentation ---
 _TECH_DOC_NOTE_RE = re.compile(
@@ -723,13 +713,15 @@ _LANGUAGE_HINTS: Dict[ContentType, str] = {
 }
 
 # Content types that imply parseable structure.
-_STRUCTURED_TYPES = frozenset({
-    ContentType.JSON,
-    ContentType.YAML,
-    ContentType.XML,
-    ContentType.HTML,
-    ContentType.MARKDOWN,
-})
+_STRUCTURED_TYPES = frozenset(
+    {
+        ContentType.JSON,
+        ContentType.YAML,
+        ContentType.XML,
+        ContentType.HTML,
+        ContentType.MARKDOWN,
+    }
+)
 
 
 # =====================================================================
@@ -790,9 +782,7 @@ def analyze(text: str) -> ContentProfile:
 
     # Compute metadata.
     estimated_tokens = count_tokens(text)
-    has_structure = best_type in _STRUCTURED_TYPES or any(
-        s in _STRUCTURED_TYPES for s in secondary
-    )
+    has_structure = best_type in _STRUCTURED_TYPES or any(s in _STRUCTURED_TYPES for s in secondary)
     language_hint = _LANGUAGE_HINTS.get(best_type)
 
     # Structure depth.

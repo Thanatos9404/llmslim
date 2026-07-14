@@ -297,11 +297,11 @@ def generate_markdown_report(quality, speed, memory, regression, scores, total_d
 
 | Score Metric | Value | Status |
 | :--- | :--- | :--- |
-| **Overall Score** | **{scores['overall_score']} / 100** | **PASSED** |
-| **Quality Score** | **{scores['quality_score']} / 100** | **PASSED** |
-| **Performance Score** | **{scores['performance_score']} / 100** | **PASSED** |
-| **Reliability Score** | **{scores['reliability_score']} / 100** | **PASSED** |
-| **Production Readiness Score** | **{scores['production_readiness_score']} / 100** | **EXCELLENT** |
+| **Overall Score** | **{scores["overall_score"]} / 100** | **PASSED** |
+| **Quality Score** | **{scores["quality_score"]} / 100** | **PASSED** |
+| **Performance Score** | **{scores["performance_score"]} / 100** | **PASSED** |
+| **Reliability Score** | **{scores["reliability_score"]} / 100** | **PASSED** |
+| **Production Readiness Score** | **{scores["production_readiness_score"]} / 100** | **EXCELLENT** |
 
 ---
 

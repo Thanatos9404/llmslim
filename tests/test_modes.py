@@ -29,10 +29,18 @@ class TestBuiltInModes:
         assert len(list_modes()) == 8
 
     def test_mode_names(self):
-        expected = sorted([
-            "balanced", "quality", "aggressive", "rag",
-            "chat", "system", "code", "documentation",
-        ])
+        expected = sorted(
+            [
+                "balanced",
+                "quality",
+                "aggressive",
+                "rag",
+                "chat",
+                "system",
+                "code",
+                "documentation",
+            ]
+        )
         assert list_modes() == expected
 
     def test_all_modes_frozen(self):

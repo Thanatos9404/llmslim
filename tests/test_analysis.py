@@ -15,14 +15,14 @@ from llmslim.analysis import ContentProfile, ContentType, analyze
 JSON_SAMPLE = '{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "total": 2}'
 
 JSON_OBJECT_SAMPLE = (
-    '{\n'
+    "{\n"
     '    "name": "llmslim",\n'
     '    "version": "0.3.0",\n'
     '    "dependencies": {\n'
     '        "numpy": ">=1.21",\n'
     '        "scikit-learn": ">=1.0"\n'
-    '    }\n'
-    '}'
+    "    }\n"
+    "}"
 )
 
 JSON_ARRAY_SAMPLE = '[{"key": "value1"}, {"key": "value2"}, {"key": "value3"}]'
@@ -394,8 +394,14 @@ class TestContentProfile:
 
     def test_confidence_range(self):
         for sample in [
-            JSON_SAMPLE, YAML_SAMPLE, MARKDOWN_SAMPLE, PYTHON_SAMPLE,
-            SQL_SAMPLE, CHAT_SAMPLE, LOG_SAMPLE, GENERAL_TEXT_SAMPLE,
+            JSON_SAMPLE,
+            YAML_SAMPLE,
+            MARKDOWN_SAMPLE,
+            PYTHON_SAMPLE,
+            SQL_SAMPLE,
+            CHAT_SAMPLE,
+            LOG_SAMPLE,
+            GENERAL_TEXT_SAMPLE,
         ]:
             profile = analyze(sample)
             assert 0.0 <= profile.confidence <= 1.0
@@ -482,7 +488,10 @@ class TestSecondaryTypes:
         profile = analyze(TECH_DOC_SAMPLE)
         all_types = {profile.content_type} | set(profile.secondary_types)
         # Should detect markdown signals as secondary
-        assert ContentType.MARKDOWN in all_types or profile.content_type == ContentType.TECHNICAL_DOCUMENTATION
+        assert (
+            ContentType.MARKDOWN in all_types
+            or profile.content_type == ContentType.TECHNICAL_DOCUMENTATION
+        )
 
     def test_secondary_types_capped(self):
         # Secondary types should be capped at 3
@@ -551,9 +560,7 @@ class TestEdgeCases:
         )
         profile = analyze(text)
         # Could be JSON or chat; both are valid interpretations
-        assert profile.content_type in (
-            ContentType.JSON, ContentType.CHAT_CONVERSATION
-        )
+        assert profile.content_type in (ContentType.JSON, ContentType.CHAT_CONVERSATION)
 
 
 # =====================================================================
@@ -566,7 +573,10 @@ class TestDeterminism:
 
     def test_deterministic_output(self):
         for sample in [
-            JSON_SAMPLE, YAML_SAMPLE, PYTHON_SAMPLE, CHAT_SAMPLE,
+            JSON_SAMPLE,
+            YAML_SAMPLE,
+            PYTHON_SAMPLE,
+            CHAT_SAMPLE,
             GENERAL_TEXT_SAMPLE,
         ]:
             p1 = analyze(sample)

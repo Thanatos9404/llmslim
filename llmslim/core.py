@@ -119,9 +119,7 @@ class CompressionResult:
                 f"Instructions     : {self.instructions_kept}/{self.instructions_found} kept"
             )
         if self.entities_found is not None:
-            parts.append(
-                f"Entities         : {self.entities_kept}/{self.entities_found} kept"
-            )
+            parts.append(f"Entities         : {self.entities_kept}/{self.entities_found} kept")
         if self.structure_preserved is not None:
             parts.append(f"Structure kept   : {self.structure_preserved}")
         return "\n".join(parts)
@@ -141,9 +139,15 @@ class CompressionResult:
             "backend": self.backend,
         }
         for key in (
-            "content_type", "content_confidence", "mode", "elapsed_ms",
-            "instructions_found", "instructions_kept",
-            "entities_found", "entities_kept", "structure_preserved",
+            "content_type",
+            "content_confidence",
+            "mode",
+            "elapsed_ms",
+            "instructions_found",
+            "instructions_kept",
+            "entities_found",
+            "entities_kept",
+            "structure_preserved",
         ):
             val = getattr(self, key)
             if val is not None:
@@ -261,8 +265,13 @@ class ContextCompressor:
 
         if original_tokens <= self.min_tokens_for_compression:
             return self._passthrough(
-                text, original_tokens, target_ratio, sentences_total=0,
-                profile=profile, resolved_mode=resolved_mode, t_start=t_start,
+                text,
+                original_tokens,
+                target_ratio,
+                sentences_total=0,
+                profile=profile,
+                resolved_mode=resolved_mode,
+                t_start=t_start,
             )
 
         # --- v0.3: structured content fast-path ---
@@ -273,7 +282,12 @@ class ContextCompressor:
             and resolved_mode.preserve_structure
         ):
             structured_result = self._try_structured(
-                text, target_ratio, profile, resolved_mode, original_tokens, t_start,
+                text,
+                target_ratio,
+                profile,
+                resolved_mode,
+                original_tokens,
+                t_start,
             )
             if structured_result is not None:
                 return structured_result
@@ -290,9 +304,13 @@ class ContextCompressor:
 
         if len(all_sentences) <= 1:
             return self._passthrough(
-                text, original_tokens, target_ratio,
+                text,
+                original_tokens,
+                target_ratio,
                 sentences_total=len(all_sentences),
-                profile=profile, resolved_mode=resolved_mode, t_start=t_start,
+                profile=profile,
+                resolved_mode=resolved_mode,
+                t_start=t_start,
             )
 
         embeddings, query_embedding = self._encode(all_sentences, query)
@@ -462,9 +480,11 @@ class ContextCompressor:
             sentences_kept=sentences_total,
             num_chunks=0,
             backend=self.backend.name,
-            content_type=getattr(profile, 'content_type', None) and profile.content_type.value if profile else None,
-            content_confidence=getattr(profile, 'confidence', None) if profile else None,
-            mode=getattr(resolved_mode, 'name', None) if resolved_mode else None,
+            content_type=getattr(profile, "content_type", None) and profile.content_type.value
+            if profile
+            else None,
+            content_confidence=getattr(profile, "confidence", None) if profile else None,
+            mode=getattr(resolved_mode, "name", None) if resolved_mode else None,
             elapsed_ms=elapsed_ms,
         )
 
@@ -484,7 +504,9 @@ class ContextCompressor:
             return None
 
         result_text = optimize_structured(
-            text, profile.content_type, target_ratio,  # type: ignore[union-attr]
+            text,
+            profile.content_type,
+            target_ratio,  # type: ignore[union-attr]
         )
         if result_text is None or result_text == text:
             return None

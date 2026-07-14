@@ -243,9 +243,7 @@ def resolve_mode(
             global _CONTENT_TYPE_TO_MODE
             if _CONTENT_TYPE_TO_MODE is None:
                 _CONTENT_TYPE_TO_MODE = _build_content_type_map()
-            mode_name = _CONTENT_TYPE_TO_MODE.get(
-                profile.content_type.value, "balanced"
-            )
+            mode_name = _CONTENT_TYPE_TO_MODE.get(profile.content_type.value, "balanced")
             return _MODES[mode_name]
         return MODE_BALANCED
 

@@ -7,23 +7,23 @@
 <br/><br/>
 
 <!-- Animated SVG Hero Banner -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:030508,50:00F59B,100:00D2FF&height=220&section=header&text=LLMSlim%20v0.3.0&fontSize=48&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Hybrid%20Prompt%20Compression%20%26%20Semantic%20Optimization%20Engine&descAlignY=55&descSize=16&descColor=e2e8f0" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:030508,50:00F59B,100:00D2FF&amp;height=220&amp;section=header&amp;text=LLMSlim%20v0.3.0&amp;fontSize=48&amp;fontColor=ffffff&amp;animation=fadeIn&amp;fontAlignY=35&amp;desc=Hybrid%20Prompt%20Compression%20and%20Semantic%20Optimization%20Engine&amp;descAlignY=55&amp;descSize=16&amp;descColor=e2e8f0" width="100%"/>
 
 <!-- Animated Typing Effect -->
 <a href="https://llmslim.app">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=24&duration=3000&pause=1000&color=00F59B&center=true&vCenter=true&multiline=true&repeat=true&width=750&height=120&lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%A7%A0+Hybrid+Extractive+%2B+Generative+Semantic+Rewrite;%F0%9F%94%92+Guaranteed+100%25+Instruction+%26+Code+Fidelity;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude%2C+Gemini+%26+DeepSeek+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&amp;weight=700&amp;size=24&amp;duration=3000&amp;pause=1000&amp;color=00F59B&amp;center=true&amp;vCenter=true&amp;multiline=true&amp;repeat=true&amp;width=750&amp;height=120&amp;lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%A7%A0+Hybrid+Extractive+%2B+Generative+Semantic+Rewrite;%F0%9F%94%92+Guaranteed+100%25+Instruction+and+Code+Fidelity;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude%2C+Gemini+and+DeepSeek+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
 </a>
 
 <br/><br/>
 
-<!-- Badges Row 1: Coverage, PyPI, Downloads, Website -->
+<!-- Badges Row 1: Coverage, PyPI v0.3.0, Downloads, Website -->
 [![Coverage Status](https://img.shields.io/codecov/c/github/Thanatos9404/llmslim?style=for-the-badge&logo=codecov&logoColor=white&color=00D2FF)](https://codecov.io/gh/Thanatos9404/llmslim)
-[![PyPI Version](https://img.shields.io/pypi/v/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=00F59B)](https://pypi.org/project/llmslim/)
+[![PyPI Version](https://img.shields.io/badge/PyPI-v0.3.0-00F59B?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/llmslim/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![Production Gateway](https://img.shields.io/badge/Production-llmslim.app-00F59B?style=for-the-badge&logo=vercel&logoColor=white)](https://llmslim.app/)
 
 <!-- Badges Row 2: Tech Stack & Code Quality -->
-[![Python Versions](https://img.shields.io/pypi/pyversions/llmslim?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8?style=for-the-badge&logo=open-source-initiative&logoColor=white)](LICENSE)
 [![Ruff Linter](https://img.shields.io/badge/Code%20Style-Ruff-261230?style=for-the-badge&logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 [![Type Checked: MyPy](https://img.shields.io/badge/Type%20Checked-MyPy-blue?style=for-the-badge&logo=python&logoColor=white)](https://github.com/python/mypy)
@@ -42,10 +42,10 @@ print(slim.compressed_text)  # → High-density token context delivered in < 30m
 <br/>
 
 <!-- Quick Metrics Overview Cards -->
-<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Token_Reduction-40--70%25-00F59B?style=for-the-badge&labelColor=030508" /></a>
-<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Directive_Fidelity-100.0%25-00D2FF?style=for-the-badge&labelColor=030508" /></a>
-<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/CPU_Latency-%3C_30ms-38bdf8?style=for-the-badge&labelColor=030508" /></a>
-<a href="https://llmslim.app/docs"><img src="https://img.shields.io/badge/Zero_Dependencies-Pure_Python-00F59B?style=for-the-badge&labelColor=030508" /></a>
+<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Token_Reduction-40--70%25-00F59B?style=for-the-badge&amp;labelColor=030508" /></a>
+<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Directive_Fidelity-100.0%25-00D2FF?style=for-the-badge&amp;labelColor=030508" /></a>
+<a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/CPU_Latency-%3C_30ms-38bdf8?style=for-the-badge&amp;labelColor=030508" /></a>
+<a href="https://llmslim.app/docs"><img src="https://img.shields.io/badge/Zero_Dependencies-Pure_Python-00F59B?style=for-the-badge&amp;labelColor=030508" /></a>
 
 </div>
 
@@ -134,7 +134,7 @@ Every token sent to cloud LLM providers increases prefill latency, pushes models
 
 ### Installation
 
-Install LLMSlim using your Python package manager:
+Install LLMSlim using Python 3.8+ package managers:
 
 ```bash
 # Standard Pip installation
@@ -247,7 +247,7 @@ All benchmark evaluation protocols are open, reproducible, and executed across s
 - **CPU**: AMD EPYC 7763 64-Core Processor @ 2.45GHz
 - **RAM**: 64 GB DDR4 ECC RAM
 - **OS**: Ubuntu 24.04 LTS (Linux Kernel 6.8.0)
-- **Python Version**: Python 3.12.3
+- **Python Version**: Python 3.12.3 (Python 3.8+ Supported)
 - **Package Version**: `llmslim v0.3.0`
 - **Tokenizer**: `tiktoken v0.7.0 (cl100k_base / o200k_base)`
 - **Sample Size**: N = 500 prompts per dataset (100 iterations per sample)
@@ -294,7 +294,7 @@ LLMSlim provides native integration guides, code patterns, and client wrappers f
 
 ## 📦 API Reference
 
-### Core Python API
+### Core Python API (Python 3.8+)
 
 ```python
 from llmslim import compress, compress_chat_messages, compress_documents, estimate_cost_savings, analyze
@@ -369,7 +369,7 @@ LLMSlim is free, open-source software built for the AI developer community.
 <div align="center">
 
 <a href="https://github.com/sponsors/Thanatos9404">
-  <img src="https://img.shields.io/badge/Sponsor_LLMSlim-Become_a_Backer-00F59B?style=for-the-badge&logo=github-sponsors&logoColor=white" />
+  <img src="https://img.shields.io/badge/Sponsor_LLMSlim-Become_a_Backer-00F59B?style=for-the-badge&amp;logo=github-sponsors&amp;logoColor=white" />
 </a>
 
 </div>
@@ -420,11 +420,11 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for full legal text.
 ### Built with ❤️ by [Yashvardhan Thanvi](https://github.com/Thanatos9404)
 
 <a href="https://github.com/Thanatos9404/llmslim">
-  <img src="https://img.shields.io/badge/⭐_Star_LLMSlim_on_GitHub-00F59B?style=for-the-badge&logo=github&logoColor=white" />
+  <img src="https://img.shields.io/badge/⭐_Star_LLMSlim_on_GitHub-00F59B?style=for-the-badge&amp;logo=github&amp;logoColor=white" />
 </a>
 
 <br/><br/>
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:030508,50:00F59B,100:00D2FF&height=120&section=footer" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:030508,50:00F59B,100:00D2FF&amp;height=120&amp;section=footer" width="100%" />
 
 </div>

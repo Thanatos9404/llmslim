@@ -11,10 +11,10 @@
 
 <!-- Animated Typing Effect -->
 <a href="https://llmslim.app">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&amp;weight=700&amp;size=24&amp;duration=3000&amp;pause=1000&amp;color=00F59B&amp;center=true&amp;vCenter=true&amp;multiline=true&amp;repeat=true&amp;width=750&amp;height=120&amp;lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%A7%A0+Hybrid+Extractive+%2B+Generative+Semantic+Rewrite;%F0%9F%94%92+Guaranteed+100%25+Instruction+and+Code+Fidelity;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude%2C+Gemini+and+DeepSeek+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&amp;weight=700&amp;size=24&amp;duration=3000&amp;pause=1000&amp;color=00F59B&amp;center=true&amp;vCenter=true&amp;multiline=true&amp;repeat=true&amp;width=750&amp;height=140&amp;lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%A7%A0+Hybrid+Extractive+%2B+Generative+Semantic+Rewrite;%F0%9F%94%92+Guaranteed+100%25+Instruction+and+Code+Fidelity;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude%2C+Gemini+and+DeepSeek+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
 </a>
 
-<br/><br/>
+<br/><br/><br/><br/>
 
 <!-- Badges Row 1: Coverage, PyPI v0.3.0, Downloads, Website -->
 [![Coverage Status](https://img.shields.io/codecov/c/github/Thanatos9404/llmslim?style=for-the-badge&logo=codecov&logoColor=white&color=00D2FF)](https://codecov.io/gh/Thanatos9404/llmslim)

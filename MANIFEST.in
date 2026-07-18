@@ -9,7 +9,7 @@ include CITATION.cff
 include pyproject.toml
 include llmslim/py.typed
 
-recursive-include assets *.svg *.png *.jpg
+recursive-include assets *.svg *.png *.json *.py
 recursive-include llmslim *.py
 
 # Exclude scratch, build, test, and hidden cache directories from source packages

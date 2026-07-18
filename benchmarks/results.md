@@ -1,4 +1,4 @@
-# Benchmark Results — llmslim v0.2.0
+# Benchmark Results — llmslim v0.3.0
 
 > Benchmarks run with TF-IDF backend (default, no model download required).
 > Sentence-transformers backend typically improves entity retention by 5–10%.

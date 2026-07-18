@@ -75,6 +75,7 @@ class CompressionResult:
     entities_found: Optional[int] = None
     entities_kept: Optional[int] = None
     structure_preserved: Optional[bool] = None
+    rewrite_metadata: Optional[Any] = None
 
     @property
     def actual_ratio(self) -> float:
@@ -122,6 +123,14 @@ class CompressionResult:
             parts.append(f"Entities         : {self.entities_kept}/{self.entities_found} kept")
         if self.structure_preserved is not None:
             parts.append(f"Structure kept   : {self.structure_preserved}")
+        if self.rewrite_metadata is not None:
+            rm = self.rewrite_metadata
+            parts.append(f"Optimization     : strategy={getattr(rm, 'strategy', None)}, "
+                         f"accepted={getattr(rm, 'accepted', None)}, "
+                         f"provider={getattr(rm, 'provider_name', None)}")
+            parts.append(f"Validation       : sim={getattr(rm, 'similarity_score', 0.0):.3f}, "
+                         f"inst={getattr(rm, 'instruction_retention', 0.0):.0%}, "
+                         f"ent={getattr(rm, 'entity_retention', 0.0):.0%}")
         return "\n".join(parts)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -152,6 +161,12 @@ class CompressionResult:
             val = getattr(self, key)
             if val is not None:
                 d[key] = val
+        if self.rewrite_metadata is not None:
+            d["rewrite_metadata"] = (
+                self.rewrite_metadata.to_dict()
+                if hasattr(self.rewrite_metadata, "to_dict")
+                else self.rewrite_metadata
+            )
         return d
 
     def __str__(self) -> str:
@@ -216,6 +231,11 @@ class ContextCompressor:
         text: str,
         target_ratio: float = 0.5,
         query: Optional[str] = None,
+        strategy: str = "extractive",
+        provider: Optional[Any] = None,
+        required_keywords: Optional[List[str]] = None,
+        constraints: Optional[List[str]] = None,
+        template_name: Optional[str] = None,
     ) -> CompressionResult:
         """Compress ``text``, retaining approximately ``target_ratio`` of its tokens.
 
@@ -227,16 +247,152 @@ class ContextCompressor:
             query: Optional query string. When provided, sentences more
                 similar to the query are favored -- ideal for compressing
                 retrieved documents in a RAG pipeline.
+            strategy: Optimization strategy ("extractive", "rewrite", "hybrid").
+            provider: Optional BaseRewriteProvider or callable for rewrite/hybrid strategies.
+            required_keywords: Optional list of keywords required in the output.
+            constraints: Optional list of prompt constraints.
+            template_name: Optional template override.
 
         Returns:
             A :class:`CompressionResult`.
         """
+        if strategy not in ("extractive", "rewrite", "hybrid"):
+            raise ValueError(
+                f"Unknown strategy '{strategy}'. Supported strategies: 'extractive', 'rewrite', 'hybrid'"
+            )
+
+        if strategy in ("rewrite", "hybrid") and provider is None:
+            raise ValueError(
+                f"Strategy '{strategy}' requires a provider. "
+                "Pass a BaseRewriteProvider instance or a callable via `provider=` parameter."
+            )
+
         if not (0.0 < target_ratio <= 1.0):
             raise ValueError("target_ratio must be in the range (0, 1]")
 
         t_start = time.perf_counter()
 
-        # --- v0.3: content detection & mode resolution ---
+        if strategy == "rewrite":
+            return self._compress_rewrite(
+                text=text,
+                target_ratio=target_ratio,
+                provider=provider,
+                required_keywords=required_keywords,
+                constraints=constraints,
+                template_name=template_name,
+                t_start=t_start,
+            )
+
+        if strategy == "hybrid":
+            extractive_res = self._compress_extractive(
+                text=text,
+                target_ratio=target_ratio,
+                query=query,
+                t_start=t_start,
+            )
+            return self._compress_rewrite(
+                text=extractive_res.compressed_text,
+                target_ratio=target_ratio,
+                provider=provider,
+                required_keywords=required_keywords,
+                constraints=constraints,
+                template_name=template_name,
+                t_start=t_start,
+                strategy_label="hybrid",
+                original_text_override=text,
+                initial_result=extractive_res,
+            )
+
+        return self._compress_extractive(
+            text=text,
+            target_ratio=target_ratio,
+            query=query,
+            t_start=t_start,
+        )
+
+    def _compress_rewrite(
+        self,
+        text: str,
+        target_ratio: float,
+        provider: Any,
+        required_keywords: Optional[List[str]],
+        constraints: Optional[List[str]],
+        template_name: Optional[str],
+        t_start: float,
+        strategy_label: str = "rewrite",
+        original_text_override: Optional[str] = None,
+        initial_result: Optional[CompressionResult] = None,
+    ) -> CompressionResult:
+        from .analysis import analyze
+        from .rewrite import BaseRewriteProvider, CallableProvider, RewriteEngine, RewriteMetadata
+
+        if isinstance(provider, BaseRewriteProvider):
+            prov_obj = provider
+        elif callable(provider):
+            prov_obj = CallableProvider(provider)
+        else:
+            raise TypeError(
+                f"Expected BaseRewriteProvider or callable for provider, got {type(provider).__name__}"
+            )
+
+        profile = analyze(text) if self.detect_content else None
+        content_type_str = profile.content_type.value if profile else None
+
+        engine = RewriteEngine(provider=prov_obj)
+        res = engine.rewrite(
+            text=text,
+            target_ratio=target_ratio,
+            content_type=content_type_str,
+            template_name=template_name,
+            constraints=constraints,
+            required_keywords=required_keywords,
+        )
+
+        orig_text = original_text_override or text
+        orig_tokens = count_tokens(orig_text)
+        comp_tokens = count_tokens(res.rewritten_text)
+        elapsed_ms = round((time.perf_counter() - t_start) * 1000, 2)
+
+        meta = RewriteMetadata(
+            strategy=strategy_label,
+            accepted=res.accepted,
+            fallback_used=res.fallback_used,
+            provider_name=res.provider_used,
+            template_name=res.template_used,
+            similarity_score=res.validation.similarity_score,
+            instruction_retention=res.validation.instruction_retention,
+            entity_retention=res.validation.entity_retention,
+            rewrite_latency_ms=res.rewrite_latency_ms,
+            validation_scores=res.validation.scores,
+            failure_reasons=list(res.validation.failure_reasons),
+            error_message=res.error_message,
+        )
+
+        return CompressionResult(
+            original_text=orig_text,
+            compressed_text=res.rewritten_text,
+            original_tokens=orig_tokens,
+            compressed_tokens=comp_tokens,
+            target_ratio=target_ratio,
+            sentences_total=initial_result.sentences_total if initial_result else 0,
+            sentences_kept=initial_result.sentences_kept if initial_result else 0,
+            num_chunks=initial_result.num_chunks if initial_result else 0,
+            backend=self.backend.name,
+            chunk_results=initial_result.chunk_results if initial_result else [],
+            content_type=content_type_str,
+            content_confidence=profile.confidence if profile else None,
+            mode=self.mode,
+            elapsed_ms=elapsed_ms,
+            rewrite_metadata=meta,
+        )
+
+    def _compress_extractive(
+        self,
+        text: str,
+        target_ratio: float,
+        query: Optional[str],
+        t_start: float,
+    ) -> CompressionResult:
         profile = None
         resolved_mode = None
         effective_weights = self.weights
@@ -463,13 +619,15 @@ class ContextCompressor:
         original_tokens: int,
         target_ratio: float,
         sentences_total: int,
-        profile: Optional[object] = None,
-        resolved_mode: Optional[object] = None,
+        profile: Optional[Any] = None,
+        resolved_mode: Optional[Any] = None,
         t_start: Optional[float] = None,
     ) -> CompressionResult:
         elapsed_ms = None
         if t_start is not None and resolved_mode is not None:
             elapsed_ms = round((time.perf_counter() - t_start) * 1000, 2)
+        ctype = getattr(profile, "content_type", None) if profile else None
+        content_type_val = ctype.value if ctype is not None else None
         return CompressionResult(
             original_text=text,
             compressed_text=text,
@@ -480,9 +638,7 @@ class ContextCompressor:
             sentences_kept=sentences_total,
             num_chunks=0,
             backend=self.backend.name,
-            content_type=getattr(profile, "content_type", None) and profile.content_type.value
-            if profile
-            else None,
+            content_type=content_type_val,
             content_confidence=getattr(profile, "confidence", None) if profile else None,
             mode=getattr(resolved_mode, "name", None) if resolved_mode else None,
             elapsed_ms=elapsed_ms,
@@ -492,8 +648,8 @@ class ContextCompressor:
         self,
         text: str,
         target_ratio: float,
-        profile: object,
-        resolved_mode: object,
+        profile: Any,
+        resolved_mode: Any,
         original_tokens: int,
         t_start: float,
     ) -> Optional[CompressionResult]:
@@ -506,7 +662,7 @@ class ContextCompressor:
         result_text = optimize_structured(
             text,
             profile.content_type,
-            target_ratio,  # type: ignore[union-attr]
+            target_ratio,
         )
         if result_text is None or result_text == text:
             return None
@@ -523,9 +679,9 @@ class ContextCompressor:
             sentences_kept=0,
             num_chunks=0,
             backend=self.backend.name,
-            content_type=profile.content_type.value,  # type: ignore[union-attr]
-            content_confidence=profile.confidence,  # type: ignore[union-attr]
-            mode=resolved_mode.name,  # type: ignore[union-attr]
+            content_type=profile.content_type.value,
+            content_confidence=profile.confidence,
+            mode=resolved_mode.name,
             elapsed_ms=elapsed_ms,
             structure_preserved=True,
         )
@@ -719,13 +875,18 @@ def compress(
     query: Optional[str] = None,
     mode: Optional[str] = None,
     detect_content: bool = False,
+    strategy: str = "extractive",
+    provider: Optional[Any] = None,
+    required_keywords: Optional[List[str]] = None,
+    constraints: Optional[List[str]] = None,
+    template_name: Optional[str] = None,
     **kwargs,
 ) -> CompressionResult:
     """Compress ``text``, retaining approximately ``target_ratio`` of its tokens.
 
     This is the main entry point for the library -- a single function
     call that performs semantic chunking, extractive ranking, and
-    reassembly.
+    reassembly (or optional semantic rewriting / hybrid optimization).
 
     Args:
         text: The prompt or document to compress.
@@ -741,6 +902,14 @@ def compress(
         detect_content: When ``True``, analyse the input to detect its
             content type (JSON, YAML, Python, chat, etc.) and populate
             telemetry fields on the result.  Adds < 1 ms overhead.
+        strategy: Optimization strategy ("extractive", "rewrite", "hybrid").
+            Defaults to "extractive".
+        provider: Optional BaseRewriteProvider instance or callable when
+            using "rewrite" or "hybrid" strategy.
+        required_keywords: Optional list of keywords that must be present
+            in the rewritten prompt.
+        constraints: Optional list of prompt constraints passed to rewrite prompt.
+        template_name: Optional template name override.
         **kwargs: Passed to :class:`ContextCompressor` if provided (e.g.
             ``max_chunk_tokens``, ``similarity_threshold``,
             ``preserve_patterns``). If no kwargs are given, a shared
@@ -757,11 +926,21 @@ def compress(
         >>> print(f"Saved {result.tokens_saved} tokens ({result.reduction_percent}%)")
 
     .. versionchanged:: 0.3.0
-       Added ``mode`` and ``detect_content`` parameters.
+       Added ``strategy``, ``provider``, ``required_keywords``, ``constraints``,
+       and ``template_name`` parameters.
     """
     if mode is not None or detect_content:
         kwargs["mode"] = mode
         kwargs["detect_content"] = detect_content
 
     compressor = ContextCompressor(**kwargs) if kwargs else _get_default_compressor()
-    return compressor.compress(text, target_ratio=target_ratio, query=query)
+    return compressor.compress(
+        text,
+        target_ratio=target_ratio,
+        query=query,
+        strategy=strategy,
+        provider=provider,
+        required_keywords=required_keywords,
+        constraints=constraints,
+        template_name=template_name,
+    )

@@ -46,7 +46,7 @@ def optimize_yaml(text: str, target_ratio: float = 0.5) -> Optional[str]:
     try:
         import yaml
     except ImportError:
-        yaml = None  # type: ignore[assignment]
+        yaml = None
 
     if yaml is not None:
         try:

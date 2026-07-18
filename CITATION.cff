@@ -17,8 +17,8 @@ keywords:
   - sentence centrality
   - nlp
 license: MIT
-version: 0.2.0
-date-released: 2026-07-13
+version: 0.3.0
+date-released: 2026-07-18
 identifiers:
   - type: doi
     value: "10.5281/zenodo.0000000"

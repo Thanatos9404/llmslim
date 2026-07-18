@@ -79,6 +79,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Print a cost-savings estimate for MODEL. Options: {', '.join(list_supported_models())}",
     )
     parser.add_argument(
+        "-s",
+        "--strategy",
+        type=str,
+        default="extractive",
+        choices=["extractive", "rewrite", "hybrid"],
+        help="Optimization strategy: 'extractive' (default), 'rewrite', or 'hybrid'.",
+    )
+    parser.add_argument(
         "-b",
         "--backend",
         type=str,
@@ -124,6 +132,7 @@ def main(argv=None) -> int:
         query=args.query,
         mode=args.mode,
         detect_content=args.detect,
+        strategy=args.strategy,
         embedding_backend=args.backend,
     )
 

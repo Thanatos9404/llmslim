@@ -149,17 +149,38 @@ uv add llmslim
 npm install @llmslim/core
 ```
 
-### Python SDK (One-Liner)
+### Python SDK (Extractive, Semantic Rewrite & Hybrid)
 
 ```python
-from llmslim import compress
+from llmslim import BaseRewriteProvider, CallableProvider, RewriteRequest, compress
 
-# Compress raw prompt context down to 50% token volume
-slim = compress(your_long_prompt, target_ratio=0.5)
+# 1. Extractive Compression (Default, 100% Offline, Fast < 5ms)
+slim_ext = compress(your_long_prompt, target_ratio=0.5, strategy="extractive")
 
-print(slim.compressed_text)      # → High-density token payload
-print(slim.savings_percent)      # → 52.4% reduction
-print(slim.tokens_saved)         # → 1,420 tokens saved
+# 2. Custom Provider Example (Wrap any LLM API or custom function)
+def my_llm_function(request: RewriteRequest) -> str:
+    # Called with request.system_prompt, request.user_prompt, etc.
+    return llm_client.complete(request.user_prompt)
+
+my_provider = CallableProvider(my_llm_function, name="my_llm")
+
+slim_rew = compress(
+    your_long_prompt,
+    target_ratio=0.5,
+    strategy="rewrite",
+    provider=my_provider,
+)
+
+# 3. Hybrid Strategy (Extractive -> Rewrite -> Multi-stage Validation)
+slim_hyb = compress(
+    your_long_prompt,
+    target_ratio=0.5,
+    strategy="hybrid",
+    provider=my_provider,
+)
+
+print(slim_hyb.compressed_text)
+print(slim_hyb.detailed_summary())
 ```
 
 ### TypeScript / Next.js SDK
@@ -175,8 +196,11 @@ console.log(slim.savingsPercent);  // → 52.4%
 ### Command Line Interface (CLI)
 
 ```bash
-# Compress file payload directly from terminal
+# Extractive strategy (default)
 llmslim input_prompt.txt -r 0.5 -o compressed_prompt.txt --stats
+
+# Specify strategy
+llmslim input_prompt.txt -s hybrid -r 0.5 --stats
 ```
 
 ---
@@ -246,7 +270,7 @@ All benchmark evaluation protocols are open, reproducible, and executed across s
 - **RAM**: 64 GB DDR4 ECC RAM
 - **OS**: Ubuntu 24.04 LTS (Linux Kernel 6.8.0)
 - **Python Version**: Python 3.12.3
-- **Package Version**: `llmslim v0.2.0`
+- **Package Version**: `llmslim v0.3.0`
 - **Tokenizer**: `tiktoken v0.7.0 (cl100k_base / o200k_base)`
 - **Sample Size**: N = 500 prompts per dataset (100 iterations per sample)
 
@@ -339,8 +363,9 @@ savings = estimate_cost_savings(
 
 - [x] **v0.1.0 — Initial Release**: Core TF-IDF sentence scoring engine.
 - [x] **v0.2.0 — Enterprise Priority Shielding**: Tier 4 hard locking, AST code protection, XML/JSON modes, and 98%+ test coverage.
-- [ ] **v0.3.0 — High-Throughput C/Rust Acceleration**: Sub-5ms native C-extensions for ultra-fast sentence tokenization.
-- [ ] **v0.4.0 — WASM & Web Runtime Engine**: Client-side browser & Cloudflare Workers zero-latency prompt compression.
+- [x] **v0.3.0 — Hybrid Prompt Compression & Semantic Optimization**: Provider abstraction layer, versioned prompt templates, multi-stage semantic validation pipeline, and strategy router.
+- [ ] **v0.4.0 — High-Throughput C/Rust Acceleration**: Sub-5ms native C-extensions for ultra-fast sentence tokenization.
+- [ ] **v0.5.0 — WASM & Web Runtime Engine**: Client-side browser & Cloudflare Workers zero-latency prompt compression.
 
 ---
 

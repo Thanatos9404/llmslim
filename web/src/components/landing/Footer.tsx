@@ -23,7 +23,7 @@ export function Footer() {
               <span className="font-bold text-base text-white tracking-tight flex items-center gap-2 font-sans">
                 LLMSlim
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono badge-scientific">
-                  v0.2.0
+                  v0.3.0
                 </span>
               </span>
             </a>

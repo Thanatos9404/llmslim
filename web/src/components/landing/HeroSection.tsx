@@ -19,7 +19,7 @@ export function HeroSection() {
       {/* Top Release Pill Badge */}
       <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono shadow-[0_0_20px_rgba(0,245,155,0.15)] mb-2 animate-fade-in">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span>LLMSlim Engine v0.2.0</span>
+        <span>LLMSlim Engine v0.3.0</span>
         <span className="text-slate-500 hidden sm:inline">|</span>
         <span className="text-slate-300 font-semibold hidden sm:flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />

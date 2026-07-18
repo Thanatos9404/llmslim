@@ -10,10 +10,10 @@
 
   /* Accent Signals */
   --accent-emerald: #00f59b;
-  --accent-emerald-glow: rgba(0, 245, 155, 0.25);
+  --accent-emerald-glow: rgba(0, 245, 155, 0.16);
   --accent-cyan: #00e5ff;
   --accent-violet: #a855f7;
-  --accent-violet-glow: rgba(168, 85, 247, 0.25);
+  --accent-violet-glow: rgba(168, 85, 247, 0.16);
   --accent-pink: #f778ba;
 
   /* Typography Colors */
@@ -24,9 +24,9 @@
   --text-pruned: #475569;
 
   /* Structural Borders */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.12);
-  --border-active: rgba(0, 245, 155, 0.4);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-medium: rgba(255, 255, 255, 0.10);
+  --border-active: rgba(0, 245, 155, 0.3);
 }
 
 @theme inline {
@@ -125,45 +125,45 @@ html, body {
   background: rgba(13, 18, 28, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
 }
 
 .glass-panel-interactive {
   background: rgba(13, 18, 28, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-panel-interactive:hover {
   background: rgba(20, 27, 41, 0.85);
-  border-color: rgba(0, 245, 155, 0.3);
-  border-top-color: rgba(0, 245, 155, 0.5);
-  box-shadow: 0 20px 40px -10px rgba(0, 245, 155, 0.12), 0 0 20px rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 245, 155, 0.25);
+  border-top-color: rgba(0, 245, 155, 0.35);
+  box-shadow: 0 16px 30px -10px rgba(0, 245, 155, 0.08), 0 0 15px rgba(0, 229, 255, 0.04);
   transform: translateY(-2px);
 }
 
-/* Edge-Lit Specular Lighting Lines */
+/* Edge-Lit Specular Lighting Lines (Restrained 30% intensity) */
 .border-specular-emerald {
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 245, 155, 0.5) 50%, transparent 100%) 1;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 245, 155, 0.3) 50%, transparent 100%) 1;
 }
 
 .border-specular-cyan {
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 229, 255, 0.5) 50%, transparent 100%) 1;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(0, 229, 255, 0.3) 50%, transparent 100%) 1;
 }
 
 .border-specular-violet {
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent 0%, rgba(168, 85, 247, 0.5) 50%, transparent 100%) 1;
+  border-image: linear-gradient(90deg, transparent 0%, rgba(168, 85, 247, 0.3) 50%, transparent 100%) 1;
 }
 
-/* Custom Premium Glass Sliders (Phase B) */
+/* Custom Premium Glass Sliders */
 input[type="range"].custom-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -182,23 +182,23 @@ input[type="range"].custom-slider::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--accent-emerald);
   border: 2px solid #030508;
-  box-shadow: 0 0 12px var(--accent-emerald);
+  box-shadow: 0 0 6px var(--accent-emerald);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 input[type="range"].custom-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 20px var(--accent-emerald);
+  transform: scale(1.15);
+  box-shadow: 0 0 12px var(--accent-emerald);
 }
 
-/* Glow Engine Utilities */
+/* Glow Engine Utilities (Subtle Restrained Bloom) */
 .glow-emerald {
-  box-shadow: 0 0 35px rgba(0, 245, 155, 0.3), 0 0 70px rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 25px rgba(0, 245, 155, 0.15), 0 0 50px rgba(0, 229, 255, 0.07);
 }
 
 .glow-violet {
-  box-shadow: 0 0 35px rgba(168, 85, 247, 0.3), 0 0 70px rgba(247, 120, 186, 0.15);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.15), 0 0 50px rgba(247, 120, 186, 0.07);
 }
 
 .text-gradient-emerald {
@@ -219,7 +219,7 @@ input[type="range"].custom-slider::-webkit-slider-thumb:hover {
   -webkit-text-fill-color: transparent;
 }
 
-/* Tabular Monospace Metrics & Scientific Tracking (Phase D) */
+/* Tabular Monospace Metrics & Scientific Tracking */
 .font-tabular {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

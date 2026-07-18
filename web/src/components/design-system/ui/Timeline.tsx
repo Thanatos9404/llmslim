@@ -27,7 +27,7 @@ export function Timeline({ className }: { className?: string }) {
     {
       version: "v0.2.0",
       title: "Production Governance Engine",
-      status: "current",
+      status: "completed",
       features: [
         "100.0% Instruction Retention Engine",
         "Named Entity, Regex & Code Block Protection",
@@ -37,22 +37,33 @@ export function Timeline({ className }: { className?: string }) {
     },
     {
       version: "v0.3.0",
-      title: "High-Throughput Streaming",
+      title: "Hybrid Strategy & Semantic Engine",
+      status: "current",
+      features: [
+        "Hybrid Prompt Compression (Extractive + Generative Rewrite)",
+        "Pluggable Rewrite Providers (CallableProvider / Custom APIs)",
+        "Multi-stage Semantic Validation & AST Code Shields",
+        "Automated Content Profiling & Intelligent Mode Routing",
+      ],
+    },
+    {
+      version: "v0.4.0",
+      title: "C/Rust Acceleration & Streaming",
       status: "in-progress",
       features: [
+        "Sub-5ms native C-extensions for sentence tokenization",
         "Streaming token compression API (compress_stream)",
-        "Native ONNX Embeddings for sub-5ms latency",
         "Async asyncio pipeline integration (acompress_batch)",
       ],
     },
     {
       version: "v1.0.0",
-      title: "Ecosystem Maturity",
+      title: "Ecosystem Maturity & WASM Engine",
       status: "planned",
       features: [
         "WASM / Web Assembly Edge local execution",
-        "Multi-Modal context compression (Text-Image)",
-        "Rust/C-Extension core sentence tokenizer (<1ms overhead)",
+        "Multi-Modal context compression (Text & Vision)",
+        "Zero-latency Cloudflare Workers & Vercel Edge Runtime",
       ],
     },
   ];

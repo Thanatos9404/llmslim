@@ -62,7 +62,7 @@ export function Navbar() {
           <span className="font-sans font-bold text-base sm:text-lg text-white tracking-tight flex items-center gap-1.5">
             LLMSlim
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono badge-scientific">
-              v0.2.0
+              v0.3.0
             </span>
           </span>
         </Link>

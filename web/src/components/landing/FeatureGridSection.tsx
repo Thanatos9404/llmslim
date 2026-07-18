@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FeatureCard } from "@/components/design-system";
-import { ShieldCheck, Layers, Search, DollarSign, Plug, MessageSquare } from "lucide-react";
+import { ShieldCheck, Sparkles, Search, DollarSign, Plug, MessageSquare } from "lucide-react";
 
 export function FeatureGridSection() {
   return (
@@ -15,7 +15,7 @@ export function FeatureGridSection() {
           Engineered for <span className="text-gradient-emerald">Zero Accuracy Loss</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          LLMSlim combines graph centrality, topic drift detection, and rule-based priority heuristics to guarantee prompt intent preservation.
+          LLMSlim combines graph centrality, generative semantic rewriting, and rule-based priority heuristics to guarantee prompt intent preservation.
         </p>
       </div>
 
@@ -29,11 +29,11 @@ export function FeatureGridSection() {
         />
 
         <FeatureCard
-          title="Semantic Topic Chunking"
-          subtitle="Groups sentences into cohesive topic blocks using cosine similarity thresholding. Automatically adjusts sentence ranking per chunk to avoid topic bias."
-          badge="Topic Drift Engine"
+          title="Hybrid Prompt Compression"
+          subtitle="v0.3.0 introduces multi-stage compression: 100% offline extractive pre-pruning followed by generative semantic rewriting with strict validation bounds."
+          badge="v0.3.0 Strategy Engine"
           glowColor="cyan"
-          icon={<Layers className="w-5 h-5 text-cyan-400" />}
+          icon={<Sparkles className="w-5 h-5 text-cyan-400" />}
         />
 
         <FeatureCard
@@ -46,16 +46,16 @@ export function FeatureGridSection() {
 
         <FeatureCard
           title="Instant Cost Savings Telemetry"
-          subtitle="Built-in cost estimator support for GPT-5, Claude Opus, Claude Sonnet, Gemini, and DeepSeek. Get exact dollar retention metrics per request."
+          subtitle="Built-in cost estimator support for GPT-5, Claude Opus 4.8, Sonnet 4.6, Gemini 2.5, and DeepSeek. Get exact dollar retention metrics per request."
           badge="Financial ROI Calculator"
           glowColor="emerald"
           icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
         />
 
         <FeatureCard
-          title="Pluggable Embeddings Engine"
-          subtitle="Runs offline with local TF-IDF zero-dependency fallback out of the box. Upgrade to sentence-transformers for deep semantic vector ranking."
-          badge="Zero Friction Fallback"
+          title="Pluggable Rewrite Providers"
+          subtitle="Custom provider layer (BaseRewriteProvider, CallableProvider) allows hooking any LLM API or custom function into the compression pipeline."
+          badge="Custom LLM Hooks"
           glowColor="cyan"
           icon={<Plug className="w-5 h-5 text-cyan-400" />}
         />

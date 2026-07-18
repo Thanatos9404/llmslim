@@ -6,6 +6,33 @@ import { CodeWindow } from "@/components/design-system";
 export function CodeExamplesSection() {
   const tabs = [
     {
+      id: "hybrid-strategy",
+      title: "hybrid_compression.py",
+      code: `from llmslim import compress, CallableProvider
+
+# 1. Extractive Compression (Default: 100% Offline, Sub-5ms)
+slim_ext = compress(raw_prompt, target_ratio=0.5, strategy="extractive")
+
+# 2. Hybrid Strategy (v0.3.0: Extractive -> LLM Rewrite -> Validation)
+def my_llm_rewrite(request):
+    return client.chat.completions.create(
+        model="gpt-5",
+        messages=[{"role": "user", "content": request.user_prompt}]
+    ).choices[0].message.content
+
+provider = CallableProvider(my_llm_rewrite, name="openai_gpt5")
+
+slim_hyb = compress(
+    raw_prompt,
+    target_ratio=0.5,
+    strategy="hybrid",
+    provider=provider,
+)
+
+print(slim_hyb.compressed_text)
+print(slim_hyb.detailed_summary())`,
+    },
+    {
       id: "drop-in",
       title: "openai_integration.py",
       code: `from llmslim import compress
@@ -60,29 +87,6 @@ results = compress_documents(
 
 context = "\\n\\n".join(r.compressed_text for r in results)`,
     },
-    {
-      id: "advanced-config",
-      title: "advanced_compressor.py",
-      code: `from llmslim import ContextCompressor
-
-compressor = ContextCompressor(
-    max_chunk_tokens=300,          # token cap per topic chunk
-    similarity_threshold=0.10,     # TF-IDF topic drift boundary
-    
-    weights={
-        "centrality": 0.20,        # LexRank degree centrality
-        "entity": 0.40,            # named entities, acronyms, URLs
-        "instruction": 0.40,       # imperative directives & role markers
-    },
-
-    preserve_patterns=[
-        r"API_KEY",                # custom regex pattern protection
-        r"^(?:WARNING|CAUTION):",  # retain security warnings
-    ],
-)
-
-result = compressor.compress(text, target_ratio=0.5)`,
-    },
   ];
 
   return (
@@ -92,10 +96,10 @@ result = compressor.compress(text, target_ratio=0.5)`,
           Developer Experience
         </span>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-          Drop-in Integration in <span className="text-gradient-cyan">1 Line of Python</span>
+          Drop-in Integration in <span className="text-gradient-cyan">1 Line of Code</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          Zero friction API surface designed to wrap any existing OpenAI, Anthropic, LangChain, or custom LLM client call.
+          Zero friction API surface supporting Extractive, Generative Rewrite, and Hybrid strategies across Python and TypeScript.
         </p>
       </div>
 

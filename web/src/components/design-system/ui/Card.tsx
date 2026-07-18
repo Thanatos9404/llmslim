@@ -31,9 +31,9 @@ export function Card({
   };
 
   const glowColorMap = {
-    emerald: "rgba(0, 245, 155, 0.15)",
-    cyan: "rgba(0, 229, 255, 0.15)",
-    violet: "rgba(168, 85, 247, 0.15)",
+    emerald: "rgba(0, 245, 155, 0.09)",
+    cyan: "rgba(0, 229, 255, 0.09)",
+    violet: "rgba(168, 85, 247, 0.09)",
   };
 
   return (
@@ -45,8 +45,8 @@ export function Card({
       whileHover={{ y: -3 }}
       transition={{ type: "spring", stiffness: 350, damping: 25 }}
       className={cn(
-        "relative rounded-2xl bg-[#0D121C]/80 border border-white/[0.08] backdrop-blur-xl p-6 overflow-hidden shadow-2xl",
-        "before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
+        "relative rounded-2xl bg-[#0D121C]/80 border border-white/[0.06] backdrop-blur-xl p-6 overflow-hidden shadow-2xl",
+        "before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/15 before:to-transparent",
         className
       )}
     >
@@ -54,7 +54,7 @@ export function Card({
         <div
           className="pointer-events-none absolute -inset-px opacity-100 transition-opacity duration-300"
           style={{
-            background: `radial-gradient(400px circle at ${mousePosition.x}px ${mousePosition.y}px, ${glowColorMap[glowColor]}, transparent 70%)`,
+            background: `radial-gradient(350px circle at ${mousePosition.x}px ${mousePosition.y}px, ${glowColorMap[glowColor]}, transparent 70%)`,
           }}
         />
       )}
@@ -87,7 +87,7 @@ export function BentoCard({
       <div>
         <div className="flex items-center justify-between gap-3 mb-4">
           {icon && (
-            <div className="p-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-emerald-400 group-hover:scale-110 group-hover:border-emerald-500/30 transition-all duration-300">
+            <div className="p-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-emerald-400 group-hover:scale-105 group-hover:border-emerald-500/30 transition-all duration-300">
               {icon}
             </div>
           )}

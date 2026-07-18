@@ -40,7 +40,7 @@ export const COMMON_ENV_SPEC: EnvironmentSpec = {
   ram: "64 GB DDR4 ECC RAM",
   os: "Ubuntu 24.04 LTS (Linux kernel 6.8.0-31-generic)",
   pythonVersion: "Python 3.12.3",
-  packageVersion: "llmslim v0.2.0",
+  packageVersion: "llmslim v0.3.0",
   tokenizerVersion: "tiktoken v0.7.0 (cl100k_base / o200k_base)",
   sampleSize: "500 prompts per evaluation dataset",
   iterationsPerSample: "100 runs per sample (P50/P95/P99 latency recorded)",

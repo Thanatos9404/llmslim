@@ -22,9 +22,9 @@ export function CursorGlow({ className, size = 350, color = "emerald" }: CursorG
   }, []);
 
   const colorMap = {
-    emerald: "rgba(0, 245, 155, 0.12)",
-    cyan: "rgba(0, 229, 255, 0.12)",
-    violet: "rgba(168, 85, 247, 0.12)",
+    emerald: "rgba(0, 245, 155, 0.07)",
+    cyan: "rgba(0, 229, 255, 0.07)",
+    violet: "rgba(168, 85, 247, 0.07)",
   };
 
   return (

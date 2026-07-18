@@ -54,7 +54,7 @@ export function StudioHeader({
               LLMSlim Studio Playground
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
-              v0.2.0 Engine
+              v0.3.0 Engine
             </span>
           </div>
           <p className="text-xs text-slate-400 font-sans mt-1">

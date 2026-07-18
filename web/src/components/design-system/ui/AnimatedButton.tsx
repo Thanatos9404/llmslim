@@ -29,19 +29,19 @@ export function AnimatedButton({
 
   const variantStyles = {
     quantum:
-      "relative overflow-hidden bg-gradient-to-r from-[#00F59B] via-[#00E5FF] to-[#00F59B] bg-[length:200%_100%] text-[#030508] font-bold shadow-[0_0_25px_rgba(0,245,155,0.35)] hover:shadow-[0_0_35px_rgba(0,245,155,0.5)] transition-all duration-300",
+      "relative overflow-hidden bg-gradient-to-r from-[#00F59B] via-[#00E5FF] to-[#00F59B] bg-[length:200%_100%] text-[#030508] font-bold shadow-[0_0_15px_rgba(0,245,155,0.2)] hover:shadow-[0_0_22px_rgba(0,245,155,0.35)] transition-all duration-300",
     glass:
-      "bg-white/[0.06] hover:bg-white/[0.12] text-slate-100 border border-white/10 hover:border-white/25 backdrop-blur-md shadow-lg",
+      "bg-white/[0.06] hover:bg-white/[0.12] text-slate-100 border border-white/10 hover:border-white/20 backdrop-blur-md shadow-lg",
     outline:
-      "bg-transparent hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:border-emerald-400 shadow-[0_0_15px_rgba(0,245,155,0.15)]",
+      "bg-transparent hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:border-emerald-400 shadow-[0_0_10px_rgba(0,245,155,0.1)]",
     ghost:
       "bg-transparent hover:bg-white/5 text-slate-300 hover:text-white border border-transparent",
   };
 
   return (
     <motion.button
-      whileHover={{ scale: 1.025 }}
-      whileTap={{ scale: 0.975 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
         "inline-flex items-center justify-center transition-colors cursor-pointer select-none",
@@ -55,8 +55,8 @@ export function AnimatedButton({
       {variant === "quantum" && (
         <motion.span
           animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 pointer-events-none"
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 pointer-events-none"
         />
       )}
 

@@ -1,26 +1,24 @@
 <div align="center">
 
 <a href="https://llmslim.app">
-  <img src="assets/llmslim_logo.png" width="130" alt="LLMSlim Official Logo" />
+  <img src="assets/llmslim_logo.png" width="140" alt="LLMSlim Official Logo" />
 </a>
 
 <br/><br/>
 
 <!-- Animated SVG Hero Banner -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:030508,50:00F59B,100:00D2FF&height=220&section=header&text=LLMSlim&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Zero-Dependency%20Context%20Compression%20Engine%20for%20LLMs&descAlignY=55&descSize=18&descColor=e2e8f0" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:030508,50:00F59B,100:00D2FF&height=220&section=header&text=LLMSlim%20v0.3.0&fontSize=48&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Hybrid%20Prompt%20Compression%20%26%20Semantic%20Optimization%20Engine&descAlignY=55&descSize=16&descColor=e2e8f0" width="100%"/>
 
 <!-- Animated Typing Effect -->
 <a href="https://llmslim.app">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=24&duration=3000&pause=1000&color=00F59B&center=true&vCenter=true&multiline=true&repeat=true&width=750&height=120&lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%94%92+Guaranteed+100%25+Instruction+%26+Code+Fidelity;%F0%9F%A7%A0+Sub-30ms+Offline+CPU+Graph+Centrality;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude+%26+Gemini+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=24&duration=3000&pause=1000&color=00F59B&center=true&vCenter=true&multiline=true&repeat=true&width=750&height=120&lines=%E2%9A%A1+Surgically+Cut+LLM+Prompt+Tokens+by+40-70%25;%F0%9F%A7%A0+Hybrid+Extractive+%2B+Generative+Semantic+Rewrite;%F0%9F%94%92+Guaranteed+100%25+Instruction+%26+Code+Fidelity;%F0%9F%92%B0+Reduce+OpenAI%2C+Claude%2C+Gemini+%26+DeepSeek+API+Billing" alt="LLMSlim Dynamic Feature Typing" />
 </a>
 
 <br/><br/>
 
-<!-- Badges Row 1: CI, Coverage, PyPI, Downloads, Website -->
-[![CI Workflow](https://img.shields.io/github/actions/workflow/status/Thanatos9404/llmslim/ci.yml?branch=main&style=for-the-badge&logo=github-actions&logoColor=white&label=CI&color=00F59B)](https://github.com/Thanatos9404/llmslim/actions/workflows/ci.yml)
+<!-- Badges Row 1: Coverage, PyPI, Downloads, Website -->
 [![Coverage Status](https://img.shields.io/codecov/c/github/Thanatos9404/llmslim?style=for-the-badge&logo=codecov&logoColor=white&color=00D2FF)](https://codecov.io/gh/Thanatos9404/llmslim)
 [![PyPI Version](https://img.shields.io/pypi/v/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=00F59B)](https://pypi.org/project/llmslim/)
-[![NPM Version](https://img.shields.io/npm/v/@llmslim/core?style=for-the-badge&logo=npm&logoColor=white&color=00D2FF)](https://www.npmjs.com/package/@llmslim/core)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/llmslim?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![Production Gateway](https://img.shields.io/badge/Production-llmslim.app-00F59B?style=for-the-badge&logo=vercel&logoColor=white)](https://llmslim.app/)
 
@@ -36,8 +34,8 @@
 ```python
 from llmslim import compress
 
-# Surgically compress context by 50% without dropping system directives or code syntax
-slim = compress(massive_rag_context, target_ratio=0.5)
+# Surgically compress prompt context by 50% in 1 line of code
+slim = compress(massive_rag_context, target_ratio=0.5, strategy="extractive")
 print(slim.compressed_text)  # → High-density token context delivered in < 30ms
 ```
 
@@ -47,7 +45,7 @@ print(slim.compressed_text)  # → High-density token context delivered in < 30m
 <a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Token_Reduction-40--70%25-00F59B?style=for-the-badge&labelColor=030508" /></a>
 <a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/Directive_Fidelity-100.0%25-00D2FF?style=for-the-badge&labelColor=030508" /></a>
 <a href="https://llmslim.app/benchmarks"><img src="https://img.shields.io/badge/CPU_Latency-%3C_30ms-38bdf8?style=for-the-badge&labelColor=030508" /></a>
-<a href="https://llmslim.app/docs"><img src="https://img.shields.io/badge/Zero_Dependencies-Pure_Python/TS-00F59B?style=for-the-badge&labelColor=030508" /></a>
+<a href="https://llmslim.app/docs"><img src="https://img.shields.io/badge/Zero_Dependencies-Pure_Python-00F59B?style=for-the-badge&labelColor=030508" /></a>
 
 </div>
 
@@ -119,11 +117,11 @@ Every token sent to cloud LLM providers increases prefill latency, pushes models
 
 ### 🎉 The LLMSlim Solution
 
-**LLMSlim** runs offline TF-IDF vector space analysis and LexRank degree centrality over prompt graph nodes. Deterministic Priority Tier shields safeguard imperative directives, AST code fences, and proper entities.
+**LLMSlim** runs offline TF-IDF vector space analysis and LexRank degree centrality over prompt graph nodes. Deterministic Priority Tier shields safeguard imperative directives, AST code fences, and proper entities. **v0.3.0** adds hybrid generative semantic rewriting with validation bounds.
 
 - ⚡ **Sub-30ms Execution**: Pure CPU graph algorithms with zero GPU dependencies
 - 🔒 **Priority Tier 4 Hard Shields**: 100.0% retention of rules, keywords (`must`, `never`), and code fences
-- 🧠 **LexRank Centrality**: Ranks sentence importance via stationary probability distributions
+- 🧠 **Hybrid Strategy Engine**: Switch between `extractive`, `rewrite`, and `hybrid` strategies
 - 💰 **40% – 70% Token Savings**: Lower input billing across OpenAI, Anthropic, Gemini, & edge setups
 
 </td>
@@ -136,61 +134,41 @@ Every token sent to cloud LLM providers increases prefill latency, pushes models
 
 ### Installation
 
-Choose your preferred package manager:
+Install LLMSlim using your Python package manager:
 
 ```bash
-# Python SDK (Pip)
+# Standard Pip installation
 pip install llmslim
 
-# Fast Package Management (uv)
+# High-Performance uv package manager
 uv add llmslim
-
-# Node.js / Next.js / Edge Runtime (TypeScript SDK)
-npm install @llmslim/core
 ```
 
-### Python SDK (Extractive, Semantic Rewrite & Hybrid)
+### Python SDK Usage (Extractive, Generative Rewrite & Hybrid)
 
 ```python
-from llmslim import BaseRewriteProvider, CallableProvider, RewriteRequest, compress
+from llmslim import compress, CallableProvider, RewriteRequest
 
 # 1. Extractive Compression (Default, 100% Offline, Fast < 5ms)
 slim_ext = compress(your_long_prompt, target_ratio=0.5, strategy="extractive")
 
-# 2. Custom Provider Example (Wrap any LLM API or custom function)
+# 2. Pluggable Provider Example (Wrap any LLM API or custom function)
 def my_llm_function(request: RewriteRequest) -> str:
-    # Called with request.system_prompt, request.user_prompt, etc.
+    # Function receives system_prompt, user_prompt, target_ratio, etc.
     return llm_client.complete(request.user_prompt)
 
-my_provider = CallableProvider(my_llm_function, name="my_llm")
+provider = CallableProvider(my_llm_function, name="my_llm_provider")
 
-slim_rew = compress(
-    your_long_prompt,
-    target_ratio=0.5,
-    strategy="rewrite",
-    provider=my_provider,
-)
-
-# 3. Hybrid Strategy (Extractive -> Rewrite -> Multi-stage Validation)
+# 3. Hybrid Strategy (v0.3.0: Extractive Pre-pruning -> LLM Rewrite -> Validation)
 slim_hyb = compress(
     your_long_prompt,
     target_ratio=0.5,
     strategy="hybrid",
-    provider=my_provider,
+    provider=provider,
 )
 
 print(slim_hyb.compressed_text)
 print(slim_hyb.detailed_summary())
-```
-
-### TypeScript / Next.js SDK
-
-```typescript
-import { compress } from "@llmslim/core";
-
-const slim = compress(longPrompt, { targetRatio: 0.5 });
-console.log(slim.compressedText); // → High-density string
-console.log(slim.savingsPercent);  // → 52.4%
 ```
 
 ### Command Line Interface (CLI)
@@ -199,7 +177,7 @@ console.log(slim.savingsPercent);  // → 52.4%
 # Extractive strategy (default)
 llmslim input_prompt.txt -r 0.5 -o compressed_prompt.txt --stats
 
-# Specify strategy
+# Specify strategy (v0.3.0)
 llmslim input_prompt.txt -s hybrid -r 0.5 --stats
 ```
 
@@ -241,7 +219,7 @@ LLMSlim processes prompt payloads through an offline, deterministic 6-step Direc
              │
              ▼
   ┌──────────────────────┐
-  │ 6. Order Preservation│ ──► Reassembles sentences in original narrative order
+  │ 6. Ordered Reassembly│ ──► Reassembles sentences in original narrative order
   └──────────┬───────────┘
              │
              ▼
@@ -319,18 +297,23 @@ LLMSlim provides native integration guides, code patterns, and client wrappers f
 ### Core Python API
 
 ```python
-from llmslim import compress, compress_chat_messages, compress_documents, estimate_cost_savings
+from llmslim import compress, compress_chat_messages, compress_documents, estimate_cost_savings, analyze
 
-# 1. Main Text Context Compression
+# 1. Main Text Context Compression (Supports strategy='extractive', 'rewrite', 'hybrid')
 result = compress(
     text="Your raw input prompt context...",
     target_ratio=0.5,           # Target retention ratio (0.5 = keep 50%)
+    strategy="extractive",      # Strategy: 'extractive', 'rewrite', 'hybrid'
     mode="auto",                # Mode: 'auto', 'text', 'xml', 'json'
     preserve_code=True,         # Tier 4 hard locking for fenced code blocks
     query=None                  # Optional query string for RAG scoring
 )
 
-# 2. Chat Conversation History Compression
+# 2. Automated Content Profiling (v0.3.0)
+profile = analyze(raw_prompt)
+print(profile.primary_type)     # → ContentType.CODE / RAG / DIRECTIVES
+
+# 3. Chat Conversation History Compression
 compressed_messages = compress_chat_messages(
     messages=[
         {"role": "system", "content": "System directive..."},
@@ -341,14 +324,14 @@ compressed_messages = compress_chat_messages(
     compressible_roles=("user", "assistant")
 )
 
-# 3. Query-Aware RAG Document Batch Compression
+# 4. Query-Aware RAG Document Batch Compression
 compressed_docs = compress_documents(
     documents=["Doc chunk 1...", "Doc chunk 2..."],
     query="target user question",
     target_ratio=0.4
 )
 
-# 4. Financial Cost Savings Estimation
+# 5. Financial Cost Savings Estimation
 savings = estimate_cost_savings(
     original_tokens=5000,
     compressed_tokens=2200,
@@ -363,7 +346,7 @@ savings = estimate_cost_savings(
 
 - [x] **v0.1.0 — Initial Release**: Core TF-IDF sentence scoring engine.
 - [x] **v0.2.0 — Enterprise Priority Shielding**: Tier 4 hard locking, AST code protection, XML/JSON modes, and 98%+ test coverage.
-- [x] **v0.3.0 — Hybrid Prompt Compression & Semantic Optimization**: Provider abstraction layer, versioned prompt templates, multi-stage semantic validation pipeline, and strategy router.
+- [x] **v0.3.0 — Hybrid Prompt Compression & Semantic Optimization**: Provider abstraction layer (`CallableProvider`), generative rewrite engine, multi-stage semantic validation pipeline, and automated content profiling (`analyze()`).
 - [ ] **v0.4.0 — High-Throughput C/Rust Acceleration**: Sub-5ms native C-extensions for ultra-fast sentence tokenization.
 - [ ] **v0.5.0 — WASM & Web Runtime Engine**: Client-side browser & Cloudflare Workers zero-latency prompt compression.
 
@@ -407,7 +390,7 @@ No. Setting <code>preserve_code=True</code> or using <code>mode="json"</code> sh
 
 <details>
 <summary><b>Does LLMSlim require internet access or remote API calls?</b></summary>
-No. LLMSlim runs 100% offline on your local CPU matrix with zero remote server calls or telemetry tracking.
+No. Extractive LLMSlim runs 100% offline on your local CPU matrix with zero remote server calls or telemetry tracking.
 </details>
 
 ---

@@ -44,7 +44,7 @@ export function Pipeline({ className }: { className?: string }) {
       step: 4,
       title: "Priority Tier Classification",
       subtitle: "Classifies sentences into Priority 4 (Critical/Safety), Priority 3, Priority 2, Priority 1.",
-      tech: "Rule-based regex heuristics guaranteeing 100.0% high-value sentence retention",
+      tech: "Role-aware priority heuristics; evaluate retention against your workload",
       icon: <ShieldCheck className="w-5 h-5" />,
       accent: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
     },

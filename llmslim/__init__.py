@@ -8,7 +8,7 @@ Quickstart:
 """
 
 from .analysis import ContentProfile, ContentType, analyze
-from .core import CompressionResult, ContextCompressor, compress
+from .core import CompressionResult, ContextCompressor, ContextRole, compress
 from .cost import MODEL_PRICING, CostEstimate, estimate_cost_savings, list_supported_models
 from .modes import get_mode, list_modes
 from .pipelines import compress_chat_messages, compress_documents
@@ -23,14 +23,16 @@ from .rewrite import (
 )
 from .tokens import count_tokens, count_tokens_batch
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "compress",
     "ContextCompressor",
+    "ContextRole",
     "CompressionResult",
     "ContentType",
     "ContentProfile",
+
     "analyze",
     "list_modes",
     "get_mode",

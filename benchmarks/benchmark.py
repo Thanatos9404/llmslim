@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main Benchmark & Validation Suite Driver for llmslim v0.2.
+"""Main Benchmark & Validation Suite Driver for llmslim v0.3.1.
 
 Usage:
     python benchmark.py
@@ -51,16 +51,63 @@ def print_colored(text: str, color: str = RESET):
         print(text)
 
 
+class _ResultCollector:
+    """Pytest plugin that records real per-test pass/fail counts.
+
+    Fixes the P0-3 benchmark-runner bug: the previous implementation
+    returned hardcoded ``(159, 0)`` / ``(154, 5)`` tuples, and the
+    programmatic ``pytest.main(["-q", "tests"])`` call inherited the
+    configured ``addopts`` coverage gate — which fails when coverage only
+    sees the in-process imports — so the runner always reported a false
+    5-test failure.  This plugin counts the actual test outcomes instead.
+    """
+
+    def __init__(self) -> None:
+        self.passed = 0
+        self.failed = 0
+        self.errors = 0
+
+    def pytest_runtest_logreport(self, report) -> None:  # noqa: D401
+        # Only count the "call" phase for pass/fail; count setup/teardown
+        # errors separately so collection/fixture failures are not lost.
+        if report.when == "call":
+            if report.passed:
+                self.passed += 1
+            elif report.failed:
+                self.failed += 1
+        elif report.failed:  # setup/teardown error
+            self.errors += 1
+
+
 def run_unit_tests() -> Tuple[int, int]:
-    """Run pytest suite programmatically."""
+    """Run the pytest suite programmatically and report *real* counts.
+
+    The in-process run clears the configured ``addopts`` (via
+    ``-o addopts=``) and disables the coverage plugin (``--no-cov``) so
+    the coverage gate — which is enforced by the standalone ``pytest`` CI
+    run, not here — does not cause a spurious failure while counting.
+    Coverage enforcement in ``pyproject.toml`` is left untouched.
+
+    Returns:
+        ``(passed, failed)`` where ``failed`` includes setup/teardown
+        errors, computed from the actual test reports.
+    """
     print_colored("\n[1/5] Running Pytest Unit Test Suite...", BOLD + BLUE)
-    ret = pytest.main(["-q", "tests"])
-    if ret == 0:
-        print_colored("[OK] All unit tests passed successfully!", GREEN)
-        return 159, 0
+    collector = _ResultCollector()
+    pytest.main(
+        ["-q", "tests", "-o", "addopts=", "--no-cov", "-p", "no:cacheprovider"],
+        plugins=[collector],
+    )
+    passed = collector.passed
+    failed = collector.failed + collector.errors
+    if failed == 0:
+        print_colored(f"[OK] All {passed} unit tests passed successfully!", GREEN)
     else:
-        print_colored("[WARN] Some unit tests encountered issues.", RED)
-        return 154, 5
+        print_colored(
+            f"[WARN] {failed} unit test(s) failed ({passed} passed).", RED
+        )
+    return passed, failed
+
 
 
 def compute_scores(
@@ -107,7 +154,7 @@ def compute_scores(
 
 def main():
     print_colored("================================================================", BOLD + BLUE)
-    print_colored("         llmslim v0.2 Validation & Benchmark Suite", BOLD + BLUE)
+    print_colored("         llmslim v0.3.1 Validation & Benchmark Suite", BOLD + BLUE)
     print_colored("================================================================", BOLD + BLUE)
 
     start_time = time.time()
@@ -225,7 +272,7 @@ def main():
 
 def generate_json_results(quality, speed, memory, regression, scores):
     data = {
-        "version": "v0.3.0",
+        "version": "v0.3.1",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scores": scores,
         "regression_comparison": [asdict(r) for r in regression],
@@ -291,10 +338,10 @@ def generate_markdown_report(quality, speed, memory, regression, scores, total_d
     avg_lat = (sum(s.total_latency_ms for s in speed) / len(speed)) if speed else 0.0
     avg_mem = (sum(m.peak_memory_kb for m in memory) / len(memory)) if memory else 0.0
 
-    content = f"""# llmslim v0.3 Benchmark & Scientific Validation Report
+    content = f"""# llmslim v0.3.1 Benchmark & Scientific Validation Report
 
 **Date**: {time.strftime("%Y-%m-%d %H:%M:%S")}  
-**Target Package**: `llmslim v0.3.0`  
+**Target Package**: `llmslim v0.3.1`
 **Total Benchmark Samples**: {len(quality)} samples  
 **Total Duration**: {total_duration_sec:.2f} seconds  
 

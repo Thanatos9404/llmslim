@@ -291,7 +291,7 @@ for idx, doc in enumerate(compressed_docs):
     mathIntuitionSummary: "Overrides TF-IDF and centrality scores for sentences matching Tier 4 deterministic regex patterns and AST code fence boundaries.",
     keyTakeaways: [
       "Pure statistical sentence scoring risks dropping low-frequency imperative directives.",
-      "Priority Tier 4 locks system role definitions, constraint keywords (MUST, NEVER), and code fences.",
+      "v0.3.1 applies protected priority according to caller-supplied provenance; untrusted RAG, tool, and assistant content cannot obtain Tier 4 from wording.",
       "Ensures AST syntactic integrity for Python, JavaScript, and JSON code snippets embedded in prompts."
     ],
     references: [
@@ -307,7 +307,7 @@ for idx, doc in enumerate(compressed_docs):
         title: "1. Priority Tier Classification Specification",
         content: `To ensure prompt compression never breaks application invariants, sentences are classified into four discrete priority tiers:
 
-- **Tier 4 (Hard Lock - 100% Retention)**: Imperative keywords (\`must\`, \`never\`, \`always\`, \`required\`), role declarations (\`System:\`, \`User:\`), and fenced code blocks.
+- **Tier 4 (trusted provenance)**: Protected priority is available to trusted system/developer context. In v0.3.1, untrusted RAG, tool, and assistant content is capped at Tier 2 regardless of imperative wording.
 - **Tier 3 (Entity Protection - High Priority)**: Sentences containing proper nouns, numbers, currency symbols, and technical identifiers.
 - **Tier 2 (Informative Content - Scored)**: Standard informative sentences evaluated by graph centrality.
 - **Tier 1 (Structural Padding - Eligible for Pruning)**: Low-centrality conversational fluff.`,

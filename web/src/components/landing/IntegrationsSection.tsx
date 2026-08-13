@@ -6,21 +6,17 @@ import { Plug } from "lucide-react";
 
 export function IntegrationsSection() {
   const integrations = [
-    { name: "OpenAI SDK", tag: "Drop-in Wrapper", status: "Native Support" },
-    { name: "Anthropic Claude SDK", tag: "Chat Messages Helper", status: "Native Support" },
-    { name: "LangChain", tag: "Document Transformer", status: "Integration Ready" },
-    { name: "LlamaIndex", tag: "Node Post-processor", status: "Integration Ready" },
-    { name: "LiteLLM Proxy", tag: "Middleware Pipeline", status: "Integration Ready" },
-    { name: "vLLM / Local Inference", tag: "Text Pre-processor", status: "Native Support" },
-    { name: "Outlines & Instructor", tag: "Structured Output", status: "Guaranteed Compatibility" },
-    { name: "FastAPI / Async Pipelines", tag: "Native Async Engine", status: "Native Support" },
+    { name: "OpenAI", tag: "Client-side text preparation", status: "Example" },
+    { name: "Anthropic", tag: "Client-side text preparation", status: "Example" },
+    { name: "Gemini", tag: "Client-side text preparation", status: "Example" },
+    { name: "Any Python LLM client", tag: "Pass compressed text to your client", status: "Compatible" },
   ];
 
   return (
     <section id="integrations" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
       <div className="text-center space-y-4 max-w-3xl mx-auto">
         <span className="text-xs font-mono uppercase tracking-widest text-emerald-400">
-          Seamless Ecosystem Synergy
+          Client compatibility
         </span>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
           Works With Your <span className="text-gradient-emerald">Existing Stack</span>

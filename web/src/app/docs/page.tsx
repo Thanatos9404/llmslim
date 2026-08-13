@@ -19,13 +19,13 @@ export default function DocsIndexPage() {
       <div className="space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
           <BookOpen className="w-3.5 h-3.5" />
-          <span>Official OpenAI-Grade Developer Documentation</span>
+          <span>Released Python documentation</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
           LLMSlim <span className="text-gradient-emerald">Documentation</span>
         </h1>
         <p className="text-slate-400 text-base max-w-2xl leading-relaxed">
-          Master enterprise prompt compression, Priority Tier protection, offline TF-IDF centrality ranking, and API integration.
+          Learn the released Python API, provenance-aware priority handling, and pipeline behavior.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default function DocsIndexPage() {
                 Overview & Philosophy
               </h2>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Learn how LLMSlim cuts LLM token costs by 40-70% with guaranteed 100% instruction fidelity.
+                Learn the released Python API, provenance-aware priority model, and measured v0.3.1 behavior.
               </p>
             </div>
             <div className="text-xs font-mono text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
@@ -51,7 +51,7 @@ export default function DocsIndexPage() {
           </Card>
         </Link>
 
-        <Link href="/docs/quickstart" className="group">
+        <Link href="/docs/getting-started" className="group">
           <Card glowColor="cyan" className="p-6 h-full flex flex-col justify-between space-y-4 hover:border-cyan-500/50 transition-colors">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-cyan-400 font-mono text-xs font-bold">
@@ -62,7 +62,7 @@ export default function DocsIndexPage() {
                 Python SDK Integration
               </h2>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Integrate compress() into OpenAI, Claude, LangChain, and FastAPI pipelines in 1 line of code.
+                Use compress() with the Python model client or framework you already operate.
               </p>
             </div>
             <div className="text-xs font-mono text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">

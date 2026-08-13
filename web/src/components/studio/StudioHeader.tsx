@@ -54,11 +54,11 @@ export function StudioHeader({
               LLMSlim Studio Playground
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
-              v0.3.0 Engine
+              v0.3.1 simulation
             </span>
           </div>
           <p className="text-xs text-slate-400 font-sans mt-1">
-            Interactive IDE playground for testing context compression, priority tier retention, and token ROI.
+            Client-side simulation for exploring context compression concepts; it does not execute the Python engine.
           </p>
         </div>
 

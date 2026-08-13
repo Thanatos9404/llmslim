@@ -10,10 +10,10 @@ export function CodeExamplesSection() {
       title: "hybrid_compression.py",
       code: `from llmslim import compress, CallableProvider
 
-# 1. Extractive Compression (Default: 100% Offline, Sub-5ms)
+# 1. Extractive Compression (default local strategy)
 slim_ext = compress(raw_prompt, target_ratio=0.5, strategy="extractive")
 
-# 2. Hybrid Strategy (v0.3.0: Extractive -> LLM Rewrite -> Validation)
+# 2. Hybrid Strategy (extractive -> caller-supplied rewrite -> validation)
 def my_llm_rewrite(request):
     return client.chat.completions.create(
         model="gpt-5",
@@ -50,7 +50,7 @@ response = client.chat.completions.create(
         {"role": "user", "content": user_question},
     ],
 )
-# Same response accuracy. 50% lower API invoice cost.`,
+# Measure quality, token use, and cost in your own workload.`,
     },
     {
       id: "chat-messages",
@@ -96,10 +96,10 @@ context = "\\n\\n".join(r.compressed_text for r in results)`,
           Developer Experience
         </span>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-          Drop-in Integration in <span className="text-gradient-cyan">1 Line of Code</span>
+          Basic Compression in <span className="text-gradient-cyan">One Call</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          Zero friction API surface supporting Extractive, Generative Rewrite, and Hybrid strategies across Python and TypeScript.
+          The Python package supports extractive compression plus caller-supplied rewrite and hybrid strategies.
         </p>
       </div>
 

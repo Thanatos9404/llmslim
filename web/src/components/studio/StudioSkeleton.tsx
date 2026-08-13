@@ -26,7 +26,7 @@ export function StudioSkeleton() {
           <Cpu className="w-4 h-4 text-emerald-400 animate-spin" />
           Initializing LLMSlim Studio Engine...
         </span>
-        <span>Sub-50ms Latency Benchmark</span>
+        <span>Local playground simulation</span>
       </div>
     </div>
   );

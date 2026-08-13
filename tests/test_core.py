@@ -503,84 +503,51 @@ class TestIntegration:
 
 
 # =====================================================================
-# v0.2 Tests: DP Knapsack Optimality
+# v0.3.1 Tests: Selection semantics after dead-code removal
 # =====================================================================
+#
+# The unused ``_select_for_chunk`` / ``_knapsack_select`` /
+# ``_greedy_select`` static methods were removed in Phase 1 (P1-3): they
+# were never called by ``_compress_extractive`` (which uses an inline
+# greedy priority-sort).  The tests below replace the obsolete
+# ``TestDPKnapsack`` class and assert the *observable* selection
+# invariants of the real, active selection loop.
 
 
-class TestDPKnapsack:
-    """Verify that DP knapsack produces provably better results than
-    greedy on inputs where the two strategies diverge."""
+class TestSelectionInvariants:
+    """End-to-end invariants of the active inline-greedy selection loop."""
 
-    def test_dp_beats_greedy_on_heterogeneous_items(self):
-        """Construct a case where greedy is suboptimal.
+    def test_must_keep_sentence_is_retained(self):
+        """A preserve_patterns match (must_keep) survives compression."""
+        compressor = ContextCompressor(preserve_patterns=[r"API_KEY_\w+"])
+        text = (
+            "Some filler text that is not important at all. "
+            "Configure API_KEY_PRIMARY in your environment. "
+            "More filler text to pad the content out a bit longer. "
+            "Even more text about unrelated topics and ideas. "
+            "Additional sentences to make this long enough for compression. "
+            "The system processes data in batches of variable size."
+        )
+        result = compressor.compress(text, target_ratio=0.5)
+        assert "API_KEY_PRIMARY" in result.compressed_text
 
-        Budget = 10 tokens.
-        Items:
-          A: weight=6, value=7  (greedy picks this first)
-          B: weight=5, value=5
-          C: weight=5, value=5
+    def test_at_least_one_sentence_returned(self):
+        """Aggressive compression still returns a non-empty result."""
+        result = compress(LONG_TEXT, target_ratio=0.05)
+        assert len(result.compressed_text.strip()) > 0
+        assert result.compressed_tokens > 0
 
-        Greedy picks A (6 tokens, score 7), can't fit B or C.
-        DP picks B+C (10 tokens, score 10) — strictly better.
-        """
-        from llmslim.core import ContextCompressor
-
-        scored = [
-            {"index": 0, "score": 7.0, "must_keep": False, "sentence": "A"},
-            {"index": 1, "score": 5.0, "must_keep": False, "sentence": "B"},
-            {"index": 2, "score": 5.0, "must_keep": False, "sentence": "C"},
-        ]
-        token_counts = [6, 5, 5]
-        # target_ratio = 10/16 ≈ 0.625 → target_tokens = 10
-        selected = ContextCompressor._select_for_chunk(scored, token_counts, 10 / 16)
-
-        # DP should pick indices 1 and 2 (total score 10 > 7)
-        assert selected == {1, 2}
-
-    def test_greedy_fallback_for_large_inputs(self):
-        """Verify the greedy fallback activates for large DP tables."""
-        from llmslim.core import ContextCompressor
-
-        # Create items that would exceed DP table limit.
-        n = 100
-        items = [{"index": i, "score": float(i), "must_keep": False} for i in range(n)]
-        token_counts = list(range(1, n + 1))
-        budget = 600  # n * budget = 100 * 600 = 60,000 > 50,000
-
-        # Should not raise, should return a valid selection.
-        selected = ContextCompressor._knapsack_select(items, token_counts, budget)
-        assert isinstance(selected, set)
-        total_used = sum(token_counts[i] for i in selected)
-        assert total_used <= budget
-
-    def test_must_keep_respected_with_dp(self):
-        """Must-keep sentences are always selected regardless of DP."""
-        from llmslim.core import ContextCompressor
-
-        scored = [
-            {"index": 0, "score": 0.1, "must_keep": True, "sentence": "keep"},
-            {"index": 1, "score": 0.9, "must_keep": False, "sentence": "optional"},
-            {"index": 2, "score": 0.8, "must_keep": False, "sentence": "optional2"},
-        ]
-        token_counts = [3, 5, 5]
-        selected = ContextCompressor._select_for_chunk(scored, token_counts, 0.5)
-        assert 0 in selected  # must_keep sentence always included
-
-    def test_always_returns_at_least_one(self):
-        """Even with zero budget, at least one sentence is returned."""
-        from llmslim.core import ContextCompressor
-
-        scored = [
-            {"index": 0, "score": 0.5, "must_keep": False, "sentence": "only"},
-        ]
-        token_counts = [100]
-        selected = ContextCompressor._select_for_chunk(scored, token_counts, 0.01)
-        assert len(selected) >= 1
+    def test_compression_respects_budget_direction(self):
+        """Lower target_ratio never yields *more* tokens than a higher one."""
+        loose = compress(LONG_TEXT, target_ratio=0.7)
+        tight = compress(LONG_TEXT, target_ratio=0.3)
+        assert tight.compressed_tokens <= loose.compressed_tokens
 
 
 # =====================================================================
 # v0.2 Tests: Instruction Detection Expansion
 # =====================================================================
+
 
 
 class TestInstructionDetection:

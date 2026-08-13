@@ -131,7 +131,7 @@ export function DesignSystemShowcase() {
           <MetricCard
             label="Processing Overhead"
             value="28 ms"
-            change="Sub-50ms"
+            change="Measure locally"
             changeType="positive"
             accentColor="violet"
             icon={<Cpu className="w-4 h-4" />}
@@ -188,9 +188,9 @@ export function DesignSystemShowcase() {
             icon={<Layers className="w-5 h-5" />}
           />
           <FeatureCard
-            title="100% Instruction Shield"
-            subtitle="Automatically preserves imperative language, code fences, numbered steps, and directives. Your instructions never get dropped."
-            badge="Instruction Protection"
+            title="Provenance-Aware Priority"
+            subtitle="Trusted and untrusted context are handled differently so RAG, tool, and assistant text cannot gain protected priority solely from imperative wording."
+            badge="v0.3.1 Security"
             glowColor="cyan"
             icon={<Shield className="w-5 h-5" />}
           />

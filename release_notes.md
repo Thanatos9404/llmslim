@@ -1,77 +1,53 @@
-# llmslim v0.3.0 — Hybrid Prompt Compression & Semantic Optimization
+# LLMSlim v0.3.1 — Security Hardening and Core Correctness
 
-We are excited to announce the release of **llmslim v0.3.0**, extending `llmslim` from a high-performance offline prompt compressor into a **Content-Aware Prompt Compression & Semantic Optimization Engine**.
+**Release date:** 2026-08-13
 
-`v0.3.0` introduces a zero-dependency **Provider Abstraction Layer**, versioned **Rewrite Prompt Templates**, a multi-stage **Semantic Validation Pipeline**, and a **Strategy Router** supporting `extractive` (default), `rewrite`, and `hybrid` strategies.
+## What changed
 
----
+v0.3.1 adds provenance-aware priority locking, inline-code and CJK sentence-boundary handling, nonce-protected rewrite-template fences, token-counter telemetry, a corrected benchmark test collector, and removes obsolete selection helpers.
 
-## 🌟 Major Highlights
+## Why it matters
 
-- ⚡ **Zero External Dependencies**: The core library remains 100% offline-first with zero hard dependencies on external LLM provider SDKs (`openai`, `anthropic`, `google-generativeai`, `ollama`).
-- 🔄 **Strategy Router (`extractive`, `rewrite`, `hybrid`)**:
-  - `extractive` (Default): Offline LexRank + TF-IDF graph centrality sentence selection (< 5ms CPU overhead).
-  - `rewrite`: Sends prompts through a provider-backed LLM rewriter with strict multi-stage quality validation.
-  - `hybrid`: Pre-compresses long contexts extractively before running semantic rewriting to minimize prefill billing.
-- 🛡️ **Multi-Stage Quality Validation Pipeline**: Every rewrite candidate undergoes 4 independent validation checks (`Structural`, `Instruction`, `Entity`, `Similarity`). Failing rewrites automatically trigger a fallback to extractive compression.
-- 📐 **Pluggable Similarity Validation**: Ships with a fast offline `TfidfSimilarityValidator` (replaceable by custom embedding or BERTScore validators).
-- 📜 **Versioned Prompt Templates**: Pre-configured prompt templates for RAG context, chat history, system prompts, technical documentation, and code context.
-- 📊 **Grouped Telemetry (`RewriteMetadata`)**: Clean telemetry object attached to `CompressionResult` tracking similarity scores, instruction retention rates, latency, and failure reasons.
+Earlier priority handling could treat imperative-looking untrusted retrieved or tool text as protected context. v0.3.1 adds `ContextRole` provenance to the scoring path so that compression decisions account for who authored the content.
 
----
+## Security
 
-## 🚀 Quick Start Example
+LLMSlim mitigates compression-induced instruction elevation by preventing untrusted RAG/tool/assistant content from gaining protected priority through imperative or safety-critical wording.
 
-```python
-from llmslim import compress, CallableProvider, RewriteRequest
+- `RAG`, `TOOL`, and `ASSISTANT` are capped at Tier 2 and cannot become `must_keep`.
+- `SYSTEM` and `DEVELOPER` remain trusted caller-provided roles.
+- `USER` is semi-trusted; `GENERAL` preserves the legacy default path.
+- Payload text containing a rewrite-fence-like token is embedded unchanged between nonce-tagged template fences.
 
-# 1. Default Extractive Compression (Offline, Fast < 5ms)
-slim_ext = compress(my_long_prompt, target_ratio=0.5, strategy="extractive")
+This is not complete prompt-injection prevention. LLMSlim trusts caller-provided provenance labels and applications still need defense in depth.
 
-# 2. Semantic Rewrite (Custom LLM Provider)
-def my_llm_provider(request: RewriteRequest) -> str:
-    # Use request.system_prompt and request.user_prompt
-    return llm_client.complete(request.user_prompt)
+## Correctness
 
-provider = CallableProvider(my_llm_provider, name="custom_llm")
+- Inline backtick code spans no longer introduce false sentence boundaries.
+- CJK `。`, `！`, and `？` punctuation is recognized by both fallback and NLTK post-processing paths.
+- `CompressionResult.token_counter_used` reports `tiktoken` or `heuristic`.
+- The heuristic fallback emits one warning per process.
+- The benchmark runner reports actual pytest outcomes.
+- Unused DP/greedy selection helpers were removed.
 
-slim_rew = compress(
-    my_long_prompt,
-    target_ratio=0.5,
-    strategy="rewrite",
-    provider=provider,
-)
+## Verification
 
-# 3. Hybrid Strategy (Extractive -> Rewrite -> Validation)
-slim_hyb = compress(
-    my_long_prompt,
-    target_ratio=0.5,
-    strategy="hybrid",
-    provider=provider,
-)
+- 432 tests passed; 0 failed.
+- 92.57% branch coverage.
+- Ruff passed.
+- `python benchmark.py` reported 432 passed / 0 failed and reliability 100/100.
 
-print(slim_hyb.compressed_text)
-print(slim_hyb.detailed_summary())
-```
+## Migration notes
 
----
+No change is needed for default `compress(text)` callers.
 
-## 🔒 Quality Assurance & Test Coverage
+Two intentional pipeline changes apply:
 
-- **Unit Tests**: 389 passing assertions across 15 test modules.
-- **Coverage**: **92.42%** total line & branch coverage across all core modules.
-- **Linters & Types**: 0 errors across `ruff` and `mypy`.
-- **Determinism**: 100% byte-identical results in default `extractive` mode.
+1. `compress_documents()` now defaults to `ContextRole.RAG`.
+2. `compress_chat_messages()` propagates each message role; system messages stay uncompressed by default.
 
----
+If a caller has authenticated provenance and needs a different treatment, pass an explicit `context_role`.
 
-## 🤝 Backward Compatibility
+## Availability
 
-`llmslim v0.3.0` is **100% backward compatible** with `v0.2.0`. Existing function calls to `compress(text, target_ratio=0.5)` continue operating in default `extractive` mode without any API or behavioral changes.
-
----
-
-## 💖 Star the Repository
-
-If `llmslim` helps you cut LLM API bills and optimize prompt latency, please consider giving us a ⭐ star on GitHub:  
-👉 **[https://github.com/Thanatos9404/llmslim](https://github.com/Thanatos9404/llmslim)**
+v0.3.1 is a Python release. npm, Rust, and WASM runtimes are not shipped.

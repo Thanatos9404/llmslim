@@ -19,8 +19,18 @@ Public API
 
 from __future__ import annotations
 
+import re
+import secrets
 from dataclasses import dataclass
 from typing import Dict, Optional
+
+# Matches the ``---BEGIN ...---`` / ``---END ...---`` fence markers that the
+# built-in templates use to delimit the user-supplied content region.  A
+# lone ``---END TEXT---`` (etc.) inside user text could otherwise be
+# mistaken by the downstream LLM for the real terminator of the content
+# region (a prompt-injection "fence breakout").
+_FENCE_TOKEN_RE = re.compile(r"---(?:BEGIN|END)\b[^\n]*?---", re.IGNORECASE)
+
 
 
 @dataclass(frozen=True)
@@ -51,6 +61,16 @@ class RewriteTemplate:
     ) -> str:
         """Format the user prompt template with the given values.
 
+        The user's text is embedded between the template's ``---BEGIN ...---``
+        / ``---END ...---`` fence markers.  To prevent a *fence breakout*
+        (P1-1) — where a literal ``---END TEXT---`` inside ``text`` could be
+        mistaken by the downstream LLM for the real end of the content
+        region — the fence markers are tagged with a random per-call nonce
+        when (and only when) the user text itself contains a colliding
+        fence-like token.  The user's content is passed through
+        **byte-for-byte unchanged**; only the *template's own* delimiters
+        are hardened.  See :meth:`_render_with_safe_fence`.
+
         Args:
             text: The text to rewrite.
             target_ratio: Target fraction of tokens to retain.
@@ -59,12 +79,64 @@ class RewriteTemplate:
         Returns:
             The formatted user prompt string.
         """
+        target_percent = round((1 - target_ratio) * 100)
+
+        if _FENCE_TOKEN_RE.search(text):
+            return self._render_with_safe_fence(
+                text=text,
+                target_percent=target_percent,
+                target_ratio=target_ratio,
+                constraints=constraints,
+            )
+
+        # Common case: no fence collision, render exactly as v0.3.0.
         return self.user_prompt_template.format(
             text=text,
             target_ratio=target_ratio,
-            target_percent=round((1 - target_ratio) * 100),
+            target_percent=target_percent,
             constraints=constraints,
         )
+
+    def _render_with_safe_fence(
+        self,
+        text: str,
+        target_percent: int,
+        target_ratio: float,
+        constraints: str,
+    ) -> str:
+        """Render the prompt with nonce-tagged fence markers.
+
+        The user text contains a fence-like token (e.g. ``---END TEXT---``),
+        so we rewrite the *template's* fence markers to carry a random
+        nonce (e.g. ``---BEGIN TEXT «llmslim:9f3a2c1b»---`` /
+        ``---END TEXT «llmslim:9f3a2c1b»---``).  A bare ``---END TEXT---``
+        embedded in the user content can no longer match the real
+        (nonce-tagged) terminator, so it cannot close the region.
+
+        The user's ``{text}`` is substituted verbatim — it is never
+        mutated — so the original content is fully recoverable by stripping
+        the nonce-tagged fences.
+        """
+        nonce = secrets.token_hex(4)
+        tag = f" \u00ab llmslim:{nonce} \u00bb"
+
+        # Build the template with each fence marker suffixed by the nonce
+        # tag *before* the closing ``---``.  We only touch the template's
+        # own literal fence lines, never the ``{text}`` placeholder.
+        def _tag_fence(match: "re.Match[str]") -> str:
+            token = match.group(0)
+            # Insert the nonce tag just before the trailing ``---``.
+            return token[:-3] + tag + "---"
+
+        safe_template = _FENCE_TOKEN_RE.sub(_tag_fence, self.user_prompt_template)
+
+        return safe_template.format(
+            text=text,
+            target_ratio=target_ratio,
+            target_percent=target_percent,
+            constraints=constraints,
+        )
+
 
 
 # =====================================================================

@@ -1,44 +1,42 @@
 # Security Policy
 
-`llmslim` takes the security and integrity of prompt data and Python environments seriously.
+LLMSlim takes the security and integrity of prompt data seriously.
 
----
+## Supported versions
 
-## Supported Versions
+Only the latest release receives security updates.
 
-Only the latest release version of `llmslim` receives security updates.
+| Version | Supported |
+| --- | --- |
+| 0.3.1 | :white_check_mark: |
+| < 0.3.1 | :x: |
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.2.x   | :white_check_mark: |
-| 0.1.x   | :x:                |
-| < 0.1   | :x:                |
+## Compression-induced instruction elevation
 
----
+v0.3.1 mitigates a compression-specific risk: untrusted retrieval, tool, or prior assistant content could previously receive protected priority solely because it contained imperative or safety-critical wording.
 
-## Reporting a Vulnerability
+LLMSlim now uses caller-supplied `ContextRole` provenance:
 
-If you discover a potential security vulnerability in `llmslim`, please report it responsibly rather than opening a public GitHub issue.
+- `system` and `developer` are trusted roles.
+- `user` is semi-trusted.
+- `rag`, `tool`, and `assistant` are untrusted. They are capped at Tier 2 and cannot become `must_keep` through wording or preservation-pattern matches.
+- `general` is the legacy default for `compress(text)`.
 
-### How to Report
-- **Email**: Contact the maintainer directly at `thanatos9404@users.noreply.github.com` with subject line `[SECURITY] Potential vulnerability in llmslim`.
-- **Private Advisory**: Alternatively, submit a report via [GitHub Security Advisories](https://github.com/Thanatos9404/llmslim/security/advisories/new).
+This mitigates compression-induced instruction elevation. It does **not** fully prevent prompt injection, authenticate content provenance, or make untrusted content safe to execute. Callers remain responsible for accurate role labels and should use defense in depth: isolate trusted context, constrain tools and privileges, validate outputs, and apply application-level policy controls.
 
-### What to Include
-1. Description of the vulnerability and potential impact.
-2. Step-by-step reproduction steps or proof-of-concept script.
-3. Affected versions and environments (OS, Python version).
+## Reporting a vulnerability
 
----
+Please report potential vulnerabilities privately rather than opening a public issue.
 
-## Response SLA & Timeline
+- **Email:** thanatos9404@users.noreply.github.com with subject `[SECURITY] Potential vulnerability in llmslim`.
+- **Private advisory:** [GitHub Security Advisories](https://github.com/Thanatos9404/llmslim/security/advisories/new).
 
-- **Initial Acknowledgment**: Within 24-48 hours.
-- **Triage & Status Assessment**: Within 5 business days.
-- **Fix & Patch Release Target**: Within 14 business days of confirmation.
+Include a description, impact, reproduction steps or proof of concept, and affected versions/environments.
 
----
+## Response timeline
 
-## Disclosure Policy
+- Initial acknowledgment: 24–48 hours.
+- Triage: within 5 business days.
+- Fix target: within 14 business days of confirmation.
 
-Security issues will remain confidential until a security patch is developed, tested, and published to PyPI as a minor or patch version update.
+Security issues remain confidential until a patch is developed, tested, and published.

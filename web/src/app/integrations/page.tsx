@@ -8,7 +8,7 @@ import { Card } from "@/components/design-system";
 
 export const metadata = constructMetadata({
   title: "Framework & Model Integrations — LLMSlim",
-  description: "Production integration guides for OpenAI, Anthropic, Gemini, Groq, Mistral, Ollama, LangChain, LlamaIndex, CrewAI, Vercel AI SDK, Mastra, and FastAPI.",
+  description: "Examples for using LLMSlim output with OpenAI, Anthropic, and Gemini Python clients.",
 });
 
 export default function IntegrationsIndexPage() {
@@ -20,13 +20,13 @@ export default function IntegrationsIndexPage() {
       <div className="space-y-4 max-w-4xl">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
           <Layers className="w-3.5 h-3.5" />
-          <span>Production Ecosystem Integration Directory</span>
+          <span>Python client examples</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
           LLMSlim <span className="text-gradient-emerald">Integrations</span>
         </h1>
         <p className="text-slate-400 text-base leading-relaxed font-sans">
-          Production setup guides, architecture blueprints, installation snippets, and benchmarks for your favorite LLM provider, framework, or backend service.
+          Examples for passing LLMSlim output to common Python model clients. LLMSlim does not ship provider-specific runtime adapters.
         </p>
       </div>
 

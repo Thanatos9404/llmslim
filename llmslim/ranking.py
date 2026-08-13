@@ -160,10 +160,99 @@ _MEDIUM_PRIORITY_PATTERNS = [
 _MEDIUM_PRIORITY_RE = re.compile("|".join(_MEDIUM_PRIORITY_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 
+# =====================================================================
+# Provenance / trust boundary (Phase 1 — P0-1)
+# =====================================================================
+#
+# Sentences are prioritised according to *who authored the text*
+# (provenance), not merely whether the wording looks imperative.  This
+# is the OWASP LLM01 trust-boundary approach: instructions from the
+# developer's system prompt are trusted; text retrieved from external
+# stores (RAG) or returned by tools is untrusted and must not be able to
+# hijack the hard-locked Priority Tier 4 that bypasses the token budget.
+#
+# * TRUSTED   (system, developer, general) -- full legacy priority
+#   behaviour, including safety-critical Tier 4 hard-locking.  ``general``
+#   is included so that the default ``compress()`` call is byte-for-byte
+#   identical to v0.3.0 for existing callers.
+# * SEMI-TRUSTED (user) -- the end user's own turn.  Imperative/role
+#   wording may reach Tier 3, but safety-critical Tier 4 is reserved for
+#   developer guardrails.  Developer-supplied ``preserve_patterns`` still
+#   grant Tier 4 because they are first-party.
+# * UNTRUSTED (rag, tool, assistant) -- capped at Tier 2.  No wording,
+#   safety pattern, or ``preserve_patterns`` match can elevate untrusted
+#   content beyond Tier 2, and it can never become ``must_keep``.
+#
+# See docs/phase-1/IMPLEMENTATION_PLAN.md §3 and §13 for the full trust
+# model and its explicit limitations.
+
+_TRUSTED_ROLES = frozenset({"system", "developer", "general"})
+_SEMI_TRUSTED_ROLES = frozenset({"user"})
+# Any role not in the two sets above (rag, tool, assistant, ...) is treated
+# as untrusted.
+
+_UNTRUSTED_MAX_PRIORITY = 2
+
+
+def _normalize_role(context_role) -> str:
+    """Return the canonical lowercase role string for any accepted input.
+
+    Accepts a ``ContextRole`` enum member, a plain string, or ``None``.
+    Enum members are normalised via their ``.value`` (their string form),
+    because ``str(SomeStrEnumMember)`` yields ``"ContextRole.GENERAL"`` on
+    Python 3.11+, which would otherwise be mistaken for an unknown
+    (untrusted) role.
+    """
+    if context_role is None:
+        return "general"
+    value = getattr(context_role, "value", context_role)
+    return str(value).lower()
+
+
+def _is_untrusted_role(context_role: str) -> bool:
+    """Return True for roles whose content must not reach the protected tier."""
+    return context_role not in _TRUSTED_ROLES and context_role not in _SEMI_TRUSTED_ROLES
+
+
+
 def get_sentence_priority(
-    sentence: str, preserve_res: Optional[Sequence[re.Pattern]] = None
+    sentence: str,
+    preserve_res: Optional[Sequence[re.Pattern]] = None,
+    context_role: str = "general",
 ) -> int:
-    """Return priority level 1 (NORMAL), 2 (MEDIUM), 3 (HIGH), or 4 (CRITICAL)."""
+    """Return priority level 1 (NORMAL), 2 (MEDIUM), 3 (HIGH), or 4 (CRITICAL).
+
+    ``context_role`` carries the provenance of the sentence (see the
+    trust-boundary notes above).  For untrusted roles (``rag``/``tool``/
+    ``assistant``) the returned priority is hard-capped at
+    :data:`_UNTRUSTED_MAX_PRIORITY` (2) regardless of imperative wording,
+    safety patterns, or ``preserve_patterns`` — this prevents indirect
+    prompt-injection payloads from hijacking the force-kept tier.
+    """
+    role = _normalize_role(context_role)
+
+    # --- Untrusted provenance: never elevate beyond MEDIUM. ---
+
+    if _is_untrusted_role(role):
+        base = 1
+        if _MEDIUM_PRIORITY_RE.search(sentence) or _entity_score(sentence) >= 0.30:
+            base = 2
+        return min(base, _UNTRUSTED_MAX_PRIORITY)
+
+    # --- Semi-trusted (user's own turn): allow up to HIGH, but reserve the
+    #     safety-critical Tier 4 for developer/system guardrails.  Explicit
+    #     developer-supplied preserve_patterns are first-party and still
+    #     grant Tier 4. ---
+    if role in _SEMI_TRUSTED_ROLES:
+        if preserve_res and any(p.search(sentence) for p in preserve_res):
+            return 4  # CRITICAL (developer preserve_patterns)
+        if _HIGH_PRIORITY_RE.search(sentence) or _SAFETY_CRITICAL_RE.search(sentence):
+            return 3  # HIGH (roles & obligations); not hard-locked
+        if _MEDIUM_PRIORITY_RE.search(sentence) or _entity_score(sentence) >= 0.30:
+            return 2
+        return 1
+
+    # --- Trusted provenance (system / developer / general): legacy behaviour. ---
     if preserve_res and any(p.search(sentence) for p in preserve_res):
         return 4  # CRITICAL (user preserve_patterns)
     if _SAFETY_CRITICAL_RE.search(sentence):
@@ -173,6 +262,7 @@ def get_sentence_priority(
     if _MEDIUM_PRIORITY_RE.search(sentence) or _entity_score(sentence) >= 0.30:
         return 2  # MEDIUM (format constraints, steps, entity density)
     return 1  # NORMAL (prose)
+
 
 
 _CODE_PATTERN = re.compile(r"```|`[^`\n]+`")
@@ -317,12 +407,30 @@ def _length_penalty(sentence: str, min_words: int = 4) -> float:
     return 0.5 if len(sentence.split()) < min_words else 0.0
 
 
-def _is_must_keep(sentence: str, preserve_res: Sequence[re.Pattern]) -> bool:
+def _is_must_keep(
+    sentence: str,
+    preserve_res: Sequence[re.Pattern],
+    context_role: str = "general",
+) -> bool:
+    """Return True if ``sentence`` must be retained regardless of score.
+
+    For untrusted provenance (``rag``/``tool``/``assistant``) this always
+    returns ``False``: untrusted content can never become ``must_keep`` and
+    therefore can never bypass the token budget via the force-kept path.
+    Inline code spans inside untrusted content are still protected from
+    tokenizer corruption (see ``tokenization.py``); that protection is
+    independent of the ``must_keep`` selection flag.
+    """
+    role = _normalize_role(context_role)
+    if _is_untrusted_role(role):
+
+        return False
     if _CODE_PATTERN.search(sentence):
         return True
     if _CRITICAL_RE.search(sentence):
         return True
     return any(pattern.search(sentence) for pattern in preserve_res)
+
 
 
 def _query_similarities(embeddings: np.ndarray, query_embedding: np.ndarray) -> np.ndarray:
@@ -351,6 +459,7 @@ def score_chunk_sentences(
     query_embedding: Optional[np.ndarray] = None,
     weights: Optional[Dict[str, float]] = None,
     preserve_patterns: Optional[Sequence[str]] = None,
+    context_role: str = "general",
 ) -> List[Dict]:
     """Score every sentence in ``chunk`` for extractive selection.
 
@@ -363,6 +472,11 @@ def score_chunk_sentences(
         weights: Override scoring weights. See :data:`DEFAULT_WEIGHTS`.
         preserve_patterns: Extra regex strings; any sentence matching one
             is force-kept (``must_keep``).
+        context_role: Provenance of the text (``"system"``, ``"user"``,
+            ``"rag"``, ``"tool"``, ``"assistant"``, ``"developer"``, or
+            ``"general"``).  Untrusted roles are priority-capped so that
+            imperative wording in retrieved/tool content cannot hijack the
+            force-kept tier.  Defaults to ``"general"`` (legacy behaviour).
 
     Returns:
         A list of per-sentence score dictionaries (chunk-local
@@ -371,6 +485,9 @@ def score_chunk_sentences(
     """
     weights = {**DEFAULT_WEIGHTS, **(weights or {})}
     preserve_res = [re.compile(p, re.IGNORECASE) for p in (preserve_patterns or [])]
+    role = _normalize_role(context_role)
+
+
 
     centrality = _centrality_scores(embeddings)
     n = len(chunk.sentences)
@@ -401,7 +518,7 @@ def score_chunk_sentences(
             query_similarity = float(query_sims[i])
             score += weights["query"] * max(query_similarity, 0.0)
 
-        priority = get_sentence_priority(sentence, preserve_res)
+        priority = get_sentence_priority(sentence, preserve_res, context_role=role)
         score += (priority - 1) * 0.20
 
         results.append(
@@ -414,8 +531,9 @@ def score_chunk_sentences(
                 "instruction_score": instruction,
                 "entity_score": entity,
                 "query_similarity": query_similarity,
-                "must_keep": _is_must_keep(sentence, preserve_res),
+                "must_keep": _is_must_keep(sentence, preserve_res, context_role=role),
             }
         )
+
 
     return results

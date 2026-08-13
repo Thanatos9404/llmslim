@@ -11,7 +11,8 @@ import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -19,13 +20,98 @@ from .chunking import Chunk, semantic_chunk
 from .embeddings import EmbeddingBackend, get_backend
 from .ranking import score_chunk_sentences
 from .tokenization import split_paragraphs, split_sentences
-from .tokens import count_tokens
+from .tokens import count_tokens, get_active_token_counter_name
 
 # Below this many tokens, compression overhead isn't worth it and the
 # original text is returned unchanged.
 DEFAULT_MIN_TOKENS_FOR_COMPRESSION = 40
 
 _LIST_ITEM_RE = re.compile(r"^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s)")
+
+
+class ContextRole(str, Enum):
+    """Provenance / trust role for the text being compressed.
+
+    The role controls how aggressively imperative language is protected
+    during selection.  See ``docs/phase-1/IMPLEMENTATION_PLAN.md`` §3 for
+    the full trust model and §13 for its explicit security limitations.
+
+    * ``SYSTEM`` / ``DEVELOPER`` -- trusted developer-authored
+      instructions.  Safety-critical directives may be hard-locked
+      (Priority 4) and force-retained.
+    * ``USER`` -- the end user's own turn.  Imperative wording may reach
+      Priority 3 but not the safety-critical Priority 4 tier.
+    * ``ASSISTANT`` / ``TOOL`` / ``RAG`` -- untrusted content (prior model
+      output, tool/function results, retrieved documents).  Priority is
+      capped so that injected imperatives cannot hijack the force-kept
+      budget.
+    * ``GENERAL`` -- default.  Preserves v0.3.0 behaviour exactly for
+      callers that do not specify a role.
+
+    ``ContextRole`` subclasses ``str``, so the enum members compare equal
+    to their string values and either form may be passed anywhere a role
+    is accepted.
+    """
+
+    SYSTEM = "system"
+    DEVELOPER = "developer"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+    RAG = "rag"
+    GENERAL = "general"
+
+
+# Modes that imply a provenance role when ``context_role`` is not given
+# explicitly.  Only unambiguous mappings are included.
+_MODE_TO_ROLE = {
+    "rag": ContextRole.RAG,
+    "system": ContextRole.SYSTEM,
+}
+
+
+def _role_str(context_role: Union[ContextRole, str, None]) -> str:
+    """Return the canonical lowercase string value for a role.
+
+    Uses the enum's ``.value`` for ``ContextRole`` members, because
+    ``str(ContextRole.GENERAL)`` yields ``"ContextRole.GENERAL"`` on
+    Python 3.11+ rather than the underlying ``"general"`` value.
+    """
+    if context_role is None:
+        return ""
+    value = getattr(context_role, "value", context_role)
+    return str(value).lower()
+
+
+def _resolve_context_role(
+
+    context_role: Optional[Union[ContextRole, str]],
+    instance_role: Union[ContextRole, str],
+    mode: Optional[str],
+) -> str:
+    """Resolve the effective provenance role (returns a lowercase string).
+
+    Precedence:
+      1. explicit ``context_role`` argument (string or enum),
+      2. instance ``context_role`` if it is not GENERAL,
+      3. inferred from ``mode`` (``"rag"`` -> RAG, ``"system"`` -> SYSTEM),
+      4. GENERAL (legacy behaviour).
+    """
+    if context_role is not None:
+        return _role_str(context_role)
+
+    instance = _role_str(instance_role)
+    if instance and instance != ContextRole.GENERAL.value:
+        return instance
+
+
+    if mode is not None:
+        mapped = _MODE_TO_ROLE.get(str(mode).lower())
+        if mapped is not None:
+            return mapped.value
+
+    return ContextRole.GENERAL.value
+
 
 
 @dataclass
@@ -77,8 +163,14 @@ class CompressionResult:
     structure_preserved: Optional[bool] = None
     rewrite_metadata: Optional[Any] = None
 
+    # --- Phase 1 (v0.3.1): token counter transparency ---
+    # Which token counter produced the counts on this result:
+    # "tiktoken" (exact) or "heuristic" (~4 chars/token fallback).
+    token_counter_used: str = "tiktoken"
+
     @property
     def actual_ratio(self) -> float:
+
         """Fraction of original tokens retained (lower = more compression)."""
         if self.original_tokens == 0:
             return 1.0
@@ -202,6 +294,13 @@ class ContextCompressor:
             ``detect_content=True`` for fully automatic optimisation.
         detect_content: When ``True``, analyse the input to detect its
             content type and populate telemetry fields on the result.
+        context_role: Default provenance/trust role for text compressed by
+            this instance (``ContextRole`` or an equivalent string such as
+            ``"system"``, ``"rag"``, ``"tool"``).  Untrusted roles
+            (``rag``/``tool``/``assistant``) are priority-capped so that
+            injected imperative language cannot hijack the force-kept tier.
+            Defaults to ``ContextRole.GENERAL`` (legacy v0.3.0 behaviour).
+            May be overridden per call in :meth:`compress`.
     """
 
     def __init__(
@@ -214,6 +313,7 @@ class ContextCompressor:
         preserve_patterns: Optional[Sequence[str]] = None,
         mode: Optional[str] = None,
         detect_content: bool = False,
+        context_role: Union[ContextRole, str] = ContextRole.GENERAL,
     ):
         self.backend = get_backend(embedding_backend)
         if similarity_threshold is None:
@@ -225,6 +325,8 @@ class ContextCompressor:
         self.preserve_patterns = list(preserve_patterns or [])
         self.mode = mode
         self.detect_content = detect_content
+        self.context_role = context_role
+
 
     def compress(
         self,
@@ -236,6 +338,7 @@ class ContextCompressor:
         required_keywords: Optional[List[str]] = None,
         constraints: Optional[List[str]] = None,
         template_name: Optional[str] = None,
+        context_role: Optional[Union[ContextRole, str]] = None,
     ) -> CompressionResult:
         """Compress ``text``, retaining approximately ``target_ratio`` of its tokens.
 
@@ -252,6 +355,11 @@ class ContextCompressor:
             required_keywords: Optional list of keywords required in the output.
             constraints: Optional list of prompt constraints.
             template_name: Optional template override.
+            context_role: Optional provenance/trust role override for this
+                call (``ContextRole`` or string).  When ``None`` the
+                instance ``context_role`` (or ``mode``) is used.  Untrusted
+                roles (``rag``/``tool``/``assistant``) are priority-capped
+                so injected imperatives cannot hijack the force-kept tier.
 
         Returns:
             A :class:`CompressionResult`.
@@ -272,6 +380,10 @@ class ContextCompressor:
 
         t_start = time.perf_counter()
 
+        # Resolve provenance role once for this call (explicit arg > instance
+        # role > mode inference > GENERAL).
+        effective_role = _resolve_context_role(context_role, self.context_role, self.mode)
+
         if strategy == "rewrite":
             return self._compress_rewrite(
                 text=text,
@@ -289,6 +401,7 @@ class ContextCompressor:
                 target_ratio=target_ratio,
                 query=query,
                 t_start=t_start,
+                context_role=effective_role,
             )
             return self._compress_rewrite(
                 text=extractive_res.compressed_text,
@@ -308,7 +421,9 @@ class ContextCompressor:
             target_ratio=target_ratio,
             query=query,
             t_start=t_start,
+            context_role=effective_role,
         )
+
 
     def _compress_rewrite(
         self,
@@ -384,7 +499,9 @@ class ContextCompressor:
             mode=self.mode,
             elapsed_ms=elapsed_ms,
             rewrite_metadata=meta,
+            token_counter_used=get_active_token_counter_name(),
         )
+
 
     def _compress_extractive(
         self,
@@ -392,10 +509,12 @@ class ContextCompressor:
         target_ratio: float,
         query: Optional[str],
         t_start: float,
+        context_role: str = "general",
     ) -> CompressionResult:
         profile = None
         resolved_mode = None
         effective_weights = self.weights
+
 
         if self.detect_content or self.mode is not None:
             from .analysis import analyze
@@ -493,8 +612,10 @@ class ContextCompressor:
                 query_embedding=query_embedding,
                 weights=effective_weights,
                 preserve_patterns=self.preserve_patterns,
+                context_role=context_role,
             )
             all_chunk_scored.append((chunk, scored))
+
 
             chunk_target = max(1, round(chunk.total_tokens * target_ratio_eff))
             sorted_scored = sorted(
@@ -611,9 +732,11 @@ class ContextCompressor:
             instructions_kept=instructions_kept,
             entities_found=entities_found,
             entities_kept=entities_kept,
+            token_counter_used=get_active_token_counter_name(),
         )
 
     def _passthrough(
+
         self,
         text: str,
         original_tokens: int,
@@ -642,9 +765,11 @@ class ContextCompressor:
             content_confidence=getattr(profile, "confidence", None) if profile else None,
             mode=getattr(resolved_mode, "name", None) if resolved_mode else None,
             elapsed_ms=elapsed_ms,
+            token_counter_used=get_active_token_counter_name(),
         )
 
     def _try_structured(
+
         self,
         text: str,
         target_ratio: float,
@@ -684,7 +809,9 @@ class ContextCompressor:
             mode=resolved_mode.name,
             elapsed_ms=elapsed_ms,
             structure_preserved=True,
+            token_counter_used=get_active_token_counter_name(),
         )
+
 
     def _encode(self, sentences: List[str], query: Optional[str]):
         """Encode sentences (and optionally a query) with a single, consistent vector space."""
@@ -698,148 +825,9 @@ class ContextCompressor:
             return encoded[:-1], encoded[-1]
         return encoded, None
 
-    # Maximum DP table size (n_items * budget_tokens) before falling back
-    # to greedy selection.  Keeps memory bounded on pathological inputs
-    # (e.g. a single chunk with 500 sentences and a 10,000-token budget).
-    _DP_TABLE_LIMIT = 50_000
-
-    @staticmethod
-    def _select_for_chunk(scored: List[Dict], token_counts: List[int], target_ratio: float) -> set:
-        """Select sentence indices for a chunk within its token budget.
-
-        Uses 0/1 Knapsack dynamic programming for optional sentences to
-        maximise total score subject to the token budget.  Profiling
-        showed this yields +4.6% higher total score than greedy on
-        chunks with 12+ sentences, at negligible latency cost (selection
-        is <0.1% of pipeline runtime).
-
-        Falls back to greedy when the DP table would exceed
-        ``_DP_TABLE_LIMIT`` cells.
-
-        Invariants:
-        * ``must_keep`` sentences are always included (budget permitting).
-        * At least one sentence is always returned.
-        * Output is deterministic.
-        """
-        total_tokens = sum(token_counts)
-        target_tokens = max(1, round(total_tokens * target_ratio))
-
-        must_keep = [s for s in scored if s["must_keep"]]
-        optional = [s for s in scored if not s["must_keep"]]
-
-        # Force-select must_keep sentences first.
-        selected: set = {s["index"] for s in must_keep}
-        used_tokens = sum(token_counts[i] for i in selected)
-
-        if used_tokens > target_tokens:
-            # Budget overflow: keep highest-scoring must_keeps that fit,
-            # guaranteeing at least one sentence.
-            must_sorted = sorted(must_keep, key=lambda s: s["score"], reverse=True)
-            selected = set()
-            used_tokens = 0
-            for s in must_sorted:
-                if not selected or used_tokens + token_counts[s["index"]] <= target_tokens:
-                    selected.add(s["index"])
-                    used_tokens += token_counts[s["index"]]
-        elif optional:
-            remaining_budget = target_tokens - used_tokens
-            if remaining_budget > 0:
-                dp_selected = ContextCompressor._knapsack_select(
-                    optional,
-                    token_counts,
-                    remaining_budget,
-                )
-                selected.update(dp_selected)
-
-        if not selected:
-            best = max(scored, key=lambda s: s["score"])
-            selected.add(best["index"])
-
-        return selected
-
-    @staticmethod
-    def _knapsack_select(
-        items: List[Dict],
-        token_counts: List[int],
-        budget: int,
-    ) -> set:
-        """0/1 Knapsack DP over optional sentences.
-
-        Maximises sum of scores subject to sum of tokens <= budget.
-        Falls back to greedy for very large inputs to keep memory
-        bounded.
-
-        Why DP over greedy: greedy by score-descending can skip a
-        high-value sentence because its token count slightly exceeds
-        remaining capacity, even though a globally better combination
-        exists.  Measured improvement: +4.6% on chunks with 12+
-        sentences in our benchmark corpus.
-        """
-        n = len(items)
-        if n == 0 or budget <= 0:
-            return set()
-
-        weights = [token_counts[item["index"]] for item in items]
-        values = [item["score"] for item in items]
-
-        # Filter items that individually exceed the budget.
-        feasible = [(i, w, v) for i, (w, v) in enumerate(zip(weights, values)) if w <= budget]
-        if not feasible:
-            return set()
-
-        n_feasible = len(feasible)
-
-        # Fall back to greedy for very large tables.
-        if n_feasible * budget > ContextCompressor._DP_TABLE_LIMIT:
-            return ContextCompressor._greedy_select(items, token_counts, budget)
-
-        # Standard 0/1 knapsack with 1-D rolling DP array and a
-        # boolean choice table for backtracking.
-        dp = np.zeros(budget + 1, dtype=np.float64)
-        choice = np.zeros((n_feasible, budget + 1), dtype=bool)
-
-        for k, (_, w, v) in enumerate(feasible):
-            # Reverse iteration ensures each item is used at most once.
-            for j in range(budget, w - 1, -1):
-                candidate = dp[j - w] + v
-                if candidate > dp[j]:
-                    dp[j] = candidate
-                    choice[k][j] = True
-
-        # Backtrack to recover selected items.
-        selected: set = set()
-        j = budget
-        for k in range(n_feasible - 1, -1, -1):
-            if choice[k][j]:
-                orig_idx = feasible[k][0]
-                selected.add(items[orig_idx]["index"])
-                j -= feasible[k][1]
-
-        return selected
-
-    @staticmethod
-    def _greedy_select(
-        items: List[Dict],
-        token_counts: List[int],
-        budget: int,
-    ) -> set:
-        """Greedy fallback: pick highest-score items that fit.
-
-        Used when the DP table would be too large, or as a comparison
-        baseline.
-        """
-        ordered = sorted(items, key=lambda s: s["score"], reverse=True)
-        selected: set = set()
-        used = 0
-        for s in ordered:
-            w = token_counts[s["index"]]
-            if used + w <= budget:
-                selected.add(s["index"])
-                used += w
-        return selected
-
     @staticmethod
     def _reassemble(
+
         sentences: List[str], kept_mask: np.ndarray, para_end_indices: List[int]
     ) -> str:
         """Rebuild paragraphs from kept sentences, preserving list formatting."""

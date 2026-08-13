@@ -7,7 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.1] - 2026-08-13
+
+> Verified release: 432 tests passed, 0 failed; 92.57% branch coverage;
+> Ruff passed; `benchmark.py` reported 432 passed / 0 failed.
+
+### Security
+- **Provenance-aware priority locking (P0-1, CVSS 9.1 mitigation).** Added a
+  `ContextRole` trust boundary (`system`/`developer`/`user`/`assistant`/`tool`/
+  `rag`/`general`). Untrusted content (`rag`/`tool`/`assistant`) can no longer
+  reach the hard-locked Priority Tier 4 or become `must_keep` from imperative
+  wording, safety patterns, **or** `preserve_patterns` — closing the indirect
+  prompt-injection amplification path. Trusted `system`/`developer` content
+  retains full protection. This *mitigates compression-induced instruction
+  elevation*; it is **not** complete prompt-injection prevention (defense in
+  depth still required).
+- **Rewrite template fence-breakout protection (P1-1).** A literal
+  `---END TEXT---` (etc.) inside user text can no longer terminate the template's
+  content region. Uses a content-preserving nonce fence: user text is passed
+  **byte-for-byte unchanged**; only the template's own delimiters are hardened.
+
+### Added
+- `ContextRole` enum (exported from `llmslim`) and a `context_role` parameter on
+  `compress()` / `ContextCompressor` (string or enum accepted).
+- `CompressionResult.token_counter_used` (`"tiktoken"` | `"heuristic"`) and
+  `tokens.get_active_token_counter_name()` (P1-4).
+- Inline backtick code-span protection in sentence splitting (P0-2).
+- CJK ideographic sentence boundaries `。` / `！` / `？` (P1-2).
+
+### Changed (intentional behavioural changes — NOT 100% backward compatible)
+- **`compress_documents()` now defaults to `context_role=ContextRole.RAG`.**
+  Imperative sentences in retrieved documents are no longer force-kept.
+- **`compress_chat_messages()` now propagates each message's role** as
+  provenance (`system`→SYSTEM, `developer`→DEVELOPER, `user`→USER,
+  `assistant`→ASSISTANT, `tool`→TOOL; unknown→GENERAL). No silent collapse.
+- `count_tokens()` emits a one-time `logging.warning` when falling back to the
+  character heuristic (P1-4).
+
+### Fixed
+- **Benchmark runner (P0-3).** `benchmarks/benchmark.py` now reports the real
+  pytest pass/fail counts via a result-collector plugin instead of hardcoded
+  `(159, 0)` / `(154, 5)` tuples, eliminating the false 5-failure result.
+
+### Removed
+- Dead code (P1-3): unused `_select_for_chunk()`, `_knapsack_select()`, and
+  `_greedy_select()` static methods in `core.py`.
+
+### Backward compatibility
+- The default `compress(text, ...)` call (role `GENERAL`) is byte-for-byte
+  identical to v0.3.0.
+
+---
+
 ## [0.3.0] - 2026-07-18
+
 
 ### Added
 - **Hybrid Prompt Compression & Semantic Optimization**: Extended `compress()` with `strategy` parameter supporting `"extractive"` (default), `"rewrite"`, and `"hybrid"` strategies.

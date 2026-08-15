@@ -34,7 +34,7 @@ export function getStructuredDataGraph() {
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" },
     featureList: ["Extractive, rewrite, and hybrid Python compression", "Provenance-aware ContextRole handling", "Role-aware chat and RAG pipeline helpers", "Token-counter telemetry"],
   };
-  const organization = { "@type": "Organization", "@id": siteConfig.url + "/#organization", name: siteConfig.name, url: siteConfig.url, logo: { "@type": "ImageObject", url: siteConfig.logo, width: 512, height: 512 }, sameAs: [siteConfig.github, siteConfig.pypi] };
+  const organization = { "@type": "Organization", "@id": siteConfig.url + "/#organization", name: siteConfig.name, url: siteConfig.url, logo: { "@type": "ImageObject", url: siteConfig.logo, width: 512, height: 512 }, sameAs: [siteConfig.github, siteConfig.linkedin, siteConfig.pypi, siteConfig.productHunt] };
   const webSite = { "@type": "WebSite", "@id": siteConfig.url + "/#website", url: siteConfig.url, name: siteConfig.name, description: siteConfig.description, publisher: { "@id": siteConfig.url + "/#organization" } };
   const faqPage = { "@type": "FAQPage", "@id": siteConfig.url + "/#faq", mainEntity: [
     { "@type": "Question", name: "What does provenance-aware priority handling do?", acceptedAnswer: { "@type": "Answer", text: "It prevents untrusted RAG, tool, and assistant content from gaining protected priority solely through imperative or safety-critical wording." } },

@@ -83,7 +83,7 @@ export function DesignSystemShowcase() {
       <section className="space-y-6">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h2 className="text-xl font-bold text-white flex items-center gap-2 font-mono">
-            <Cpu className="w-5 h-5 text-cyan-400" /> 02 // Live Interactive Compression Simulator
+            <Cpu className="w-5 h-5 text-cyan-400" /> 02 // Interactive compression illustration
           </h2>
           <span className="text-xs font-mono text-slate-500">Side-by-Side Context Pruning</span>
         </div>

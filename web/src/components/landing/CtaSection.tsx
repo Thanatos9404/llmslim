@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { AnimatedButton, Card } from "@/components/design-system";
 import { Terminal, Copy, Check, Sparkles, ArrowRight } from "lucide-react";
 import { GithubIcon } from "@/components/icons/GithubIcon";
+import { siteConfig } from "@/config/site";
 
 export function CtaSection() {
   const [copied, setCopied] = useState(false);
@@ -70,7 +71,7 @@ export function CtaSection() {
             variant="glass"
             size="lg"
             icon={<GithubIcon className="w-4 h-4" />}
-            onClick={() => window.open("https://github.com/Thanatos9404/llmslim", "_blank")}
+            onClick={() => window.open(siteConfig.github, "_blank", "noopener,noreferrer")}
           >
             GitHub
           </AnimatedButton>

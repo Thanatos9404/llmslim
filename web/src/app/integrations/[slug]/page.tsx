@@ -43,20 +43,20 @@ export default async function IntegrationSlugPage({ params }: { params: Promise<
     "@type": "TechArticle",
     headline: `LLMSlim + ${item.name} Production Integration Guide`,
     description: item.description,
-    url: `https://llmslim.app/integrations/${item.slug}`,
+    url: `https://www.llmslim.app/integrations/${item.slug}`,
     datePublished: "2026-07-15",
     dateModified: "2026-07-15",
     author: {
       "@type": "Person",
       name: "Yashvardhan Thanvi",
-      url: "https://github.com/Thanatos9404",
+      url: "https://github.com/Thanatos9404/llmslim",
     },
     publisher: {
       "@type": "Organization",
       name: "LLMSlim",
       logo: {
         "@type": "ImageObject",
-        url: "https://llmslim.app/llmslim_logo.png",
+        url: "https://www.llmslim.app/llmslim_logo.png",
       },
     },
   };
@@ -78,7 +78,7 @@ export default async function IntegrationSlugPage({ params }: { params: Promise<
       : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12 font-sans">
+    <article className="detail-route integration-detail max-w-4xl mx-auto space-y-12 font-sans">
       {/* JSON-LD Structured Data Schema Insertion */}
       <script
         type="application/ld+json"
@@ -266,6 +266,6 @@ export default async function IntegrationSlugPage({ params }: { params: Promise<
           </div>
         </section>
       )}
-    </div>
+    </article>
   );
 }

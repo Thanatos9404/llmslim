@@ -1,114 +1,23 @@
-import React from "react";
 import Link from "next/link";
+import { ArrowUpRight, BookOpen, Code2, Sparkles } from "lucide-react";
 import { constructMetadata } from "@/lib/seo";
 import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs";
-import { ArrowRight, BookOpen, Sparkles, Terminal, Code, Cpu, ShieldCheck } from "lucide-react";
-import { Card } from "@/components/design-system";
 
 export const metadata = constructMetadata({
   title: "Documentation — LLMSlim Prompt & Context Compression",
-  description: "Comprehensive developer guides, API references, CLI manuals, and prompt engineering strategies for LLMSlim.",
+  description: "Released developer documentation for LLMSlim.",
 });
 
 export default function DocsIndexPage() {
-  const docList = Object.values(DOCS_REGISTRY);
-
-  return (
-    <div className="space-y-12">
-      {/* Documentation Hub Banner */}
-      <div className="space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>Released Python documentation</span>
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
-          LLMSlim <span className="text-gradient-emerald">Documentation</span>
-        </h1>
-        <p className="text-slate-400 text-base max-w-2xl leading-relaxed">
-          Learn the released Python API, provenance-aware priority handling, and pipeline behavior.
-        </p>
-      </div>
-
-      {/* Featured Quick Start Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/docs/getting-started" className="group">
-          <Card glowColor="emerald" className="p-6 h-full flex flex-col justify-between space-y-4 hover:border-emerald-500/50 transition-colors">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-emerald-400 font-mono text-xs font-bold">
-                <span className="flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Getting Started</span>
-                <span>2 min read</span>
-              </div>
-              <h2 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
-                Overview & Philosophy
-              </h2>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Learn the released Python API, provenance-aware priority model, and measured v0.3.1 behavior.
-              </p>
-            </div>
-            <div className="text-xs font-mono text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-              Start Guide <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </Card>
-        </Link>
-
-        <Link href="/docs/getting-started" className="group">
-          <Card glowColor="cyan" className="p-6 h-full flex flex-col justify-between space-y-4 hover:border-cyan-500/50 transition-colors">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-cyan-400 font-mono text-xs font-bold">
-                <span className="flex items-center gap-1.5"><Code className="w-4 h-4" /> Quick Start</span>
-                <span>5 min read</span>
-              </div>
-              <h2 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">
-                Python SDK Integration
-              </h2>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Use compress() with the Python model client or framework you already operate.
-              </p>
-            </div>
-            <div className="text-xs font-mono text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-              View Quickstart <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </Card>
-        </Link>
-      </div>
-
-      {/* Categorized Documentation List */}
-      <div className="space-y-10 pt-4">
-        {DOC_CATEGORIES.map((category) => {
-          const docs = docList.filter((d) => d.category === category);
-          if (docs.length === 0) return null;
-
-          return (
-            <div key={category} className="space-y-4 border-t border-white/10 pt-8">
-              <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                {category}
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {docs.map((doc) => (
-                  <Link key={doc.slug} href={`/docs/${doc.slug}`} className="group">
-                    <div className="p-5 rounded-2xl bg-[#0D121C] border border-white/10 hover:border-emerald-500/30 transition-all space-y-2 h-full flex flex-col justify-between">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                          <span className="font-bold text-slate-300">{doc.title}</span>
-                          <span>{doc.readingTime}</span>
-                        </div>
-                        <p className="text-slate-400 text-xs line-clamp-2 leading-relaxed">
-                          {doc.description}
-                        </p>
-                      </div>
-                      <div className="pt-2 text-[11px] font-mono text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                        Read Guide <ArrowRight className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+  const docs = Object.values(DOCS_REGISTRY);
+  return <div className="hub-page">
+    <header className="hub-header"><span className="hub-eyebrow"><BookOpen size={14} /> Released Python documentation</span><h1>Build with the <span>released engine.</span></h1><p>Concise guides for context roles, pipelines, token accounting, and the safety boundaries that ship in LLMSlim.</p></header>
+    <section className="hub-feature-grid" aria-label="Featured documentation">
+      <Link className="hub-feature" href="/docs/getting-started"><span className="hub-feature__icon"><Sparkles size={18} /></span><div><span className="hub-kicker">Start here · 2 min</span><h2>Overview & philosophy</h2><p>Understand what runs locally, what needs a provider, and where the trust boundary sits.</p></div><ArrowUpRight size={18} /></Link>
+      <Link className="hub-feature" href="/docs/getting-started"><span className="hub-feature__icon"><Code2 size={18} /></span><div><span className="hub-kicker">Quick start · 5 min</span><h2>Python SDK integration</h2><p>Make one real extraction call, then choose the correct role and counter for your workflow.</p></div><ArrowUpRight size={18} /></Link>
+    </section>
+    <div className="hub-catalog">
+      {DOC_CATEGORIES.map((category) => { const items = docs.filter((doc) => doc.category === category); if (!items.length) return null; return <section className="hub-section" key={category}><div className="hub-section__heading"><span>{category}</span><small>{items.length} guides</small></div><div className="hub-list">{items.map((doc, index) => <Link className="hub-row" href={`/docs/${doc.slug}`} key={doc.slug}><span className="hub-row__number">{String(index + 1).padStart(2, "0")}</span><div><h2>{doc.title}</h2><p>{doc.description}</p></div><span className="hub-row__meta">{doc.readingTime}<ArrowUpRight size={16} /></span></Link>)}</div></section>; })}
     </div>
-  );
+  </div>;
 }

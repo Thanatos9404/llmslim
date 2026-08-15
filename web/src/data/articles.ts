@@ -298,7 +298,7 @@ for idx, doc in enumerate(compressed_docs):
       {
         citationKey: "LLMSlim Core Docs",
         title: "LLMSlim Core Engine Architecture & Priority Shield Implementation",
-        url: "https://llmslim.app/docs/core-concepts",
+        url: "https://www.llmslim.app/docs/context-role",
       },
     ],
     sections: [

@@ -12,12 +12,33 @@ export interface StudioModel {
 }
 
 export const STUDIO_MODELS: StudioModel[] = [
+  { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "OpenAI", pricePerM: 5.0 },
+  { id: "gpt-5.6-terra", name: "GPT-5.6 Terra", provider: "OpenAI", pricePerM: 2.0 },
+  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "OpenAI", pricePerM: 0.2 },
+  { id: "gpt-5.5", name: "GPT-5.5", provider: "OpenAI", pricePerM: 5.0 },
+  { id: "gpt-5.4", name: "GPT-5.4", provider: "OpenAI", pricePerM: 2.5 },
   { id: "gpt-5", name: "GPT-5 Flagship", provider: "OpenAI", pricePerM: 1.25 },
-  { id: "claude-opus", name: "Claude Opus 4.8", provider: "Anthropic", pricePerM: 5.0 },
-  { id: "claude-sonnet", name: "Claude Sonnet 4.6", provider: "Anthropic", pricePerM: 3.0 },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", pricePerM: 2.5 },
-  { id: "gemini-2.5", name: "Gemini 2.5 Pro", provider: "Google", pricePerM: 1.25 },
+  { id: "claude-fable-5", name: "Claude Fable 5", provider: "Anthropic", pricePerM: 10.0 },
+  { id: "claude-opus-5", name: "Claude Opus 5", provider: "Anthropic", pricePerM: 5.0 },
+  { id: "claude-opus-4.8", name: "Claude Opus 4.8", provider: "Anthropic", pricePerM: 5.0 },
+  { id: "claude-sonnet-5", name: "Claude Sonnet 5", provider: "Anthropic", pricePerM: 2.0 },
+  { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6", provider: "Anthropic", pricePerM: 3.0 },
+  { id: "claude-haiku-4.5", name: "Claude Haiku 4.5", provider: "Anthropic", pricePerM: 1.0 },
+  { id: "gemini-3.1-pro", name: "Gemini 3.1 Pro", provider: "Google", pricePerM: 2.0 },
+  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", provider: "Google", pricePerM: 1.5 },
+  { id: "gemini-3-flash", name: "Gemini 3 Flash", provider: "Google", pricePerM: 0.5 },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "Google", pricePerM: 1.25 },
+  { id: "grok-4", name: "Grok-4", provider: "xAI", pricePerM: 3.0 },
+  { id: "grok-4.20", name: "Grok-4.20", provider: "xAI", pricePerM: 2.0 },
+  { id: "llama-4-maverick", name: "Llama 4 Maverick", provider: "Meta", pricePerM: 0.3 },
+  { id: "qwen-max", name: "Qwen Max", provider: "Alibaba", pricePerM: 1.6 },
+  { id: "glm-5.2", name: "GLM-5.2", provider: "Z.ai", pricePerM: 0.6 },
+  { id: "kimi-k3", name: "Kimi K3", provider: "Moonshot AI", pricePerM: 0.8 },
+  { id: "deepseek-v4-pro", name: "DeepSeek-V4 Pro", provider: "DeepSeek", pricePerM: 0.435 },
   { id: "deepseek-v3", name: "DeepSeek-V3", provider: "DeepSeek", pricePerM: 0.14 },
+  { id: "deepseek-r1.5", name: "DeepSeek-R1.5", provider: "DeepSeek", pricePerM: 0.55 },
+  { id: "mistral-large-3", name: "Mistral Large 3", provider: "Mistral", pricePerM: 0.5 },
+  { id: "nova-premier", name: "Nova Premier", provider: "Amazon", pricePerM: 2.5 },
 ];
 
 export interface StudioHeaderProps {
@@ -54,11 +75,11 @@ export function StudioHeader({
               LLMSlim Studio Playground
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
-              v0.3.1 simulation
+              live Python engine
             </span>
           </div>
           <p className="text-xs text-slate-400 font-sans mt-1">
-            Client-side simulation for exploring context compression concepts; it does not execute the Python engine.
+            Live extractive compression executes through the same-origin LLMSlim Python function.
           </p>
         </div>
 

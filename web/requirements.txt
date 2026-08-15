@@ -1,0 +1,4 @@
+# Runtime dependencies for web/api/compress.py.  The handler imports the
+# checked-in repository package directly; see VERCEL_STUDIO_DEPLOYMENT.md.
+numpy>=1.21
+scikit-learn>=1.0

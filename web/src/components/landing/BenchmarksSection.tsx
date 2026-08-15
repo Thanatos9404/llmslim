@@ -20,7 +20,7 @@ export function BenchmarksSection() {
           Measured checks for <span className="text-gradient-emerald">v0.3.1</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          The release benchmark exercises the repository's 43 bundled samples across eight dataset files. Results are environment-dependent.
+          The release benchmark exercises the repository&apos;s 43 bundled samples across eight dataset files. Results are environment-dependent.
         </p>
       </div>
 

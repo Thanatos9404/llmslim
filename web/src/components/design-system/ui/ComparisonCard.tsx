@@ -48,7 +48,7 @@ export function ComparisonCard({
             <h3 className="text-lg font-bold text-white">Semantic Prompt Compressor Reactor</h3>
           </div>
           <p className="text-xs text-slate-400">
-            Drag the ratio slider to simulate real-time sentence pruning & token reduction
+            Drag the ratio slider to explore a visual sentence-pruning example
           </p>
         </div>
 

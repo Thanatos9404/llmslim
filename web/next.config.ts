@@ -5,9 +5,13 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
+const localStudioApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_API_ORIGIN;
+const localStudioE2E = process.env.LLMSLIM_STUDIO_E2E === "1";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  ...(localStudioE2E ? { distDir: ".next-studio-e2e" } : {}),
   compress: true,
   images: {
     formats: ["image/avif", "image/webp"],
@@ -16,6 +20,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "@radix-ui/react-dialog"],
+  },
+  async rewrites() {
+    if (!localStudioApiOrigin) return [];
+    return [{ source: "/api/compress", destination: `${localStudioApiOrigin}/api/compress` }];
   },
 };
 

@@ -7,16 +7,28 @@ import { DollarSign, Sparkles, Sliders } from "lucide-react";
 
 export function CalculatorSection() {
   const models = [
-    { name: "Claude Opus 4.8", pricePerM: 5.0 },
-    { name: "Claude Sonnet 4.6", pricePerM: 3.0 },
-    { name: "GPT-4o", pricePerM: 2.5 },
-    { name: "GPT-5 (Flagship)", pricePerM: 1.25 },
-    { name: "Gemini 2.5 Pro", pricePerM: 1.25 },
-    { name: "Claude Haiku 4.5", pricePerM: 1.0 },
+    { name: "Claude Fable 5", pricePerM: 10.0 },
+    { name: "GPT-5.6 Sol / GPT-5.5 / Claude Opus 5", pricePerM: 5.0 },
+    { name: "Grok-4 / Claude Sonnet 4.6", pricePerM: 3.0 },
+    { name: "GPT-5.4 / Nova Premier / Command-A", pricePerM: 2.5 },
+    { name: "Gemini 3.1 Pro / GPT-5.6 Terra / Claude Sonnet 5", pricePerM: 2.0 },
+    { name: "Gemini 3.5 Flash", pricePerM: 1.5 },
+    { name: "GPT-5 (Flagship) / Gemini 2.5 Pro", pricePerM: 1.25 },
+    { name: "Claude Haiku 4.5 / Grok Build", pricePerM: 1.0 },
+    { name: "Kimi K3 / Nova Pro", pricePerM: 0.80 },
+    { name: "GPT-5.4 Mini", pricePerM: 0.75 },
+    { name: "GLM-5.2 / Kimi K2", pricePerM: 0.60 },
+    { name: "DeepSeek-R1.5 / Gemini 3 Flash / Mistral Large 3", pricePerM: 0.50 },
+    { name: "DeepSeek-V4 Pro", pricePerM: 0.435 },
+    { name: "Qwen Plus", pricePerM: 0.40 },
+    { name: "Llama 4 Maverick / Gemini 2.5 Flash", pricePerM: 0.30 },
+    { name: "GPT-5.6 Luna / GPT-5.4 Nano", pricePerM: 0.20 },
     { name: "DeepSeek-V3", pricePerM: 0.14 },
+    { name: "Mistral Small 4 / Gemini 2.5 Flash-Lite", pricePerM: 0.10 },
+    { name: "Nova Micro", pricePerM: 0.035 },
   ];
 
-  const [selectedModel, setSelectedModel] = useState(models[3]); // Default GPT-5
+  const [selectedModel, setSelectedModel] = useState(models[6]); // Default GPT-5 / Gemini 2.5 Pro
   const [requestsPerDay, setRequestsPerDay] = useState(50000);
   const [promptTokens, setPromptTokens] = useState(1500);
   const [targetRatio, setTargetRatio] = useState(0.5);

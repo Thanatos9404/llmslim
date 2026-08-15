@@ -26,7 +26,7 @@ export function StudioSkeleton() {
           <Cpu className="w-4 h-4 text-emerald-400 animate-spin" />
           Initializing LLMSlim Studio Engine...
         </span>
-        <span>Local playground simulation</span>
+        <span>Live Python engine</span>
       </div>
     </div>
   );

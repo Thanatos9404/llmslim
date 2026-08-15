@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { constructMetadata } from "@/lib/seo";
 import { BENCHMARK_SUITES } from "@/data/benchmarks";
 import { DocCodeBlock } from "@/components/docs/DocCodeBlock";
-import { ArrowLeft, BarChart3, CheckCircle2, Cpu, FileCode, AlertTriangle, ShieldCheck, Database, Server, Info } from "lucide-react";
+import { ArrowLeft, BarChart3, CheckCircle2, Cpu, FileCode, AlertTriangle, Database, Server, Info } from "lucide-react";
 import { Card } from "@/components/design-system";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -43,26 +43,26 @@ export default async function BenchmarkSlugPage({ params }: { params: Promise<{ 
     headline: suite.title,
     alternativeHeadline: suite.subtitle,
     description: suite.description,
-    url: `https://llmslim.app/benchmarks/${suite.slug}`,
+    url: `https://www.llmslim.app/benchmarks/${suite.slug}`,
     datePublished: "2026-07-15",
     dateModified: "2026-07-15",
     author: {
       "@type": "Person",
       name: "Yashvardhan Thanvi",
-      url: "https://github.com/Thanatos9404",
+      url: "https://github.com/Thanatos9404/llmslim",
     },
     publisher: {
       "@type": "Organization",
       name: "LLMSlim",
       logo: {
         "@type": "ImageObject",
-        url: "https://llmslim.app/llmslim_logo.png",
+        url: "https://www.llmslim.app/llmslim_logo.png",
       },
     },
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 font-sans">
+    <article className="detail-route benchmark-detail max-w-4xl mx-auto space-y-10 font-sans">
       {/* JSON-LD Structured Data Schema Insertion */}
       <script
         type="application/ld+json"
@@ -232,6 +232,6 @@ export default async function BenchmarkSlugPage({ params }: { params: Promise<{ 
           code={suite.reproducibleScript}
         />
       </section>
-    </div>
+    </article>
   );
 }

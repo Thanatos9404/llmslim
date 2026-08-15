@@ -1,0 +1,212 @@
+{
+  "classification": "MEASURED",
+  "dataset": {
+    "categories": {
+      "adversarial_security": 1,
+      "agent_context": 1,
+      "chat_history": 1,
+      "constraint_dense": 1,
+      "documentation": 1,
+      "entity_dense": 1,
+      "json": 1,
+      "long_context": 1,
+      "markdown": 1,
+      "medium_context": 1,
+      "multilingual": 3,
+      "numeric_financial": 1,
+      "rag_context": 1,
+      "short_context": 1,
+      "source_code": 1,
+      "system_prompts": 1,
+      "tables_lists": 1,
+      "technical_prose": 1,
+      "tool_output": 1,
+      "user_prompts": 1,
+      "xml": 1,
+      "yaml": 1
+    },
+    "languages": {
+      "en": 21,
+      "hi": 1,
+      "ja": 1,
+      "zh": 1
+    },
+    "length_distribution": {
+      "long_300_plus_tokens": 1,
+      "medium_100_to_299_tokens": 1,
+      "short_under_100_tokens": 22
+    },
+    "name": "phase2_core",
+    "path": "benchmarks\\datasets\\phase2_core.json",
+    "provenance": "repository-owned synthetic, independently labelled",
+    "sample_count": 24,
+    "strategy_applicability": {
+      "extractive": 24,
+      "hybrid": "OPTIONAL_PROVIDER_NOT_RUN",
+      "rewrite": "OPTIONAL_PROVIDER_NOT_RUN"
+    },
+    "tokens_by_category": {
+      "adversarial_security": 34,
+      "agent_context": 35,
+      "chat_history": 42,
+      "constraint_dense": 36,
+      "documentation": 41,
+      "entity_dense": 38,
+      "json": 22,
+      "long_context": 323,
+      "markdown": 42,
+      "medium_context": 50,
+      "multilingual": 203,
+      "numeric_financial": 57,
+      "rag_context": 39,
+      "short_context": 18,
+      "source_code": 32,
+      "system_prompts": 33,
+      "tables_lists": 47,
+      "technical_prose": 44,
+      "tool_output": 39,
+      "user_prompts": 36,
+      "xml": 26,
+      "yaml": 23
+    }
+  },
+  "schema_tax": {
+    "catalog_count": 18,
+    "tool_schema_count": 375
+  },
+  "schema_version": "phase2.v1",
+  "security": "PASS",
+  "summary": {
+    "aggregation_note": "micro weights samples equally; macro weights benchmark categories equally",
+    "determinism_rate": 1.0,
+    "failure_rate": 0.0,
+    "macro": {
+      "actual_compression_ratio": {
+        "count": 22,
+        "mean": 0.8663497532850802,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.17857140471327318
+      },
+      "entity_retention": {
+        "count": 17,
+        "mean": 0.8333333333333333,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.3333333333333333
+      },
+      "instruction_retention": {
+        "count": 14,
+        "mean": 0.9523809523809524,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.13256581816261956
+      },
+      "negation_retention": {
+        "count": 13,
+        "mean": 0.8974358974358974,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.2737712372315721
+      },
+      "number_retention": {
+        "count": 17,
+        "mean": 0.8784313725490196,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.23987774022946196
+      },
+      "semantic_similarity": {
+        "count": 22,
+        "mean": 0.8871217635185764,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.15539791582107537
+      },
+      "target_ratio_error": {
+        "count": 22,
+        "mean": 0.3663497532850803,
+        "median": 0.5,
+        "p95": 0.5,
+        "stdev": 0.17857140471327318
+      },
+      "token_reduction": {
+        "count": 22,
+        "mean": 0.13365024671491968,
+        "median": 0.0,
+        "p95": 0.42857142857142855,
+        "stdev": 0.17857140471327318
+      }
+    },
+    "micro": {
+      "actual_compression_ratio": {
+        "count": 24,
+        "mean": 0.8685983849557681,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.1792498217541783
+      },
+      "entity_retention": {
+        "count": 19,
+        "mean": 0.8508771929824562,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.3194235343163706
+      },
+      "instruction_retention": {
+        "count": 16,
+        "mean": 0.9375,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.16535945694153692
+      },
+      "latency_ms": {
+        "count": 24,
+        "mean": 0.8858166662927639,
+        "median": 0.01594999775988981,
+        "p95": 2.0585000020219013,
+        "stdev": 1.3619208829966036
+      },
+      "negation_retention": {
+        "count": 15,
+        "mean": 0.8666666666666667,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.339934634239519
+      },
+      "number_retention": {
+        "count": 19,
+        "mean": 0.8912280701754386,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.22994840643375195
+      },
+      "semantic_similarity": {
+        "count": 24,
+        "mean": 0.8918986535957321,
+        "median": 1.0,
+        "p95": 1.0,
+        "stdev": 0.15217998103094674
+      },
+      "target_ratio_error": {
+        "count": 24,
+        "mean": 0.3685983849557681,
+        "median": 0.5,
+        "p95": 0.5,
+        "stdev": 0.1792498217541783
+      },
+      "token_reduction": {
+        "count": 24,
+        "mean": 0.13140161504423195,
+        "median": 0.0,
+        "p95": 0.42857142857142855,
+        "stdev": 0.1792498217541783
+      }
+    },
+    "structural_integrity": {
+      "applicable_count": 5,
+      "unavailable_count": 0,
+      "valid_count": 4
+    }
+  }
+}

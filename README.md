@@ -122,7 +122,19 @@ pytest tests
 pytest --cov=llmslim --cov-branch --cov-report=term-missing
 ruff check llmslim benchmarks/benchmark.py tests
 python benchmark.py
+python -m benchmarks.run --mode fast
 ```
+
+## Benchmark methodology
+
+Phase 2 adds an offline, machine-readable benchmark track. Its canonical result
+is `benchmarks/results/latest.json`, with a generated report at
+`benchmarks/reports/latest.md`. The suite separately records local extractive
+results, security invariants, multilingual metadata, and agent tool-schema
+payload accounting. Provider-backed rewrite/hybrid results are not fabricated by
+the default offline run. Tool-schema tax is a **research/benchmark track**, not
+a shipped schema-compression feature. See the [methodology](docs/phase-2/BENCHMARK_METHODOLOGY.md)
+and [schema-tax research note](docs/phase-2/SCHEMA_TAX_RESEARCH.md).
 
 ## Availability and roadmap
 

@@ -51,7 +51,9 @@ benchmark_report.md
 
 # Datasets & Notebooks
 datasets/
-benchmarks/datasets/
+!benchmarks/datasets/
+benchmarks/datasets/*
+!benchmarks/datasets/phase2_core.json
 notebooks/
 
 # Guidance Markdown files
@@ -64,6 +66,5 @@ coverage.xml
 
 # Scratch / Manual local test scripts
 test_llmslim.py
-
 
 

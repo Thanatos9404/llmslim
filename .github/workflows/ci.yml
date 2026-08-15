@@ -56,6 +56,9 @@ jobs:
       - name: Run Benchmark Smoke Test
         run: python -m benchmarks.benchmark_regression
 
+      - name: Run Phase 2 Offline Benchmark Smoke Test
+        run: python -m benchmarks.run --mode fast --no-archive
+
       - name: Build Package Artifacts (Wheel & Sdist)
         run: python -m build
 

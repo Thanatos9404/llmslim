@@ -13,6 +13,11 @@ That setting, together with the explicit `includeFiles` rule in
 Python Function bundle. Without it, the endpoint fails closed with a sanitized
 500 rather than silently using a different package.
 
+> **Current production bundle:** The sibling-source guidance above applies to
+> local development. Vercel installs the exact repository revision pinned in
+> `requirements.txt` for the deployed Python function, so it runs the real
+> LLMSlim library without maintaining a duplicated implementation.
+
 The function is deliberately same-origin and adds no CORS wildcard. It accepts
 only public, offline extractive compression; rewrite and hybrid require a
 caller-supplied provider and are unavailable in the public Studio.

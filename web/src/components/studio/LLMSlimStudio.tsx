@@ -155,6 +155,7 @@ export function LLMSlimStudio() {
     } catch (error) {
       setResult(null);
       setApiError(error instanceof DOMException && error.name === "AbortError" ? "Live compression timed out. Please shorten the input and retry." : error instanceof Error ? error.message : "Live compression could not be completed. Please retry.");
+      setNotice("Live run unavailable. Please try again shortly.");
     } finally {
       clearAbortTimer();
       setIsRunning(false);

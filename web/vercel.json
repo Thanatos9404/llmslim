@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "api/compress.py": {
+      "includeFiles": "../llmslim/**"
+    }
+  }
 }

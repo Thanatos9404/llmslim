@@ -8,9 +8,10 @@ The current site is a monorepo project with `web` as its Next.js root while
 the Python package is a sibling directory. Before deploying this change, set
 **Vercel Project Settings → Build and Deployment → Root Directory → Include
 source files outside of the Root Directory in the Build Step** to enabled.
-That setting makes the checked-in `../llmslim` package available to the Python
-Function bundle. Without it, the endpoint fails closed with a sanitized 500
-rather than silently using a different package.
+That setting, together with the explicit `includeFiles` rule in
+`web/vercel.json`, makes the checked-in `../llmslim` package available to the
+Python Function bundle. Without it, the endpoint fails closed with a sanitized
+500 rather than silently using a different package.
 
 The function is deliberately same-origin and adds no CORS wildcard. It accepts
 only public, offline extractive compression; rewrite and hybrid require a

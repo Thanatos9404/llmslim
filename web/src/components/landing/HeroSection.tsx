@@ -16,7 +16,7 @@ export function HeroSection() {
     <section id="hero" aria-label="Hero Section" className="relative pt-32 sm:pt-40 pb-16 sm:pb-20 px-4 sm:px-8 max-w-7xl mx-auto flex flex-col items-center text-center space-y-12 sm:space-y-14">
       <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span>LLMSlim v0.3.1</span>
+        <span>LLMSlim v0.4.0</span>
         <span className="text-slate-500 hidden sm:inline">|</span>
         <span className="text-slate-300 font-semibold hidden sm:flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />Provenance-aware priority handling</span>
       </div>

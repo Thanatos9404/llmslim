@@ -8,6 +8,19 @@ type Release = { version: string; date: string; theme: string; summary: string; 
 
 const releases: Release[] = [
   {
+    version: "v0.4.0",
+    date: "21 Aug 2026",
+    theme: "Contract-safe tool context.",
+    summary: "This Python release adds stable, conservative tool-schema infrastructure while keeping retrieval and selective exposure research-only.",
+    metrics: ["489 / 0 tests", "90.93% coverage", "375 schemas / 18 catalogs"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.4.0",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "Stable tool-contract APIs", body: "The released tool surface supports copied schema normalization, deterministic canonical JSON, SHA-256 fingerprints, exact contract checks, and safe catalog optimization." },
+      { label: "Boundary", icon: ShieldCheck, title: "Retrieval remains research-only", body: "Lexical, dense, hybrid retrieval, selective exposure, and lazy hydration are explicit experiments. They do not authorize or execute tools, and compress() keeps its established behavior." },
+      { label: "Measured", icon: CheckCircle2, title: "Schema-tax evidence stays transparent", body: "The v0.4.0 release gate records 489 passing tests, 90.93% coverage, and 375 generated tool schemas in 18 catalogs. The compact baseline produced 0.00% lossless reduction." },
+    ],
+  },
+  {
     version: "v0.3.1",
     date: "13 Aug 2026",
     theme: "Provenance and verification.",
@@ -65,7 +78,7 @@ const releases: Release[] = [
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "Verified LLMSlim Python package history for v0.1.0 through v0.3.1, including release themes, compatibility, and security changes.",
+  description: "Verified LLMSlim Python package history for v0.1.0 through v0.4.0, including release themes, compatibility, and security changes.",
 });
 
 export default function ChangelogPage() {

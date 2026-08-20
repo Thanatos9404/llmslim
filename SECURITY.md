@@ -8,8 +8,8 @@ Only the latest release receives security updates.
 
 | Version | Supported |
 | --- | --- |
-| 0.3.1 | :white_check_mark: |
-| < 0.3.1 | :x: |
+| 0.4.0 | :white_check_mark: |
+| < 0.4.0 | :x: |
 
 ## Compression-induced instruction elevation
 
@@ -23,6 +23,23 @@ LLMSlim now uses caller-supplied `ContextRole` provenance:
 - `general` is the legacy default for `compress(text)`.
 
 This mitigates compression-induced instruction elevation. It does **not** fully prevent prompt injection, authenticate content provenance, or make untrusted content safe to execute. Callers remain responsible for accurate role labels and should use defense in depth: isolate trusted context, constrain tools and privileges, validate outputs, and apply application-level policy controls.
+
+## Tool contracts and experimental retrieval
+
+v0.4.0 adds contract-safe tool-schema utilities. Canonicalization, SHA-256
+fingerprints, and exact-equivalence checks operate on copied representations;
+the authoritative raw tool schema remains the execution contract. Schema
+translation does not authenticate a caller, provider, or remote reference.
+
+Tool retrieval, selective exposure, lazy hydration, and semantic ranking are
+**research-only**. Retrieval is not authorization: a rank, context plan, or
+schema fingerprint must never decide whether a tool may execute. Tool
+annotations and `_meta` are treated as untrusted for retrieval representation
+and are excluded where the implementation documents that policy. Retrieval
+does not execute tools, dereference remote `$ref` values, or prevent prompt
+injection. Applications must still authenticate provenance, enforce their own
+authorization policy, validate tool arguments and outputs, and use defense in
+depth.
 
 ## Reporting a vulnerability
 

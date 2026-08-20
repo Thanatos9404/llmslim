@@ -3,7 +3,7 @@
 ## Executive summary
 
 - Classification: MEASURED
-- Mode: full
+- Mode: fast
 - Samples: 24 across 22 categories
 - Security provenance-boundary violations: 0
 - Schema catalogs: 18 (375 tool schemas)
@@ -19,7 +19,7 @@
     "tiktoken": "0.13.0"
   },
   "git_commit": "b4d7923f785c88b05e7b1b4dd161f1b268ed362e",
-  "llmslim_version": "0.3.1",
+  "llmslim_version": "0.4.0",
   "os": "Windows",
   "platform": "Windows-11-10.0.26200-SP0",
   "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
@@ -53,7 +53,7 @@ Only deterministic local extractive results are measured. Rewrite and hybrid are
 ## Quality, performance, and determinism
 
 - Structural validity: 4/5 applicable samples (unavailable parser: 0).
-- Median end-to-end latency: 0.01595 ms; p95: 2.059 ms.
+- Median end-to-end latency: 0.02565 ms; p95: 1.889 ms.
 - Determinism: 1.
 
 ## Security results
@@ -91,11 +91,35 @@ All schema payloads below are MEASURED using the recorded tokenizer. Multi-turn 
 | COMPLEX | 32 | 6371 | 200 | 6371 | 101936 | 203872 |
 | COMPLEX | 64 | 12739 | 200 | 12739 | 203824 | 407648 |
 
+## Phase 4 tool-context results
+
+All numbers in this section are local measurements. The Phase 2 schema-tax baseline already uses compact canonical JSON, so lossless canonical serialization can legitimately save zero tokens from that baseline.
+
+- Schema catalogs: 18; generated schemas: 375.
+- Lossless optimization: 45804 → 45804 tokens (0.00%).
+- Relevance Recall@1/@3/@5: 79.17% / 100.00% / 100.00%; MRR: 0.9167.
+- Selective exposure: SHIPPABLE_EXPERIMENTAL.
+
+| top-k | Required-tool recall | Mean tokens avoided |
+| ---: | ---: | ---: |
+| 16 | 100.00% | 31.00 |
+| 8 | 100.00% | 31.00 |
+| 5 | 100.00% | 57.67 |
+| 3 | 100.00% | 157.08 |
+
+## Phase 4.5 retrieval bakeoff
+
+Phase 4.5 is a repository-owned, static 100-tool / 500-query regression corpus. It is not a production-traffic claim. Its dynamic policy is conservative and currently RESEARCH_ONLY because development fixed-top-k all-required recall did not meet the release threshold.
+
+- BM25 all-required-tool recall: 97.96% (95% bootstrap CI 96.21%–99.42%).
+- BM25 fail-open rate: 79.70%; coverage: 20.30%.
+- TF-IDF remains an independently measured baseline; no automatic default swap is made.
+
 ## Limitations
 
 - This is a synthetic, repository-owned benchmark corpus, not a universal workload claim.
-- Lexical semantic similarity is an offline proxy; no embedding model is downloaded.
-- No provider rewrites, schema compression, tool selection, or tool gating are implemented or measured as shipped functionality.
+- Lexical TF-IDF relevance is an offline proxy; no embedding model is downloaded.
+- Selective exposure and lazy hydration are experimental, explicit APIs; the executor contract remains the complete raw schema.
 - Full catalog resend is a modelled protocol assumption, not a claim about every agent framework.
 
 ## Reproduction command

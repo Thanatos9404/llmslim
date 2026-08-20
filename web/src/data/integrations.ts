@@ -12,7 +12,7 @@ const common = {
   architectureFlow: ["1. Retrieve or construct application context.", "2. Label provenance accurately and compress with LLMSlim.", "3. Send the resulting text to the provider SDK.", "4. Apply application-level policy and output validation."],
   deploymentGuide: "Use LLMSlim in your Python application before constructing the provider request. Measure target workloads before choosing a compression ratio.",
   optimizationTips: ["Use compress_documents() for retrieved documents; it defaults to RAG provenance.", "Leave system messages unchanged by default in compress_chat_messages().", "Do not treat compression as a complete prompt-injection defense."],
-  benchmarks: [{ metric: "v0.3.1 release gate", uncompressed: "N/A", compressed: "432 tests passed", impact: "92.57% branch coverage; benchmark reliability 100/100" }],
+  benchmarks: [{ metric: "v0.4.0 release gate", uncompressed: "N/A", compressed: "489 tests passed", impact: "90.93% coverage; 375 schemas across 18 catalogs" }],
   troubleshooting: [{ issue: "Unexpected compression result", solution: "Check target_ratio, role labels, and whether the input is long enough to benefit from compression." }],
 };
 export const INTEGRATIONS_REGISTRY: Record<string, IntegrationData> = {

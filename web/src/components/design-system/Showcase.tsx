@@ -190,7 +190,7 @@ export function DesignSystemShowcase() {
           <FeatureCard
             title="Provenance-Aware Priority"
             subtitle="Trusted and untrusted context are handled differently so RAG, tool, and assistant text cannot gain protected priority solely from imperative wording."
-            badge="v0.3.1 Security"
+            badge="v0.4.0 Security"
             glowColor="cyan"
             icon={<Shield className="w-5 h-5" />}
           />

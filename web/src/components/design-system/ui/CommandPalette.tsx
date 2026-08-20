@@ -163,7 +163,7 @@ export function CommandPalette({ isOpen: externalIsOpen, onClose }: { isOpen?: b
                 <div className="px-4 py-2.5 bg-[#070A0F] border-t border-white/10 flex items-center justify-between text-[10px] font-mono text-slate-500">
                   <span className="flex items-center gap-1.5 font-mono">
                     <Sparkles className="w-3 h-3 text-emerald-400" />
-                    LLMSlim Command Palette v0.3.1
+                    LLMSlim Command Palette v0.4.0
                   </span>
                   <span>Use ↑ ↓ to navigate • Esc to dismiss</span>
                 </div>

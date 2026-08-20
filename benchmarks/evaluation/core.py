@@ -16,7 +16,7 @@ from llmslim import ContextRole, __version__, compress
 from llmslim.ranking import _is_must_keep, get_sentence_priority
 from llmslim.tokens import get_active_token_counter_name
 
-RESULT_SCHEMA_VERSION = "phase2.v1"
+RESULT_SCHEMA_VERSION = "phase4_5.v1"
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET = ROOT / "benchmarks" / "datasets" / "phase2_core.json"
 
@@ -221,7 +221,7 @@ def _package_version(name: str) -> Optional[str]:
 
 
 def validate_result(result: Mapping[str, Any]) -> None:
-    required = {"schema_version", "llmslim_version", "timestamp", "environment", "dataset", "strategies", "security", "schema_tax", "summary"}
+    required = {"schema_version", "llmslim_version", "timestamp", "environment", "dataset", "strategies", "security", "schema_tax", "phase4", "phase4_5", "phase4_6", "summary"}
     if result.get("schema_version") != RESULT_SCHEMA_VERSION or not required <= result.keys():
         raise ValueError("invalid Phase 2 benchmark result schema")
     if result["security"].get("provenance_boundary_violations") is None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from llmslim.rewrite.base import (
@@ -115,7 +117,7 @@ class TestBaseRewriteProvider:
 
     def test_provider_receives_full_request(self):
         """Provider gets the complete RewriteRequest with all fields."""
-        captured = {}
+        captured: dict[str, Any] = {}
 
         class CapturingProvider(BaseRewriteProvider):
             name = "capturing"
@@ -187,7 +189,7 @@ class TestCallableProvider:
 
     def test_callable_receives_request_object(self):
         """Verify the callable gets a RewriteRequest, not raw args."""
-        received = {}
+        received: dict[str, Any] = {}
 
         def capture(request: RewriteRequest) -> str:
             received["type"] = type(request).__name__

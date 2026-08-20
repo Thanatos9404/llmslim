@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main Benchmark & Validation Suite Driver for llmslim v0.3.1.
+"""Main Benchmark & Validation Suite Driver for llmslim v0.4.0.
 
 Usage:
     python benchmark.py
@@ -154,7 +154,7 @@ def compute_scores(
 
 def main():
     print_colored("================================================================", BOLD + BLUE)
-    print_colored("         llmslim v0.3.1 Validation & Benchmark Suite", BOLD + BLUE)
+    print_colored("         llmslim v0.4.0 Validation & Benchmark Suite", BOLD + BLUE)
     print_colored("================================================================", BOLD + BLUE)
 
     start_time = time.time()
@@ -272,7 +272,7 @@ def main():
 
 def generate_json_results(quality, speed, memory, regression, scores):
     data = {
-        "version": "v0.3.1",
+        "version": "v0.4.0",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scores": scores,
         "regression_comparison": [asdict(r) for r in regression],
@@ -338,10 +338,10 @@ def generate_markdown_report(quality, speed, memory, regression, scores, total_d
     avg_lat = (sum(s.total_latency_ms for s in speed) / len(speed)) if speed else 0.0
     avg_mem = (sum(m.peak_memory_kb for m in memory) / len(memory)) if memory else 0.0
 
-    content = f"""# llmslim v0.3.1 Benchmark & Scientific Validation Report
+    content = f"""# llmslim v0.4.0 Benchmark & Scientific Validation Report
 
 **Date**: {time.strftime("%Y-%m-%d %H:%M:%S")}  
-**Target Package**: `llmslim v0.3.1`
+**Target Package**: `llmslim v0.4.0`
 **Total Benchmark Samples**: {len(quality)} samples  
 **Total Duration**: {total_duration_sec:.2f} seconds  
 

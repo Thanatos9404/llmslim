@@ -38,7 +38,7 @@ export function Timeline({ className }: { className?: string }) {
     {
       version: "v0.3.1",
       title: "Hybrid Strategy & Provenance Security",
-      status: "current",
+      status: "completed",
       features: [
         "Hybrid Prompt Compression (Extractive + Generative Rewrite)",
         "Pluggable Rewrite Providers (CallableProvider / Custom APIs)",
@@ -48,10 +48,11 @@ export function Timeline({ className }: { className?: string }) {
     },
     {
       version: "v0.4.0",
-      title: "Potential native acceleration",
-      status: "planned",
+      title: "Contract-safe tool APIs",
+      status: "current",
       features: [
-        "No native acceleration is shipped in v0.3.1",
+        "Stable schema canonicalization, fingerprints, and contract verification",
+        "Tool relevance and selective exposure remain research-only",
       ],
     },
     {
@@ -59,7 +60,7 @@ export function Timeline({ className }: { className?: string }) {
       title: "Potential additional runtimes",
       status: "planned",
       features: [
-        "No npm, WASM, or Rust runtime is shipped in v0.3.1",
+        "No npm, WASM, or Rust runtime is shipped in v0.4.0",
       ],
     },
   ];

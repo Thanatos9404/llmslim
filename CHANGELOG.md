@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-08-20
+
+### Tool contract infrastructure
+- Added provider-aware `ToolSchema` representations and adapters for supported
+  MCP, OpenAI function, Anthropic, and generic tool shapes.
+- Added deterministic canonical JSON serialization, complete-contract SHA-256
+  fingerprints, conservative exact-equivalence verification, schema
+  inspection, and safe catalog optimization.
+- Preserved authoritative raw schemas: stable infrastructure operates on copied
+  representations and does not authorize, execute, or rewrite a contract.
+
+### Experimental tool-context retrieval
+- Added deterministic TF-IDF and BM25 retrievers, catalog-fingerprint caches,
+  and conservative full-catalog fail-open behavior.
+- Added optional local-only multilingual dense retrieval and BM25+dense RRF
+  using `intfloat/multilingual-e5-small` at pinned revision
+  `0e60b8d9d2166d80387f86e3b48ec9ced55f4d15`.
+- Retrieval, selective exposure, context planning, and lazy hydration remain
+  **RESEARCH_ONLY**; they are never enabled automatically.
+
+### Benchmarks
+- Added Phase 4 measurements for 375 schemas across 18 catalogs. Lossless
+  serialization saved 0 tokens because the baseline was already compact
+  canonical JSON.
+- Added frozen-corpus Phase 4.5/4.6 retrieval evaluation. Dynamic retrieval
+  retains high all-required recall by failing open often and has zero median
+  tokens avoided, so it is not a production optimization claim.
+- External ToolRet validation was attempted but not completed within the
+  declared CPU/resource budget; no external metric is claimed.
+
+### Security
+- Retrieval representations exclude tool annotations and `_meta` where
+  applicable; remote references are not fetched automatically.
+- Ranking is not authorization and does not execute tools. Caller/provider
+  provenance remains unauthenticated by LLMSlim.
+
+### Packaging
+- Added `jsonschema` for stable schema inspection and retained semantic
+  dependencies behind the optional `llmslim[semantic]` extra.
+
 ## [0.3.1] - 2026-08-13
 
 > Verified release: 432 tests passed, 0 failed; 92.57% branch coverage;

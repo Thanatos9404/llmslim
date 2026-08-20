@@ -93,6 +93,11 @@ def test_result_schema_report_and_strict_security_regression():
     validate_result(result)
     assert result["schema_version"] == RESULT_SCHEMA_VERSION
     assert "Tool schema tax" in render_report(result)
+    assert result["phase4"]["schema_optimization"]["catalog_count"] == 18
+    assert result["phase4"]["schema_optimization"]["tool_schema_count"] == 375
+    assert {row["tool_count"] for row in result["phase4"]["schema_optimization"]["performance_by_scale"]} == {1, 4, 8, 16, 32, 64, 128}
+    assert result["phase4"]["relevance"]["metrics"]["recall_at_5"] >= 0.95
+    assert result["phase4"]["selective_exposure"]["status"] in {"SHIPPABLE_EXPERIMENTAL", "RESEARCH_ONLY"}
     previous = json.loads(json.dumps(result))
     result["security"]["provenance_boundary_violations"] = 1
     assert compare_results(result, previous)[0] == {"category": "SECURITY_REGRESSION", "status": "FAIL"}

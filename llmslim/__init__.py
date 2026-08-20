@@ -23,7 +23,7 @@ from .rewrite import (
 )
 from .tokens import count_tokens, count_tokens_batch
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 __all__ = [
     "compress",

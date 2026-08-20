@@ -38,7 +38,7 @@ export function Navbar() {
       <div className="site-nav__inner">
         <Link className="brand" href="/" aria-label="LLMSlim homepage">
           <Image src="/llmslim_logo.png" alt="" width={31} height={31} priority />
-          <span>LLMSlim</span><span className="brand__version">v0.3.1</span>
+          <span>LLMSlim</span><span className="brand__version">v0.4.0</span>
         </Link>
         <nav className="nav-links" aria-label="Main navigation">
           {links.map((link) => <Link key={link.href} href={link.href} data-active={pathname === link.href || pathname.startsWith(`${link.href}/`) || undefined}>{link.name}</Link>)}

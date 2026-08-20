@@ -14,7 +14,7 @@ export function RoadmapSection() {
           Product Engineering <span className="text-gradient-violet">Roadmap</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          v0.3.1 is a Python release. Future milestones are exploratory and do not represent shipped npm, Rust, ONNX, or WASM runtimes.
+          v0.4.0 is a Python release. Future milestones are exploratory and do not represent shipped npm, Rust, ONNX, or WASM runtimes.
         </p>
       </div>
 

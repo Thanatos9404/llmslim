@@ -13,7 +13,6 @@ import pytest
 
 from llmslim import ContextRole, compress
 
-
 API_PATH = Path(__file__).resolve().parents[1] / "web" / "api" / "compress.py"
 SPEC = importlib.util.spec_from_file_location("studio_compress_api", API_PATH)
 assert SPEC is not None and SPEC.loader is not None

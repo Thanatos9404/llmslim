@@ -1,53 +1,67 @@
-# LLMSlim v0.3.1 — Security Hardening and Core Correctness
+# LLMSlim v0.4.0 — Tool-aware context, without rewriting the contract
 
-**Release date:** 2026-08-13
+**Release date:** 2026-08-20
 
 ## What changed
 
-v0.3.1 adds provenance-aware priority locking, inline-code and CJK sentence-boundary handling, nonce-protected rewrite-template fences, token-counter telemetry, a corrected benchmark test collector, and removes obsolete selection helpers.
+LLMSlim now has stable infrastructure for representing, inspecting,
+canonicalizing, fingerprinting, verifying, and measuring supported tool
+contracts without modifying the authoritative execution schema. The release
+also includes experimental retrieval research, kept separate from stable APIs.
 
-## Why it matters
+## Stable tool-schema infrastructure
 
-Earlier priority handling could treat imperative-looking untrusted retrieved or tool text as protected context. v0.3.1 adds `ContextRole` provenance to the scoring path so that compression decisions account for who authored the content.
+- `ToolSchema` provider normalization for supported MCP, OpenAI function,
+  Anthropic, and generic tool definitions.
+- Deterministic canonical JSON and complete-contract SHA-256 fingerprints.
+- Exact-equivalence verification and safe catalog optimization.
+- Raw-schema preservation: the caller/executor remains authoritative.
 
-## Security
+## Experimental tool retrieval
 
-LLMSlim mitigates compression-induced instruction elevation by preventing untrusted RAG/tool/assistant content from gaining protected priority through imperative or safety-critical wording.
+**RESEARCH ONLY — NOT ENABLED AUTOMATICALLY.**
 
-- `RAG`, `TOOL`, and `ASSISTANT` are capped at Tier 2 and cannot become `must_keep`.
-- `SYSTEM` and `DEVELOPER` remain trusted caller-provided roles.
-- `USER` is semi-trusted; `GENERAL` preserves the legacy default path.
-- Payload text containing a rewrite-fence-like token is embedded unchanged between nonce-tagged template fences.
+TF-IDF, BM25, optional `intfloat/multilingual-e5-small` dense retrieval,
+BM25+dense RRF, selective exposure, and lazy hydration are model-context
+planning experiments. They do not authorize or execute a tool. Low-confidence
+policies fail open to the full catalog.
 
-This is not complete prompt-injection prevention. LLMSlim trusts caller-provided provenance labels and applications still need defense in depth.
+Install the optional local semantic support with:
 
-## Correctness
+```bash
+pip install "llmslim[semantic]"
+```
 
-- Inline backtick code spans no longer introduce false sentence boundaries.
-- CJK `。`, `！`, and `？` punctuation is recognized by both fallback and NLTK post-processing paths.
-- `CompressionResult.token_counter_used` reports `tiktoken` or `heuristic`.
-- The heuristic fallback emits one warning per process.
-- The benchmark runner reports actual pytest outcomes.
-- Unused DP/greedy selection helpers were removed.
+The normal `pip install llmslim` path stays lightweight. The semantic model is
+pinned to revision `0e60b8d9d2166d80387f86e3b48ec9ced55f4d15`, is loaded from
+an explicit local cache only, and is not included in package artifacts.
 
-## Verification
+## Benchmark findings
 
-- 432 tests passed; 0 failed.
-- 92.57% branch coverage.
-- Ruff passed.
-- `python benchmark.py` reported 432 passed / 0 failed and reliability 100/100.
+Phase 4 measured 375 schemas across 18 catalogs. Lossless serialization
+reduced the compact canonical baseline by 0 tokens (0.00%); the baseline was
+already compact, so this is a valid result rather than a hidden failure.
 
-## Migration notes
+Phase 4.5/4.6 retrieval results are research evidence, not marketing claims.
+On the frozen corpus, BM25 had 98.25% all-required recall with 25.89%
+selective coverage; dense and hybrid reached 98.54% recall but failed open
+more often and avoided fewer tokens. Median tokens avoided was zero for every
+strategy. The safety–selectivity frontier did not improve.
 
-No change is needed for default `compress(text)` callers.
+External ToolRet validation was attempted but not completed within the declared
+CPU/resource budget. No ToolRet score is claimed.
 
-Two intentional pipeline changes apply:
+## Security boundaries
 
-1. `compress_documents()` now defaults to `ContextRole.RAG`.
-2. `compress_chat_messages()` propagates each message role; system messages stay uncompressed by default.
+Authoritative schemas remain authoritative. Ranking is not authorization;
+tool annotations and `_meta` are untrusted for retrieval representation where
+excluded, remote references are not fetched automatically, and LLMSlim does
+not cryptographically authenticate caller or provider provenance. It remains
+defense in depth, not complete prompt-injection prevention.
 
-If a caller has authenticated provenance and needs a different treatment, pass an explicit `context_role`.
+## Upgrade
 
-## Availability
-
-v0.3.1 is a Python release. npm, Rust, and WASM runtimes are not shipped.
+Default `compress()` behavior is unchanged. Tool-contract APIs are available
+from `llmslim.tools`; retrieval modules are explicitly experimental. Review
+[docs/tool-apis.md](docs/tool-apis.md) and [SECURITY.md](SECURITY.md) before
+integrating tool workflows.

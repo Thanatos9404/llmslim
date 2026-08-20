@@ -24,7 +24,7 @@ class TestPackageExports:
         assert hasattr(llmslim, "analyze")
         assert hasattr(llmslim, "list_modes")
         assert hasattr(llmslim, "get_mode")
-        assert llmslim.__version__ == "0.3.1"
+        assert llmslim.__version__ == "0.4.0"
 
 
 class TestCLIExtensions:

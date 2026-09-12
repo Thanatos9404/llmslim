@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <!-- Dark Tech Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07090e" />
+      <stop offset="50%" stop-color="#0d1117" />
+      <stop offset="100%" stop-color="#05070a" />
+    </linearGradient>
+
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8">
+        <animate attributeName="stop-color" values="#38bdf8;#818cf8;#c084fc;#38bdf8" dur="8s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#818cf8">
+        <animate attributeName="stop-color" values="#818cf8;#c084fc;#38bdf8;#818cf8" dur="8s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#c084fc">
+        <animate attributeName="stop-color" values="#c084fc;#38bdf8;#818cf8;#c084fc" dur="8s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+
+    <linearGradient id="sarvamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <linearGradient id="glassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02" />
+    </linearGradient>
+
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6">
+        <animate attributeName="stop-color" values="#38bdf8;#c084fc;#38bdf8" dur="6s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#818cf8" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.5">
+        <animate attributeName="stop-color" values="#c084fc;#38bdf8;#c084fc" dur="6s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+
+    <!-- Glowing Filters -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Grid Pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.03" />
+    </pattern>
+
+    <style>
+      .pulse-circle {
+        animation: pulse 4s ease-in-out infinite alternate;
+      }
+      .shimmer-line {
+        animation: shimmer 5s ease-in-out infinite;
+      }
+      .float-badge {
+        animation: float 5s ease-in-out infinite alternate;
+      }
+      .float-badge-2 {
+        animation: float 6s ease-in-out 1s infinite alternate;
+      }
+      .float-badge-3 {
+        animation: float 5.5s ease-in-out 2s infinite alternate;
+      }
+      .beam-sweep {
+        animation: beam 7s linear infinite;
+      }
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.25; }
+        100% { transform: scale(1.15); opacity: 0.45; }
+      }
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        100% { transform: translateY(-7px); }
+      }
+      @keyframes beam {
+        0% { transform: translateX(-600px) rotate(-25deg); opacity: 0; }
+        15% { opacity: 0.3; }
+        50% { opacity: 0.4; }
+        85% { opacity: 0.2; }
+        100% { transform: translateX(1400px) rotate(-25deg); opacity: 0; }
+      }
+      @keyframes shimmer {
+        0% { stroke-dashoffset: 800; }
+        100% { stroke-dashoffset: 0; }
+      }
+      .mono-text {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+      .sans-text {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+    </style>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="100%" height="100%" rx="16" fill="url(#bgGrad)" />
+  <rect width="100%" height="100%" rx="16" fill="url(#grid)" />
+
+  <!-- Ambient Light Orbs -->
+  <circle cx="200" cy="180" r="170" fill="#38bdf8" class="pulse-circle" filter="url(#softGlow)" />
+  <circle cx="1020" cy="220" r="190" fill="#818cf8" class="pulse-circle" style="animation-delay: -2s;" filter="url(#softGlow)" />
+  <circle cx="600" cy="80" r="140" fill="#c084fc" class="pulse-circle" style="animation-delay: -3.5s;" filter="url(#softGlow)" />
+
+  <!-- Outer Border -->
+  <rect x="2" y="2" width="1196" height="396" rx="15" fill="none" stroke="url(#borderGrad)" stroke-width="1.5" />
+
+  <!-- Light Beam Sweep -->
+  <rect x="0" y="-100" width="80" height="600" fill="url(#primaryGrad)" class="beam-sweep" opacity="0.15" filter="url(#softGlow)" />
+
+  <!-- Top Announcement Badge: Sarvam x LLMSlim -->
+  <g transform="translate(600, 56)">
+    <g transform="translate(-250, -18)">
+      <!-- Badge Pill Container -->
+      <rect x="0" y="0" width="500" height="36" rx="18" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.45" />
+      
+      <!-- Pulsing Dot -->
+      <circle cx="24" cy="18" r="5" fill="#fbbf24">
+        <animate attributeName="r" values="4;6.5;4" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="24" cy="18" r="9" fill="none" stroke="#fbbf24" stroke-width="1.5" opacity="0.4">
+        <animate attributeName="r" values="6;13;6" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" />
+      </circle>
+
+      <!-- Announcement Text -->
+      <text x="44" y="23" fill="#fef3c7" class="sans-text" font-size="13" font-weight="600" letter-spacing="0.5">
+        PARTNERSHIP: Accepted into the Sarvam Startup Program
+      </text>
+      
+      <!-- Sparkle / Arrow -->
+      <text x="470" y="23" fill="#fbbf24" class="sans-text" font-size="14" font-weight="bold">✦</text>
+    </g>
+  </g>
+
+  <!-- Central Title & Brand -->
+  <g transform="translate(600, 168)" text-anchor="middle">
+    <!-- Glowing Shadow -->
+    <text x="0" y="0" fill="url(#primaryGrad)" class="sans-text" font-size="68" font-weight="900" letter-spacing="-2" filter="url(#glow)" opacity="0.6">
+      LLMSlim
+    </text>
+    <!-- Crisp Foreground Text -->
+    <text x="0" y="0" fill="#ffffff" class="sans-text" font-size="68" font-weight="900" letter-spacing="-2">
+      LLM<tspan fill="url(#primaryGrad)">Slim</tspan>
+    </text>
+
+    <!-- Tagline -->
+    <text x="0" y="44" fill="#cbd5e1" class="sans-text" font-size="19" font-weight="400" letter-spacing="0.2">
+      Deterministic, Local-First Context Compression &amp; Contract-Safe Tool Schemas
+    </text>
+    <text x="0" y="74" fill="#94a3b8" class="mono-text" font-size="13" letter-spacing="0.5">
+      40%–60% Token Reduction • 0 Hallucinations • Sub-Millisecond Latency • Zero Cloud Dependency
+    </text>
+  </g>
+
+  <!-- Interactive Floating Feature Cards / Badges at the bottom -->
+  <!-- Badge 1: Production v0.5.0 -->
+  <g transform="translate(140, 310)" class="float-badge">
+    <rect x="0" y="0" width="205" height="48" rx="12" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.35" />
+    <circle cx="24" cy="24" r="6" fill="#38bdf8" />
+    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Release</text>
+    <text x="40" y="38" fill="#f8fafc" class="mono-text" font-size="13" font-weight="bold">v0.5.0 Live on PyPI</text>
+  </g>
+
+  <!-- Badge 2: Sarvam × Indic LLMs -->
+  <g transform="translate(375, 310)" class="float-badge-2">
+    <rect x="0" y="0" width="215" height="48" rx="12" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.35" />
+    <circle cx="24" cy="24" r="6" fill="#fbbf24" />
+    <text x="40" y="22" fill="#fbbf24" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Ecosystem</text>
+    <text x="40" y="38" fill="#fef3c7" class="mono-text" font-size="13" font-weight="bold">Sarvam AI + 105B Ready</text>
+  </g>
+
+  <!-- Badge 3: Contract Safe & MCP -->
+  <g transform="translate(620, 310)" class="float-badge-3">
+    <rect x="0" y="0" width="210" height="48" rx="12" fill="url(#glassGrad)" stroke="#818cf8" stroke-width="1" stroke-opacity="0.35" />
+    <circle cx="24" cy="24" r="6" fill="#818cf8" />
+    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Tool Infrastructure</text>
+    <text x="40" y="38" fill="#e0e7ff" class="mono-text" font-size="13" font-weight="bold">MCP Catalog &amp; Agents</text>
+  </g>
+
+  <!-- Badge 4: Verification / Security -->
+  <g transform="translate(860, 310)" class="float-badge">
+    <rect x="0" y="0" width="200" height="48" rx="12" fill="url(#glassGrad)" stroke="#34d399" stroke-width="1" stroke-opacity="0.35" />
+    <circle cx="24" cy="24" r="6" fill="#34d399" />
+    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Verified Gate</text>
+    <text x="40" y="38" fill="#ecfdf5" class="mono-text" font-size="13" font-weight="bold">489 Tests / 0 Failures</text>
+  </g>
+
+  <!-- Animated Bottom Accent Line -->
+  <line x1="100" y1="388" x2="1100" y2="388" stroke="url(#primaryGrad)" stroke-width="2" stroke-linecap="round" opacity="0.4" />
+</svg>

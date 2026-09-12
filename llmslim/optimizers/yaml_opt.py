@@ -9,6 +9,7 @@ Optimizes YAML by:
 from __future__ import annotations
 
 import re
+from types import ModuleType
 from typing import Optional
 
 from ..tokens import count_tokens
@@ -43,8 +44,11 @@ def optimize_yaml(text: str, target_ratio: float = 0.5) -> Optional[str]:
     Returns:
         Optimised YAML string, or ``None`` if optimization fails or isn't applicable.
     """
+    yaml: Optional[ModuleType]
     try:
-        import yaml
+        import yaml as yaml_module
+
+        yaml = yaml_module
     except ImportError:
         yaml = None
 

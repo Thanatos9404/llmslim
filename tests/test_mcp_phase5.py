@@ -251,8 +251,20 @@ def test_official_sdk_inprocess_mcp_end_to_end_catalog_plan_hydrate_and_host_cal
     assert result.structured_content == {"result": 5}
 
 
-def test_openai_agents_bridge_requires_explicit_host_execution_callback():
-    pytest.importorskip("agents")
+@pytest.fixture
+def agent_tool_api(monkeypatch):
+    # Base Python versions cannot install the optional SDK. Exercise our bridge
+    # contract with a data-only FunctionTool stand-in there; supported versions
+    # still use the real SDK and the separate transport E2E tests.
+    try:
+        import agents
+    except ImportError:
+        agents = SimpleNamespace(FunctionTool=lambda **kwargs: SimpleNamespace(**kwargs))
+        monkeypatch.setitem(sys.modules, "agents", agents)
+    return agents
+
+
+def test_openai_agents_bridge_requires_explicit_host_execution_callback(agent_tool_api):
     from llmslim.integrations.openai_agents import to_openai_agents_tools
 
     tool = from_mcp_tool(_tool("lookup"), namespace="fixture")
@@ -391,8 +403,7 @@ def test_returned_snapshot_cannot_mutate_cached_contract():
     assert asyncio.run(source.list_tools()).tools[0].raw["name"] == "search"
 
 
-def test_agents_bridge_rejects_same_length_plan_from_another_catalog():
-    pytest.importorskip("agents")
+def test_agents_bridge_rejects_same_length_plan_from_another_catalog(agent_tool_api):
     from dataclasses import replace
 
     from llmslim.integrations.openai_agents import to_openai_agents_tools
@@ -417,3 +428,70 @@ def test_catalog_byte_limit_stops_before_fetching_next_page():
     with pytest.raises(CatalogLimitError, match="max_serialized_bytes"):
         asyncio.run(source.list_tools())
     assert client.calls == 1
+
+
+def test_transport_factories_preserve_explicit_configuration(monkeypatch):
+    client = _Client({None: _response([_tool()])})
+    calls = {}
+
+    @asynccontextmanager
+    async def make_client(transport, read_timeout_seconds):
+        calls["timeout"] = read_timeout_seconds
+        yield client
+
+    def stdio_client(params):
+        calls["stdio"] = params
+        return params
+
+    class HttpClient:
+        def __init__(self, **kwargs):
+            calls["http_options"] = kwargs
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+    def http_transport(url, http_client):
+        calls["url"] = url
+        return http_client
+
+    monkeypatch.setitem(sys.modules, "mcp.client", SimpleNamespace(Client=make_client))
+    monkeypatch.setitem(
+        sys.modules,
+        "mcp.client.stdio",
+        SimpleNamespace(
+            StdioServerParameters=lambda **kwargs: SimpleNamespace(**kwargs),
+            stdio_client=stdio_client,
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "mcp.client.streamable_http",
+        SimpleNamespace(streamable_http_client=http_transport),
+    )
+    monkeypatch.setitem(sys.modules, "httpx2", SimpleNamespace(AsyncClient=HttpClient))
+    stdio = MCPToolCatalogSource.from_stdio(
+        "trusted-executable",
+        ["literal ; argument"],
+        cwd="fixture",
+        env={"MODE": "test"},
+        timeout_seconds=5,
+    )
+    assert asyncio.run(stdio.list_tools()).tool_count == 1
+    assert calls["stdio"].command == "trusted-executable"
+    assert calls["stdio"].args == ["literal ; argument"]
+    assert calls["stdio"].env == {"MODE": "test"}
+    assert calls["timeout"] == 5
+    http = MCPToolCatalogSource.from_streamable_http(
+        "https://example.com/mcp", headers={"X-Fixture": "yes"}, timeout_seconds=7
+    )
+    assert asyncio.run(http.list_tools()).tool_count == 1
+    assert calls["url"] == "https://example.com/mcp"
+    assert calls["http_options"] == {
+        "headers": {"X-Fixture": "yes"},
+        "timeout": 7,
+        "follow_redirects": False,
+    }
+    assert calls["timeout"] == 7

@@ -51,7 +51,7 @@ fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
 structured = ["pyyaml>=6.0"]
 all = ["sentence-transformers>=2.2", "mcp>=2.0,<3; python_version >= '3.10'", "openai-agents>=0.11,<1; python_version >= '3.10'", "tiktoken>=0.5", "nltk>=3.8", "pyyaml>=6.0"]
-dev = ["pytest>=7.0", "pytest-cov"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"

@@ -84,7 +84,6 @@ def _role_str(context_role: Union[ContextRole, str, None]) -> str:
 
 
 def _resolve_context_role(
-
     context_role: Optional[Union[ContextRole, str]],
     instance_role: Union[ContextRole, str],
     mode: Optional[str],
@@ -104,14 +103,12 @@ def _resolve_context_role(
     if instance and instance != ContextRole.GENERAL.value:
         return instance
 
-
     if mode is not None:
         mapped = _MODE_TO_ROLE.get(str(mode).lower())
         if mapped is not None:
             return mapped.value
 
     return ContextRole.GENERAL.value
-
 
 
 @dataclass
@@ -170,7 +167,6 @@ class CompressionResult:
 
     @property
     def actual_ratio(self) -> float:
-
         """Fraction of original tokens retained (lower = more compression)."""
         if self.original_tokens == 0:
             return 1.0
@@ -217,12 +213,16 @@ class CompressionResult:
             parts.append(f"Structure kept   : {self.structure_preserved}")
         if self.rewrite_metadata is not None:
             rm = self.rewrite_metadata
-            parts.append(f"Optimization     : strategy={getattr(rm, 'strategy', None)}, "
-                         f"accepted={getattr(rm, 'accepted', None)}, "
-                         f"provider={getattr(rm, 'provider_name', None)}")
-            parts.append(f"Validation       : sim={getattr(rm, 'similarity_score', 0.0):.3f}, "
-                         f"inst={getattr(rm, 'instruction_retention', 0.0):.0%}, "
-                         f"ent={getattr(rm, 'entity_retention', 0.0):.0%}")
+            parts.append(
+                f"Optimization     : strategy={getattr(rm, 'strategy', None)}, "
+                f"accepted={getattr(rm, 'accepted', None)}, "
+                f"provider={getattr(rm, 'provider_name', None)}"
+            )
+            parts.append(
+                f"Validation       : sim={getattr(rm, 'similarity_score', 0.0):.3f}, "
+                f"inst={getattr(rm, 'instruction_retention', 0.0):.0%}, "
+                f"ent={getattr(rm, 'entity_retention', 0.0):.0%}"
+            )
         return "\n".join(parts)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -327,7 +327,6 @@ class ContextCompressor:
         self.detect_content = detect_content
         self.context_role = context_role
 
-
     def compress(
         self,
         text: str,
@@ -424,7 +423,6 @@ class ContextCompressor:
             context_role=effective_role,
         )
 
-
     def _compress_rewrite(
         self,
         text: str,
@@ -502,7 +500,6 @@ class ContextCompressor:
             token_counter_used=get_active_token_counter_name(),
         )
 
-
     def _compress_extractive(
         self,
         text: str,
@@ -514,7 +511,6 @@ class ContextCompressor:
         profile = None
         resolved_mode = None
         effective_weights = self.weights
-
 
         if self.detect_content or self.mode is not None:
             from .analysis import analyze
@@ -615,7 +611,6 @@ class ContextCompressor:
                 context_role=context_role,
             )
             all_chunk_scored.append((chunk, scored))
-
 
             chunk_target = max(1, round(chunk.total_tokens * target_ratio_eff))
             sorted_scored = sorted(
@@ -736,7 +731,6 @@ class ContextCompressor:
         )
 
     def _passthrough(
-
         self,
         text: str,
         original_tokens: int,
@@ -769,7 +763,6 @@ class ContextCompressor:
         )
 
     def _try_structured(
-
         self,
         text: str,
         target_ratio: float,
@@ -812,7 +805,6 @@ class ContextCompressor:
             token_counter_used=get_active_token_counter_name(),
         )
 
-
     def _encode(self, sentences: List[str], query: Optional[str]):
         """Encode sentences (and optionally a query) with a single, consistent vector space."""
         texts = list(sentences)
@@ -827,7 +819,6 @@ class ContextCompressor:
 
     @staticmethod
     def _reassemble(
-
         sentences: List[str], kept_mask: np.ndarray, para_end_indices: List[int]
     ) -> str:
         """Rebuild paragraphs from kept sentences, preserving list formatting."""

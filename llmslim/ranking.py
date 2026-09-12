@@ -214,7 +214,6 @@ def _is_untrusted_role(context_role: str) -> bool:
     return context_role not in _TRUSTED_ROLES and context_role not in _SEMI_TRUSTED_ROLES
 
 
-
 def get_sentence_priority(
     sentence: str,
     preserve_res: Optional[Sequence[re.Pattern]] = None,
@@ -262,7 +261,6 @@ def get_sentence_priority(
     if _MEDIUM_PRIORITY_RE.search(sentence) or _entity_score(sentence) >= 0.30:
         return 2  # MEDIUM (format constraints, steps, entity density)
     return 1  # NORMAL (prose)
-
 
 
 _CODE_PATTERN = re.compile(r"```|`[^`\n]+`")
@@ -423,14 +421,12 @@ def _is_must_keep(
     """
     role = _normalize_role(context_role)
     if _is_untrusted_role(role):
-
         return False
     if _CODE_PATTERN.search(sentence):
         return True
     if _CRITICAL_RE.search(sentence):
         return True
     return any(pattern.search(sentence) for pattern in preserve_res)
-
 
 
 def _query_similarities(embeddings: np.ndarray, query_embedding: np.ndarray) -> np.ndarray:
@@ -487,8 +483,6 @@ def score_chunk_sentences(
     preserve_res = [re.compile(p, re.IGNORECASE) for p in (preserve_patterns or [])]
     role = _normalize_role(context_role)
 
-
-
     centrality = _centrality_scores(embeddings)
     n = len(chunk.sentences)
 
@@ -534,6 +528,5 @@ def score_chunk_sentences(
                 "must_keep": _is_must_keep(sentence, preserve_res, context_role=role),
             }
         )
-
 
     return results

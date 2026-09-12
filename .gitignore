@@ -68,3 +68,8 @@ coverage.xml
 test_llmslim.py
 
 
+
+# Local release validation scratch
+.release-*
+.phase5-pytest-tmp/
+.pnpm-store/

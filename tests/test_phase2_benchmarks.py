@@ -55,20 +55,29 @@ def test_dataset_rejects_malformed_data(tmp_path):
 
 def test_parser_based_structural_integrity():
     assert structural_integrity('{"ok": true}', '{"ok": true}', "json")["valid"] is True
-    assert structural_integrity('<a/>', '<a>', "xml")["valid"] is False
-    assert structural_integrity("# H\n\n```py\nx=1\n```", "# H\n\n```py\nx=1\n```", "markdown")["valid"] is True
+    assert structural_integrity("<a/>", "<a>", "xml")["valid"] is False
+    assert (
+        structural_integrity("# H\n\n```py\nx=1\n```", "# H\n\n```py\nx=1\n```", "markdown")[
+            "valid"
+        ]
+        is True
+    )
 
 
 def test_aggregation_has_macro_safe_empty_values():
     assert aggregate_records([], "score")["count"] == 0
-    assert aggregate_records([{"score": 0.2}, {"score": 0.4}], "score")["median"] == pytest.approx(0.3)
+    assert aggregate_records([{"score": 0.2}, {"score": 0.4}], "score")["median"] == pytest.approx(
+        0.3
+    )
 
 
 def test_schema_tax_measurement_and_turn_derivation():
     measured = measure_catalog(generate_catalog(4, "COMPLEX"), "COMPLEX")
     assert measured["classification"] == "MEASURED"
     assert measured["cumulative_schema_tokens"]["16"]["classification"] == "DERIVED"
-    assert measured["cumulative_schema_tokens"]["16"]["tokens"] == measured["total_schema_tokens"] * 16
+    assert (
+        measured["cumulative_schema_tokens"]["16"]["tokens"] == measured["total_schema_tokens"] * 16
+    )
     assert measured["description_token_share"] > 0
 
 
@@ -95,9 +104,17 @@ def test_result_schema_report_and_strict_security_regression():
     assert "Tool schema tax" in render_report(result)
     assert result["phase4"]["schema_optimization"]["catalog_count"] == 18
     assert result["phase4"]["schema_optimization"]["tool_schema_count"] == 375
-    assert {row["tool_count"] for row in result["phase4"]["schema_optimization"]["performance_by_scale"]} == {1, 4, 8, 16, 32, 64, 128}
+    assert {
+        row["tool_count"] for row in result["phase4"]["schema_optimization"]["performance_by_scale"]
+    } == {1, 4, 8, 16, 32, 64, 128}
     assert result["phase4"]["relevance"]["metrics"]["recall_at_5"] >= 0.95
-    assert result["phase4"]["selective_exposure"]["status"] in {"SHIPPABLE_EXPERIMENTAL", "RESEARCH_ONLY"}
+    assert result["phase4"]["selective_exposure"]["status"] in {
+        "SHIPPABLE_EXPERIMENTAL",
+        "RESEARCH_ONLY",
+    }
     previous = json.loads(json.dumps(result))
     result["security"]["provenance_boundary_violations"] = 1
-    assert compare_results(result, previous)[0] == {"category": "SECURITY_REGRESSION", "status": "FAIL"}
+    assert compare_results(result, previous)[0] == {
+        "category": "SECURITY_REGRESSION",
+        "status": "FAIL",
+    }

@@ -32,7 +32,6 @@ from typing import Dict, Optional
 _FENCE_TOKEN_RE = re.compile(r"---(?:BEGIN|END)\b[^\n]*?---", re.IGNORECASE)
 
 
-
 @dataclass(frozen=True)
 class RewriteTemplate:
     """A versioned prompt template for the rewrite engine.
@@ -136,7 +135,6 @@ class RewriteTemplate:
             target_percent=target_percent,
             constraints=constraints,
         )
-
 
 
 # =====================================================================
@@ -431,9 +429,7 @@ class TemplateResolver:
         # 3: content type mapping
         if content_type is not None:
             mapped_name = _CONTENT_TYPE_TO_TEMPLATE.get(content_type, "general")
-            return self._custom_templates.get(
-                mapped_name, _BUILTIN_TEMPLATES[mapped_name]
-            )
+            return self._custom_templates.get(mapped_name, _BUILTIN_TEMPLATES[mapped_name])
 
         # 4: fallback
         return self._custom_templates.get("general", _BUILTIN_TEMPLATES["general"])

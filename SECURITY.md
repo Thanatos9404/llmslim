@@ -8,8 +8,8 @@ Only the latest release receives security updates.
 
 | Version | Supported |
 | --- | --- |
-| 0.4.0 | :white_check_mark: |
-| < 0.4.0 | :x: |
+| 0.5.0 | :white_check_mark: |
+| < 0.5.0 | :x: |
 
 ## Compression-induced instruction elevation
 
@@ -52,7 +52,7 @@ Include a description, impact, reproduction steps or proof of concept, and affec
 
 ## Response timeline
 
-- Initial acknowledgment: 24–48 hours.
+- Initial acknowledgment: 24â€“48 hours.
 - Triage: within 5 business days.
 - Fix target: within 14 business days of confirmation.
 

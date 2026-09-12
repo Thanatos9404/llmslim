@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+## [0.5.0] - 2026-09-13
+
+### MCP catalog integration
+- Added optional `llmslim[mcp]` support for official-SDK Streamable HTTP and
+  argv-only stdio catalog sources, bounded `tools/list` pagination, monotonic
+  cache hints, immutable snapshots, and stale-plan-safe hydration.
+- Added stable full-catalog and measure-only plans. Selective exposure remains
+  explicit, opt-in, and **RESEARCH_ONLY**.
+- Added a framework-neutral host bridge and an optional OpenAI Agents SDK
+  bridge. Both preserve host authorization and execution ownership.
+
+### Packaging and security
+- Kept MCP and Agents SDK dependencies out of the base install; the extras
+  require Python 3.10+.
+- Rejected credential-bearing endpoint URLs and non-localhost HTTP; stdio
+  sources take an executable plus literal argv and never invoke a shell.
+
+---
+
+### Fixed
+- Refreshed catalogs revoke stale cache entries, and returned snapshots cannot mutate cached authority.
+- Agents bridges reject mismatched plans and hydrate authoritative schemas before exposing tools.
+
+### Website
+- Redesigned responsive landing page, dark/light themes, restrained parallax, and official Sarvam co-branding.
+- LLMSlim is accepted into the Sarvam Startup Program; existing indexing routes are preserved.
+
 ## [0.4.0] - 2026-08-20
 
 ### Tool contract infrastructure

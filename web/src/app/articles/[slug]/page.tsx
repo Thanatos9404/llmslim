@@ -1,36 +1,22 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Calendar, Clock3, Sigma, User } from "lucide-react";
-import { constructMetadata } from "@/lib/seo";
-import { ARTICLES_REGISTRY } from "@/data/articles";
-import { siteConfig } from "@/config/site";
-import { DocCodeBlock } from "@/components/docs/DocCodeBlock";
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { ArrowLeft, Calendar, Clock3, ExternalLink, Sigma, User } from "lucide-react"
+import { DocCodeBlock } from "@/components/docs/DocCodeBlock"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ARTICLES_REGISTRY } from "@/data/articles"
+import { siteConfig } from "@/config/site"
+import { constructMetadata } from "@/lib/seo"
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const article = ARTICLES_REGISTRY[slug];
-  return article ? constructMetadata({ title: `${article.title} — LLMSlim Technical Papers`, description: `${article.subtitle}. ${article.abstract}` }) : constructMetadata({ title: "Article Not Found | LLMSlim Research", description: "Requested engineering article not found." });
-}
-
-export async function generateStaticParams() { return Object.keys(ARTICLES_REGISTRY).map((slug) => ({ slug })); }
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const article = ARTICLES_REGISTRY[slug]; return article ? constructMetadata({ title: `${article.title} — LLMSlim Technical Papers`, description: `${article.subtitle}. ${article.abstract}` }) : constructMetadata({ title: "Article Not Found | LLMSlim Research", description: "Requested engineering article not found." }) }
+export async function generateStaticParams() { return Object.keys(ARTICLES_REGISTRY).map((slug) => ({ slug })) }
 
 export default async function ArticleSlugPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const article = ARTICLES_REGISTRY[slug];
-  if (!article) notFound();
-  const jsonLd = { "@context": "https://schema.org", "@type": "TechArticle", headline: article.title, alternativeHeadline: article.subtitle, description: article.abstract, url: `${siteConfig.url}/articles/${article.slug}`, datePublished: "2026-07-15", dateModified: "2026-07-15", author: { "@type": "Person", name: article.author, jobTitle: article.authorRole }, publisher: { "@type": "Organization", name: "LLMSlim" } };
-  return <article className="reading-page">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-    <Link href="/articles" className="reading-back"><ArrowLeft size={15} /> All engineering notes</Link>
-    <header className="reading-header"><div className="reading-meta"><span>{article.category}</span><i><Clock3 size={14} /> {article.readingTime}</i><i><User size={14} /> {article.author}</i><i><Calendar size={14} /> {article.publishedDate}</i></div><h1>{article.title}</h1><p>{article.subtitle}</p></header>
-    <section className="reading-summary"><div><Sigma size={18} /><span>Mathematical intuition</span></div><p>{article.mathIntuitionSummary}</p></section>
-    <section className="reading-takeaways"><span className="section-label">Key takeaways</span><ol>{article.keyTakeaways.map((item, index) => <li key={item}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span></li>)}</ol></section>
-    <div className="reading-content">{article.sections.map((section) => <section id={section.id} key={section.id}><h2>{section.title}</h2><div className="reading-copy">{section.content}</div>{section.mathFormula && <Formula value={section.mathFormula} />}{section.codeSnippet && <DocCodeBlock language={section.codeSnippet.language} filename={section.codeSnippet.filename} code={section.codeSnippet.code} />}{section.tableData && <div className="reading-table"><table><thead><tr>{section.tableData.headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{section.tableData.rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table></div>}</section>)}</div>
-    {article.references.length > 0 && <section className="reading-references"><span className="section-label">References</span><ol>{article.references.map((ref) => <li key={ref.citationKey}><span>[{ref.citationKey}]</span><a href={ref.url} target="_blank" rel="noreferrer">{ref.title} <ArrowUpRight size={13} /></a></li>)}</ol></section>}
-  </article>;
+  const { slug } = await params; const article = ARTICLES_REGISTRY[slug]; if (!article) notFound()
+  const jsonLd = { "@context": "https://schema.org", "@type": "TechArticle", headline: article.title, description: article.abstract, url: `${siteConfig.url}/articles/${article.slug}` }
+  return <article className="mx-auto max-w-3xl space-y-8"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} /><Button variant="ghost" size="sm" render={<Link href="/articles" />}><ArrowLeft /> All engineering notes</Button><header><div className="flex flex-wrap gap-2"><Badge>{article.category}</Badge><Badge variant="outline"><Clock3 /> {article.readingTime}</Badge><Badge variant="outline"><User /> {article.author}</Badge><Badge variant="outline"><Calendar /> {article.publishedDate}</Badge></div><h1 className="mt-4 text-4xl font-semibold tracking-tight">{article.title}</h1><p className="mt-3 text-lg text-muted-foreground">{article.subtitle}</p></header><Card><CardHeader><CardTitle className="flex items-center gap-2"><Sigma /> Mathematical intuition</CardTitle></CardHeader><CardContent className="text-muted-foreground">{article.mathIntuitionSummary}</CardContent></Card><Card><CardHeader><CardTitle>Key takeaways</CardTitle></CardHeader><CardContent><ol className="list-decimal space-y-2 pl-5 text-muted-foreground">{article.keyTakeaways.map((item) => <li key={item}>{item}</li>)}</ol></CardContent></Card><div className="space-y-10">{article.sections.map((section) => <section id={section.id} key={section.id} className="scroll-mt-24"><h2 className="text-2xl font-semibold tracking-tight">{section.title}</h2><p className="mt-3 leading-7 text-muted-foreground">{section.content}</p>{section.mathFormula && <Card className="my-6"><CardHeader><CardTitle className="text-sm">Equation</CardTitle></CardHeader><CardContent><code className="break-words text-sm">{readableFormula(section.mathFormula)}</code></CardContent></Card>}{section.codeSnippet && <DocCodeBlock language={section.codeSnippet.language} filename={section.codeSnippet.filename} code={section.codeSnippet.code} />}{section.tableData && <Card className="my-6"><CardContent className="overflow-x-auto"><Table><TableHeader><TableRow>{section.tableData.headers.map((header) => <TableHead key={header}>{header}</TableHead>)}</TableRow></TableHeader><TableBody>{section.tableData.rows.map((row, index) => <TableRow key={index}>{row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}</TableRow>)}</TableBody></Table></CardContent></Card>}</section>)}</div>{article.references.length > 0 && <Card><CardHeader><CardTitle>References</CardTitle></CardHeader><CardContent><ol className="space-y-2">{article.references.map((ref) => <li key={ref.citationKey}><Button variant="link" className="h-auto p-0 text-left" render={<a href={ref.url} target="_blank" rel="noreferrer" />}>[{ref.citationKey}] {ref.title} <ExternalLink /></Button></li>)}</ol></CardContent></Card>}</article>
 }
 
-function Formula({ value }: { value: string }) {
-  const readable = value.replace(/\\text\{([^{}]+)\}/g, "$1").replace(/\\mathbf\{([^{}]+)\}/g, "$1").replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1) / ($2)").replace(/\\cdot/g, "·").replace(/\\\|/g, "‖").replace(/_\{([^{}]+)\}/g, "_$1").replace(/\^\{([^{}]+)\}/g, "^$1");
-  return <figure className="article-formula"><figcaption>Equation</figcaption><div aria-label={`Mathematical formula: ${readable}`}>{readable}</div></figure>;
-}
+function readableFormula(value: string) { return value.replace(/\\text\{([^{}]+)\}/g, "$1").replace(/\\mathbf\{([^{}]+)\}/g, "$1").replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1) / ($2)").replace(/\\cdot/g, "·").replace(/\\\|/g, "‖").replace(/_\{([^{}]+)\}/g, "_$1").replace(/\^\{([^{}]+)\}/g, "^$1") }

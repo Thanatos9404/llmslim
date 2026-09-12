@@ -73,29 +73,41 @@ class ValidationResult:
 # =====================================================================
 
 _INSTRUCTION_PATTERNS = [
-    r"\bmust\b", r"\bshall\b", r"\bshould\b", r"\bensure\b",
-    r"\bmake sure\b", r"\bneed(?:s)? to\b", r"\brequire[sd]?\b",
-    r"\bnever\b", r"\bdo not\b", r"\bdon't\b", r"\bavoid\b",
-    r"\balways\b", r"\bimportant\b", r"\bcritical\b",
-    r"\byou are\b", r"\bact as\b", r"\byour role\b",
-    r"\brespond in\b", r"\bformat (?:as|your|the|in)\b",
-    r"\bJSON\b", r"\bYAML\b",
+    r"\bmust\b",
+    r"\bshall\b",
+    r"\bshould\b",
+    r"\bensure\b",
+    r"\bmake sure\b",
+    r"\bneed(?:s)? to\b",
+    r"\brequire[sd]?\b",
+    r"\bnever\b",
+    r"\bdo not\b",
+    r"\bdon't\b",
+    r"\bavoid\b",
+    r"\balways\b",
+    r"\bimportant\b",
+    r"\bcritical\b",
+    r"\byou are\b",
+    r"\bact as\b",
+    r"\byour role\b",
+    r"\brespond in\b",
+    r"\bformat (?:as|your|the|in)\b",
+    r"\bJSON\b",
+    r"\bYAML\b",
     r"^(?:WARNING|CAUTION|IMPORTANT|NOTE)\s*:",
     r"^(?:System|Instructions?|Rules?|Guidelines?)\s*:",
 ]
-_INSTRUCTION_RE = re.compile(
-    "|".join(_INSTRUCTION_PATTERNS), re.IGNORECASE | re.MULTILINE
-)
+_INSTRUCTION_RE = re.compile("|".join(_INSTRUCTION_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 _ENTITY_PATTERNS_LIST = [
-    re.compile(r"\b[A-Z][a-zA-Z]{2,}\b"),             # Capitalised words
-    re.compile(r"\b[A-Z]{2,}[0-9]*\b"),                # Acronyms
-    re.compile(r"https?://\S+"),                        # URLs
+    re.compile(r"\b[A-Z][a-zA-Z]{2,}\b"),  # Capitalised words
+    re.compile(r"\b[A-Z]{2,}[0-9]*\b"),  # Acronyms
+    re.compile(r"https?://\S+"),  # URLs
     re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b"),  # snake_case
-    re.compile(r"`[^`\n]+`"),                           # Inline code
+    re.compile(r"`[^`\n]+`"),  # Inline code
     re.compile(r"\b\w+\.(?:py|js|ts|json|yaml|yml|toml|md|html|css|xml)\b", re.IGNORECASE),
-    re.compile(r"\b[A-Z][A-Z0-9_]{2,}\b"),              # Env vars / constants
-    re.compile(r"\bv?\d+\.\d+(?:\.\d+)?\b"),            # Version strings
+    re.compile(r"\b[A-Z][A-Z0-9_]{2,}\b"),  # Env vars / constants
+    re.compile(r"\bv?\d+\.\d+(?:\.\d+)?\b"),  # Version strings
 ]
 
 
@@ -218,9 +230,7 @@ class StructuralValidator:
             return False, 0.0, failures
 
         if rewrite_tokens > original_tokens:
-            failures.append(
-                f"Rewrite inflated tokens ({rewrite_tokens} > {original_tokens})"
-            )
+            failures.append(f"Rewrite inflated tokens ({rewrite_tokens} > {original_tokens})")
 
         # Check for trivially short rewrites (< 10% of original)
         if original_tokens > 0 and rewrite_tokens < original_tokens * 0.10:
@@ -377,21 +387,26 @@ class RewriteValidator:
         rewrite_tokens = count_tokens(rewrite)
 
         struct_passed, token_ratio, struct_failures = self._structural.validate(
-            original, rewrite, orig_tokens, rewrite_tokens,
+            original,
+            rewrite,
+            orig_tokens,
+            rewrite_tokens,
         )
         all_failures.extend(struct_failures)
         scores["structural"] = 1.0 if struct_passed else 0.0
 
         # 2. Instruction validation
         inst_passed, inst_retention, inst_failures = self._instruction.validate(
-            original, rewrite,
+            original,
+            rewrite,
         )
         all_failures.extend(inst_failures)
         scores["instruction_retention"] = inst_retention
 
         # 3. Entity validation
         ent_passed, ent_retention, ent_failures = self._entity.validate(
-            original, rewrite,
+            original,
+            rewrite,
         )
         all_failures.extend(ent_failures)
         scores["entity_retention"] = ent_retention
@@ -402,8 +417,7 @@ class RewriteValidator:
         sim_passed = similarity >= self._min_similarity
         if not sim_passed:
             all_failures.append(
-                f"Similarity too low: {similarity:.3f} "
-                f"(min {self._min_similarity:.3f})"
+                f"Similarity too low: {similarity:.3f} (min {self._min_similarity:.3f})"
             )
 
         # 5. Keyword validation
@@ -415,16 +429,10 @@ class RewriteValidator:
             scores["keyword_retention"] = keyword_retention
             if keyword_retention < 1.0:
                 missing = [kw for kw in required_keywords if kw.lower() not in rewrite_lower]
-                all_failures.append(
-                    f"Missing required keywords: {missing}"
-                )
+                all_failures.append(f"Missing required keywords: {missing}")
 
         passed = (
-            struct_passed
-            and inst_passed
-            and ent_passed
-            and sim_passed
-            and keyword_retention >= 1.0
+            struct_passed and inst_passed and ent_passed and sim_passed and keyword_retention >= 1.0
         )
 
         return ValidationResult(

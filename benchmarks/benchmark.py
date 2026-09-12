@@ -103,11 +103,8 @@ def run_unit_tests() -> Tuple[int, int]:
     if failed == 0:
         print_colored(f"[OK] All {passed} unit tests passed successfully!", GREEN)
     else:
-        print_colored(
-            f"[WARN] {failed} unit test(s) failed ({passed} passed).", RED
-        )
+        print_colored(f"[WARN] {failed} unit test(s) failed ({passed} passed).", RED)
     return passed, failed
-
 
 
 def compute_scores(
@@ -178,10 +175,15 @@ def main():
     print_colored(f"[OK] Memory evaluated on {len(memory_results)} samples.", GREEN)
 
     # 5. Strategy Benchmarks (extractive vs rewrite vs hybrid)
-    print_colored("\n[5/6] Running Strategy Benchmarks (extractive vs rewrite vs hybrid)...", BOLD + BLUE)
+    print_colored(
+        "\n[5/6] Running Strategy Benchmarks (extractive vs rewrite vs hybrid)...", BOLD + BLUE
+    )
     from benchmarks.benchmark_rewrite import run_rewrite_benchmarks
+
     strategy_results = run_rewrite_benchmarks()
-    print_colored(f"[OK] Strategy benchmarks evaluated across {len(strategy_results)} strategies.", GREEN)
+    print_colored(
+        f"[OK] Strategy benchmarks evaluated across {len(strategy_results)} strategies.", GREEN
+    )
 
     # 6. Regression & Baseline Comparison
     print_colored("\n[6/6] Running Regression Comparison vs v0.1 Baselines...", BOLD + BLUE)

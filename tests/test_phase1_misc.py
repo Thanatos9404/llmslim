@@ -139,5 +139,3 @@ class TestDeadCodeRemoved:
             target_ratio=0.5,
         )
         assert result.compressed_tokens < result.original_tokens
-
-

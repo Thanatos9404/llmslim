@@ -1,22 +1,10 @@
-import { constructMetadata } from "@/lib/seo";
-import { ClientStudioWrapper } from "@/components/studio/ClientStudioWrapper";
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ClientStudioWrapper } from "@/components/studio/ClientStudioWrapper"
+import { constructMetadata } from "@/lib/seo"
 
-export const metadata = constructMetadata({
-  title: "LLMSlim Studio | Live Python Compression",
-  description: "Run live extractive compression with the repository LLMSlim Python package and inspect its returned token metrics.",
-  canonicalUrl: "https://www.llmslim.app/playground",
-});
+export const metadata = constructMetadata({ title: "LLMSlim Studio | Live Python Compression", description: "Run live extractive compression with the repository LLMSlim Python package and inspect its returned token metrics.", canonicalUrl: "https://www.llmslim.app/playground" })
 
 export default function PlaygroundPage() {
-  return <main id="main-content" className="studio-page">
-    <div className="studio-intro">
-      <div><span className="eyebrow">Studio</span><h1>Inspect the shape of context.</h1></div>
-      <p>Run live extractive compression with the same LLMSlim Python package shipped from this repository. Output and token metrics come from the returned <code>CompressionResult</code>.</p>
-    </div>
-    <ClientStudioWrapper />
-    <section className="product-section" style={{ paddingBottom: 0 }}>
-      <div><span className="section-label">Live engine boundary</span><h2>Python execution, with the right limits.</h2></div>
-      <div><p>Set the correct context role when you know the provenance. RAG, tool, and assistant text are treated differently from system and developer text in the v0.4.0 safety boundary.</p><div className="method-list"><div className="method"><span className="method__number">01</span><div><h3>Run extractive live</h3><p>The public Studio runs the offline extractive path through its same-origin Python function.</p></div></div><div className="method"><span className="method__number">02</span><div><h3>Bring a provider for rewrite</h3><p>Rewrite and hybrid require a caller-supplied provider and are not exposed by the public endpoint.</p></div></div></div></div>
-    </section>
-  </main>;
+  return <main id="main-content" className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-10 sm:px-6 lg:px-8"><header><Badge variant="secondary">Studio</Badge><h1 className="mt-4 text-4xl font-semibold tracking-tight">Inspect the shape of context.</h1><p className="mt-3 max-w-3xl text-muted-foreground">Run live extractive compression with the shipped LLMSlim Python package. Output and token metrics come from the returned <code>CompressionResult</code>.</p></header><ClientStudioWrapper /><div className="grid gap-4 md:grid-cols-2"><Card><CardHeader><CardTitle>Run extractive live</CardTitle><CardDescription>The public Studio runs the offline extractive path through its same-origin Python function.</CardDescription></CardHeader></Card><Card><CardHeader><CardTitle>Bring a provider for rewrite</CardTitle><CardDescription>Rewrite and hybrid require a caller-supplied provider and are not exposed by the public endpoint.</CardDescription></CardHeader></Card></div></main>
 }

@@ -1,44 +1,48 @@
-"use client";
+import Image from "next/image"
+import Link from "next/link"
+import { ArrowRight, ArrowUpRight, ChevronRight, Check } from "lucide-react"
+import { SiteHeader } from "@/components/site/SiteHeader"
+import { SiteFooter } from "@/components/site/SiteFooter"
+import { CopyCommand, HomeEffects, CodeExample, ContextPreview, HeroArtwork } from "@/components/landing/RedesignInteractions"
+import { siteConfig } from "@/config/site"
 
-import Link from "next/link";
-import { ArrowUpRight, Check, Copy, Database, Layers3, ShieldCheck, Terminal, TestTube2 } from "lucide-react";
-import { useState } from "react";
-import { Footer } from "@/components/landing/Footer";
-import { Navbar } from "@/components/landing/Navbar";
-import { MagneticLink } from "@/components/landing/MagneticLink";
-import { FeatureMosaic } from "@/components/landing/FeatureMosaic";
-import { GithubIcon } from "@/components/icons/GithubIcon";
-import { siteConfig } from "@/config/site";
-
-const phaseMetrics = [
-  ["442", "tests passing", "Phase 2 release gate"],
-  ["22", "evaluation categories", "24 disclosed samples"],
-  ["375", "generated schemas", "18 measured catalogs"],
-  ["0", "boundary violations", "security regression suite"],
-] as const;
+const faqs = [
+  ["Does it need an API key?", "Not for local extraction. LLMSlim’s default extractive strategy runs in your Python application. Rewrite and hybrid strategies use a provider you supply."],
+  ["Does it work with my model?", "LLMSlim prepares text before your model call. Use the output with Sarvam, OpenAI, Anthropic, Gemini, or a local model. Your application keeps control of the request."],
+  ["How much should I compress?", "Start with a conservative target ratio and evaluate the answers your application produces. The right setting depends on the documents, question, and model. Compression can remove useful information; there is no universal quality guarantee."],
+  ["What does the Sarvam announcement mean?", "LLMSlim has been accepted into the Sarvam Startup Program. Our integration guide shows how to combine local context compression with the official Sarvam Python SDK."],
+]
 
 export default function Home() {
-  const [copied, setCopied] = useState(false);
-  const copyInstall = async () => { await navigator.clipboard.writeText("pip install llmslim"); setCopied(true); window.setTimeout(() => setCopied(false), 1600); };
-
-  return <div className="site-shell"><Navbar /><main id="main-content" className="home-main home-main--rich">
-    <section className="hero hero--product hero--atmospheric">
-      <div className="hero-atmosphere" aria-hidden="true"><i /><i /><i /><i /></div>
-      <div className="hero__copy reveal"><span className="eyebrow">Open source · Python · local-first</span><h1>Ship less context.<br /><span>Keep more signal.</span></h1><p>LLMSlim makes long prompts, documents, retrieval, and chat history easier to reason about—with local extractive compression, provider-aware strategies, and provenance-aware priorities.</p>
-        <div className="hero__actions"><MagneticLink className="button--primary button--command" href="/playground"><Terminal size={16} /> Open Studio <kbd>⌘ K</kbd></MagneticLink><Link className="button" href="/docs/getting-started">Read docs <ArrowUpRight size={15} /></Link><a className="hero__github" href={siteConfig.github} target="_blank" rel="noreferrer"><GithubIcon className="h-4 w-4" /> GitHub</a></div>
-        <div className="install-control install-control--hero"><span>$ pip install llmslim</span><button type="button" aria-label="Copy installation command" onClick={copyInstall}>{copied ? <Check size={17} /> : <Copy size={17} />}</button></div>
-        <div className="hero__meta"><span><GithubIcon className="h-4 w-4" /> MIT licensed</span><span><ShieldCheck size={16} /> Provenance-aware</span><span><Layers3 size={16} /> Provider optional</span></div>
+  return <div className="slim-site"><HomeEffects /><SiteHeader /><main id="main-content">
+    <section className="cinema-hero" aria-labelledby="hero-title">
+      <HeroArtwork />
+      <div className="cinema-copy">
+        <Link className="news-pill" href="/integrations/sarvam"><span className="news-flower" aria-hidden="true" />Now part of the Sarvam Startup Program<ChevronRight size={14} /></Link>
+        <h1 id="hero-title">Your context.<br /><span>Only what matters.</span></h1>
+        <p>Less noise between your ideas and your AI.<br />An open-source Python library for thoughtful context compression.</p>
+        <div className="hero-actions"><Link className="button" href="/docs/getting-started">Start building <ArrowRight size={16} /></Link><Link className="button button-outline" href="/playground" prefetch={false}>Try it in Studio <ArrowUpRight size={16} /></Link></div>
+        <CopyCommand />
       </div>
+      <div className="hero-base"><span>LOCAL BY DEFAULT</span><span>OPEN SOURCE, ALWAYS</span><a href="#features">A closer look <span>↓</span></a></div>
     </section>
 
-    <section className="phase-strip" aria-labelledby="phase-strip-title"><div className="phase-strip__heading"><span className="section-label">Phase 2 evaluation system</span><h2 id="phase-strip-title">A benchmark is more than a single corpus size.</h2><p>24 curated samples stay visible in the methodology; the release story also includes categories, languages, schema contracts, security regression, and machine-readable artifacts.</p><Link href="/benchmarks">Explore the evidence <ArrowUpRight size={15} /></Link></div><div className="phase-strip__metrics">{phaseMetrics.map(([value, label, detail]) => <div key={label}><strong>{value}</strong><span>{label}</span><small>{detail}</small></div>)}</div></section>
+    <section className="focus-section site-width" id="features">
+      <div className="focus-heading" data-reveal><p className="section-kicker">A little less goes a long way.</p><h2>Good context gives your model direction.<br /> <span>The rest just takes up space.</span></h2></div>
+      <ContextPreview />
+      <div className="focus-notes" data-reveal><div><h3>Keep it relevant.</h3><p>Rank and select content around your question, before it reaches the model.</p></div><div><h3>Keep its origins.</h3><p>Treat instructions, retrieved documents, and tool responses according to their roles.</p></div><div><h3>Keep control.</h3><p>Choose your retention target. Inspect the output. Evaluate it on your own workload.</p></div></div>
+      <Link className="text-link" href="/benchmarks" id="benchmarks">Read the evaluations and their limitations <ArrowUpRight size={15} /></Link>
+    </section>
 
-    <FeatureMosaic />
+    <section className="sarvam-story" id="sarvam"><div className="sarvam-halo" aria-hidden="true" data-parallax="0.08" /><div className="site-width sarvam-content">
+      <div className="partnership-logos" data-reveal><span className="sarvam-brand" role="img" aria-label="Sarvam"><span className="sarvam-symbol" /><span className="sarvam-wordmark" /></span><span className="partnership-cross">×</span><span className="partnership-slim"><span className="brand-symbol" aria-hidden="true" />LLM<span>Slim</span></span></div>
+      <p className="section-kicker" data-reveal>Accepted into the Sarvam Startup Program</p><h2 data-reveal>A shared beginning.<br /><span>Built from India.</span></h2><p className="sarvam-description" data-reveal>We’re building LLMSlim with support from the Sarvam Startup Program. Start with local context compression, then bring Sarvam’s models into your application.</p><Link className="button" href="/integrations/sarvam">Explore the integration <ArrowRight size={16} /></Link><a className="program-link" href="https://www.sarvam.ai/startup-program" target="_blank" rel="noreferrer">About the program <ArrowUpRight size={13} /></a>
+    </div></section>
 
-    <section className="schema-preview"><div className="schema-preview__copy"><span className="section-label">Schema tax · research track</span><h2>Tool definitions consume context too.</h2><p>Phase 2 measured 18 synthetic tool catalogs across simple, medium, and complex schema classes. At the measured extremes, one simple tool contained 62 tokens; 64 complex tools contained 12,739.</p><p>This is not a shipped schema optimizer. The real work now is finding out when contracts can be safely minimized or selectively loaded.</p><Link href="/benchmarks" className="button">Open the interactive explorer <ArrowUpRight size={15} /></Link></div><div className="schema-preview__visual" aria-label="Schema tax range, from 62 to 12,739 measured schema tokens"><div><span>1 simple tool</span><strong>62</strong><small>measured tokens</small></div><i /><div><span>64 complex tools</span><strong>12,739</strong><small>measured tokens</small></div><p>Derived 32-turn totals are labelled separately in the explorer.</p></div></section>
+    <section className="build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="section-kicker">Small library. Familiar workflow.</p><h2>A few lines.<br /><span>Then back to building.</span></h2><p>Add LLMSlim before your model call. Run extraction locally, or bring a provider for rewrite and hybrid strategies.</p><div className="build-points"><span><Check size={15} /> Python-native</span><span><Check size={15} /> Provider-agnostic</span><span><Check size={15} /> MIT licensed</span></div><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link></div><CodeExample /></section>
 
-    <section className="story-grid"><article><TestTube2 size={20} /><span className="section-label">Measure honestly</span><h2>Classify every claim.</h2><p>Measured results, derived session totals, and unavailable provider-dependent findings are never flattened into one number.</p><Link href="/benchmarks">Benchmark methodology <ArrowUpRight size={14} /></Link></article><article><ShieldCheck size={20} /><span className="section-label">Protect the boundary</span><h2>Priority follows provenance.</h2><p>Untrusted RAG, tool, and assistant text cannot gain protected priority just because it sounds authoritative.</p><Link href="/docs/context-role">Read the ContextRole guide <ArrowUpRight size={14} /></Link></article><article><Database size={20} /><span className="section-label">Use what ships</span><h2>Local by default.</h2><p>Extractive compression works without a provider. Rewrite and hybrid flows require one you supply and should be measured in your environment.</p><Link href="/docs/getting-started">Install LLMSlim <ArrowUpRight size={14} /></Link></article></section>
+    <section className="questions-section site-width" id="faq"><div data-reveal><p className="section-kicker">Before you start.</p><h2>A few good<br /> <span>questions.</span></h2></div><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus">+</span></summary><p>{answer}</p></details>)}</div></section>
 
-    <section className="product-section product-section--install" id="install"><div><span className="section-label">Start in one command</span><h2>A shorter context is only useful when it stays explainable.</h2></div><div><div className="install-control"><span>$ pip install llmslim</span><button type="button" aria-label="Copy installation command" onClick={copyInstall}>{copied ? <Check size={18} /> : <Copy size={18} />}</button></div><p>Run a local extractive path first. Add a caller-supplied provider only when a rewrite or hybrid workflow makes the trade-off explicit.</p><div className="product-section__actions"><Link className="button button--primary" href="/playground">Try the Studio <ArrowUpRight size={15} /></Link><a className="button" href={siteConfig.pypi} target="_blank" rel="noreferrer">View on PyPI <ArrowUpRight size={15} /></a></div></div></section>
-  </main><Footer /></div>;
+    <section className="end-section"><div className="end-ribbon" aria-hidden="true" data-parallax="-0.07"><Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} className="art-dark" /><Image src="/compression-ribbon-light.webp" alt="" width={1536} height={1024} className="art-light" /></div><div className="end-copy"><span className="brand-symbol" aria-hidden="true" /><h2>Make a little room.</h2><p>Your next model call is a good place to start.</p><div className="hero-actions"><Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="text-link" href={siteConfig.github} target="_blank" rel="noreferrer">View on GitHub <ArrowUpRight size={16} /></a></div></div></section>
+  </main><SiteFooter /></div>
 }

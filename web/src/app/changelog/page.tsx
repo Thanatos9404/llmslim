@@ -1,12 +1,28 @@
 import { CheckCircle2, ShieldCheck, Wrench } from "lucide-react";
-import { Footer } from "@/components/landing/Footer";
-import { Navbar } from "@/components/landing/Navbar";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { constructMetadata } from "@/lib/seo";
 
 type ReleaseItem = { label: string; icon: typeof CheckCircle2; title: string; body: string };
 type Release = { version: string; date: string; theme: string; summary: string; metrics: string[]; tag: string; items: ReleaseItem[] };
 
 const releases: Release[] = [
+  {
+    version: "v0.5.0",
+    date: "13 Sep 2026",
+    theme: "MCP catalogs. Your host stays in control.",
+    summary: "Optional MCP transports and an OpenAI Agents SDK bridge, with complete tool contracts and explicit execution ownership.",
+    metrics: ["MCP + Agents extras", "Full catalog by default", "Python 3.10+ for integrations"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.5.0",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "MCP catalog sources", body: "Streamable HTTP and literal-argv stdio support bounded pagination, scoped caching, contract fingerprints, and stale-plan detection." },
+      { label: "Boundary", icon: ShieldCheck, title: "Execution belongs to the host", body: "The optional Agents SDK bridge requires a host callback. Full and measure-only plans retain every schema; selective exposure remains research-only." },
+      { label: "Website", icon: Wrench, title: "A new home for LLMSlim", body: "A redesigned website with light and dark themes, and official Sarvam co-branding marking acceptance into the Sarvam Startup Program." },
+    ],
+  },
   {
     version: "v0.4.0",
     date: "21 Aug 2026",
@@ -78,9 +94,9 @@ const releases: Release[] = [
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "Verified LLMSlim Python package history for v0.1.0 through v0.4.0, including release themes, compatibility, and security changes.",
+  description: "Verified LLMSlim Python package history for v0.1.0 through v0.5.0, including release themes, compatibility, and security changes.",
 });
 
 export default function ChangelogPage() {
-  return <div className="site-shell"><Navbar /><main id="main-content" className="changelog-page"><header className="hub-header"><span className="hub-eyebrow">Release history</span><h1>Changes with <span>consequences.</span></h1><p>LLMSlim releases document what shipped, what changed, and where the boundary remains. Phase 2 is an engineering and benchmark milestone—not an invented package version.</p></header>{releases.map((release) => <section key={release.version} aria-label={`${release.version} release notes`}><section className="release-card"><div className="release-card__side"><span>Python release</span><strong>{release.version}</strong><small>{release.date}</small><i>Released</i></div><div className="release-card__content"><h2>{release.theme}</h2><p>{release.summary}</p><div className="release-card__metrics">{release.metrics.map((metric) => <span key={metric}>{metric}</span>)}</div><a href={release.tag} target="_blank" rel="noreferrer">View verified source ↗</a></div></section><section className="release-timeline" aria-label={`${release.version} changes`}>{release.items.map((item) => { const Icon = item.icon; return <article key={item.title}><div className="release-timeline__dot"><Icon size={17} /></div><div><span>{item.label}</span><h2>{item.title}</h2><p>{item.body}</p></div></article>; })}</section></section>)}<section className="changelog-note"><ShieldCheck size={18} /><p><b>Important:</b> LLMSlim mitigates compression-induced instruction elevation. It does not claim to solve prompt injection completely, authenticate caller-provided roles, or ship an npm, Rust, or WASM runtime.</p></section></main><Footer /></div>;
+  return <div className="flex min-h-screen flex-col"><SiteHeader /><main id="main-content" className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-10 sm:px-6 lg:px-8"><header><Badge variant="secondary">Release history</Badge><h1 className="mt-4 text-4xl font-semibold tracking-tight">Changes with consequences.</h1><p className="mt-3 max-w-3xl text-muted-foreground">LLMSlim releases document what shipped, what changed, and where the boundary remains.</p></header>{releases.map((release) => <Card key={release.version}><CardHeader><div className="flex flex-wrap items-center gap-2"><Badge>{release.version}</Badge><Badge variant="outline">{release.date}</Badge></div><CardTitle className="mt-2 text-2xl">{release.theme}</CardTitle><CardDescription>{release.summary}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="flex flex-wrap gap-2">{release.metrics.map((metric) => <Badge key={metric} variant="secondary">{metric}</Badge>)}</div><div className="space-y-4">{release.items.map((item) => { const Icon = item.icon; return <div key={item.title} className="flex gap-3"><Icon className="mt-0.5 size-5 shrink-0" /><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p></div></div> })}</div></CardContent><CardFooter><Button variant="outline" size="sm" render={<a href={release.tag} target="_blank" rel="noreferrer" />}>View verified source</Button></CardFooter></Card>)}</main><SiteFooter /></div>;
 }

@@ -1,11 +1,14 @@
-# LLMSlim v0.4.0
+# LLMSlim v0.5.0
 
 LLMSlim is a Python library for extractive, rewrite, and hybrid LLM-context
 compression. Its default compression path remains local and deterministic.
 
 ## Tool-aware context, without rewriting the contract
 
-v0.4.0 introduces a contract-safe tool-schema layer for agent and MCP
+v0.5.0 adds optional MCP catalog ingestion and a host-owned OpenAI Agents SDK bridge.
+Full tool exposure is the default; selective exposure remains research-only.
+
+v0.4.0 introduced a contract-safe tool-schema layer for agent and MCP
 workflows. It can normalize supported provider shapes, deterministically
 canonicalize copied JSON, fingerprint complete definitions with SHA-256, check
 exact contract equivalence, and measure safe catalog representation changes.
@@ -22,6 +25,12 @@ pip install llmslim
 
 # Optional local semantic retrieval support
 pip install "llmslim[semantic]"
+
+# Optional production MCP catalog integration (Python 3.10+)
+pip install "llmslim[mcp]"
+
+# Optional OpenAI Agents SDK bridge (Python 3.10+)
+pip install "llmslim[agents]"
 ```
 
 Python 3.8+ is supported. The semantic extra is optional; the normal package
@@ -83,6 +92,31 @@ shape. They preserve copied raw definitions; cross-provider output is an
 adapter view, not proof that another provider will accept or authorize it.
 Read the [tool API guide](docs/tool-apis.md) before integrating.
 
+## Unreleased MCP catalog integration
+
+Phase 5 adds an optional, async integration layer for ingesting configured MCP
+`tools/list` catalogs through the official SDK. It preserves full authoritative
+schemas, honors bounded cache/pagination behavior, measures model context, and
+can produce a **full-catalog** plan by default. Hosts retain authorization and
+execution authority; LLMSlim never automatically calls a selected tool.
+
+```python
+from llmslim.mcp import MCPToolCatalogSource, PlanMode, plan_catalog_context
+
+source = MCPToolCatalogSource.from_streamable_http(
+    "https://trusted.example.com/mcp",  # caller-owned configuration
+    headers={"Authorization": "Bearer <configured-secret>"},
+)
+snapshot = await source.list_tools()
+plan = plan_catalog_context(snapshot, mode=PlanMode.MEASURE_ONLY)
+print(plan.metrics.catalog_tokens)
+```
+
+HTTP is restricted to localhost development. For local stdio, provide an
+explicit executable and argv—not a shell command. The optional SELECTIVE mode
+remains research-only and requires an explicit `experimental=True` opt-in.
+See [Phase 5 documentation](docs/phase-5/IMPLEMENTATION_REPORT.md).
+
 ## Experimental tool retrieval — research only
 
 ```python
@@ -119,7 +153,7 @@ CPU/resource budget; no ToolRet metric is claimed. See the checked-in
 
 ## Availability
 
-v0.4.0 ships a Python package only. There is no published `@llmslim/core` npm
+v0.5.0 ships a Python package only. There is no published `@llmslim/core` npm
 package, Rust engine, or WASM runtime. Those remain future possibilities, not
 current product capabilities.
 

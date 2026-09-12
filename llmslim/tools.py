@@ -199,7 +199,9 @@ def canonicalize_json(value: Any) -> Any:
 
 def canonical_json(value: Any) -> str:
     """Serialize a bounded JSON value deterministically and compactly."""
-    return json.dumps(canonicalize_json(value), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return json.dumps(
+        canonicalize_json(value), ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    )
 
 
 def fingerprint_tool_schema(tool: Union[ToolSchema, Mapping[str, Any]]) -> str:
@@ -208,8 +210,9 @@ def fingerprint_tool_schema(tool: Union[ToolSchema, Mapping[str, Any]]) -> str:
     return hashlib.sha256(canonical_json(raw).encode("utf-8")).hexdigest()
 
 
-def inspect_schema(schema: Mapping[str, Any], max_depth: int = MAX_SCHEMA_DEPTH,
-                   max_nodes: int = MAX_SCHEMA_NODES) -> SchemaInspection:
+def inspect_schema(
+    schema: Mapping[str, Any], max_depth: int = MAX_SCHEMA_DEPTH, max_nodes: int = MAX_SCHEMA_NODES
+) -> SchemaInspection:
     """Inspect a schema without resolving references or executing its contents."""
     if not isinstance(schema, Mapping):
         raise ToolSchemaError("a JSON Schema must be an object")
@@ -229,12 +232,20 @@ def inspect_schema(schema: Mapping[str, Any], max_depth: int = MAX_SCHEMA_DEPTH,
         warnings.append("external $ref values were preserved but never dereferenced")
     if validator_error:
         warnings.append("JSON Schema syntax was not fully validated")
-    return SchemaInspection(True, depth, nodes, tuple(sorted(set(refs))), validator_available,
-                            validator_error, tuple(warnings))
+    return SchemaInspection(
+        True,
+        depth,
+        nodes,
+        tuple(sorted(set(refs))),
+        validator_available,
+        validator_error,
+        tuple(warnings),
+    )
 
 
-def contract_equivalent(before: Union[ToolSchema, Mapping[str, Any]],
-                        after: Union[ToolSchema, Mapping[str, Any]]) -> EquivalenceResult:
+def contract_equivalent(
+    before: Union[ToolSchema, Mapping[str, Any]], after: Union[ToolSchema, Mapping[str, Any]]
+) -> EquivalenceResult:
     """Conservatively classify equivalence; differing complete contracts fail.
 
     General JSON Schema equivalence is not decided here.  Production operators
@@ -245,22 +256,38 @@ def contract_equivalent(before: Union[ToolSchema, Mapping[str, Any]],
     before_fp = fingerprint_tool_schema(before_tool)
     after_fp = fingerprint_tool_schema(after_tool)
     if before_tool.tool_id != after_tool.tool_id:
-        return EquivalenceResult(EquivalenceStatus.FAILED, "stable tool identity changed", before_fp, after_fp)
+        return EquivalenceResult(
+            EquivalenceStatus.FAILED, "stable tool identity changed", before_fp, after_fp
+        )
     if before_fp == after_fp:
-        return EquivalenceResult(EquivalenceStatus.EXACT, "complete canonical definitions match", before_fp, after_fp)
-    return EquivalenceResult(EquivalenceStatus.FAILED, "complete definitions differ; no general equivalence proof", before_fp, after_fp)
+        return EquivalenceResult(
+            EquivalenceStatus.EXACT, "complete canonical definitions match", before_fp, after_fp
+        )
+    return EquivalenceResult(
+        EquivalenceStatus.FAILED,
+        "complete definitions differ; no general equivalence proof",
+        before_fp,
+        after_fp,
+    )
 
 
-def optimize_tool_schema(tool: Union[ToolSchema, Mapping[str, Any]],
-                         operators: Sequence[SchemaOperator] = PRODUCTION_OPERATORS) -> SchemaOptimizationResult:
+def optimize_tool_schema(
+    tool: Union[ToolSchema, Mapping[str, Any]],
+    operators: Sequence[SchemaOperator] = PRODUCTION_OPERATORS,
+) -> SchemaOptimizationResult:
     """Apply production-safe representation operators without altering the contract."""
     original = _coerce_tool(tool)
     current = original
     applied: List[str] = []
     warnings: List[str] = []
     for operator in operators:
-        if operator.safety_level not in {SafetyLevel.LOSSLESS_SERIALIZATION, SafetyLevel.CONTRACT_VERIFIED}:
-            raise ToolSchemaError("experimental or unsafe operators require a separate opt-in workflow")
+        if operator.safety_level not in {
+            SafetyLevel.LOSSLESS_SERIALIZATION,
+            SafetyLevel.CONTRACT_VERIFIED,
+        }:
+            raise ToolSchemaError(
+                "experimental or unsafe operators require a separate opt-in workflow"
+            )
         if not operator.supports(current):
             continue
         candidate = operator.apply(current)
@@ -289,8 +316,10 @@ def optimize_tool_schema(tool: Union[ToolSchema, Mapping[str, Any]],
     )
 
 
-def optimize_tool_catalog(tools: Sequence[Union[ToolSchema, Mapping[str, Any]]],
-                          operators: Sequence[SchemaOperator] = PRODUCTION_OPERATORS) -> CatalogOptimizationResult:
+def optimize_tool_catalog(
+    tools: Sequence[Union[ToolSchema, Mapping[str, Any]]],
+    operators: Sequence[SchemaOperator] = PRODUCTION_OPERATORS,
+) -> CatalogOptimizationResult:
     """Optimize a complete catalog independently while retaining every tool."""
     original = tuple(_normalise_catalog(tools))
     per_tool = tuple(optimize_tool_schema(tool, operators=operators) for tool in original)
@@ -299,11 +328,21 @@ def optimize_tool_catalog(tools: Sequence[Union[ToolSchema, Mapping[str, Any]]],
     optimized_tokens = count_tokens(canonical_json([tool.raw for tool in optimized]))
     saved = original_tokens - optimized_tokens
     warnings = tuple(warning for item in per_tool for warning in item.warnings)
-    return CatalogOptimizationResult(original, optimized, per_tool, original_tokens, optimized_tokens,
-                                     saved, (saved / original_tokens) if original_tokens else 0.0, warnings)
+    return CatalogOptimizationResult(
+        original,
+        optimized,
+        per_tool,
+        original_tokens,
+        optimized_tokens,
+        saved,
+        (saved / original_tokens) if original_tokens else 0.0,
+        warnings,
+    )
 
 
-def rank_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]) -> Tuple[RankedTool, ...]:
+def rank_tools(
+    query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]
+) -> Tuple[RankedTool, ...]:
     """Rank a catalog with deterministic local TF-IDF; no model/API key is used."""
     catalog = _normalise_catalog(tools)
     if not catalog:
@@ -317,7 +356,9 @@ def rank_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.metrics.pairwise import cosine_similarity
 
-        vectorizer = TfidfVectorizer(lowercase=True, ngram_range=(1, 2), token_pattern=r"(?u)\b[\w.-]+\b")
+        vectorizer = TfidfVectorizer(
+            lowercase=True, ngram_range=(1, 2), token_pattern=r"(?u)\b[\w.-]+\b"
+        )
         matrix = vectorizer.fit_transform([query] + documents)
         scores = cosine_similarity(matrix[0:1], matrix[1:]).ravel().tolist()
     except ImportError as exc:
@@ -325,14 +366,22 @@ def rank_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]
     query_terms = set(_lexical_terms(query))
     order = sorted(range(len(catalog)), key=lambda index: (-scores[index], catalog[index].tool_id))
     return tuple(
-        RankedTool(catalog[index], float(scores[index]), rank + 1,
-                   tuple(sorted(query_terms.intersection(_lexical_terms(documents[index])))))
+        RankedTool(
+            catalog[index],
+            float(scores[index]),
+            rank + 1,
+            tuple(sorted(query_terms.intersection(_lexical_terms(documents[index])))),
+        )
         for rank, index in enumerate(order)
     )
 
 
-def select_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]], top_k: int = 5,
-                 mode: str = "conservative") -> ToolSelection:
+def select_tools(
+    query: str,
+    tools: Sequence[Union[ToolSchema, Mapping[str, Any]]],
+    top_k: int = 5,
+    mode: str = "conservative",
+) -> ToolSelection:
     """Experimentally select tools; conservative mode deliberately fails open."""
     if mode not in {"conservative", "balanced", "aggressive"}:
         raise ToolSchemaError("mode must be conservative, balanced, or aggressive")
@@ -340,7 +389,9 @@ def select_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]
         raise ToolSchemaError("top_k must be at least one")
     catalog = _normalise_catalog(tools)
     ranked = rank_tools(query, catalog)
-    warnings: List[str] = ["EXPERIMENTAL: selection changes only model exposure, never executor contracts"]
+    warnings: List[str] = [
+        "EXPERIMENTAL: selection changes only model exposure, never executor contracts"
+    ]
     if not catalog:
         return ToolSelection((), (), ranked, mode, False, tuple(warnings))
     strongest = ranked[0].score if ranked else 0.0
@@ -367,12 +418,22 @@ def select_tools(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]
         warnings.append("weak ranking signal; widened balanced selection")
     selected = tuple(item.tool for item in ranked[:selected_count])
     selected_ids = {tool.tool_id for tool in selected}
-    return ToolSelection(selected, tuple(tool for tool in catalog if tool.tool_id not in selected_ids), ranked,
-                         mode, False, tuple(warnings))
+    return ToolSelection(
+        selected,
+        tuple(tool for tool in catalog if tool.tool_id not in selected_ids),
+        ranked,
+        mode,
+        False,
+        tuple(warnings),
+    )
 
 
-def plan_tool_context(query: str, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]], top_k: int = 5,
-                      mode: str = "conservative") -> ToolContextPlan:
+def plan_tool_context(
+    query: str,
+    tools: Sequence[Union[ToolSchema, Mapping[str, Any]]],
+    top_k: int = 5,
+    mode: str = "conservative",
+) -> ToolContextPlan:
     """Create an experimental compact-index plus authoritative-full-schema plan."""
     catalog = _normalise_catalog(tools)
     selection = select_tools(query, catalog, top_k=top_k, mode=mode)
@@ -380,9 +441,17 @@ def plan_tool_context(query: str, tools: Sequence[Union[ToolSchema, Mapping[str,
     full = tuple(tool.authoritative_copy() for tool in selection.selected)
     original_tokens = count_tokens(canonical_json([tool.raw for tool in catalog]))
     presented_tokens = count_tokens(canonical_json(list(compact) + list(full)))
-    return ToolContextPlan(len(catalog), tuple(tool.tool_id for tool in selection.selected), full, compact,
-                           original_tokens, presented_tokens, max(0, original_tokens - presented_tokens), mode,
-                           selection.warnings)
+    return ToolContextPlan(
+        len(catalog),
+        tuple(tool.tool_id for tool in selection.selected),
+        full,
+        compact,
+        original_tokens,
+        presented_tokens,
+        max(0, original_tokens - presented_tokens),
+        mode,
+        selection.warnings,
+    )
 
 
 class LazyToolRegistry:
@@ -390,7 +459,10 @@ class LazyToolRegistry:
 
     def __init__(self, tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]) -> None:
         catalog = _normalise_catalog(tools)
-        self._tools = {tool.tool_id: (fingerprint_tool_schema(tool), tool.authoritative_copy()) for tool in catalog}
+        self._tools = {
+            tool.tool_id: (fingerprint_tool_schema(tool), tool.authoritative_copy())
+            for tool in catalog
+        }
 
     def hydrate(self, tool_ids: Iterable[str]) -> Tuple[Dict[str, Any], ...]:
         hydrated = []
@@ -446,8 +518,11 @@ def to_mcp_tool(tool: ToolSchema) -> Dict[str, Any]:
 def to_openai_tool(tool: ToolSchema) -> Dict[str, Any]:
     if tool.provider == Provider.OPENAI:
         return tool.authoritative_copy()
-    result: Dict[str, Any] = {"type": "function", "name": tool.name,
-                              "parameters": copy.deepcopy(tool.input_schema or {})}
+    result: Dict[str, Any] = {
+        "type": "function",
+        "name": tool.name,
+        "parameters": copy.deepcopy(tool.input_schema or {}),
+    }
     if tool.description is not None:
         result["description"] = tool.description
     return result
@@ -456,14 +531,21 @@ def to_openai_tool(tool: ToolSchema) -> Dict[str, Any]:
 def to_anthropic_tool(tool: ToolSchema) -> Dict[str, Any]:
     if tool.provider == Provider.ANTHROPIC:
         return tool.authoritative_copy()
-    result: Dict[str, Any] = {"name": tool.name, "input_schema": copy.deepcopy(tool.input_schema or {})}
+    result: Dict[str, Any] = {
+        "name": tool.name,
+        "input_schema": copy.deepcopy(tool.input_schema or {}),
+    }
     if tool.description is not None:
         result["description"] = tool.description
     return result
 
 
-def _tool_from_raw(raw_value: Mapping[str, Any], provider: Provider, namespace: Optional[str] = None,
-                   tool_id: Optional[str] = None) -> ToolSchema:
+def _tool_from_raw(
+    raw_value: Mapping[str, Any],
+    provider: Provider,
+    namespace: Optional[str] = None,
+    tool_id: Optional[str] = None,
+) -> ToolSchema:
     if not isinstance(raw_value, Mapping):
         raise ToolSchemaError("tool definition must be an object")
     raw = copy.deepcopy(dict(raw_value))
@@ -477,7 +559,11 @@ def _tool_from_raw(raw_value: Mapping[str, Any], provider: Provider, namespace: 
         title = body.get("title")
         description = body.get("description")
     elif provider == Provider.ANTHROPIC:
-        name, input_schema, output_schema = raw.get("name"), raw.get("input_schema"), raw.get("output_schema")
+        name, input_schema, output_schema = (
+            raw.get("name"),
+            raw.get("input_schema"),
+            raw.get("output_schema"),
+        )
         title, description = raw.get("title"), raw.get("description")
     else:
         name = raw.get("name")
@@ -486,11 +572,26 @@ def _tool_from_raw(raw_value: Mapping[str, Any], provider: Provider, namespace: 
         title, description = raw.get("title"), raw.get("description")
     if not isinstance(name, str) or not name:
         raise ToolSchemaError("tool definition requires a non-empty name")
-    effective_namespace = namespace or _optional_string(raw.get("namespace")) or _optional_string(raw.get("server"))
-    stable_id = tool_id or ((effective_namespace + "/") if effective_namespace else provider.value + ":") + name
-    return ToolSchema(stable_id, name, provider, raw, effective_namespace, _optional_string(title),
-                      _optional_string(description), _optional_mapping(input_schema), _optional_mapping(output_schema),
-                      _optional_mapping(raw.get("annotations")), _optional_mapping(raw.get("_meta")))
+    effective_namespace = (
+        namespace or _optional_string(raw.get("namespace")) or _optional_string(raw.get("server"))
+    )
+    stable_id = (
+        tool_id
+        or ((effective_namespace + "/") if effective_namespace else provider.value + ":") + name
+    )
+    return ToolSchema(
+        stable_id,
+        name,
+        provider,
+        raw,
+        effective_namespace,
+        _optional_string(title),
+        _optional_string(description),
+        _optional_mapping(input_schema),
+        _optional_mapping(output_schema),
+        _optional_mapping(raw.get("annotations")),
+        _optional_mapping(raw.get("_meta")),
+    )
 
 
 def _coerce_tool(tool: Union[ToolSchema, Mapping[str, Any]]) -> ToolSchema:
@@ -511,7 +612,9 @@ def _normalise_catalog(tools: Sequence[Union[ToolSchema, Mapping[str, Any]]]) ->
     catalog = [_coerce_tool(tool) for tool in tools]
     ids = [tool.tool_id for tool in catalog]
     if len(ids) != len(set(ids)):
-        raise ToolSchemaError("duplicate tool identities; provide distinct namespace or server values")
+        raise ToolSchemaError(
+            "duplicate tool identities; provide distinct namespace or server values"
+        )
     return catalog
 
 
@@ -523,8 +626,14 @@ def _optional_mapping(value: Any) -> Optional[Dict[str, Any]]:
     return copy.deepcopy(dict(value)) if isinstance(value, Mapping) else None
 
 
-def _inspect_json_value(value: Any, depth: int = 0, nodes: int = 0, refs: Optional[List[str]] = None,
-                        max_depth: int = MAX_SCHEMA_DEPTH, max_nodes: int = MAX_SCHEMA_NODES) -> Tuple[int, int, List[str]]:
+def _inspect_json_value(
+    value: Any,
+    depth: int = 0,
+    nodes: int = 0,
+    refs: Optional[List[str]] = None,
+    max_depth: int = MAX_SCHEMA_DEPTH,
+    max_nodes: int = MAX_SCHEMA_NODES,
+) -> Tuple[int, int, List[str]]:
     refs = [] if refs is None else refs
     if depth > max_depth:
         raise ToolSchemaError("schema exceeds maximum nesting depth")
@@ -548,13 +657,17 @@ def _inspect_json_value(value: Any, depth: int = 0, nodes: int = 0, refs: Option
                 raise ToolSchemaError("JSON object keys must be strings")
             if key == "$ref" and isinstance(item, str) and not item.startswith("#"):
                 refs.append(item)
-            child_depth, nodes, refs = _inspect_json_value(item, depth + 1, nodes, refs, max_depth, max_nodes)
+            child_depth, nodes, refs = _inspect_json_value(
+                item, depth + 1, nodes, refs, max_depth, max_nodes
+            )
             maximum = max(maximum, child_depth)
         return maximum, nodes, refs
     if isinstance(value, list):
         maximum = depth
         for item in value:
-            child_depth, nodes, refs = _inspect_json_value(item, depth + 1, nodes, refs, max_depth, max_nodes)
+            child_depth, nodes, refs = _inspect_json_value(
+                item, depth + 1, nodes, refs, max_depth, max_nodes
+            )
             maximum = max(maximum, child_depth)
         return maximum, nodes, refs
     raise ToolSchemaError("tool definitions must contain JSON values only")
@@ -588,10 +701,16 @@ def _lexical_terms(text: str) -> List[str]:
 
 
 def _is_clear_no_tool_query(query: str) -> bool:
-    return bool(re.match(r"^\s*(explain|define|summarize|what\s+is|how\s+does)\b", query, flags=re.IGNORECASE))
+    return bool(
+        re.match(
+            r"^\s*(explain|define|summarize|what\s+is|how\s+does)\b", query, flags=re.IGNORECASE
+        )
+    )
 
 
-_STOP_TERMS = frozenset({"a", "an", "and", "are", "does", "how", "in", "is", "my", "of", "the", "to", "what"})
+_STOP_TERMS = frozenset(
+    {"a", "an", "and", "are", "does", "how", "in", "is", "my", "of", "the", "to", "what"}
+)
 
 
 def _has_meaningful_overlap(query: str, catalog: Sequence[ToolSchema]) -> bool:
@@ -616,11 +735,37 @@ def _compact_index_entry(tool: ToolSchema) -> Dict[str, Any]:
 
 
 __all__ = [
-    "CatalogOptimizationResult", "CanonicalJsonSerializationOperator", "EquivalenceResult",
-    "EquivalenceStatus", "LazyToolRegistry", "PRODUCTION_OPERATORS", "Provider", "RankedTool",
-    "SafetyLevel", "SchemaInspection", "SchemaOperator", "SchemaOptimizationResult", "ToolContextPlan",
-    "ToolSchema", "ToolSchemaError", "ToolSelection", "canonical_json", "canonicalize_json",
-    "contract_equivalent", "fingerprint_tool_schema", "from_anthropic_tool", "from_generic_tool",
-    "from_mcp_tool", "from_openai_tool", "inspect_schema", "optimize_tool_catalog", "optimize_tool_schema",
-    "plan_tool_context", "rank_tools", "select_tools", "to_anthropic_tool", "to_mcp_tool", "to_openai_tool",
+    "CatalogOptimizationResult",
+    "CanonicalJsonSerializationOperator",
+    "EquivalenceResult",
+    "EquivalenceStatus",
+    "LazyToolRegistry",
+    "PRODUCTION_OPERATORS",
+    "Provider",
+    "RankedTool",
+    "SafetyLevel",
+    "SchemaInspection",
+    "SchemaOperator",
+    "SchemaOptimizationResult",
+    "ToolContextPlan",
+    "ToolSchema",
+    "ToolSchemaError",
+    "ToolSelection",
+    "canonical_json",
+    "canonicalize_json",
+    "contract_equivalent",
+    "fingerprint_tool_schema",
+    "from_anthropic_tool",
+    "from_generic_tool",
+    "from_mcp_tool",
+    "from_openai_tool",
+    "inspect_schema",
+    "optimize_tool_catalog",
+    "optimize_tool_schema",
+    "plan_tool_context",
+    "rank_tools",
+    "select_tools",
+    "to_anthropic_tool",
+    "to_mcp_tool",
+    "to_openai_tool",
 ]

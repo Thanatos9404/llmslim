@@ -45,7 +45,6 @@ def _chat_role_to_context_role(role: Optional[str]) -> ContextRole:
     return _CHAT_ROLE_TO_CONTEXT_ROLE.get(role.lower(), ContextRole.GENERAL)
 
 
-
 def compress_chat_messages(
     messages: Sequence[Dict[str, str]],
     target_ratio: float = 0.5,

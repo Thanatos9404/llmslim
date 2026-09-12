@@ -1,50 +1,12 @@
-"use client";
+"use client"
+import { useState } from "react"
+import { Check, Copy, Terminal } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-import React, { useState } from "react";
-import { Check, Copy, Terminal } from "lucide-react";
-
-export function DocCodeBlock({
-  language = "bash",
-  filename,
-  code,
-}: {
-  language?: string;
-  filename?: string;
-  code: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="reading-code select-text">
-      {/* Code Header Bar */}
-      <div className="reading-code__head">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-3.5 h-3.5" />
-          {filename && <span>{filename}</span>}
-          {!filename && <span>{language}</span>}
-        </div>
-        <button
-          onClick={handleCopy}
-          aria-label="Copy code block snippet"
-          title="Copy code to clipboard"
-          className="reading-code__copy"
-        >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-      </div>
-
-      {/* Code Area */}
-      <div className="reading-code__body">
-        <pre>
-          <code>{code}</code>
-        </pre>
-      </div>
-    </div>
-  );
+export function DocCodeBlock({ language = "bash", filename, code }: { language?: string; filename?: string; code: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+  return <Card className="my-6"><CardHeader className="flex flex-row items-center justify-between"><span className="flex items-center gap-2 text-xs text-muted-foreground"><Terminal className="size-4" />{filename || language}</span><Button variant="ghost" size="icon-sm" onClick={handleCopy} aria-label="Copy code block">{copied ? <Check /> : <Copy />}</Button></CardHeader><CardContent><ScrollArea className="max-h-96 rounded-md border bg-muted/50"><pre className="p-4 text-sm"><code>{code}</code></pre></ScrollArea></CardContent></Card>
 }

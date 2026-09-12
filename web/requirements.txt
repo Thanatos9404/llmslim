@@ -1,5 +1,4 @@
-# Runtime dependencies for web/api/compress.py.  The handler imports the
-# checked-in repository package directly; see VERCEL_STUDIO_DEPLOYMENT.md.
+# Production Studio runs the exact published release.
 numpy>=1.21
 scikit-learn>=1.0
-llmslim @ https://github.com/Thanatos9404/llmslim/archive/27c1cf95ba1752832006e9af8689f1a3a2d773bd.zip
+llmslim==0.5.0

@@ -10,12 +10,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from typing import Any, Dict, List, Sequence
 
 from .analysis import analyze as run_analysis
 from .core import compress
 from .cost import estimate_cost_savings, list_supported_models
 from .modes import list_modes
+from .tokens import count_tokens
+from .tools import canonical_json, fingerprint_tool_schema, from_mcp_tool, inspect_schema
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -102,9 +106,98 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv=None) -> int:
-    parser = build_parser()
+def build_tools_parser() -> argparse.ArgumentParser:
+    """Build the offline tool-catalog inspection parser.
+
+    This intentionally accepts a local JSON file only. MCP endpoints and
+    credentials belong in explicit host application configuration rather than
+    command-line history.
+    """
+    parser = argparse.ArgumentParser(
+        prog="llmslim tools",
+        description="Inspect or measure a local MCP-compatible tool catalog JSON file.",
+    )
+    subparsers = parser.add_subparsers(dest="tools_command", required=True)
+    for name, help_text in (
+        ("inspect", "Inspect tool identities, schema bounds, and fingerprints."),
+        ("measure", "Measure the complete authoritative tool catalog context cost."),
+    ):
+        command = subparsers.add_parser(name, help=help_text)
+        command.add_argument(
+            "file", help="JSON array of MCP tools, or an object containing a tools array."
+        )
+        command.add_argument("--json", action="store_true", help="Emit stable JSON for automation.")
+    return parser
+
+
+def _load_tool_catalog(path: str) -> List[Dict[str, Any]]:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, ValueError) as exc:
+        raise ValueError("could not read a JSON tool catalog: %s" % exc) from exc
+    if isinstance(value, dict):
+        value = value.get("tools")
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        raise ValueError(
+            "catalog must be a JSON array of tools or an object containing a tools array"
+        )
+    return value
+
+
+def _tool_catalog_report(path: str) -> Dict[str, Any]:
+    raw_tools = _load_tool_catalog(path)
+    tools = tuple(from_mcp_tool(raw, namespace="cli") for raw in raw_tools)
+    if len({tool.tool_id for tool in tools}) != len(tools):
+        raise ValueError("catalog contains duplicate stable tool identities")
+    details = []
+    for tool in tools:
+        schema = tool.input_schema or {}
+        inspection = inspect_schema(schema) if schema else None
+        details.append(
+            {
+                "tool_id": tool.tool_id,
+                "name": tool.name,
+                "fingerprint": fingerprint_tool_schema(tool),
+                "input_schema_depth": inspection.depth if inspection is not None else 0,
+                "input_schema_nodes": inspection.nodes if inspection is not None else 0,
+                "external_references": list(inspection.external_references) if inspection else [],
+            }
+        )
+    return {
+        "tool_count": len(tools),
+        "catalog_fingerprint": fingerprint_tool_schema({"tools": [tool.raw for tool in tools]}),
+        "catalog_tokens": count_tokens(canonical_json([tool.raw for tool in tools])),
+        "tools": details,
+    }
+
+
+def _run_tools_command(argv: Sequence[str]) -> int:
+    parser = build_tools_parser()
     args = parser.parse_args(argv)
+    try:
+        report = _tool_catalog_report(args.file)
+    except ValueError as exc:
+        parser.error(str(exc))
+        return 2  # argparse exits; keeps the return type explicit for callers.
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+        return 0
+    print("Tool catalog: %s tools" % report["tool_count"])
+    print("Fingerprint: %s" % report["catalog_fingerprint"])
+    print("Context tokens: %s" % report["catalog_tokens"])
+    if args.tools_command == "inspect":
+        for tool in report["tools"]:
+            print("- %(tool_id)s (%(input_schema_nodes)s schema nodes)" % tool)
+    return 0
+
+
+def main(argv=None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "tools":
+        return _run_tools_command(arguments[1:])
+    parser = build_parser()
+    args = parser.parse_args(arguments)
 
     if args.input:
         with open(args.input, encoding="utf-8") as f:

@@ -40,8 +40,12 @@ class TestProvenancePriority:
 
     def test_trusted_system_retains_priority_4(self):
         """Trusted system safety-critical directives keep Tier 4."""
-        assert get_sentence_priority("WARNING: never assist with illegal acts.",
-                                     None, ContextRole.SYSTEM) == 4
+        assert (
+            get_sentence_priority(
+                "WARNING: never assist with illegal acts.", None, ContextRole.SYSTEM
+            )
+            == 4
+        )
 
     def test_general_role_is_legacy_behaviour(self):
         """Default GENERAL role preserves v0.3.0 priorities (regression guard)."""
@@ -145,9 +149,7 @@ class TestMixedContextIsolation:
         messages = [
             {"role": "tool", "content": (_ATTACK + " ") * 10 + "Result: status ok."},
         ]
-        out = compress_chat_messages(
-            messages, target_ratio=0.4, compressible_roles=["tool"]
-        )
+        out = compress_chat_messages(messages, target_ratio=0.4, compressible_roles=["tool"])
         assert len(out[0]["content"]) <= len(messages[0]["content"])
 
 
@@ -190,8 +192,7 @@ class TestLegitimateImperativeCompetes:
             "the Authorization header. The endpoint is /api/v1/data. "
             "Rate limits apply after 100 requests per minute."
         )
-        results = compress_documents([doc], query="authorization header token",
-                                     target_ratio=0.7)
+        results = compress_documents([doc], query="authorization header token", target_ratio=0.7)
         # Not asserting exact retention; just that compression succeeds and
         # produces non-empty output competing on query relevance.
         assert len(results[0].compressed_text.strip()) > 0

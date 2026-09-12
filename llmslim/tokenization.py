@@ -99,9 +99,7 @@ def _protect_code_blocks(text: str) -> Tuple[str, List[str], List[str]]:
     return protected, blocks, inline
 
 
-def _restore_code_blocks(
-    sentences: List[str], blocks: List[str], inline: List[str]
-) -> List[str]:
+def _restore_code_blocks(sentences: List[str], blocks: List[str], inline: List[str]) -> List[str]:
     """Restore fenced-block and inline-span placeholders to their originals."""
     restored = []
     for sentence in sentences:

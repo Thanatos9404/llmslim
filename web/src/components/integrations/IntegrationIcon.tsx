@@ -16,6 +16,8 @@ import { Cpu, Server, Code, Layers } from "lucide-react";
 
 export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: string; className?: string }) {
   switch (iconKey) {
+    case "sarvam":
+      return <span role="img" aria-label="Sarvam" className={className} style={{ display: "inline-block", background: "currentColor", mask: "url('/sarvam-symbol.svg') center / contain no-repeat" }} />;
     case "openai":
       return <OpenAI className={className} size={32} />;
     case "anthropic":

@@ -30,6 +30,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip build wheel twine
 
+      - name: Verify release tag matches package metadata
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, re, tomllib
+          version = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]
+          source = pathlib.Path("llmslim/__init__.py").read_text()
+          assert os.environ["RELEASE_TAG"] == "v" + version
+          assert re.search(r'__version__ = "' + re.escape(version) + r'"', source)
+          PY
+
       - name: Build Source Distribution and Wheel
         run: python -m build
 

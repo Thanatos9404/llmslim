@@ -1,6 +1,6 @@
-import { Footer } from "@/components/landing/Footer";
-import { Navbar } from "@/components/landing/Navbar";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
 
 export default function PlaygroundLayout({ children }: { children: React.ReactNode }) {
-  return <div className="site-shell"><Navbar />{children}<Footer /></div>;
+  return <div className="flex min-h-screen flex-col"><SiteHeader />{children}<SiteFooter /></div>;
 }

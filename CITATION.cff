@@ -17,9 +17,5 @@ keywords:
   - sentence centrality
   - nlp
 license: MIT
-version: 0.3.0
-date-released: 2026-07-18
-identifiers:
-  - type: doi
-    value: "10.5281/zenodo.0000000"
-    description: "Zenodo DOI archive placeholder"
+version: 0.5.0
+date-released: 2026-09-13

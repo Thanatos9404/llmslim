@@ -81,7 +81,11 @@ def retrieval_document(tool: ToolSchema) -> Tuple[str, ...]:
         tokens.extend(normalize_text(value)[:limit])
     # Descriptions are useful but capped so an unusually long description cannot
     # dominate the index.  _meta and annotations are always excluded.
-    tokens.extend(normalize_text((tool.description or "")[:_MAX_RETRIEVAL_FIELD_CHARS])[:_MAX_DESCRIPTION_TOKENS])
+    tokens.extend(
+        normalize_text((tool.description or "")[:_MAX_RETRIEVAL_FIELD_CHARS])[
+            :_MAX_DESCRIPTION_TOKENS
+        ]
+    )
     tokens.extend(list(_schema_terms(tool.input_schema or {}))[:_MAX_SCHEMA_TOKENS])
     return tuple(tokens)
 

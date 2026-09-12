@@ -31,9 +31,7 @@ class TestExtractInstructions:
         assert "never" in insts
 
     def test_extracts_multiple(self):
-        insts = _extract_instructions(
-            "You must always ensure quality. Never skip validation."
-        )
+        insts = _extract_instructions("You must always ensure quality. Never skip validation.")
         assert len(insts) >= 3  # must, always, ensure, never
 
     def test_empty_text(self):
@@ -121,9 +119,7 @@ class TestInstructionValidator:
 
     def test_no_instructions_always_passes(self):
         v = InstructionValidator(min_retention=0.8)
-        passed, retention, failures = v.validate(
-            "The sky is blue.", "Sky is blue."
-        )
+        passed, retention, failures = v.validate("The sky is blue.", "Sky is blue.")
         assert passed is True
         assert retention == 1.0
 

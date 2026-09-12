@@ -1,0 +1,48 @@
+{
+  "cache": {
+    "note": "Transport cache hit-rate and network latency are measured by MCP transport E2E tests, not this static benchmark.",
+    "status": "NOT_APPLICABLE_STATIC_SOURCE"
+  },
+  "catalog": {
+    "catalog_fingerprint": "e002956a5deae890ad4bf52687819e4bb06a89d78938f2098dba04f15496b73a",
+    "catalog_tokens": 664,
+    "source_mode": "static_repository_owned_fixture",
+    "tool_count": 10
+  },
+  "classification": "MEASURED_OFFLINE_INTEGRATION",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "token_counter": "llmslim.tokens.count_tokens"
+  },
+  "llmslim_version": "0.4.0",
+  "plans": {
+    "full": {
+      "exposure": "FULL_AUTHORITATIVE_CATALOG",
+      "planning_latency_ms": {
+        "median": 1.3898500037612393,
+        "p95": 2.18390001100488
+      },
+      "presented_tokens": 664,
+      "tokens_avoided": 0
+    },
+    "selective": {
+      "exposure": "EXPERIMENTAL_OPT_IN_RESEARCH_ONLY",
+      "planning_latency_ms": {
+        "median": 2.7676000026986003,
+        "p95": 3.364399977726862
+      },
+      "presented_tokens": 338.4166666666667,
+      "tokens_avoided": 325.5833333333333
+    }
+  },
+  "tasks": {
+    "count": 60,
+    "full_required_tool_availability": 1.0,
+    "host_tool_call_correctness": "NOT_MEASURED_IN_BENCHMARK",
+    "kind": "deterministic integration availability; not live-model task success",
+    "live_model_status": "NOT_RUN",
+    "selective_required_tool_availability": 1.0
+  },
+  "timestamp": "2026-08-20T19:47:20+00:00"
+}

@@ -12,7 +12,7 @@ export const siteConfig = {
   creator: "Yashvardhan Thanvi",
   publisher: "LLMSlim Core Team",
   category: "Developer Tools & AI Infrastructure",
-  version: "0.4.0",
+  version: "0.5.0",
   github: "https://github.com/Thanatos9404/llmslim",
   linkedin: "https://www.linkedin.com/in/yashvardhan-thanvi-2a3a661a8/",
   pypi: "https://pypi.org/project/llmslim/",

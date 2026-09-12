@@ -1,22 +1,10 @@
 # Live Studio deployment requirements
 
-`/api/compress` is a Vercel Python Function in `web/api/compress.py`. It
-imports `llmslim` from this repository; it does not install or call another
-LLMSlim service.
-
-The current site is a monorepo project with `web` as its Next.js root while
-the Python package is a sibling directory. Before deploying this change, set
-**Vercel Project Settings → Build and Deployment → Root Directory → Include
-source files outside of the Root Directory in the Build Step** to enabled.
-That setting, together with the explicit `includeFiles` rule in
-`web/vercel.json`, makes the checked-in `../llmslim` package available to the
-Python Function bundle. Without it, the endpoint fails closed with a sanitized
-500 rather than silently using a different package.
-
-> **Current production bundle:** The sibling-source guidance above applies to
-> local development. Vercel installs the exact repository revision pinned in
-> `requirements.txt` for the deployed Python function, so it runs the real
-> LLMSlim library without maintaining a duplicated implementation.
+`/api/compress` is a Vercel Python Function in `web/api/compress.py`.
+Production installs `llmslim==0.5.0` from PyPI via `web/requirements.txt`.
+Publish and verify that package before deploying the website. Local development
+can import the sibling repository package; no duplicated compression implementation
+is maintained in the web project.
 
 The function is deliberately same-origin and adds no CORS wildcard. It accepts
 only public, offline extractive compression; rewrite and hybrid require a
@@ -36,8 +24,8 @@ where Vercel serves the Python Function directly on the same origin.
 ## Public-compute safeguards
 
 - 80 KB JSON body cap; 48,000 character and 12,000 actual-token input caps.
-- Validated `target_ratio` (0.10–0.90), `ContextRole`, extractive-only
-  strategy, and optional `max_chunk_tokens` (32–4,000).
+- Validated `target_ratio` (0.10â€“0.90), `ContextRole`, extractive-only
+  strategy, and optional `max_chunk_tokens` (32â€“4,000).
 - Vercel's default ten-second function limit and an eight-second browser request timeout.
 - No provider credentials, arbitrary code, imports, filesystem paths, regexes,
   or hidden request parameters are accepted.

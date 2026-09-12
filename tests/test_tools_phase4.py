@@ -88,28 +88,36 @@ def test_exact_contract_equivalence_refuses_description_and_constraint_changes()
     before = from_mcp_tool(_mcp_tool())
     description_changed = before.authoritative_copy()
     description_changed["description"] = "Different selection guidance."
-    assert contract_equivalent(before, from_mcp_tool(description_changed)).status == EquivalenceStatus.FAILED
+    assert (
+        contract_equivalent(before, from_mcp_tool(description_changed)).status
+        == EquivalenceStatus.FAILED
+    )
     constraint_changed = before.authoritative_copy()
     constraint_changed["inputSchema"]["properties"]["query"]["maxLength"] = 5
-    assert contract_equivalent(before, from_mcp_tool(constraint_changed)).status == EquivalenceStatus.FAILED
+    assert (
+        contract_equivalent(before, from_mcp_tool(constraint_changed)).status
+        == EquivalenceStatus.FAILED
+    )
 
 
 def test_complex_202012_schema_is_inspected_without_loss():
     tool = _mcp_tool()
-    tool["inputSchema"].update({
-        "$defs": {"identifier": {"type": "string", "pattern": "^[a-z]+$"}},
-        "prefixItems": [{"$ref": "#/$defs/identifier"}],
-        "items": False,
-        "contains": {"type": "string"},
-        "unevaluatedProperties": False,
-        "dependentRequired": {"query": ["query"]},
-        "oneOf": [{"properties": {"query": {"minLength": 1}}}],
-        "anyOf": [{"properties": {"query": {"format": "email"}}}],
-        "allOf": [{"not": {"properties": {"query": {"const": "forbidden"}}}}],
-        "if": {"properties": {"query": {"type": "string"}}},
-        "then": {"required": ["query"]},
-        "else": {"propertyNames": {"pattern": "^[a-z_]+$"}},
-    })
+    tool["inputSchema"].update(
+        {
+            "$defs": {"identifier": {"type": "string", "pattern": "^[a-z]+$"}},
+            "prefixItems": [{"$ref": "#/$defs/identifier"}],
+            "items": False,
+            "contains": {"type": "string"},
+            "unevaluatedProperties": False,
+            "dependentRequired": {"query": ["query"]},
+            "oneOf": [{"properties": {"query": {"minLength": 1}}}],
+            "anyOf": [{"properties": {"query": {"format": "email"}}}],
+            "allOf": [{"not": {"properties": {"query": {"const": "forbidden"}}}}],
+            "if": {"properties": {"query": {"type": "string"}}},
+            "then": {"required": ["query"]},
+            "else": {"propertyNames": {"pattern": "^[a-z_]+$"}},
+        }
+    )
     inspected = inspect_schema(tool["inputSchema"])
     optimized = optimize_tool_schema(from_mcp_tool(tool))
     assert inspected.depth > 1
@@ -131,7 +139,10 @@ def test_lossless_optimization_preserves_validation_outcomes():
 
 
 def test_external_ref_is_never_dereferenced():
-    schema = {"type": "object", "properties": {"remote": {"$ref": "https://example.invalid/schema"}}}
+    schema = {
+        "type": "object",
+        "properties": {"remote": {"$ref": "https://example.invalid/schema"}},
+    }
     inspection = inspect_schema(schema)
     assert inspection.external_references == ("https://example.invalid/schema",)
     assert "never dereferenced" in " ".join(inspection.warnings)
@@ -153,10 +164,22 @@ def test_schema_limits_and_bad_json_values_fail_closed():
 def test_adapters_preserve_same_provider_shapes_and_translate_core_fields():
     mcp = from_mcp_tool(_mcp_tool())
     assert to_mcp_tool(mcp) == _mcp_tool()
-    openai_raw = {"type": "function", "function": {"name": "weather", "description": "Get weather", "parameters": {"type": "object"}}}
+    openai_raw = {
+        "type": "function",
+        "function": {
+            "name": "weather",
+            "description": "Get weather",
+            "parameters": {"type": "object"},
+        },
+    }
     openai = from_openai_tool(openai_raw)
     assert to_openai_tool(openai) == openai_raw
-    anthropic_raw = {"name": "weather", "description": "Get weather", "input_schema": {"type": "object"}, "x-vendor": 1}
+    anthropic_raw = {
+        "name": "weather",
+        "description": "Get weather",
+        "input_schema": {"type": "object"},
+        "x-vendor": 1,
+    }
     anthropic = from_anthropic_tool(anthropic_raw)
     assert to_anthropic_tool(anthropic) == anthropic_raw
     assert to_openai_tool(mcp)["parameters"] == mcp.input_schema
@@ -172,7 +195,9 @@ def test_catalog_optimizer_is_idempotent_and_keeps_duplicate_names_namespaced():
     assert result.optimized == repeated.optimized
     assert all(item.equivalence.status == EquivalenceStatus.EXACT for item in result.per_tool)
     with pytest.raises(ToolSchemaError):
-        optimize_tool_catalog([{"name": "search", "inputSchema": {}}, {"name": "search", "inputSchema": {}}])
+        optimize_tool_catalog(
+            [{"name": "search", "inputSchema": {}}, {"name": "search", "inputSchema": {}}]
+        )
 
 
 def test_ranking_selection_and_no_tool_detection_are_explicit_and_deterministic():
@@ -181,12 +206,24 @@ def test_ranking_selection_and_no_tool_detection_are_explicit_and_deterministic(
     ranked = rank_tools("find my next calendar meeting", [github, calendar])
     assert ranked[0].tool.tool_id == "calendar/calendar.search_events"
     selection = select_tools("find my next calendar meeting", [github, calendar], top_k=1)
-    assert {tool.tool_id for tool in selection.selected} == {calendar.tool_id, github.tool_id}  # tiny catalogs fail open
+    assert {tool.tool_id for tool in selection.selected} == {
+        calendar.tool_id,
+        github.tool_id,
+    }  # tiny catalogs fail open
     no_tool = select_tools("Explain what a JSON Schema is", [github, calendar], top_k=1)
     assert no_tool.no_tool_detected is True
     assert no_tool.selected == ()
-    weather_tool = from_mcp_tool({"name": "weather.get_forecast", "description": "Get weather forecast.", "inputSchema": {}, "server": "weather"})
-    weather = select_tools("What is the weather forecast tomorrow?", [github, calendar, weather_tool], top_k=1)
+    weather_tool = from_mcp_tool(
+        {
+            "name": "weather.get_forecast",
+            "description": "Get weather forecast.",
+            "inputSchema": {},
+            "server": "weather",
+        }
+    )
+    weather = select_tools(
+        "What is the weather forecast tomorrow?", [github, calendar, weather_tool], top_k=1
+    )
     assert weather.no_tool_detected is False
 
 

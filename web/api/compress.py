@@ -34,7 +34,11 @@ def _add_repository_package_to_path() -> None:
     except (ImportError, ValueError):
         pass
 
-    candidates = (Path.cwd(), Path(__file__).resolve().parents[1], Path(__file__).resolve().parents[2])
+    candidates = (
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path(__file__).resolve().parents[2],
+    )
     for candidate in candidates:
         if (candidate / "llmslim" / "__init__.py").is_file():
             package_root = str(candidate)
@@ -48,7 +52,6 @@ _add_repository_package_to_path()
 
 from llmslim import ContextRole, compress  # noqa: E402  (path is established above)
 from llmslim.tokens import count_tokens  # noqa: E402
-
 
 MAX_BODY_BYTES = 80_000
 MAX_INPUT_CHARS = 48_000
@@ -88,16 +91,22 @@ def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]
     try:
         payload = json.loads(raw_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise _problem(HTTPStatus.BAD_REQUEST, "invalid_json", "Request body must be valid UTF-8 JSON.") from error
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "invalid_json", "Request body must be valid UTF-8 JSON."
+        ) from error
     if not isinstance(payload, dict):
-        raise _problem(HTTPStatus.BAD_REQUEST, "object_required", "Request body must be a JSON object.")
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "object_required", "Request body must be a JSON object."
+        )
     return payload
 
 
 def _required_string(payload: Mapping[str, Any], name: str) -> str:
     value = payload.get(name)
     if not isinstance(value, str):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be a string.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be a string."
+        )
     return value
 
 
@@ -106,14 +115,22 @@ def _optional_integer(payload: Mapping[str, Any], name: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be an integer or null.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY,
+            f"invalid_{name}",
+            f"{name} must be an integer or null.",
+        )
     return value
 
 
 def _target_ratio(payload: Mapping[str, Any]) -> float:
     value = payload.get("target_ratio")
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_target_ratio", "target_ratio must be a number.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY,
+            "invalid_target_ratio",
+            "target_ratio must be a number.",
+        )
     ratio = float(value)
     if not MIN_TARGET_RATIO <= ratio <= MAX_TARGET_RATIO:
         raise _problem(
@@ -130,17 +147,27 @@ def execute_compression(payload: Mapping[str, Any]) -> dict[str, Any]:
     allowed_fields = {"text", "strategy", "target_ratio", "context_role", "max_chunk_tokens"}
     unexpected_fields = set(payload).difference(allowed_fields)
     if unexpected_fields:
-        raise _problem(HTTPStatus.BAD_REQUEST, "unsupported_field", "Request includes an unsupported field.")
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "unsupported_field", "Request includes an unsupported field."
+        )
 
     text = _required_string(payload, "text")
     if not text.strip():
         raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "empty_text", "text must not be empty.")
     if len(text) > MAX_INPUT_CHARS:
-        raise _problem(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "input_too_large", "text exceeds the Studio character limit.")
+        raise _problem(
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            "input_too_large",
+            "text exceeds the Studio character limit.",
+        )
 
     input_tokens = count_tokens(text)
     if input_tokens > MAX_INPUT_TOKENS:
-        raise _problem(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "input_too_large", "text exceeds the Studio token limit.")
+        raise _problem(
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            "input_too_large",
+            "text exceeds the Studio token limit.",
+        )
 
     strategy = _required_string(payload, "strategy")
     if strategy not in ALLOWED_STRATEGIES:
@@ -152,11 +179,18 @@ def execute_compression(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     context_role = _required_string(payload, "context_role")
     if context_role not in ALLOWED_CONTEXT_ROLES:
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_context_role", "context_role is not supported.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY,
+            "invalid_context_role",
+            "context_role is not supported.",
+        )
 
     target_ratio = _target_ratio(payload)
     max_chunk_tokens = _optional_integer(payload, "max_chunk_tokens")
-    if max_chunk_tokens is not None and not MIN_MAX_CHUNK_TOKENS <= max_chunk_tokens <= MAX_MAX_CHUNK_TOKENS:
+    if (
+        max_chunk_tokens is not None
+        and not MIN_MAX_CHUNK_TOKENS <= max_chunk_tokens <= MAX_MAX_CHUNK_TOKENS
+    ):
         raise _problem(
             HTTPStatus.UNPROCESSABLE_ENTITY,
             "invalid_max_chunk_tokens",
@@ -245,28 +279,73 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         if not allow_request(self._client_key()):
-            self._respond(HTTPStatus.TOO_MANY_REQUESTS, {"error": {"code": "rate_limited", "message": "Please wait before running Studio again."}})
+            self._respond(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                {
+                    "error": {
+                        "code": "rate_limited",
+                        "message": "Please wait before running Studio again.",
+                    }
+                },
+            )
             return
 
         try:
             content_length = int(self.headers.get("content-length", ""))
         except ValueError:
-            self._respond(HTTPStatus.BAD_REQUEST, {"error": {"code": "invalid_content_length", "message": "Content-Length must be valid."}})
+            self._respond(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": {
+                        "code": "invalid_content_length",
+                        "message": "Content-Length must be valid.",
+                    }
+                },
+            )
             return
         if content_length < 0:
-            self._respond(HTTPStatus.BAD_REQUEST, {"error": {"code": "invalid_content_length", "message": "Content-Length must be valid."}})
+            self._respond(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": {
+                        "code": "invalid_content_length",
+                        "message": "Content-Length must be valid.",
+                    }
+                },
+            )
             return
         if content_length > MAX_BODY_BYTES:
-            self._respond(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": {"code": "body_too_large", "message": "Request body exceeds the Studio limit."}})
+            self._respond(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {
+                    "error": {
+                        "code": "body_too_large",
+                        "message": "Request body exceeds the Studio limit.",
+                    }
+                },
+            )
             return
 
         try:
-            payload = parse_json_body(self.rfile.read(content_length), self.headers.get("content-type"))
+            payload = parse_json_body(
+                self.rfile.read(content_length), self.headers.get("content-type")
+            )
             self._respond(HTTPStatus.OK, {"data": execute_compression(payload)})
         except RequestProblem as error:
             self._respond(error.status, {"error": {"code": error.code, "message": error.message}})
         except Exception:
-            self._respond(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "compression_failed", "message": "Live compression could not be completed. Please retry."}})
+            self._respond(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "compression_failed",
+                        "message": "Live compression could not be completed. Please retry.",
+                    }
+                },
+            )
 
     def do_GET(self) -> None:  # noqa: N802
-        self._respond(HTTPStatus.METHOD_NOT_ALLOWED, {"error": {"code": "method_not_allowed", "message": "Use POST for live compression."}})
+        self._respond(
+            HTTPStatus.METHOD_NOT_ALLOWED,
+            {"error": {"code": "method_not_allowed", "message": "Use POST for live compression."}},
+        )

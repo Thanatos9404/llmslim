@@ -549,7 +549,6 @@ class TestSelectionInvariants:
 # =====================================================================
 
 
-
 class TestInstructionDetection:
     """Verify expanded instruction pattern coverage."""
 

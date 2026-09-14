@@ -1,12 +1,12 @@
 {
-  "version": "v1.1.0",
+  "version": "v1.0.0",
   "entity": {
     "type": "individual",
     "role": "maintainer",
     "name": "Yashvardhan Thanvi",
     "email": "founder@llmslim.app",
     "phone": "+91 7357674970",
-    "description": "I am the creator and primary maintainer of LLMSlim, an open-source Python project focused on making LLM and agentic AI workloads more context-efficient. I currently lead the project's architecture, implementation, benchmarking, releases, documentation, integrations, and community development. My goal is to build LLMSlim as a reliable, vendor-neutral piece of open-source AI infrastructure that developers can inspect, benchmark, extend, and deploy without being locked into a proprietary model or platform.",
+    "description": "I am the creator and primary maintainer of LLMSlim, an open-source Python project focused on improving context efficiency for LLM and agentic AI systems. I currently lead its architecture, implementation, benchmarking, releases, documentation and integrations. My goal is to build LLMSlim as reliable, vendor-neutral open infrastructure that developers can inspect, benchmark, extend and deploy without being locked into a proprietary model or platform.",
     "webpageUrl": {
       "url": "https://github.com/Thanatos9404"
     }
@@ -15,7 +15,7 @@
     {
       "guid": "llmslim",
       "name": "LLMSlim",
-      "description": "LLMSlim is an open-source Python infrastructure library for optimizing the context supplied to Large Language Models and AI agents. It provides local and deterministic context compression, instruction and entity preservation, semantic optimization, document and conversation compression, and contract-safe tooling for agent and MCP workflows. The project addresses the growing cost, latency, and context-management overhead of production LLM systems while keeping the optimization layer transparent, auditable, and provider-independent. LLMSlim is MIT licensed and designed so developers can integrate it into existing RAG, agent, model-gateway, and AI application stacks without replacing their existing model provider.",
+      "description": "LLMSlim is an open-source Python infrastructure library for optimizing context supplied to large language models and AI agents. It reduces unnecessary context while protecting critical instructions, entities, structured content and execution contracts. LLMSlim supports local deterministic compression, semantic optimization, RAG and document workflows, and tool-heavy agent and MCP use cases. It is designed to remain model- and provider-independent so developers can add context optimization to existing AI stacks without replacing their current infrastructure.",
       "webpageUrl": {
         "url": "https://www.llmslim.app"
       },
@@ -26,16 +26,16 @@
         "spdx:MIT"
       ],
       "tags": [
+        "llm",
         "artificial-intelligence",
         "developer-tools",
-        "llm",
         "ai-infrastructure",
         "python",
         "rag",
         "agents",
         "mcp",
-        "open-source",
-        "context-optimization"
+        "context-optimization",
+        "open-source"
       ]
     }
   ],
@@ -44,16 +44,15 @@
       {
         "guid": "bank-transfer",
         "type": "bank",
-        "address": "",
-        "description": "Direct bank transfer. Banking details can be shared privately with the funding organisation upon approval."
+        "description": "Direct bank transfer. Banking details will be shared privately upon approval."
       }
     ],
     "plans": [
       {
         "guid": "llmslim-maintainer-grant-2026",
         "status": "active",
-        "name": "LLMSlim Open Source Development Grant 2026-27",
-        "description": "Seeking INR 3,00,000 as a one-time grant to support 12 months of open-source LLMSlim development. Funds will primarily support maintainer time, reproducible benchmarking, multilingual and agentic workload testing, documentation, security, release engineering, and contributor growth. Milestones include stronger RAG/MCP/agent reliability, public evaluation datasets and methods, better onboarding, and regular open development updates.",
+        "name": "LLMSlim Open Source Development Grant",
+        "description": "Seeking INR 3,00,000 to support 12 months of open-source LLMSlim development. Funding will support maintainer time, reproducible benchmarks, multilingual and agentic workload testing, documentation, security and contributor growth. Milestones include stronger RAG/MCP/agent reliability, public evaluation methods and datasets, improved developer onboarding, and regular open development updates.",
         "amount": 300000,
         "currency": "INR",
         "frequency": "one-time",
@@ -62,6 +61,6 @@
         ]
       }
     ],
-    "history": null
+    "history": []
   }
 }

@@ -1,11 +1,11 @@
 {
-  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
   "version": "v1.1.0",
   "entity": {
     "type": "individual",
     "role": "maintainer",
     "name": "Yashvardhan Thanvi",
     "email": "founder@llmslim.app",
+    "phone": "+91 7357674970",
     "description": "I am the creator and primary maintainer of LLMSlim, an open-source Python project focused on making LLM and agentic AI workloads more context-efficient. I currently lead the project's architecture, implementation, benchmarking, releases, documentation, integrations, and community development. My goal is to build LLMSlim as a reliable, vendor-neutral piece of open-source AI infrastructure that developers can inspect, benchmark, extend, and deploy without being locked into a proprietary model or platform.",
     "webpageUrl": {
       "url": "https://github.com/Thanatos9404"
@@ -44,6 +44,7 @@
       {
         "guid": "bank-transfer",
         "type": "bank",
+        "address": "",
         "description": "Direct bank transfer. Banking details can be shared privately with the funding organisation upon approval."
       }
     ],
@@ -52,7 +53,7 @@
         "guid": "llmslim-maintainer-grant-2026",
         "status": "active",
         "name": "LLMSlim Open Source Development Grant 2026-27",
-        "description": "We are seeking INR 3,00,000 as a one-time grant to support approximately 12 months of focused open-source development of LLMSlim. The primary use of the grant will be maintainer development time, followed by reproducible benchmarking and evaluation infrastructure, testing across multilingual and agentic workloads, documentation, security and release engineering, and contributor/community development.\n\nPlanned milestones:\n\n1. Establish a reproducible public evaluation framework for context compression, instruction preservation, semantic retention, latency, and tool-schema safety, with datasets, scripts, methodology, and limitations published openly.\n\n2. Improve LLMSlim's production reliability across RAG, conversation, document, MCP, and agent workloads, with expanded regression testing, security boundaries, deterministic behaviour tests, and documented failure modes.\n\n3. Expand multilingual evaluation, with particular attention to Indian-language and mixed-language AI workloads, and publish transparent results rather than treating English benchmarks as representative of every language.\n\n4. Improve developer integrations, documentation, examples, and onboarding so that developers can integrate LLMSlim into existing AI applications without depending on proprietary infrastructure.\n\n5. Grow the project beyond a single-maintainer codebase by improving contributor documentation, issue structure, development guides, public roadmap updates, and beginner-accessible contribution opportunities.\n\n6. Publish regular development and benchmark updates and participate in the Indian FOSS community through technical write-ups, talks, community sessions, or project updates during the grant period.\n\nThe long-term goal is to establish LLMSlim as sustainable open infrastructure for context-efficient AI systems while keeping the core project freely available under an OSI-approved licence. Any future commercial or hosted offerings will be built around the open-source core rather than replacing it.",
+        "description": "Seeking INR 3,00,000 as a one-time grant to support 12 months of open-source LLMSlim development. Funds will primarily support maintainer time, reproducible benchmarking, multilingual and agentic workload testing, documentation, security, release engineering, and contributor growth. Milestones include stronger RAG/MCP/agent reliability, public evaluation datasets and methods, better onboarding, and regular open development updates.",
         "amount": 300000,
         "currency": "INR",
         "frequency": "one-time",
@@ -60,6 +61,7 @@
           "bank-transfer"
         ]
       }
-    ]
+    ],
+    "history": null
   }
 }

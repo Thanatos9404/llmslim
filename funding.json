@@ -1,0 +1,65 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "individual",
+    "role": "maintainer",
+    "name": "Yashvardhan Thanvi",
+    "email": "founder@llmslim.app",
+    "description": "I am the creator and primary maintainer of LLMSlim, an open-source Python project focused on making LLM and agentic AI workloads more context-efficient. I currently lead the project's architecture, implementation, benchmarking, releases, documentation, integrations, and community development. My goal is to build LLMSlim as a reliable, vendor-neutral piece of open-source AI infrastructure that developers can inspect, benchmark, extend, and deploy without being locked into a proprietary model or platform.",
+    "webpageUrl": {
+      "url": "https://github.com/Thanatos9404"
+    }
+  },
+  "projects": [
+    {
+      "guid": "llmslim",
+      "name": "LLMSlim",
+      "description": "LLMSlim is an open-source Python infrastructure library for optimizing the context supplied to Large Language Models and AI agents. It provides local and deterministic context compression, instruction and entity preservation, semantic optimization, document and conversation compression, and contract-safe tooling for agent and MCP workflows. The project addresses the growing cost, latency, and context-management overhead of production LLM systems while keeping the optimization layer transparent, auditable, and provider-independent. LLMSlim is MIT licensed and designed so developers can integrate it into existing RAG, agent, model-gateway, and AI application stacks without replacing their existing model provider.",
+      "webpageUrl": {
+        "url": "https://www.llmslim.app"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/Thanatos9404/llmslim"
+      },
+      "licenses": [
+        "spdx:MIT"
+      ],
+      "tags": [
+        "artificial-intelligence",
+        "developer-tools",
+        "llm",
+        "ai-infrastructure",
+        "python",
+        "rag",
+        "agents",
+        "mcp",
+        "open-source",
+        "context-optimization"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "bank-transfer",
+        "type": "bank",
+        "description": "Direct bank transfer. Banking details can be shared privately with the funding organisation upon approval."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "llmslim-maintainer-grant-2026",
+        "status": "active",
+        "name": "LLMSlim Open Source Development Grant 2026-27",
+        "description": "We are seeking INR 3,00,000 as a one-time grant to support approximately 12 months of focused open-source development of LLMSlim. The primary use of the grant will be maintainer development time, followed by reproducible benchmarking and evaluation infrastructure, testing across multilingual and agentic workloads, documentation, security and release engineering, and contributor/community development.\n\nPlanned milestones:\n\n1. Establish a reproducible public evaluation framework for context compression, instruction preservation, semantic retention, latency, and tool-schema safety, with datasets, scripts, methodology, and limitations published openly.\n\n2. Improve LLMSlim's production reliability across RAG, conversation, document, MCP, and agent workloads, with expanded regression testing, security boundaries, deterministic behaviour tests, and documented failure modes.\n\n3. Expand multilingual evaluation, with particular attention to Indian-language and mixed-language AI workloads, and publish transparent results rather than treating English benchmarks as representative of every language.\n\n4. Improve developer integrations, documentation, examples, and onboarding so that developers can integrate LLMSlim into existing AI applications without depending on proprietary infrastructure.\n\n5. Grow the project beyond a single-maintainer codebase by improving contributor documentation, issue structure, development guides, public roadmap updates, and beginner-accessible contribution opportunities.\n\n6. Publish regular development and benchmark updates and participate in the Indian FOSS community through technical write-ups, talks, community sessions, or project updates during the grant period.\n\nThe long-term goal is to establish LLMSlim as sustainable open infrastructure for context-efficient AI systems while keeping the core project freely available under an OSI-approved licence. Any future commercial or hosted offerings will be built around the open-source core rather than replacing it.",
+        "amount": 300000,
+        "currency": "INR",
+        "frequency": "one-time",
+        "channels": [
+          "bank-transfer"
+        ]
+      }
+    ]
+  }
+}

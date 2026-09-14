@@ -5,7 +5,7 @@
     "role": "maintainer",
     "name": "Yashvardhan Thanvi",
     "email": "founder@llmslim.app",
-    "phone": "+91 7357674970",
+    "phone": "+917357674970",
     "description": "I am the creator and primary maintainer of LLMSlim, an open-source Python project focused on improving context efficiency for LLM and agentic AI systems. I currently lead its architecture, implementation, benchmarking, releases, documentation and integrations. My goal is to build LLMSlim as reliable, vendor-neutral open infrastructure that developers can inspect, benchmark, extend and deploy without being locked into a proprietary model or platform.",
     "webpageUrl": {
       "url": "https://github.com/Thanatos9404"

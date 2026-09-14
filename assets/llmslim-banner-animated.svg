@@ -129,7 +129,7 @@
     <g transform="translate(-250, -18)">
       <!-- Badge Pill Container -->
       <rect x="0" y="0" width="500" height="36" rx="18" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.45" />
-      
+
       <!-- Pulsing Dot -->
       <circle cx="24" cy="18" r="5" fill="#fbbf24">
         <animate attributeName="r" values="4;6.5;4" dur="2s" repeatCount="indefinite" />
@@ -144,7 +144,7 @@
       <text x="44" y="23" fill="#fef3c7" class="sans-text" font-size="13" font-weight="600" letter-spacing="0.5">
         PARTNERSHIP: Accepted into the Sarvam Startup Program
       </text>
-      
+
       <!-- Sparkle / Arrow -->
       <text x="470" y="23" fill="#fbbf24" class="sans-text" font-size="14" font-weight="bold">✦</text>
     </g>
@@ -172,35 +172,43 @@
 
   <!-- Interactive Floating Feature Cards / Badges at the bottom -->
   <!-- Badge 1: Production v0.5.0 -->
-  <g transform="translate(140, 310)" class="float-badge">
-    <rect x="0" y="0" width="205" height="48" rx="12" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.35" />
-    <circle cx="24" cy="24" r="6" fill="#38bdf8" />
-    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Release</text>
-    <text x="40" y="38" fill="#f8fafc" class="mono-text" font-size="13" font-weight="bold">v0.5.0 Live on PyPI</text>
+  <g transform="translate(100, 310)">
+    <g class="float-badge">
+      <rect x="0" y="0" width="235" height="48" rx="12" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.35" />
+      <circle cx="22" cy="24" r="5" fill="#38bdf8" />
+      <text x="36" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Release</text>
+      <text x="36" y="38" fill="#f8fafc" class="mono-text" font-size="12.5" font-weight="bold">v0.5.0 Live on PyPI</text>
+    </g>
   </g>
 
   <!-- Badge 2: Sarvam × Indic LLMs -->
-  <g transform="translate(375, 310)" class="float-badge-2">
-    <rect x="0" y="0" width="215" height="48" rx="12" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.35" />
-    <circle cx="24" cy="24" r="6" fill="#fbbf24" />
-    <text x="40" y="22" fill="#fbbf24" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Ecosystem</text>
-    <text x="40" y="38" fill="#fef3c7" class="mono-text" font-size="13" font-weight="bold">Sarvam AI + 105B Ready</text>
+  <g transform="translate(355, 310)">
+    <g class="float-badge-2">
+      <rect x="0" y="0" width="235" height="48" rx="12" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.35" />
+      <circle cx="22" cy="24" r="5" fill="#fbbf24" />
+      <text x="36" y="22" fill="#fbbf24" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Ecosystem</text>
+      <text x="36" y="38" fill="#fef3c7" class="mono-text" font-size="12.5" font-weight="bold">Sarvam AI + 105B Ready</text>
+    </g>
   </g>
 
   <!-- Badge 3: Contract Safe & MCP -->
-  <g transform="translate(620, 310)" class="float-badge-3">
-    <rect x="0" y="0" width="210" height="48" rx="12" fill="url(#glassGrad)" stroke="#818cf8" stroke-width="1" stroke-opacity="0.35" />
-    <circle cx="24" cy="24" r="6" fill="#818cf8" />
-    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Tool Infrastructure</text>
-    <text x="40" y="38" fill="#e0e7ff" class="mono-text" font-size="13" font-weight="bold">MCP Catalog &amp; Agents</text>
+  <g transform="translate(610, 310)">
+    <g class="float-badge-3">
+      <rect x="0" y="0" width="235" height="48" rx="12" fill="url(#glassGrad)" stroke="#818cf8" stroke-width="1" stroke-opacity="0.35" />
+      <circle cx="22" cy="24" r="5" fill="#818cf8" />
+      <text x="36" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Tool Infrastructure</text>
+      <text x="36" y="38" fill="#e0e7ff" class="mono-text" font-size="12.5" font-weight="bold">MCP Catalog &amp; Agents</text>
+    </g>
   </g>
 
   <!-- Badge 4: Verification / Security -->
-  <g transform="translate(860, 310)" class="float-badge">
-    <rect x="0" y="0" width="200" height="48" rx="12" fill="url(#glassGrad)" stroke="#34d399" stroke-width="1" stroke-opacity="0.35" />
-    <circle cx="24" cy="24" r="6" fill="#34d399" />
-    <text x="40" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Verified Gate</text>
-    <text x="40" y="38" fill="#ecfdf5" class="mono-text" font-size="13" font-weight="bold">489 Tests / 0 Failures</text>
+  <g transform="translate(865, 310)">
+    <g class="float-badge">
+      <rect x="0" y="0" width="235" height="48" rx="12" fill="url(#glassGrad)" stroke="#34d399" stroke-width="1" stroke-opacity="0.35" />
+      <circle cx="22" cy="24" r="5" fill="#34d399" />
+      <text x="36" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Verified Gate</text>
+      <text x="36" y="38" fill="#ecfdf5" class="mono-text" font-size="12.5" font-weight="bold">489 Tests / 0 Failures</text>
+    </g>
   </g>
 
   <!-- Animated Bottom Accent Line -->

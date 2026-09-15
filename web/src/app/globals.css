@@ -279,3 +279,27 @@
 @media (prefers-reduced-motion:reduce) { .hero-artwork img { transform:none; } }
 .cinema-hero { overflow:hidden; }
 .cinema-hero::after { content:''; position:absolute; bottom:0; left:0; right:0; height:140px; z-index:-1; background:linear-gradient(transparent,var(--surface)); pointer-events:none; }
+
+/* Equal prominence for LLMSlim's two startup programs. */
+.startup-announcements { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px; }
+.news-zoho { display:flex; align-items:center; width:34px; height:19px; }
+.news-zoho img { width:34px; height:auto; }
+.news-zoho .art-light, .zoho-brand .art-light { mix-blend-mode:multiply; }
+.startup-program-brands { display:flex; align-items:center; gap:40px; }
+.startup-program-brand { width:200px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+.startup-program-brand > .sarvam-brand, .zoho-brand { height:90px; display:flex; align-items:center; justify-content:center; }
+.zoho-brand img { width:200px; height:auto; max-height:90px; object-fit:contain; }
+.startup-program-name { font-size:11px; color:var(--subtle); }
+.startup-program-links { display:flex; justify-content:center; flex-wrap:wrap; gap:0 28px; }
+@media (max-width:900px) {
+  .startup-partnership { flex-direction:column; gap:20px; }
+}
+@media (max-width:600px) {
+  .startup-announcements { gap:8px; }
+  .startup-program-brands { gap:20px; }
+  .startup-program-brand { width:140px; gap:10px; }
+  .startup-program-brand > .sarvam-brand, .zoho-brand { height:64px; }
+  .zoho-brand img { width:140px; max-height:64px; }
+  .startup-program-name { font-size:10px; }
+  .startup-partnership .partnership-cross { line-height:1; }
+}

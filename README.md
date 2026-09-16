@@ -27,6 +27,25 @@
 
 ---
 
+## Startup programs
+
+LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, and **MongoDB for Startups**.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://www.sarvam.ai/startup-program"><img src="assets/sarvam-program-logo.svg" alt="Sarvam logo" width="180"></a></td>
+    <td align="center" width="33%"><a href="https://www.zoho.com/startups/"><picture><source media="(prefers-color-scheme: dark)" srcset="web/public/zoho-logo-dark.png"><img src="web/public/zoho-logo-light.png" alt="Zoho logo" width="180"></picture></a></td>
+    <td align="center" width="33%"><a href="https://www.mongodb.com/startups"><img src="web/public/mongodb-logo.png" alt="MongoDB logo" width="180"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://www.sarvam.ai/startup-program">Sarvam Startup Program</a></td>
+    <td align="center"><a href="https://www.zoho.com/startups/">Zoho for Startups</a></td>
+    <td align="center"><a href="https://www.mongodb.com/startups">MongoDB for Startups</a></td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Official Announcement: Sarvam AI × LLMSlim
 
 <div align="center">

@@ -120,7 +120,14 @@ def run_speed_benchmarks(dataset_dir: Optional[str] = None) -> List[SpeedMetrics
         with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
 
+        # Planner and other benchmark corpora may use top-level objects.  The
+        # legacy speed runner only consumes arrays of compression samples.
+        if not isinstance(data, list):
+            continue
+
         for item in data:
+            if not isinstance(item, dict):
+                continue
             sample_id = item.get("id", "unknown")
             text = item.get("text") or item.get("document") or ""
             if not text and "messages" in item:

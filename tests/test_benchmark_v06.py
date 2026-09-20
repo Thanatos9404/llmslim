@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from benchmarks.benchmark_memory import run_memory_benchmarks
+from benchmarks.benchmark_quality import run_quality_benchmarks
+from benchmarks.benchmark_speed import run_speed_benchmarks
 from benchmarks.live_sarvam_v06 import run_live
 from benchmarks.v06_planner import DATASET, build_result, load_cases, render_report
 
@@ -55,3 +58,14 @@ def test_live_sarvam_benchmark_refuses_without_both_gates(monkeypatch: pytest.Mo
     monkeypatch.setenv("LLMSLIM_RUN_LIVE_SARVAM", "1")
     with pytest.raises(RuntimeError, match="SARVAM_API_KEY"):
         run_live()
+
+
+def test_legacy_quality_runner_skips_non_sample_json(tmp_path: Path) -> None:
+    (tmp_path / "planner-corpus.json").write_text(
+        json.dumps({"schema_version": "1", "cases": []}), encoding="utf-8"
+    )
+    (tmp_path / "invalid-list.json").write_text(json.dumps(["not-a-sample"]), encoding="utf-8")
+
+    assert run_quality_benchmarks(str(tmp_path)) == []
+    assert run_speed_benchmarks(str(tmp_path)) == []
+    assert run_memory_benchmarks(str(tmp_path)) == []

@@ -208,7 +208,15 @@ def run_quality_benchmarks(dataset_dir: Optional[str] = None) -> List[QualityMet
         with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
 
+        # This directory also contains benchmark-specific object documents
+        # (for example, the v0.6 planner corpus).  The legacy quality runner
+        # only consumes arrays of compression samples.
+        if not isinstance(data, list):
+            continue
+
         for item in data:
+            if not isinstance(item, dict):
+                continue
             sample_id = item.get("id", "unknown")
             text = item.get("text") or item.get("document") or ""
             if not text and "messages" in item:

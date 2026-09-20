@@ -190,7 +190,9 @@ def test_zoho_constructor_token_and_protocol_boundaries() -> None:
         (_HTTP(failure=TimeoutError("secret")), ZohoIntegrationError),
     ],
 )
-def test_zoho_http_failures_are_typed_and_sanitized(client: _HTTP, error_type: type[Exception]) -> None:
+def test_zoho_http_failures_are_typed_and_sanitized(
+    client: _HTTP, error_type: type[Exception]
+) -> None:
     with pytest.raises(error_type) as captured:
         asyncio.run(_crm(client).search("Acme"))
     assert "secret" not in str(captured.value)
@@ -284,7 +286,9 @@ class _Collection:
     async def delete_one(self, query: Mapping[str, Any]) -> Any:
         if self.failure:
             raise self.failure
-        return SimpleNamespace(deleted_count=int(self.documents.pop(str(query["_id"]), None) is not None))
+        return SimpleNamespace(
+            deleted_count=int(self.documents.pop(str(query["_id"]), None) is not None)
+        )
 
 
 class _Database:
@@ -313,7 +317,11 @@ def test_mongodb_constructor_and_input_validation(monkeypatch: Any) -> None:
         MongoDBContextStore()
     with pytest.raises(ValueError, match="exactly one"):
         MongoDBContextStore(uri="mongodb://x", client=client)
-    for kwargs in ({"database": "system.bad"}, {"collection": "bad/name"}, {"atlas_search_index": "bad name"}):
+    for kwargs in (
+        {"database": "system.bad"},
+        {"collection": "bad/name"},
+        {"atlas_search_index": "bad name"},
+    ):
         with pytest.raises(ValueError):
             MongoDBContextStore(client=client, **kwargs)
     with pytest.raises(ValueError, match="timeouts"):
@@ -350,8 +358,15 @@ def test_mongodb_atlas_trace_vector_and_trust_paths() -> None:
     assert found[0].item_id == "memory" and collection.pipeline[0]["$search"]
 
     asyncio.run(store.save_record("feedback", "evaluation", {"nested": [{"api_key": "secret"}]}))
-    assert collection.documents["default:feedback"]["payload"]["nested"][0]["api_key"] == "<redacted>"
-    plan = plan_context(documents=["private prompt"], max_input_tokens=500, reserve_output_tokens=0, safety_margin_tokens=0)
+    assert (
+        collection.documents["default:feedback"]["payload"]["nested"][0]["api_key"] == "<redacted>"
+    )
+    plan = plan_context(
+        documents=["private prompt"],
+        max_input_tokens=500,
+        reserve_output_tokens=0,
+        safety_margin_tokens=0,
+    )
     asyncio.run(store.save_plan_trace("trace", plan))
     assert "final_context" not in collection.documents["default:trace"]["payload"]
 
@@ -386,7 +401,11 @@ def test_mongodb_driver_failures_and_malformed_documents() -> None:
             asyncio.run(call())
         assert "mongodb://secret" not in str(captured.value)
     collection.failure = None
-    collection.documents["default:broken"] = {"_id": "default:broken", "item_id": "broken", "kind": "unknown"}
+    collection.documents["default:broken"] = {
+        "_id": "default:broken",
+        "item_id": "broken",
+        "kind": "unknown",
+    }
     with pytest.raises(MongoDBIntegrationError, match="malformed"):
         asyncio.run(store.get("broken"))
 
@@ -492,7 +511,9 @@ def test_provider_candidates_and_sanitized_provider_failure() -> None:
         for candidate in group.candidates
     )
 
-    secret_provider = CallableProvider(lambda _: (_ for _ in ()).throw(RuntimeError("api-key-secret")))
+    secret_provider = CallableProvider(
+        lambda _: (_ for _ in ()).throw(RuntimeError("api-key-secret"))
+    )
     failed = generate_candidates(
         ContextItem("doc2", text, kind=ContextKind.RAG_DOCUMENT, role=ContextRole.RAG),
         query="Alpha",

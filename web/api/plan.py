@@ -16,7 +16,11 @@ from typing import Any
 def _add_repository_package_to_path() -> None:
     if importlib.util.find_spec("llmslim") is not None:
         return
-    for candidate in (Path.cwd(), Path(__file__).resolve().parents[1], Path(__file__).resolve().parents[2]):
+    for candidate in (
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path(__file__).resolve().parents[2],
+    ):
         if (candidate / "llmslim" / "__init__.py").is_file():
             sys.path.insert(0, str(candidate))
             return
@@ -69,20 +73,28 @@ def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]
     try:
         payload = json.loads(raw_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise _problem(HTTPStatus.BAD_REQUEST, "invalid_json", "Request body must be valid UTF-8 JSON.") from exc
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "invalid_json", "Request body must be valid UTF-8 JSON."
+        ) from exc
     if not isinstance(payload, dict):
-        raise _problem(HTTPStatus.BAD_REQUEST, "object_required", "Request body must be a JSON object.")
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "object_required", "Request body must be a JSON object."
+        )
     return payload
 
 
 def _string(payload: Mapping[str, Any], name: str, default: str = "") -> str:
     value = payload.get(name, default)
     if not isinstance(value, str):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be a string.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be a string."
+        )
     return value
 
 
-def _integer(payload: Mapping[str, Any], name: str, default: int, minimum: int, maximum: int) -> int:
+def _integer(
+    payload: Mapping[str, Any], name: str, default: int, minimum: int, maximum: int
+) -> int:
     value = payload.get(name, default)
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise _problem(
@@ -96,38 +108,73 @@ def _integer(payload: Mapping[str, Any], name: str, default: int, minimum: int, 
 def _sequence(payload: Mapping[str, Any], name: str) -> list[Any]:
     value = payload.get(name, [])
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be an array.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} must be an array."
+        )
     values = list(value)
     if len(values) > MAX_ITEMS_PER_KIND:
-        raise _problem(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too_many_items", "A context category exceeds 100 items.")
+        raise _problem(
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            "too_many_items",
+            "A context category exceeds 100 items.",
+        )
     return values
 
 
 def execute_plan(payload: Mapping[str, Any]) -> dict[str, Any]:
     if set(payload).difference(ALLOWED_FIELDS):
-        raise _problem(HTTPStatus.BAD_REQUEST, "unsupported_field", "Request includes an unsupported field.")
+        raise _problem(
+            HTTPStatus.BAD_REQUEST, "unsupported_field", "Request includes an unsupported field."
+        )
     messages = _sequence(payload, "messages")
     documents = _sequence(payload, "documents")
     memories = _sequence(payload, "memories")
     tools = _sequence(payload, "tools")
     for message in messages:
-        if not isinstance(message, Mapping) or not isinstance(message.get("role"), str) or not isinstance(message.get("content"), str):
-            raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_messages", "Each message needs string role and content fields.")
+        if (
+            not isinstance(message, Mapping)
+            or not isinstance(message.get("role"), str)
+            or not isinstance(message.get("content"), str)
+        ):
+            raise _problem(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                "invalid_messages",
+                "Each message needs string role and content fields.",
+            )
     for name, values in (("documents", documents), ("memories", memories)):
         if not all(isinstance(value, (str, Mapping)) for value in values):
-            raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, f"invalid_{name}", f"{name} entries must be strings or objects.")
+            raise _problem(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                f"invalid_{name}",
+                f"{name} entries must be strings or objects.",
+            )
     if not all(isinstance(value, Mapping) for value in tools):
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_tools", "tools entries must be objects.")
-    total_chars = len(json.dumps({"messages": messages, "documents": documents, "memories": memories, "tools": tools}, ensure_ascii=False))
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_tools", "tools entries must be objects."
+        )
+    total_chars = len(
+        json.dumps(
+            {"messages": messages, "documents": documents, "memories": memories, "tools": tools},
+            ensure_ascii=False,
+        )
+    )
     if total_chars > MAX_TOTAL_CHARS:
-        raise _problem(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "input_too_large", "Context exceeds the Studio limit.")
+        raise _problem(
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            "input_too_large",
+            "Context exceeds the Studio limit.",
+        )
     query = _string(payload, "query")
     model = _string(payload, "model", "sarvam-105b")
     policy = _string(payload, "policy", "balanced")
     if model not in ALLOWED_MODELS:
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_model", "model is not available in Studio.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_model", "model is not available in Studio."
+        )
     if policy not in ALLOWED_POLICIES:
-        raise _problem(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_policy", "policy is not available in Studio.")
+        raise _problem(
+            HTTPStatus.UNPROCESSABLE_ENTITY, "invalid_policy", "policy is not available in Studio."
+        )
     plan = plan_context(
         messages=messages,
         documents=documents,
@@ -175,22 +222,48 @@ class handler(BaseHTTPRequestHandler):
 
         client_key = self.headers.get("x-forwarded-for", "").split(",")[0].strip() or "anonymous"
         if not allow_request(client_key, time.monotonic()):
-            self._respond(HTTPStatus.TOO_MANY_REQUESTS, {"error": {"code": "rate_limited", "message": "Please wait before planning again."}})
+            self._respond(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                {
+                    "error": {
+                        "code": "rate_limited",
+                        "message": "Please wait before planning again.",
+                    }
+                },
+            )
             return
         try:
             content_length = int(self.headers.get("content-length", ""))
             if not 0 <= content_length <= MAX_BODY_BYTES:
                 raise ValueError
         except ValueError:
-            self._respond(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": {"code": "body_too_large", "message": "Request body exceeds the Studio limit."}})
+            self._respond(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {
+                    "error": {
+                        "code": "body_too_large",
+                        "message": "Request body exceeds the Studio limit.",
+                    }
+                },
+            )
             return
         try:
-            request = parse_json_body(self.rfile.read(content_length), self.headers.get("content-type"))
+            request = parse_json_body(
+                self.rfile.read(content_length), self.headers.get("content-type")
+            )
             self._respond(HTTPStatus.OK, {"data": execute_plan(request)})
         except RequestProblem as exc:
             self._respond(exc.status, {"error": {"code": exc.code, "message": exc.message}})
         except Exception:
-            self._respond(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "planning_failed", "message": "Planning could not be completed. Please retry."}})
+            self._respond(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "planning_failed",
+                        "message": "Planning could not be completed. Please retry.",
+                    }
+                },
+            )
 
     def do_GET(self) -> None:  # noqa: N802
         self._respond(HTTPStatus.OK, {"status": "ok", "service": "llmslim-offline-planner"})

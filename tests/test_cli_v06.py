@@ -89,13 +89,7 @@ def test_plan_cli_no_content_supports_safe_diagnostics() -> None:
 def test_plan_cli_human_report_and_infeasible_exit(tmp_path: Any) -> None:
     source = tmp_path / "context.json"
     source.write_text(
-        json.dumps(
-            {
-                "messages": [
-                    {"role": "system", "content": "Required instruction. " * 100}
-                ]
-            }
-        ),
+        json.dumps({"messages": [{"role": "system", "content": "Required instruction. " * 100}]}),
         encoding="utf-8",
     )
     with patch("sys.stdout", new_callable=io.StringIO) as output:

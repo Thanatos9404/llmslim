@@ -46,7 +46,9 @@ _METHOD_RISK: Dict[CandidateMethod, float] = {
 
 
 def lexical_terms(text: str) -> Set[str]:
-    return {match.group(0).casefold() for match in _TERM_RE.finditer(text) if len(match.group(0)) > 1}
+    return {
+        match.group(0).casefold() for match in _TERM_RE.finditer(text) if len(match.group(0)) > 1
+    }
 
 
 def lexical_relevance(query: str, content: str) -> float:
@@ -84,7 +86,9 @@ def score_item(item: ContextItem, query: str, policy: PlannerPolicy) -> ScoreBre
     """Score one logical item using named, testable components."""
 
     profile = analyze(item.content)
-    relevance = item.relevance if item.relevance is not None else lexical_relevance(query, item.content)
+    relevance = (
+        item.relevance if item.relevance is not None else lexical_relevance(query, item.content)
+    )
     provenance = _PROVENANCE_SIGNAL[item.role]
     kind = _KIND_SIGNAL[item.kind]
     density = min(1.0, 0.58 * profile.instruction_density + 0.42 * profile.entity_density)

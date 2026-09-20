@@ -31,9 +31,7 @@ def _candidate_units(candidate: ContextCandidate, unit: int) -> int:
     return int(math.ceil(candidate.token_cost / unit))
 
 
-def allocate_candidates(
-    groups: Sequence[CandidateSet], capacity_tokens: int
-) -> AllocationResult:
+def allocate_candidates(groups: Sequence[CandidateSet], capacity_tokens: int) -> AllocationResult:
     """Solve a multiple-choice knapsack with a deterministic Pareto frontier.
 
     Exactly one representation is chosen for every logical item. Costs are
@@ -43,7 +41,9 @@ def allocate_candidates(
 
     if capacity_tokens < 0:
         raise ValueError("capacity_tokens must be non-negative")
-    minimum_required = sum(min(candidate.token_cost for candidate in group.candidates) for group in groups)
+    minimum_required = sum(
+        min(candidate.token_cost for candidate in group.candidates) for group in groups
+    )
     if not groups:
         return AllocationResult((), True, 0, capacity_tokens, 1)
     if minimum_required > capacity_tokens:
@@ -93,9 +93,7 @@ def allocate_candidates(
         states = pruned
 
     # Highest utility wins; lower cost wins equal utility.
-    final_cost, (_, final_node) = max(
-        states.items(), key=lambda entry: (entry[1][0], -entry[0])
-    )
+    final_cost, (_, final_node) = max(states.items(), key=lambda entry: (entry[1][0], -entry[0]))
     del final_cost
     indices: List[int] = []
     node = final_node

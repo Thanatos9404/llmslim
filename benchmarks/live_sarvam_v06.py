@@ -84,7 +84,9 @@ def run_live(model: str = "sarvam-105b") -> Dict[str, Any]:
     try:
         from sarvamai import SarvamAI
     except ImportError as exc:
-        raise RuntimeError('install the live dependency with: pip install "llmslim[sarvam]"') from exc
+        raise RuntimeError(
+            'install the live dependency with: pip install "llmslim[sarvam]"'
+        ) from exc
     client = SarvamAI(api_subscription_key=api_key, timeout=30.0)
     profile = ModelProfileRegistry().require(model)
     records = []
@@ -130,7 +132,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run_live(args.model)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"wrote sanitized live result to {args.output}")
     return 0
 

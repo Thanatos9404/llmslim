@@ -230,13 +230,8 @@ class ZohoCRMContextSource(_ZohoSourceBase):
             f"{_validated_identifier(field, 'field')} = '{_coql_literal(value)}'"
             for field, value in sorted(equals.items())
         )
-        query = (
-            f"select {', '.join(chosen)} from {module} where {criteria} "
-            f"limit 0, {bounded}"
-        )
-        payload = await self._request_json(
-            "POST", "/crm/v8/coql", json={"select_query": query}
-        )
+        query = f"select {', '.join(chosen)} from {module} where {criteria} limit 0, {bounded}"
+        payload = await self._request_json("POST", "/crm/v8/coql", json={"select_query": query})
         records = payload.get("data", [])
         if not isinstance(records, list):
             raise ZohoIntegrationError("Zoho CRM COQL data must be an array")
@@ -246,9 +241,7 @@ class ZohoCRMContextSource(_ZohoSourceBase):
             if isinstance(record, Mapping)
         )
 
-    def _record_item(
-        self, module: str, record: Mapping[str, Any], index: int
-    ) -> ContextItem:
+    def _record_item(self, module: str, record: Mapping[str, Any], index: int) -> ContextItem:
         fields = self.field_allowlists[module]
         safe = {field: record[field] for field in fields if field in record}
         if "id" in record:

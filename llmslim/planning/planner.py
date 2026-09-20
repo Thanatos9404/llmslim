@@ -96,7 +96,11 @@ def _document_item(
         required = bool(value.get("required", False))
     else:
         raise TypeError(f"{prefix} entries must be strings, mappings, or ContextItem objects")
-    role = ContextRole.RAG if kind in {ContextKind.RAG_DOCUMENT, ContextKind.MEMORY} else ContextRole.GENERAL
+    role = (
+        ContextRole.RAG
+        if kind in {ContextKind.RAG_DOCUMENT, ContextKind.MEMORY}
+        else ContextRole.GENERAL
+    )
     return ContextItem(
         item_id=_stable_id(prefix, index, content, supplied_id),
         content=content,
@@ -154,7 +158,11 @@ class AdaptiveContextPlanner:
         if any(not isinstance(message, Mapping) for message in messages):
             raise TypeError("messages must contain mappings")
         last_user_index = max(
-            (index for index, message in enumerate(messages) if str(message.get("role", "")).lower() == "user"),
+            (
+                index
+                for index, message in enumerate(messages)
+                if str(message.get("role", "")).lower() == "user"
+            ),
             default=-1,
         )
         for index, message in enumerate(messages):
@@ -165,7 +173,11 @@ class AdaptiveContextPlanner:
             trusted = role in {ContextRole.SYSTEM, ContextRole.DEVELOPER}
             is_current_user = index == last_user_index and role is ContextRole.USER
             latest_boundary = max(0, message_count - policy.preserve_latest_turns)
-            extra = {key: copy.deepcopy(value) for key, value in message.items() if key not in {"content", "role"}}
+            extra = {
+                key: copy.deepcopy(value)
+                for key, value in message.items()
+                if key not in {"content", "role"}
+            }
             item = ContextItem(
                 item_id=_stable_id("message", index, content, str(message.get("id", "")) or None),
                 content=content,
@@ -427,8 +439,7 @@ class AdaptiveContextPlanner:
                 selected=candidate,
                 candidate_count=len(group.candidates),
                 reason=(
-                    candidate.reason
-                    + f"; value signals: relevance={group.score.relevance:.3f}, "
+                    candidate.reason + f"; value signals: relevance={group.score.relevance:.3f}, "
                     f"recency={group.score.recency:.3f}, provenance={group.score.provenance:.3f}"
                 ),
                 warnings=group.warnings,

@@ -204,8 +204,7 @@ def evaluate_case(case: Mapping[str, Any]) -> Dict[str, Any]:
     # representation. Counting a content-only raw form against the planner's
     # safe envelope would incorrectly report the security boundary as growth.
     raw = "".join(
-        render_context_item(decision.item, decision.item.content)
-        for decision in plan.decisions
+        render_context_item(decision.item, decision.item.content) for decision in plan.decisions
     ).rstrip()
     raw_tokens = count_tokens(raw)
     records: List[Dict[str, Any]] = []

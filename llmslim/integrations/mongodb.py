@@ -80,9 +80,7 @@ class MongoDBContextStore:
         self.max_content_bytes = max_content_bytes
 
     @classmethod
-    def from_env(
-        cls, env_var: str = "MONGODB_URI", **kwargs: Any
-    ) -> "MongoDBContextStore":
+    def from_env(cls, env_var: str = "MONGODB_URI", **kwargs: Any) -> "MongoDBContextStore":
         """Explicitly load one named environment variable and construct a store."""
 
         uri = os.environ.get(env_var)
@@ -96,9 +94,7 @@ class MongoDBContextStore:
             raise ValueError("context item exceeds max_content_bytes")
         document = _item_to_document(item, namespace)
         try:
-            await self._collection.replace_one(
-                {"_id": document["_id"]}, document, upsert=True
-            )
+            await self._collection.replace_one({"_id": document["_id"]}, document, upsert=True)
         except Exception as exc:
             _raise_sanitized("save", exc)
 
@@ -215,9 +211,7 @@ class MongoDBContextStore:
             "payload": _scrub_sensitive(payload),
         }
         try:
-            await self._collection.replace_one(
-                {"_id": document["_id"]}, document, upsert=True
-            )
+            await self._collection.replace_one({"_id": document["_id"]}, document, upsert=True)
         except Exception as exc:
             _raise_sanitized("save record", exc)
 
@@ -406,9 +400,7 @@ async def _maybe_await(value: Any) -> Any:
 
 
 def _raise_sanitized(operation: str, exc: Exception) -> None:
-    raise MongoDBIntegrationError(
-        f"MongoDB {operation} failed ({type(exc).__name__})"
-    ) from None
+    raise MongoDBIntegrationError(f"MongoDB {operation} failed ({type(exc).__name__})") from None
 
 
 __all__ = [

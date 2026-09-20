@@ -56,9 +56,7 @@ def plan_mcp_context(
     context_plan = replace(
         context_plan,
         warnings=tuple(
-            dict.fromkeys(
-                context_plan.warnings + catalog_plan.warnings + (bridge_warning,)
-            )
+            dict.fromkeys(context_plan.warnings + catalog_plan.warnings + (bridge_warning,))
         ),
     )
     return MCPAdaptiveContextPlan(context_plan, catalog_plan)

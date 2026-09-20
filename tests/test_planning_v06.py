@@ -110,7 +110,9 @@ def test_untrusted_imperatives_do_not_gain_trusted_provenance() -> None:
     decision = next(item for item in plan.decisions if item.item.item_id == "document:malicious")
     assert decision.item.role is ContextRole.RAG
     assert decision.item.kind is ContextKind.RAG_DOCUMENT
-    assert 'trusted="false"' in plan.final_context or decision.selected.method is CandidateMethod.DROP
+    assert (
+        'trusted="false"' in plan.final_context or decision.selected.method is CandidateMethod.DROP
+    )
 
 
 def test_tool_contract_is_raw_and_fingerprint_valid_by_default() -> None:
@@ -190,9 +192,7 @@ def test_deterministic_planning_ignores_latency_fields() -> None:
 def test_planner_meets_random_feasible_budgets() -> None:
     randomizer = random.Random(20260918)
     for _ in range(12):
-        documents = [
-            _long_text(f"topic {index}", randomizer.randint(5, 16)) for index in range(5)
-        ]
+        documents = [_long_text(f"topic {index}", randomizer.randint(5, 16)) for index in range(5)]
         budget = randomizer.randint(120, 500)
         plan = plan_context(
             documents=documents,
@@ -254,7 +254,9 @@ def test_context_budget_respects_model_window_and_target_utilization() -> None:
 def test_multiple_choice_optimizer_beats_naive_item_sorting() -> None:
     score = ScoreBreakdown(0, 0, 0, 0, 0, 0, 0, 0)
 
-    def candidate(item: str, method: CandidateMethod, cost: int, utility: float) -> ContextCandidate:
+    def candidate(
+        item: str, method: CandidateMethod, cost: int, utility: float
+    ) -> ContextCandidate:
         return ContextCandidate(item, method, item, cost, utility, 0.0, "test", 1.0)
 
     item_a = ContextItem("a", "a")
@@ -289,7 +291,9 @@ def test_multiple_choice_optimizer_beats_naive_item_sorting() -> None:
 
 def test_lexical_relevance_handles_hindi_and_hinglish_deterministically() -> None:
     hindi = lexical_relevance("ग्राहक भुगतान स्थिति", "ग्राहक का भुगतान आज पूरा हुआ।")
-    hinglish = lexical_relevance("customer ka payment status", "customer ka payment aaj complete hua")
+    hinglish = lexical_relevance(
+        "customer ka payment status", "customer ka payment aaj complete hua"
+    )
     unrelated = lexical_relevance("ग्राहक भुगतान स्थिति", "आज मौसम साफ है।")
     assert hindi > unrelated
     assert hinglish > 0.5
@@ -337,7 +341,9 @@ def test_mcp_bridge_preserves_catalog_plan_for_hydration_and_never_executes() ->
         if decision.item.kind is ContextKind.TOOL_SCHEMA
     )
     assert not hasattr(result, "execute")
-    assert any("ranking is not authorization" in warning for warning in result.context_plan.warnings)
+    assert any(
+        "ranking is not authorization" in warning for warning in result.context_plan.warnings
+    )
 
     with pytest.raises(ValueError, match="experimental"):
         plan_mcp_context(snapshot, mode=PlanMode.SELECTIVE, query="search")

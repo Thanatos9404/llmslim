@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from threading import Lock
 from typing import Dict, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
 from .planning.models import ContextItem
@@ -81,16 +82,19 @@ class InMemoryContextStore:
 
     def __init__(self) -> None:
         self._namespaces: Dict[str, Dict[str, ContextItem]] = {}
-        self._lock = asyncio.Lock()
+        # The protected operations are synchronous dictionary mutations with
+        # no await points. A thread lock keeps them atomic without binding the
+        # store to whichever event loop happened to exist at construction.
+        self._lock = Lock()
 
     async def save(self, item: ContextItem, namespace: str = "default") -> None:
         if not namespace:
             raise ValueError("namespace must be non-empty")
-        async with self._lock:
+        with self._lock:
             self._namespaces.setdefault(namespace, {})[item.item_id] = item
 
     async def get(self, item_id: str, namespace: str = "default") -> Optional[ContextItem]:
-        async with self._lock:
+        with self._lock:
             return self._namespaces.get(namespace, {}).get(item_id)
 
     async def search(
@@ -98,12 +102,12 @@ class InMemoryContextStore:
     ) -> Sequence[ContextItem]:
         if not 1 <= limit <= 100:
             raise ValueError("context store limit must be between 1 and 100")
-        async with self._lock:
+        with self._lock:
             items = tuple(self._namespaces.get(namespace, {}).values())
         return await InMemoryContextSource(items, source_id="in-memory-store").search(query, limit)
 
     async def delete(self, item_id: str, namespace: str = "default") -> bool:
-        async with self._lock:
+        with self._lock:
             values = self._namespaces.get(namespace, {})
             return values.pop(item_id, None) is not None
 

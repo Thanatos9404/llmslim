@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-banner-animated.svg" alt="LLMSlim Banner" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim — part of five startup programs" width="100%">
 </a>
 
 <br/><br/>
@@ -27,12 +27,17 @@
 
 ---
 
-## Adaptive Context Planner (v0.6)
+## What's new in v0.6.0
 
 LLMSlim is no longer only a fixed-ratio prompt compressor. The Adaptive
 Context Planner chooses safe representations for each context item, then uses
 a deterministic constrained allocator to fit the highest-value context into a
 finite model budget. The original `compress()` API remains fully supported.
+
+The v0.6.0 release adds explainable per-item decisions, explicit infeasibility
+reporting, post-plan validation, token and cost telemetry, policy presets, and
+optional Sarvam AI, Zoho, and MongoDB integrations while keeping the base
+installation local-first and provider-neutral.
 
 ```python
 from llmslim import plan_context
@@ -468,13 +473,17 @@ llmslim document.txt --verbose
 
 ## 📋 Complete Changelog
 
-### [v0.6.0 release candidate](docs/releases/v0.6.0.md) — 2026-09-20
+### [[v0.6.0]](https://github.com/Thanatos9404/llmslim/releases/tag/v0.6.0) — 2026-09-20
 **Theme**: *Deterministic, explainable context planning across the full prompt.*
-- **Adaptive Context Planner**: Added hard-constrained allocation for trusted instructions, chat history, RAG documents, memory, tool output, and authoritative schemas.
-- **Explicit Safety Boundaries**: Infeasible budgets are reported rather than silently truncating required content; post-plan validation falls back conservatively.
-- **Provider-Neutral Profiles**: Added dated token-window and INR cost profiles, including Sarvam 105B and Conversations, without making network calls by default.
-- **Optional Integrations**: Added official-SDK Sarvam rewriting, bounded read-only Zoho CRM/WorkDrive sources, and PyMongo async memory/Atlas retrieval.
-- **Evidence**: Added a 28-case, 12-language frozen offline benchmark and an explicitly gated live Sarvam harness.
+- **Adaptive Context Planner**: Added `plan_context()` with deterministic, hard-constrained allocation across trusted instructions, chat history, RAG documents, memory, tool output, and authoritative schemas.
+- **Explainability & Telemetry**: Added per-item planning decisions, explicit infeasibility reporting, post-plan validation, token accounting, estimated cost telemetry, and reusable policy presets.
+- **Safety Boundaries**: Required trusted content is never silently truncated, external content remains untrusted, raw tool contracts remain authoritative, and planning never executes tools.
+- **Provider Profiles & Integrations**: Added dated model-window and INR cost profiles plus optional official-SDK Sarvam rewriting, bounded read-only Zoho CRM/WorkDrive sources, and PyMongo async memory/Atlas retrieval.
+- **Hosted Studio Modes**: Added an offline planner and an operator-controlled Sarvam hosted demo protected by server-only credentials, durable MongoDB quotas, HMAC identity, spend reservations, concurrency controls, payload limits, aggregate-only telemetry, and an environment kill switch.
+- **Benchmarks**: Added a frozen 28-case offline suite spanning chat, RAG, tools, mixed context, mocked external sources, English, Hindi, Hinglish, and nine additional Indic languages; live Sarvam evaluation remains explicitly opt-in.
+- **Compatibility**: Declared Python 3.9 as the minimum supported version and kept provider and database SDKs behind optional extras.
+
+Read the complete [v0.6.0 release notes](docs/releases/v0.6.0.md).
 
 ---
 

@@ -69,6 +69,7 @@ datasets/
 !benchmarks/datasets/
 benchmarks/datasets/*
 !benchmarks/datasets/phase2_core.json
+!benchmarks/datasets/v06_context_planning.json
 notebooks/
 
 # Guidance Markdown files

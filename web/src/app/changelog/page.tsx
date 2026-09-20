@@ -11,6 +11,19 @@ type Release = { version: string; date: string; theme: string; summary: string; 
 
 const releases: Release[] = [
   {
+    version: "v0.6.0",
+    date: "19 Sep 2026",
+    theme: "Plan the whole context, not just one string.",
+    summary: "A deterministic, explainable Adaptive Context Planner with explicit hard constraints, provider-neutral model budgets, and optional Sarvam, Zoho, and MongoDB integrations.",
+    metrics: ["28 frozen cases", "96.4% budget success", "100% hard-constraint retention"],
+    tag: "https://github.com/Thanatos9404/llmslim/blob/main/docs/releases/v0.6.0.md",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "Adaptive Context Planner", body: "Multiple-choice constrained allocation selects safe representations for trusted instructions, chat, RAG, memory, tool results, and tool schemas, then explains each decision." },
+      { label: "Boundary", icon: ShieldCheck, title: "Failure is explicit", body: "Required trusted content is never silently truncated. Impossible budgets produce an infeasible plan, provider candidates fail closed, and tool selection never grants execution authority." },
+      { label: "Integrations", icon: Wrench, title: "Optional ecosystem adapters", body: "Official-SDK Sarvam rewriting, bounded read-only Zoho sources, and PyMongo async memory remain optional extras; the base planner stays local and provider-neutral." },
+    ],
+  },
+  {
     version: "v0.5.0",
     date: "13 Sep 2026",
     theme: "MCP catalogs. Your host stays in control.",
@@ -94,7 +107,7 @@ const releases: Release[] = [
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "Verified LLMSlim Python package history for v0.1.0 through v0.5.0, including release themes, compatibility, and security changes.",
+  description: "Verified LLMSlim Python package history for v0.1.0 through v0.6.0, including release themes, compatibility, and security changes.",
 });
 
 export default function ChangelogPage() {

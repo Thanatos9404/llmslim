@@ -6,6 +6,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const localStudioApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_API_ORIGIN;
+const localSarvamApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_SARVAM_API_ORIGIN ?? localStudioApiOrigin;
 const localStudioE2E = process.env.LLMSLIM_STUDIO_E2E === "1";
 
 const nextConfig: NextConfig = {
@@ -23,7 +24,11 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     if (!localStudioApiOrigin) return [];
-    return [{ source: "/api/compress", destination: `${localStudioApiOrigin}/api/compress` }];
+    return [
+      { source: "/api/compress", destination: `${localStudioApiOrigin}/api/compress` },
+      { source: "/api/plan", destination: `${localStudioApiOrigin}/api/plan` },
+      { source: "/api/sarvam", destination: `${localSarvamApiOrigin}/api/sarvam` },
+    ];
   },
 };
 

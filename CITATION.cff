@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "llmslim: High-Performance Semantic Prompt Compression & Token Optimization for LLMs"
+title: "LLMSlim: Adaptive Context Planning and Prompt Compression for LLM Applications"
 message: "If you use llmslim in your academic research or production systems, please cite it using the metadata below."
 type: software
 authors:
@@ -8,14 +8,15 @@ authors:
     orcid: "https://orcid.org/0009-0001-2441-2507"
 repository-code: "https://github.com/Thanatos9404/llmslim"
 url: "https://pypi.org/project/llmslim/"
-abstract: "llmslim is a lightweight, high-performance Python library for cutting LLM prompt size by 40-70% through semantic chunking, TF-IDF sentence centrality ranking, instruction preservation, and named entity retention."
+abstract: "LLMSlim is a local-first Python library for deterministic context planning and prompt compression across chat, retrieval, memory, and tool schemas while preserving provenance and hard constraints."
 keywords:
   - llm
   - prompt compression
   - token optimization
+  - context planning
   - rag
   - sentence centrality
   - nlp
 license: MIT
-version: 0.5.0
-date-released: 2026-09-13
+version: 0.6.0
+date-released: 2026-09-20

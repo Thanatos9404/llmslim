@@ -18,6 +18,7 @@ from .analysis import analyze as run_analysis
 from .core import compress
 from .cost import estimate_cost_savings, list_supported_models
 from .modes import list_modes
+from .planning import PolicyPreset, plan_context
 from .tokens import count_tokens
 from .tools import canonical_json, fingerprint_tool_schema, from_mcp_tool, inspect_schema
 
@@ -130,6 +131,58 @@ def build_tools_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_plan_parser() -> argparse.ArgumentParser:
+    """Build the local, provider-free adaptive context planning parser."""
+
+    parser = argparse.ArgumentParser(
+        prog="llmslim plan",
+        description="Plan messages, RAG, memory, and tool schemas against a model budget.",
+    )
+    parser.add_argument(
+        "file",
+        nargs="?",
+        help="Context JSON object. Reads stdin when omitted or when FILE is '-'.",
+    )
+    parser.add_argument("--model", default="generic-128k", help="Planner model profile ID.")
+    parser.add_argument(
+        "--max-input-tokens",
+        type=int,
+        default=None,
+        help="Explicit model-input ceiling. Required for unknown model IDs.",
+    )
+    parser.add_argument(
+        "--reserve-output-tokens",
+        type=int,
+        default=4096,
+        help="Context-window tokens reserved for generation (default: 4096).",
+    )
+    parser.add_argument(
+        "--safety-margin-tokens",
+        type=int,
+        default=256,
+        help="Additional estimated-token safety margin (default: 256).",
+    )
+    parser.add_argument(
+        "--policy",
+        choices=[policy.value for policy in PolicyPreset],
+        default=PolicyPreset.BALANCED.value,
+    )
+    parser.add_argument("--query", default=None, help="Override the JSON relevance query.")
+    parser.add_argument("--json", action="store_true", help="Emit the complete stable JSON plan.")
+    parser.add_argument(
+        "--no-content",
+        action="store_true",
+        help="Omit context bodies from JSON output for safer diagnostics.",
+    )
+    parser.add_argument("-o", "--output", help="Write output to this file instead of stdout.")
+    parser.add_argument(
+        "--fail-on-infeasible",
+        action="store_true",
+        help="Return exit code 3 when mandatory context exceeds the budget.",
+    )
+    return parser
+
+
 def _load_tool_catalog(path: str) -> List[Dict[str, Any]]:
     try:
         with open(path, encoding="utf-8") as handle:
@@ -192,10 +245,105 @@ def _run_tools_command(argv: Sequence[str]) -> int:
     return 0
 
 
+def _load_context_payload(path: str | None) -> Dict[str, Any]:
+    try:
+        if path and path != "-":
+            with open(path, encoding="utf-8") as handle:
+                raw = handle.read(20_000_001)
+        else:
+            raw = sys.stdin.read(20_000_001)
+    except OSError as exc:
+        raise ValueError("could not read context JSON: %s" % exc) from exc
+    if len(raw) > 20_000_000:
+        raise ValueError("context JSON exceeds the 20 MB CLI safety limit")
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("context input must be valid JSON: %s" % exc) from exc
+    if not isinstance(payload, dict):
+        raise ValueError("context input must be a JSON object")
+    for key in ("messages", "documents", "tools", "memories"):
+        value = payload.get(key, [])
+        if not isinstance(value, list):
+            raise ValueError(f"context field '{key}' must be an array")
+    if payload.get("query") is not None and not isinstance(payload["query"], str):
+        raise ValueError("context field 'query' must be a string")
+    return payload
+
+
+def _human_plan_report(plan: Any) -> str:
+    metrics = plan.metrics
+    lines = [
+        f"Plan status: {plan.status.value.upper()}",
+        f"Model: {plan.model_profile.model_id}",
+        f"Policy: {metrics.policy}",
+        f"Estimated tokens: {metrics.original_tokens} -> {metrics.planned_tokens}",
+        f"Budget utilization: {metrics.planned_tokens}/{metrics.budget_tokens} ({metrics.utilization:.1%})",
+    ]
+    if metrics.estimated_input_cost_before is not None:
+        lines.append(
+            "Estimated input cost: "
+            f"{metrics.cost_currency} {metrics.estimated_input_cost_before:.6f} -> "
+            f"{metrics.cost_currency} {metrics.estimated_input_cost_after:.6f}"
+        )
+    lines.extend(("", "Decisions:"))
+    for decision in plan.decisions:
+        lines.append(
+            f"- {decision.item.item_id}: {decision.selected.method.value.upper()} "
+            f"({decision.item.token_count} -> {decision.selected.token_cost} tokens) — "
+            f"{decision.reason}"
+        )
+    if plan.warnings:
+        lines.extend(("", "Warnings:"))
+        lines.extend(f"- {warning}" for warning in plan.warnings)
+    return "\n".join(lines)
+
+
+def _run_plan_command(argv: Sequence[str]) -> int:
+    parser = build_plan_parser()
+    args = parser.parse_args(argv)
+    try:
+        payload = _load_context_payload(args.file)
+        plan = plan_context(
+            messages=payload.get("messages", []),
+            documents=payload.get("documents", []),
+            tools=payload.get("tools", []),
+            memories=payload.get("memories", []),
+            query=args.query if args.query is not None else payload.get("query", ""),
+            model=args.model,
+            max_input_tokens=args.max_input_tokens,
+            reserve_output_tokens=args.reserve_output_tokens,
+            safety_margin_tokens=args.safety_margin_tokens,
+            policy=args.policy,
+        )
+    except (TypeError, ValueError) as exc:
+        parser.error(str(exc))
+        return 2
+    output = (
+        json.dumps(
+            plan.to_dict(include_content=not args.no_content),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        if args.json
+        else _human_plan_report(plan)
+    )
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(output + "\n")
+    else:
+        print(output)
+    if args.fail_on_infeasible and not plan.feasible:
+        return 3
+    return 0
+
+
 def main(argv=None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments and arguments[0] == "tools":
         return _run_tools_command(arguments[1:])
+    if arguments and arguments[0] == "plan":
+        return _run_plan_command(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
 

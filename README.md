@@ -9,21 +9,62 @@
 [![PyPI Version](https://img.shields.io/pypi/v/llmslim.svg?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=for-the-badge&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
 [![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=for-the-badge&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
-[![Tests Passing](https://img.shields.io/badge/Tests-489%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
-[![Coverage](https://img.shields.io/badge/Branch%20Coverage-92.57%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
+[![Tests Passing](https://img.shields.io/badge/Tests-589%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
+[![Coverage](https://img.shields.io/badge/Branch%20Coverage-90.60%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
 [![License](https://img.shields.io/badge/License-MIT-94a3b8?style=for-the-badge)](LICENSE)
 [![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app)
 
 <br/>
 
-**Deterministic, local-first context compression and contract-safe tool schemas for modern LLM applications.**  
-*Reduce prompt tokens by 40%–60% with sub-millisecond execution, mathematical reproducibility, zero hallucinations, and zero external API dependencies.*
+**Local-first context planning and compression for modern LLM applications and agents.**
+*Plan prompts, conversation history, RAG, memory, and tool schemas against real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
 [**Live Studio Playground**](https://www.llmslim.app) • [**Documentation**](https://www.llmslim.app/docs) • [**Sarvam Integration**](https://www.llmslim.app/integrations/sarvam) • [**Benchmarks**](#-benchmarks--radical-transparency) • [**Changelog**](#-complete-changelog)
 
 </div>
+
+---
+
+## Adaptive Context Planner (v0.6)
+
+LLMSlim is no longer only a fixed-ratio prompt compressor. The Adaptive
+Context Planner chooses safe representations for each context item, then uses
+a deterministic constrained allocator to fit the highest-value context into a
+finite model budget. The original `compress()` API remains fully supported.
+
+```python
+from llmslim import plan_context
+
+plan = plan_context(
+    messages=[
+        {"role": "system", "content": "Answer only from verified context."},
+        {"role": "user", "content": "When does Acme renew?"},
+    ],
+    documents=[{"content": "CRM: Acme renews on 2026-11-30."}],
+    query="Acme renewal date",
+    model="sarvam-105b",
+    max_input_tokens=8_000,
+    reserve_output_tokens=512,
+)
+assert plan.feasible
+print(plan.final_context)
+print(plan.metrics.planned_tokens, plan.metrics.estimated_input_cost_after)
+```
+
+Planning works offline with the base install. Optional integrations are
+isolated behind extras:
+
+```bash
+pip install "llmslim[sarvam]"   # official Sarvam rewrite provider
+pip install "llmslim[zoho]"     # CRM and WorkDrive context sources
+pip install "llmslim[mongodb]"  # explicit memory and Atlas retrieval
+```
+
+See the [architecture](docs/planning/ARCHITECTURE.md),
+[algorithm](docs/planning/ALGORITHM.md), [security model](docs/planning/SECURITY.md),
+[CLI](docs/planning/CLI.md), and [measured offline benchmark](docs/planning/BENCHMARK_REPORT.md).
 
 ---
 
@@ -65,38 +106,27 @@ LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, and **
 > - **Sovereign & Local-First**: Keep sensitive retrieved context local; only the optimized context is transmitted to the model.
 > - **Full Application Ownership**: LLMSlim operates as an unopinionated pre-processor; your application retains total execution authority over API keys, prompts, and inference.
 
-### Quickstart: Local Compression + Sarvam SDK
+### Quickstart: Adaptive Planning + Sarvam
 
 ```bash
-pip install llmslim sarvamai
+pip install "llmslim[sarvam]"
 ```
 
 ```python
-import os
-from llmslim import ContextRole, compress
-from sarvamai import SarvamAI
+from llmslim import plan_context
+from llmslim.integrations.sarvam import SarvamProvider
 
-# 1. Compress retrieved documents locally with RAG provenance locking
-raw_context = open("long_documents.txt").read()
-compressed = compress(
-    raw_context,
-    target_ratio=0.45,                     # Keep only the top 45% highest-density tokens
-    strategy="extractive",                 # 100% deterministic, 0 hallucinations
-    context_role=ContextRole.RAG,          # Untrusted RAG provenance defense
-)
-
-print(f"Context reduced: {compressed.original_tokens} -> {compressed.compressed_tokens} tokens")
-
-# 2. Dispatch the compressed prompt to Sarvam's frontier model
-client = SarvamAI(api_subscription_key=os.environ["SARVAM_API_KEY"])
-response = client.chat.completions.create(
+plan = plan_context(
+    messages=[{"role": "system", "content": "Answer from verified context."}],
+    documents=documents,
+    query="Summarize the key regulatory risks.",
     model="sarvam-105b",
-    messages=[
-        {"role": "system", "content": "You are an accurate enterprise assistant."},
-        {"role": "user", "content": f"Context:\n{compressed.compressed_text}\n\nQuestion: Summarize key regulatory risks."},
-    ],
+    max_input_tokens=8_000,
+    reserve_output_tokens=256,
 )
-print(response.choices[0].message.content)
+provider = SarvamProvider.from_env(model="sarvam-105b", max_tokens=256)
+answer = provider.chat([{"role": "user", "content": plan.final_context}])
+print(answer, provider.last_usage)
 ```
 
 👉 **[Read the Full Sarvam Integration Guide & Deployment Patterns](https://www.llmslim.app/integrations/sarvam)**
@@ -132,16 +162,25 @@ Modern LLM systems suffer from the **Context Window Dilemma**:
 
 ## 🖥️ Live Studio Playground ([www.llmslim.app](https://www.llmslim.app))
 
-Experience LLMSlim live in your browser without installing anything. Powered by Next.js and Vercel Python serverless functions running `llmslim==0.5.0`:
+Experience LLMSlim in the Next.js Studio. Offline mode plans context without a
+model call. Deployments that explicitly configure the protected server route
+can also offer a quota-limited **Sarvam AI — Hosted Demo**. The provider key is
+server-only, paid mode defaults off, and the browser receives only the answer
+plus estimated/provider-reported usage:
 
 <div align="center">
   <img src="assets/screenshot-studio.png" alt="LLMSlim Studio Playground" width="100%" style="border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
 </div>
 
-- **Interactive Token Slider**: Adjust target ratio from 10% to 90% in real-time.
-- **Side-by-Side Diffing**: Inspect exact extracted sentences, tokens saved, and reduction percentages.
-- **Latency Telemetry**: Observe real-world microsecond-precision benchmarks.
-- **Provenance Inspector**: Test `system`, `user`, `rag`, and `tool` context roles live.
+- **Offline planner:** inspect budget use, decisions, provenance, and final context without consuming credits.
+- **Hosted Sarvam where enabled:** run the plan through the official SDK after distributed quota and spend checks.
+- **Honest telemetry:** distinguish pre-call `ESTIMATED` tokens/cost from `PROVIDER_REPORTED` usage.
+- **Execution boundary:** LLMSlim still never executes tools or converts ranking into authorization.
+
+Hosted access is intentionally limited and may be disabled at any time. See
+[Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md),
+[Sarvam integration](docs/integrations/SARVAM.md), and the
+[security policy](SECURITY.md).
 
 👉 **[Open Interactive Studio](https://www.llmslim.app)**
 
@@ -176,11 +215,20 @@ pip install "llmslim[agents]"
 # With optional local multilingual semantic retrieval
 pip install "llmslim[semantic]"
 
+# Official Sarvam SDK provider
+pip install "llmslim[sarvam]"
+
+# Read-only Zoho CRM and WorkDrive context sources
+pip install "llmslim[zoho]"
+
+# Explicit MongoDB context memory and Atlas retrieval
+pip install "llmslim[mongodb]"
+
 # All optional extensions
 pip install "llmslim[all]"
 ```
 
-*Requirements: Python 3.8 or higher. No PyTorch, sentence-transformers, or heavy models required for default installation.*
+*Requirements: Python 3.9 or higher. No provider SDK, PyTorch, sentence-transformers, or cloud service is required for the default installation.*
 
 ---
 
@@ -382,15 +430,22 @@ Many libraries make unsubstantiated claims about 90% prompt compression. At LLMS
 > [!NOTE]
 > **The Schema-Tax Measurement**: In our v0.4.0 benchmark across 375 real-world schemas from 18 public catalogs, lossless schema compression saved **0 tokens (0.00%)** when the baseline was already compact canonical JSON. We publish this result transparently: we never claim imaginary savings where none exist.
 
-### Extractive Compression Performance (Frozen Benchmark Suite)
+### v0.6 Adaptive Planner (Frozen Offline Suite)
 
-| Dataset / Domain | Input Tokens | Compressed Tokens | Savings (%) | Recall Retention | Latency (CPU) |
+| Method | Budget success | Context reduction | Required facts | Hard constraints | Mean latency* |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Technical Documentation** | 4,280 | 1,925 | **55.0%** | 98.4% | 1.8 ms |
-| **Enterprise RAG Knowledgebase** | 8,560 | 3,850 | **55.0%** | 97.9% | 2.9 ms |
-| **Financial / Earnings Calls** | 12,400 | 5,580 | **55.0%** | 99.1% | 3.8 ms |
-| **Multi-Turn Chat Transcripts** | 3,150 | 1,575 | **50.0%** | 98.8% | 1.2 ms |
-| **Long Context Synthesis** | 24,000 | 9,600 | **60.0%** | 96.7% | 7.4 ms |
+| **Raw full context** | 71.4% | 0.0% | 100% | 100% | measurement only |
+| **Naive prefix** | 100% | 9.2% | 100% | 100% | 2.21 ms |
+| **Fixed-ratio compressor** | 78.6% | 9.6% | 94.0% | 96.4% | 26.55 ms |
+| **Adaptive planner** | **96.4%** | **11.4%** | **100%** | **100%** | 208.02 ms |
+
+The 28-case corpus covers chat, RAG, tools, mixed, external-source, and 12-language
+multilingual cases. The sole adaptive infeasibility is an intentionally impossible
+full-catalog case; it is reported explicitly. These task-grounded checks are not an
+LLM-judge or universal quality claim. *Latency is specific to the checked-in run and
+hardware. See the [report](docs/planning/BENCHMARK_REPORT.md) and frozen
+[dataset](benchmarks/datasets/v06_context_planning.json).* The live Sarvam harness
+was not run without both explicit opt-in and credentials.
 
 ---
 
@@ -412,6 +467,16 @@ llmslim document.txt --verbose
 ---
 
 ## 📋 Complete Changelog
+
+### [v0.6.0 release candidate](docs/releases/v0.6.0.md) — 2026-09-20
+**Theme**: *Deterministic, explainable context planning across the full prompt.*
+- **Adaptive Context Planner**: Added hard-constrained allocation for trusted instructions, chat history, RAG documents, memory, tool output, and authoritative schemas.
+- **Explicit Safety Boundaries**: Infeasible budgets are reported rather than silently truncating required content; post-plan validation falls back conservatively.
+- **Provider-Neutral Profiles**: Added dated token-window and INR cost profiles, including Sarvam 105B and Conversations, without making network calls by default.
+- **Optional Integrations**: Added official-SDK Sarvam rewriting, bounded read-only Zoho CRM/WorkDrive sources, and PyMongo async memory/Atlas retrieval.
+- **Evidence**: Added a 28-case, 12-language frozen offline benchmark and an explicitly gated live Sarvam harness.
+
+---
 
 ### [[v0.5.0]](https://github.com/Thanatos9404/llmslim/releases/tag/v0.5.0) — 2026-09-13
 **Theme**: *Production MCP Catalogs, OpenAI Agents SDK Bridge & Sarvam AI Partnership.*

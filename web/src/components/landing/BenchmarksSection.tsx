@@ -4,10 +4,10 @@ import React from "react";
 
 export function BenchmarksSection() {
   const releaseChecks = [
-    { label: "Python test suite", value: "489 passed / 0 failed" },
-    { label: "Coverage", value: "90.93%" },
-    { label: "Static analysis", value: "Ruff: pass" },
-    { label: "Schema-tax benchmark", value: "375 schemas / 18 catalogs" },
+    { label: "Python test suite", value: "589 passed / 0 failed" },
+    { label: "Branch coverage", value: "90.60%" },
+    { label: "Static analysis", value: "Ruff + MyPy: pass" },
+    { label: "Planner benchmark", value: "28 cases / 12 languages" },
   ];
 
   return (
@@ -17,10 +17,10 @@ export function BenchmarksSection() {
           Release verification
         </span>
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-          Measured checks for <span className="text-gradient-emerald">v0.4.0</span>
+          Measured checks for <span className="text-gradient-emerald">v0.6.0 RC</span>
         </h2>
         <p className="text-slate-400 text-base leading-relaxed">
-          The release gate includes Python quality checks and the repository&apos;s 375-schema, 18-catalog schema-tax benchmark. Results are environment-dependent.
+          The release gate combines Python quality checks with a frozen offline planner benchmark. Results and limitations ship in the repository.
         </p>
       </div>
 

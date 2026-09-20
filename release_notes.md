@@ -1,3 +1,22 @@
+# LLMSlim v0.6.0 — Adaptive context planning
+
+**Release date:** 2026-09-20
+
+LLMSlim now plans heterogeneous application context against explicit model
+budgets while retaining its established compression APIs. See
+`docs/releases/v0.6.0.md` for full notes and
+`docs/releases/v0.6.0-MIGRATION.md` for adoption guidance.
+
+Studio includes an offline planner and an optional Sarvam-hosted mode. Hosted
+mode is disabled by default and requires a server-only provider key, durable
+MongoDB quota ledger, pseudonymous network/session rate limits, token and
+concurrency ceilings, atomic daily/monthly spend reservations, strict payload
+limits, aggregate-only telemetry, and an emergency environment kill switch.
+BYOK is deliberately absent from the public UI. Python 3.9 is the new declared
+minimum, matching the tested CI matrix.
+
+---
+
 # LLMSlim v0.4.0 — Tool-aware context, without rewriting the contract
 
 **Release date:** 2026-08-20

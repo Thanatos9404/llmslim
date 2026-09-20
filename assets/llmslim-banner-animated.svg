@@ -171,13 +171,13 @@
   </g>
 
   <!-- Interactive Floating Feature Cards / Badges at the bottom -->
-  <!-- Badge 1: Production v0.5.0 -->
+  <!-- Badge 1: v0.6.0 release candidate -->
   <g transform="translate(100, 310)">
     <g class="float-badge">
       <rect x="0" y="0" width="235" height="48" rx="12" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.35" />
       <circle cx="22" cy="24" r="5" fill="#38bdf8" />
       <text x="36" y="22" fill="#94a3b8" class="sans-text" font-size="10" font-weight="600" letter-spacing="1" text-transform="uppercase">Release</text>
-      <text x="36" y="38" fill="#f8fafc" class="mono-text" font-size="12.5" font-weight="bold">v0.5.0 Live on PyPI</text>
+      <text x="36" y="38" fill="#f8fafc" class="mono-text" font-size="12.5" font-weight="bold">v0.6.0 Release Candidate</text>
     </g>
   </g>
 

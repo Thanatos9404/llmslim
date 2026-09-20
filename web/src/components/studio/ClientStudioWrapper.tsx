@@ -1,7 +1,7 @@
 "use client";
 
-import { LLMSlimStudio } from "@/components/studio/LLMSlimStudio";
+import { AdaptivePlannerStudio } from "@/components/studio/AdaptivePlannerStudio";
 
 export function ClientStudioWrapper() {
-  return <LLMSlimStudio />;
+  return <AdaptivePlannerStudio />;
 }

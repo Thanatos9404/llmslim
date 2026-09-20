@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.5.0"
-description = "Cut your LLM prompt size by 40-70% in one line of code -- semantic chunking + extractive summarization that preserves meaning, instructions, and key entities."
+version = "0.6.0"
+description = "Local-first context planning and compression for LLM applications, RAG systems, and agents."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 authors = [{ name = "Yashvardhan Thanvi", email = "thanatos9404@users.noreply.github.com" }]
 keywords = [
@@ -21,6 +21,7 @@ keywords = [
     "anthropic",
     "gemini",
     "context-window",
+    "context-planning",
     "cost-optimization",
 ]
 classifiers = [
@@ -28,7 +29,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -45,13 +45,31 @@ dependencies = [
 
 [project.optional-dependencies]
 semantic = ["sentence-transformers>=2.2"]
-mcp = ["mcp>=2.0,<3; python_version >= '3.10'"]
-agents = ["openai-agents>=0.11,<1; python_version >= '3.10'", "mcp>=2.0,<3; python_version >= '3.10'"]
+mcp = ["mcp>=2.0,<3; python_version >= '3.10'", "httpx2>=2.5,<3; python_version >= '3.10'"]
+agents = ["openai-agents>=0.11,<1; python_version >= '3.10'", "mcp>=2.0,<3; python_version >= '3.10'", "httpx2>=2.5,<3; python_version >= '3.10'"]
+sarvam = ["sarvamai>=0.1.34,<0.2"]
+zoho = ["httpx>=0.27,<1"]
+mongodb = [
+    "pymongo>=4.10,<4.13; python_version < '3.9'",
+    "pymongo>=4.13,<5; python_version >= '3.9'",
+]
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
 structured = ["pyyaml>=6.0"]
-all = ["sentence-transformers>=2.2", "mcp>=2.0,<3; python_version >= '3.10'", "openai-agents>=0.11,<1; python_version >= '3.10'", "tiktoken>=0.5", "nltk>=3.8", "pyyaml>=6.0"]
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21"]
+all = [
+    "sentence-transformers>=2.2",
+    "mcp>=2.0,<3; python_version >= '3.10'",
+    "httpx2>=2.5,<3; python_version >= '3.10'",
+    "openai-agents>=0.11,<1; python_version >= '3.10'",
+    "sarvamai>=0.1.34,<0.2",
+    "httpx>=0.27,<1",
+    "pymongo>=4.10,<4.13; python_version < '3.9'",
+    "pymongo>=4.13,<5; python_version >= '3.9'",
+    "tiktoken>=0.5",
+    "nltk>=3.8",
+    "pyyaml>=6.0",
+]
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21", "mypy>=1.8", "build>=1.0"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"
@@ -142,6 +160,9 @@ module = [
     "sentence_transformers.*",
     "tiktoken.*",
     "yaml.*",
+    "agents.*",
+    "httpx2.*",
+    "mcp.*",
 ]
 ignore_missing_imports = true
 

@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-20
+
+### Added
+- Added deterministic multiple-choice context allocation across trusted
+  instructions, chat, RAG, memory, tool results, and authoritative tool
+  schemas, with explainable decisions and explicit infeasibility.
+- Added balanced, quality-first, cost-first, and latency-first policies,
+  conservative post-plan validation, local metrics, estimated cost telemetry,
+  and stable `plan_context()` / `AdaptiveContextPlanner` APIs.
+- Added `llmslim plan`, unified `ContextSource` / `ContextStore` boundaries,
+  runnable examples, migration guidance, and dedicated planning documentation.
+
+### Changed
+- Retained the existing `compress()` family while positioning compression as
+  one representation mechanism inside complete-context planning.
+- Raised the declared minimum Python version from 3.8 to 3.9 so packaging
+  metadata matches the tested CI matrix and source/tooling baseline.
+
+### Security
+- Added a disabled-by-default hosted Sarvam control plane with HMAC-pseudonymous
+  network/session identities, distributed sliding rate windows, repeated
+  high-cost request detection, atomic token and spend reservations, expiring
+  concurrency slots, strict payload ceilings, safe errors, aggregate-only
+  telemetry, and an environment kill switch.
+- Preserved provenance hard constraints, authoritative tool schemas, no tool
+  execution, no automatic persistence, and no browser/provider key exposure.
+
+### Integrations
+- Added optional official-SDK Sarvam rewrite/chat support and dated INR model
+  profiles for `sarvam-105b` and `sarvam-105b-conversations`.
+- Added bounded read-only Zoho CRM/WorkDrive sources and explicit PyMongo async
+  memory/Atlas retrieval. External content remains untrusted by default.
+- Added a separate MongoDB operational ledger for hosted rate, token, spend,
+  concurrency, and aggregate telemetry records; local LLMSlim needs no database.
+- Added a data-only MCP bridge. FULL and MEASURE_ONLY remain stable;
+  SELECTIVE remains explicit and experimental and never executes tools.
+
+### Benchmarks
+- Added a 28-case frozen multilingual offline planner benchmark across chat,
+  RAG, tools, mixed context, mocked external sources, and 12 languages.
+- Added a separately gated live Sarvam harness; normal tests never spend credits
+  and no live result is claimed without a sanitized measured artifact.
+
+### Web/Studio
+- Added Offline Planner and quota-limited Hosted Sarvam modes, planner decision
+  traces, final answers, and clearly separated `ESTIMATED` versus
+  `PROVIDER_REPORTED` usage/cost telemetry.
+- Added same-origin Vercel and Catalyst server routes. Hosted mode remains off
+  until the key, durable quota store, HMAC secret, and budgets are configured.
+
+### Packaging
+- Added optional `sarvam`, `zoho`, and `mongodb` extras while preserving
+  `semantic`, `mcp`, and `agents`; the combined `all` extra includes each.
+- Kept MCP Streamable HTTP on the official MCP 2.x `httpx2` transport and
+  declared that directly imported client in the MCP/Agents extras.
+
+### Known limitations
+- MCP SELECTIVE remains experimental and opt-in.
+- Offline benchmark checks are task-grounded but are not a universal model
+  quality claim. Live Sarvam metrics are absent unless the paid harness runs.
+- Hosted inference depends on operator-configured MongoDB, provider/platform
+  alerts, production secrets, and explicit activation; it is not unlimited.
+
 ## [0.5.0] - 2026-09-13
 
 ### MCP catalog integration

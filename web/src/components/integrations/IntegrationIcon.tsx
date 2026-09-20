@@ -12,12 +12,16 @@ import {
   LlamaIndex,
   Vercel,
 } from "@lobehub/icons";
-import { Cpu, Server, Code, Layers } from "lucide-react";
+import { Building2, Code, Cpu, Database, Layers, Server } from "lucide-react";
 
 export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: string; className?: string }) {
   switch (iconKey) {
     case "sarvam":
       return <span role="img" aria-label="Sarvam" className={className} style={{ display: "inline-block", background: "currentColor", mask: "url('/sarvam-symbol.svg') center / contain no-repeat" }} />;
+    case "zoho":
+      return <Building2 className={`${className} text-red-400`} />;
+    case "mongodb":
+      return <Database className={`${className} text-emerald-500`} />;
     case "openai":
       return <OpenAI className={className} size={32} />;
     case "anthropic":

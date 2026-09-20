@@ -18,6 +18,17 @@ venv/
 env/
 ENV/
 
+# Secrets and local deployment configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*.json
+*oauth-token*
+*secret-export*
+.vercel/
+
 # IDE
 .idea/
 .vscode/
@@ -31,6 +42,8 @@ ENV/
 htmlcov/
 .tox/
 .nox/
+.mypy_cache/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -48,6 +61,8 @@ benchmarks/output/
 benchmark_results.csv
 benchmark_results.json
 benchmark_report.md
+benchmarks/results/live-*.json
+benchmarks/results/*-private.json
 
 # Datasets & Notebooks
 datasets/
@@ -73,3 +88,6 @@ test_llmslim.py
 .release-*
 .phase5-pytest-tmp/
 .pnpm-store/
+node_modules/
+web/.next*/
+.playwright-cli/

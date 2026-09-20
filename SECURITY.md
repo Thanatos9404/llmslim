@@ -8,8 +8,42 @@ Only the latest release receives security updates.
 
 | Version | Supported |
 | --- | --- |
-| 0.5.0 | :white_check_mark: |
+| 0.6.x | :white_check_mark: |
+| 0.5.x | Security fixes only |
 | < 0.5.0 | :x: |
+
+## Adaptive planning and external sources
+
+v0.6 preserves trusted system/developer instructions as hard constraints and
+marks infeasible plans instead of truncating them. Zoho, WorkDrive, MongoDB,
+RAG, tool output, and assistant history remain untrusted regardless of text or
+metadata. Planner priority is not a trust override.
+
+The planner does not execute tools, call a model without an explicit rewrite
+provider, persist prompts, or send telemetry. Plan serialization excludes
+content by default. Integration constructors and live benchmarks require
+explicit configuration; credentials are redacted from repr and sanitized
+errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
+
+## Hosted Sarvam Studio
+
+The optional `/api/sarvam` route is server-only and defaults to disabled.
+Enabling it requires `SARVAM_API_KEY`, a durable MongoDB quota store,
+`LLMSLIM_RATE_LIMIT_HMAC_SECRET`, and the explicit kill switch
+`LLMSLIM_HOSTED_SARVAM_ENABLED=true`. No variable is prefixed with
+`NEXT_PUBLIC_`; credentials never enter browser bundles or responses.
+
+Paid requests are guarded by sliding burst/minute/hour/day limits for both
+HMAC-pseudonymized network and HttpOnly-session identities, repeated high-cost
+request detection, per-identity token allowance, atomic daily/monthly project
+spend reservations, per-request cost ceilings, strict payload limits, and
+expiring per-client/global concurrency slots. A missing or unavailable durable
+store fails closed. Provider-reported usage reconciles conservative estimates;
+where reconciliation is unavailable, conservative accounting remains charged.
+
+Only aggregate operational counters are stored. Prompt content, raw IP
+addresses, session cookies, keys, headers, and database URIs are excluded.
+Cross-origin wildcard access and public BYOK persistence are not supported.
 
 ## Compression-induced instruction elevation
 
@@ -52,7 +86,7 @@ Include a description, impact, reproduction steps or proof of concept, and affec
 
 ## Response timeline
 
-- Initial acknowledgment: 24â€“48 hours.
+- Initial acknowledgment: 24–48 hours.
 - Triage: within 5 business days.
 - Fix target: within 14 business days of confirmation.
 

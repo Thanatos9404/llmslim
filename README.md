@@ -168,10 +168,11 @@ Modern LLM systems suffer from the **Context Window Dilemma**:
 ## 🖥️ Live Studio Playground ([www.llmslim.app](https://www.llmslim.app))
 
 Experience LLMSlim in the Next.js Studio. Offline mode plans context without a
-model call. Deployments that explicitly configure the protected server route
-can also offer a quota-limited **Sarvam AI — Hosted Demo**. The provider key is
-server-only, paid mode defaults off, and the browser receives only the answer
-plus estimated/provider-reported usage:
+model call. The Studio also offers a protected, quota-limited **Sarvam AI —
+Hosted Demo** and request-only **Sarvam BYOK**. The project key remains
+server-only; a BYOK credential is held only in page memory for one same-origin
+request and is never persisted. The browser receives only the answer plus
+estimated/provider-reported usage:
 
 <div align="center">
   <img src="assets/screenshot-studio.png" alt="LLMSlim Studio Playground" width="100%" style="border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
@@ -179,6 +180,7 @@ plus estimated/provider-reported usage:
 
 - **Offline planner:** inspect budget use, decisions, provenance, and final context without consuming credits.
 - **Hosted Sarvam where enabled:** run the plan through the official SDK after distributed quota and spend checks.
+- **Request-only Sarvam BYOK:** use your own provider account without storing the credential in cookies, browser storage, logs, telemetry, or responses.
 - **Honest telemetry:** distinguish pre-call `ESTIMATED` tokens/cost from `PROVIDER_REPORTED` usage.
 - **Execution boundary:** LLMSlim still never executes tools or converts ranking into authorization.
 

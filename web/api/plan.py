@@ -53,6 +53,7 @@ ALLOWED_FIELDS = frozenset(
     }
 )
 _request_windows: defaultdict[str, deque[float]] = defaultdict(deque)
+_EXPECTED_CANDIDATE_REJECTION_PREFIX = "rejected extractive candidate "
 
 
 class RequestProblem(ValueError):
@@ -187,7 +188,23 @@ def execute_plan(payload: Mapping[str, Any]) -> dict[str, Any]:
         safety_margin_tokens=_integer(payload, "safety_margin_tokens", 128, 0, 8192),
         policy=policy,
     )
-    return plan.to_dict(include_content=True)
+    result = plan.to_dict(include_content=True)
+    # Candidate generation deliberately tests multiple safe representations.
+    # A rejected alternative is normal pruning, not a failure of the selected
+    # plan, so keep public diagnostics focused on actionable plan-level issues.
+    result["warnings"] = [
+        warning
+        for warning in result.get("warnings", [])
+        if not str(warning).startswith(_EXPECTED_CANDIDATE_REJECTION_PREFIX)
+    ]
+    for decision in result.get("decisions", []):
+        if isinstance(decision, dict):
+            decision["warnings"] = [
+                warning
+                for warning in decision.get("warnings", [])
+                if not str(warning).startswith(_EXPECTED_CANDIDATE_REJECTION_PREFIX)
+            ]
+    return result
 
 
 def allow_request(client_key: str, now: float) -> bool:

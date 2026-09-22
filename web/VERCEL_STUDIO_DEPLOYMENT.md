@@ -69,6 +69,16 @@ scoring internals.
 WAF rules for `/api/sarvam`, `/api/plan`, and `/api/compress` remain useful
 defense in depth but are not the paid endpoint's source of truth.
 
+## Request-only BYOK mode
+
+`/api/sarvam_byok` accepts a visitor's Sarvam credential only through the
+same-origin `X-Sarvam-API-Key` request header. The key remains in React state
+for the current page, is used for one provider call, and is never written to
+cookies, local/session storage, prompt content, telemetry, logs, or responses.
+BYOK uses the visitor's provider balance; the hosted project's MongoDB spend
+ledger is not charged. The route still applies body, token, output, and
+per-network request limits to protect public serverless compute.
+
 ## Local end-to-end verification
 
 Run the offline handler on port 8765 and the hosted handler on port 8766. Then
@@ -77,6 +87,7 @@ start Next with:
 ```powershell
 $env:LLMSLIM_STUDIO_LOCAL_API_ORIGIN = "http://127.0.0.1:8765"
 $env:LLMSLIM_STUDIO_LOCAL_SARVAM_API_ORIGIN = "http://127.0.0.1:8766"
+$env:LLMSLIM_STUDIO_LOCAL_SARVAM_BYOK_API_ORIGIN = "http://127.0.0.1:8767"
 $env:LLMSLIM_STUDIO_E2E = "1"
 npm run dev
 ```
@@ -93,7 +104,9 @@ the separate explicit live-test opt-in and a bounded spend plan.
 - Hosted Sarvam: 96 KB body cap by default plus separately bounded aggregate
   text, messages, documents, memories, tools, tool-schema characters, input
   tokens, and output tokens.
+- Sarvam BYOK: 96 KB body cap, 8,192 input tokens, 512 output tokens, and ten
+  requests per network per minute; credentials are request-only.
 - Same-origin functions; no wildcard CORS.
 - No arbitrary URLs, imports, files, regexes, authorization headers, API keys,
   or client-provided quota totals are accepted.
-- BYOK is intentionally absent from the public Studio.
+- BYOK credentials are never accepted inside JSON planner content.

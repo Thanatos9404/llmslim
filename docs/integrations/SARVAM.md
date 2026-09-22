@@ -67,11 +67,16 @@ project spend. Every value is deployment-configurable; increasing it is an
 explicit operator decision. The total provider credit balance is never exposed
 to clients.
 
-The route returns 429 for caller limits, 413 for oversized bodies/context, and
-503 when the kill switch, durable ledger, or global spend budget blocks paid
+The hosted route returns 429 for caller limits, 413 for oversized bodies/context,
+and 503 when the kill switch, durable ledger, or global spend budget blocks paid
 inference. Responses and aggregate telemetry exclude prompts, credentials,
-raw network addresses, authorization headers, and database URIs. BYOK is not
-enabled in the public Studio.
+raw network addresses, authorization headers, and database URIs.
+
+The public Studio also provides request-only BYOK. A visitor's Sarvam key is
+held in page memory, sent only in the `X-Sarvam-API-Key` header to the
+same-origin server function, used for one request, and never persisted or
+returned. BYOK uses the visitor's provider balance and remains subject to
+bounded payload, token, output, and request-rate controls.
 
 Offline Indic coverage is in `benchmarks/datasets/v06_context_planning.json`.
 The paid evaluation is separate:

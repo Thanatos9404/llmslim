@@ -298,6 +298,10 @@
 .startup-ai-symbol { width:33px; height:33px; background:currentColor; flex-shrink:0; }
 .claude-symbol { mask:url('/claude-symbol.svg') center / contain no-repeat; background:#d97757; }
 .openai-symbol { mask:url('/openai-symbol.svg') center / contain no-repeat; }
+.startup-supplied-logo { display:block; width:145px; height:70px; background:var(--ink); }
+.auth0-brand { mask:url('/auth0-logo.png') center / contain no-repeat; }
+.zendesk-brand { mask:url('/zendesk-logo.png') center / contain no-repeat; }
+.startup-marquee-item .startup-supplied-logo { height:48px; }
 .startup-program-name { font-size:10px; color:var(--subtle); white-space:nowrap; }
 .startup-program-links { display:flex; justify-content:center; flex-wrap:wrap; gap:0 28px; }
 .startup-marquee { width:min(100%,720px); margin:0 auto 24px; }

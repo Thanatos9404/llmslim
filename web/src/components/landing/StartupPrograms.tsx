@@ -7,9 +7,12 @@ const programs = [
   { id: "mongodb", name: "MongoDB for Startups", href: "https://www.mongodb.com/startups" },
   { id: "claude", name: "Claude for Startups" },
   { id: "openai", name: "OpenAI for Startups" },
+  { id: "auth0", name: "Auth0 for Startups" },
+  { id: "zendesk", name: "Zendesk for Startups" },
 ] as const
 
 function ProgramLogo({ id }: { id: string }) {
+  if (id === "auth0" || id === "zendesk") return <span className={`startup-supplied-logo ${id}-brand`} />
   if (id === "sarvam") return <span className="sarvam-brand"><span className="sarvam-symbol" /><span className="sarvam-wordmark" /></span>
   if (id === "zoho") return <span className="zoho-brand"><Image src="/zoho-logo-light.png" alt="" width={860} height={409} sizes="160px" className="art-light" /><Image src="/zoho-logo-dark.png" alt="" width={860} height={378} sizes="160px" className="art-dark" /></span>
   if (id === "mongodb") return <span className="mongodb-brand"><Image src="/mongodb-logo.png" alt="" width={600} height={600} sizes="160px" /></span>

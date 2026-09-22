@@ -75,7 +75,7 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, and **MongoDB for Startups**.
+LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, **MongoDB for Startups**, **Claude for Startups**, **OpenAI for Startups**, **Auth0 for Startups**, and **Zendesk for Startups**.
 
 <table>
   <tr>
@@ -87,6 +87,10 @@ LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, and **
     <td align="center"><a href="https://www.sarvam.ai/startup-program">Sarvam Startup Program</a></td>
     <td align="center"><a href="https://www.zoho.com/startups/">Zoho for Startups</a></td>
     <td align="center"><a href="https://www.mongodb.com/startups">MongoDB for Startups</a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="web/public/auth0-logo.png" alt="Auth0 logo" width="180"><br>Auth0 for Startups</td>
+    <td align="center"><img src="web/public/zendesk-logo.png" alt="Zendesk logo" width="140"><br>Zendesk for Startups</td>
   </tr>
 </table>
 

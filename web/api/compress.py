@@ -26,14 +26,6 @@ def _add_repository_package_to_path() -> None:
     # Production installs the exact repository revision through requirements.txt.
     # Keep the path lookup for local development, where the sibling source tree is
     # preferred and no package installation is necessary.
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("llmslim") is not None:
-            return
-    except (ImportError, ValueError):
-        pass
-
     candidates = (
         Path.cwd(),
         Path(__file__).resolve().parents[1],
@@ -45,7 +37,10 @@ def _add_repository_package_to_path() -> None:
             if package_root not in sys.path:
                 sys.path.insert(0, package_root)
             return
-    raise RuntimeError("The repository LLMSlim package is not available to this function.")
+    import importlib.util
+
+    if importlib.util.find_spec("llmslim") is None:
+        raise RuntimeError("LLMSlim is not available to this function.")
 
 
 _add_repository_package_to_path()

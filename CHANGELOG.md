@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-26
+
+### Added
+- Added `ContextEnvelope`, a deterministic `ContextGraph`, progressive
+  quality-gated planning, local `ContextPolicy`, `ContextRuntime`, bounded
+  in-memory sessions, and prompt-free local `ContextTrace`.
+- Added execution-free generic, Sarvam, OpenAI-compatible, and text-only
+  OpenAI Agents SDK input adapters. The existing APIs and planner remain
+  available unchanged.
+- Added a Studio Context Inspector, offline context CLI, a frozen 112-case
+  five-baseline benchmark, and opt-in live Sarvam/OpenAI evaluation harness.
+- Bundled the 0.7.0 wheel with the Studio so its server functions install the
+  matching runtime without depending on a previous package release.
+
+### Verification
+- Local release candidate: 623 tests passed, three optional MCP skips,
+  90.20% branch coverage, Ruff passed, a scoped MyPy check passed, and
+  wheel/sdist built. Hosted deployment and live-provider evaluation remain
+  release gates.
+
 ## [0.6.0] - 2026-09-20
 
 ### Added

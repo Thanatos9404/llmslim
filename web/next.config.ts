@@ -6,6 +6,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const localStudioApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_API_ORIGIN;
+const localContextApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_CONTEXT_API_ORIGIN ?? localStudioApiOrigin;
 const localSarvamApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_SARVAM_API_ORIGIN ?? localStudioApiOrigin;
 const localSarvamByokApiOrigin = process.env.LLMSLIM_STUDIO_LOCAL_SARVAM_BYOK_API_ORIGIN ?? localSarvamApiOrigin;
 const localStudioE2E = process.env.LLMSLIM_STUDIO_E2E === "1";
@@ -21,6 +22,7 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   experimental: {
+    cpus: 2,
     optimizePackageImports: ["lucide-react", "framer-motion", "@radix-ui/react-dialog"],
   },
   async rewrites() {
@@ -28,6 +30,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/api/compress", destination: `${localStudioApiOrigin}/api/compress` },
       { source: "/api/plan", destination: `${localStudioApiOrigin}/api/plan` },
+      { source: "/api/context", destination: `${localContextApiOrigin}/api/context` },
       { source: "/api/sarvam", destination: `${localSarvamApiOrigin}/api/sarvam` },
       { source: "/api/sarvam_byok", destination: `${localSarvamByokApiOrigin}/api/sarvam_byok` },
     ];

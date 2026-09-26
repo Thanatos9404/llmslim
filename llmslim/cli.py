@@ -19,6 +19,7 @@ from .core import compress
 from .cost import estimate_cost_savings, list_supported_models
 from .modes import list_modes
 from .planning import PolicyPreset, plan_context
+from .runtime import ContextRuntime
 from .tokens import count_tokens
 from .tools import canonical_json, fingerprint_tool_schema, from_mcp_tool, inspect_schema
 
@@ -183,6 +184,27 @@ def build_plan_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_context_parser() -> argparse.ArgumentParser:
+    """Build the provider-free Context Inspector command parser."""
+    parser = argparse.ArgumentParser(
+        prog="llmslim context",
+        description="Inspect and plan one local agent context envelope.",
+    )
+    parser.add_argument("command", choices=("inspect", "plan", "trace", "graph"))
+    parser.add_argument("file", help="Context JSON object or '-' for standard input.")
+    parser.add_argument("--model", default="generic-128k")
+    parser.add_argument("--max-input-tokens", type=int, default=None)
+    parser.add_argument("--quality-floor", type=float, default=0.80)
+    parser.add_argument(
+        "--objective", choices=("balanced", "quality", "cost", "latency", "minimize_tokens"),
+        default="balanced",
+    )
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument("--include-content", action="store_true", help="Include prompt bodies in local output.")
+    parser.add_argument("--fail-on-infeasible", action="store_true")
+    return parser
+
+
 def _load_tool_catalog(path: str) -> List[Dict[str, Any]]:
     try:
         with open(path, encoding="utf-8") as handle:
@@ -262,13 +284,54 @@ def _load_context_payload(path: str | None) -> Dict[str, Any]:
         raise ValueError("context input must be valid JSON: %s" % exc) from exc
     if not isinstance(payload, dict):
         raise ValueError("context input must be a JSON object")
-    for key in ("messages", "documents", "tools", "memories"):
+    for key in ("messages", "documents", "tools", "memories", "tool_results"):
         value = payload.get(key, [])
         if not isinstance(value, list):
             raise ValueError(f"context field '{key}' must be an array")
     if payload.get("query") is not None and not isinstance(payload["query"], str):
         raise ValueError("context field 'query' must be a string")
     return payload
+
+
+def _run_context_command(argv: Sequence[str]) -> int:
+    parser = build_context_parser()
+    args = parser.parse_args(argv)
+    try:
+        payload = _load_context_payload(args.file)
+        runtime = ContextRuntime(
+            model=args.model,
+            max_input_tokens=args.max_input_tokens,
+            quality_floor=args.quality_floor,
+            objective=args.objective,
+        )
+        prepared = runtime.prepare_sync(
+            session_id=payload.get("session_id"),
+            user_input=payload.get("query", ""),
+            messages=payload.get("messages", []),
+            documents=payload.get("documents", []),
+            memories=payload.get("memories", []),
+            tool_results=payload.get("tool_results", []),
+            tools=payload.get("tools", []),
+        )
+    except (TypeError, ValueError) as exc:
+        parser.error(str(exc))
+        return 2
+    if args.command == "inspect":
+        output = prepared.envelope.to_dict(include_content=args.include_content)
+    elif args.command == "plan":
+        output = prepared.plan.to_dict(include_content=args.include_content)
+        output["quality"] = prepared.quality.to_dict()
+    elif args.command == "trace":
+        output = prepared.trace.to_dict()
+    else:
+        output = prepared.graph.to_dict()
+    if args.json:
+        print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+    else:
+        print(json.dumps(output, ensure_ascii=False, sort_keys=True, indent=2))
+    if args.fail_on_infeasible and not prepared.feasible:
+        return 3
+    return 0
 
 
 def _human_plan_report(plan: Any) -> str:
@@ -340,6 +403,8 @@ def _run_plan_command(argv: Sequence[str]) -> int:
 
 def main(argv=None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "context":
+        return _run_context_command(arguments[1:])
     if arguments and arguments[0] == "tools":
         return _run_tools_command(arguments[1:])
     if arguments and arguments[0] == "plan":

@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "LLMSlim: Adaptive Context Planning and Prompt Compression for LLM Applications"
+title: "LLMSlim: The Open-Source Context Layer for AI Agents"
 message: "If you use llmslim in your academic research or production systems, please cite it using the metadata below."
 type: software
 authors:
@@ -8,7 +8,7 @@ authors:
     orcid: "https://orcid.org/0009-0001-2441-2507"
 repository-code: "https://github.com/Thanatos9404/llmslim"
 url: "https://pypi.org/project/llmslim/"
-abstract: "LLMSlim is a local-first Python library for deterministic context planning and prompt compression across chat, retrieval, memory, and tool schemas while preserving provenance and hard constraints."
+abstract: "LLMSlim is a local-first Python context runtime for AI agents, planning model-visible instructions, chat, retrieval, memory, and tool context against budgets while preserving provenance, dependencies, and execution boundaries."
 keywords:
   - llm
   - prompt compression
@@ -18,5 +18,5 @@ keywords:
   - sentence centrality
   - nlp
 license: MIT
-version: 0.6.0
-date-released: 2026-09-20
+version: 0.7.0
+date-released: 2026-09-26

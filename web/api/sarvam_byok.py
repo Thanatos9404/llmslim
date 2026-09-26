@@ -21,8 +21,6 @@ from typing import Any, Optional
 
 
 def _add_repository_package_to_path() -> None:
-    if importlib.util.find_spec("llmslim") is not None:
-        return
     for candidate in (
         Path.cwd(),
         Path(__file__).resolve().parents[1],
@@ -31,7 +29,8 @@ def _add_repository_package_to_path() -> None:
         if (candidate / "llmslim" / "__init__.py").is_file():
             sys.path.insert(0, str(candidate))
             return
-    raise RuntimeError("The repository LLMSlim package is not available to this function.")
+    if importlib.util.find_spec("llmslim") is None:
+        raise RuntimeError("LLMSlim is not available to this function.")
 
 
 def _load_plan_api() -> Any:

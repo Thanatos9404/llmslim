@@ -587,3 +587,40 @@ If you use LLMSlim in your research or production systems, please cite:
 <div align="center">
   <sub>Built with precision for developers everywhere. Accepted into the Sarvam Startup Program.</sub>
 </div>
+
+---
+
+## Agent Context Runtime (v0.7.0)
+
+The 0.7.0 package adds a per-turn context path for agent applications.
+The host supplies messages, retrieved documents, memories, tool results, and
+authorized tool schemas; LLMSlim returns a quality-checked model input and an
+explainable local trace. Model calls and tool execution stay with the host.
+
+```python
+from llmslim import ContextRuntime, generic_request
+
+runtime = ContextRuntime(model="sarvam-105b", max_input_tokens=8_000)
+prepared = runtime.prepare_sync(
+    user_input="When does Acme renew?",
+    messages=[{"role": "system", "content": "Use verified dates."}],
+    documents=[{"id": "contract", "content": "Acme renews on 9 November 2026."}],
+)
+if prepared.feasible:
+    request = generic_request(prepared)  # the host sends this to its model
+    print(request["messages"])
+    print(prepared.trace.explain())
+```
+
+The runtime includes `ContextEnvelope`, `ContextGraph`, `ContextPolicy`,
+progressive planning, quality gates, bounded in-memory sessions, and
+execution-free adapters for generic, Sarvam, OpenAI-compatible, and text-only
+OpenAI Agents applications. `ContextTrace` omits prompt bodies by default.
+The existing `compress()` and `plan_context()` APIs continue to work.
+
+See the [architecture](docs/runtime/ARCHITECTURE.md),
+[security model](docs/runtime/SECURITY.md),
+[integrations](docs/runtime/INTEGRATIONS.md),
+[migration guide](docs/releases/v0.7.0-MIGRATION.md),
+[benchmark](docs/releases/v0.7.0-BENCHMARK.md), and
+[engineering report](docs/releases/v0.7.0-ENGINEERING-REPORT.md).

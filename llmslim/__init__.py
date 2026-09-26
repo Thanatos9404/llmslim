@@ -7,6 +7,12 @@ Quickstart:
     >>> print(result.detailed_summary())
 """
 
+from .adapters import (
+    generic_request,
+    make_openai_agents_input_filter,
+    openai_compatible_request,
+    sarvam_messages,
+)
 from .analysis import ContentProfile, ContentType, analyze
 from .context import (
     ContextSource,
@@ -16,8 +22,11 @@ from .context import (
     InMemoryContextStore,
     collect_context_sources,
 )
+from .context_graph import ContextEdge, ContextGraph, EdgeType
+from .context_policy import ContextPolicy
 from .core import CompressionResult, ContextCompressor, ContextRole, compress
 from .cost import MODEL_PRICING, CostEstimate, estimate_cost_savings, list_supported_models
+from .envelope import ContextEnvelope
 from .modes import get_mode, list_modes
 from .pipelines import compress_chat_messages, compress_documents
 from .planning import (
@@ -35,6 +44,8 @@ from .planning import (
     plan_context,
     plan_mcp_context,
 )
+from .planning.progressive import plan_context_v2
+from .quality import QualityReport
 from .rewrite import (
     BaseRewriteProvider,
     CallableProvider,
@@ -44,9 +55,10 @@ from .rewrite import (
     RewriteValidator,
     ValidationResult,
 )
+from .runtime import ContextRuntime, ContextTrace, ModelInput, PreparedContext, RuntimeSession
 from .tokens import count_tokens, count_tokens_batch
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "compress",
@@ -92,5 +104,21 @@ __all__ = [
     "InfeasibleContextError",
     "MCPAdaptiveContextPlan",
     "plan_mcp_context",
+    "ContextEnvelope",
+    "ContextGraph",
+    "ContextEdge",
+    "EdgeType",
+    "ContextPolicy",
+    "QualityReport",
+    "ContextRuntime",
+    "RuntimeSession",
+    "PreparedContext",
+    "ModelInput",
+    "ContextTrace",
+    "plan_context_v2",
+    "generic_request",
+    "sarvam_messages",
+    "openai_compatible_request",
+    "make_openai_agents_input_filter",
     "__version__",
 ]

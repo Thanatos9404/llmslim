@@ -7,9 +7,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { constructMetadata } from "@/lib/seo";
 
 type ReleaseItem = { label: string; icon: typeof CheckCircle2; title: string; body: string };
-type Release = { version: string; date: string; theme: string; summary: string; metrics: string[]; tag: string; items: ReleaseItem[] };
+type Release = { version: string; date: string; theme: string; summary: string; metrics: string[]; tag?: string; items: ReleaseItem[] };
 
 const releases: Release[] = [
+  {
+    version: "v0.7.0",
+    date: "26 Sep 2026",
+    theme: "Prepare context for every agent turn.",
+    summary: "A provider-neutral agent context runtime constructs model-visible input from conversation, retrieval, memory, and tools with provenance, dependencies, quality gates, and local traces. The website bundles the 0.7.0 package; hosted verification and PyPI publication remain open.",
+    metrics: ["623 passing tests", "112 offline cases", "100% measured fact retention"],
+    tag: "https://github.com/Thanatos9404/llmslim/tree/v0.7.0",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "Agent Context Runtime", body: "ContextEnvelope, ContextGraph, ContextPolicy, progressive planning, quality reporting, and bounded sessions prepare a turn without taking over the agent loop or tool execution." },
+      { label: "Added", icon: Wrench, title: "Context Inspector and adapters", body: "The Studio shows before and after context, decision reasons, graph links, and a prompt-free trace. Generic, Sarvam, OpenAI-compatible, and text-only OpenAI Agents adapters return host-owned model inputs." },
+      { label: "Measured", icon: ShieldCheck, title: "Quality and budget tradeoff", body: "Across 112 offline cases, the new runtime retained all measured required facts and tool contracts, with 67.9% budget success and 18.7% context reduction. Provider-backed answer quality remains unmeasured." },
+    ],
+  },
   {
     version: "v0.6.0",
     date: "19 Sep 2026",
@@ -107,9 +120,9 @@ const releases: Release[] = [
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "Verified LLMSlim Python package history for v0.1.0 through v0.6.0, including release themes, compatibility, and security changes.",
+  description: "LLMSlim package history through v0.7.0, including context runtime, compatibility, and security changes.",
 });
 
 export default function ChangelogPage() {
-  return <div className="flex min-h-screen flex-col"><SiteHeader /><main id="main-content" className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-10 sm:px-6 lg:px-8"><header><Badge variant="secondary">Release history</Badge><h1 className="mt-4 text-4xl font-semibold tracking-tight">Changes with consequences.</h1><p className="mt-3 max-w-3xl text-muted-foreground">LLMSlim releases document what shipped, what changed, and where the boundary remains.</p></header>{releases.map((release) => <Card key={release.version}><CardHeader><div className="flex flex-wrap items-center gap-2"><Badge>{release.version}</Badge><Badge variant="outline">{release.date}</Badge></div><CardTitle className="mt-2 text-2xl">{release.theme}</CardTitle><CardDescription>{release.summary}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="flex flex-wrap gap-2">{release.metrics.map((metric) => <Badge key={metric} variant="secondary">{metric}</Badge>)}</div><div className="space-y-4">{release.items.map((item) => { const Icon = item.icon; return <div key={item.title} className="flex gap-3"><Icon className="mt-0.5 size-5 shrink-0" /><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p></div></div> })}</div></CardContent><CardFooter><Button variant="outline" size="sm" render={<a href={release.tag} target="_blank" rel="noreferrer" />}>View verified source</Button></CardFooter></Card>)}</main><SiteFooter /></div>;
+  return <div className="flex min-h-screen flex-col"><SiteHeader /><main id="main-content" className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-10 sm:px-6 lg:px-8"><header><Badge variant="secondary">Release history</Badge><h1 className="mt-4 text-4xl font-semibold tracking-tight">Changes with consequences.</h1><p className="mt-3 max-w-3xl text-muted-foreground">LLMSlim releases document what shipped, what changed, and where the boundary remains.</p></header>{releases.map((release) => <Card key={release.version}><CardHeader><div className="flex flex-wrap items-center gap-2"><Badge>{release.version}</Badge><Badge variant="outline">{release.date}</Badge></div><CardTitle className="mt-2 text-2xl">{release.theme}</CardTitle><CardDescription>{release.summary}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="flex flex-wrap gap-2">{release.metrics.map((metric) => <Badge key={metric} variant="secondary">{metric}</Badge>)}</div><div className="space-y-4">{release.items.map((item) => { const Icon = item.icon; return <div key={item.title} className="flex gap-3"><Icon className="mt-0.5 size-5 shrink-0" /><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p></div></div> })}</div></CardContent>{release.tag && <CardFooter><Button variant="outline" size="sm" render={<a href={release.tag} target="_blank" rel="noreferrer" />}>View verified source</Button></CardFooter>}</Card>)}</main><SiteFooter /></div>;
 }

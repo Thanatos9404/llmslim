@@ -4,10 +4,11 @@ The established web deployment is a Next.js application with same-origin
 Vercel Python Functions in `web/api`. `/api/plan` remains free, deterministic,
 and offline. `/api/sarvam` is a separate paid path and defaults to disabled.
 
-Production installs the exact `llmslim[sarvam,mongodb]==0.6.0` release through
-`web/requirements.txt`. Publish and independently verify that package before
-deploying the web application. Local development imports the sibling package;
-no planner, provider, or quota implementation is duplicated in the frontend.
+Production installs the exact bundled 0.7.0 wheel from `web/vendor` through
+`web/requirements.txt`. Rebuild and replace the wheel when the package source
+changes. Local development imports the sibling package; no planner, provider,
+or quota implementation is duplicated in the frontend.
+`/api/context` serves the Agent Context Runtime and requires the 0.7.0 package.
 
 ## Required server-only configuration
 
@@ -81,11 +82,14 @@ per-network request limits to protect public serverless compute.
 
 ## Local end-to-end verification
 
-Run the offline handler on port 8765 and the hosted handler on port 8766. Then
+Run the offline planner handler on port 8765, the Context Inspector handler on
+port 8768, the hosted handler on port 8766, and the BYOK handler on port 8767.
+Then
 start Next with:
 
 ```powershell
 $env:LLMSLIM_STUDIO_LOCAL_API_ORIGIN = "http://127.0.0.1:8765"
+$env:LLMSLIM_STUDIO_LOCAL_CONTEXT_API_ORIGIN = "http://127.0.0.1:8768"
 $env:LLMSLIM_STUDIO_LOCAL_SARVAM_API_ORIGIN = "http://127.0.0.1:8766"
 $env:LLMSLIM_STUDIO_LOCAL_SARVAM_BYOK_API_ORIGIN = "http://127.0.0.1:8767"
 $env:LLMSLIM_STUDIO_E2E = "1"

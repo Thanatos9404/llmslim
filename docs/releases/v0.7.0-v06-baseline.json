@@ -1,0 +1,2208 @@
+{
+  "cases": [
+    {
+      "budget_tokens": 240,
+      "category": "chat",
+      "id": "chat-short",
+      "language": "English",
+      "original_tokens": 172,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 240,
+          "budget_utilization": 0.7166666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 172,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 240,
+          "budget_utilization": 0.7166666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 172,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.11249999806750566,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 240,
+          "budget_utilization": 0.7166666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 172,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 17.904799999087118,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 240,
+          "budget_utilization": 0.7166666666666667,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 4
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.0050361600000000005,
+          "estimated_input_cost_before_inr": 0.0050361600000000005,
+          "factual_retention": 1.0,
+          "final_tokens": 172,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 2361.763399996562,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 520,
+      "category": "chat",
+      "id": "chat-20-turn-early-fact",
+      "language": "English",
+      "original_tokens": 1136,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 520,
+          "budget_utilization": 2.1846153846153844,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 1136,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.5422535211267605,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 520,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 2.5668000016594306,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 520,
+          "budget_utilization": 1.0346153846153847,
+          "context_reduction": 0.5264084507042254,
+          "entity_retention": 0.0,
+          "factual_retention": 0.0,
+          "final_tokens": 538,
+          "hard_constraint_retention": 0.0,
+          "latency_ms": 48.760500008938834,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 0.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 0.9692307692307692,
+          "context_reduction": 0.556338028169014,
+          "decisions": {
+            "drop": 11,
+            "raw": 9
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.01475712,
+          "estimated_input_cost_before_inr": 0.033262080000000006,
+          "factual_retention": 1.0,
+          "final_tokens": 504,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 104.09799999615643,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 900,
+      "category": "chat",
+      "id": "chat-100-turn-buried-fact",
+      "language": "English",
+      "original_tokens": 5846,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 900,
+          "budget_utilization": 6.495555555555556,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 5846,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 900,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.8460485802257954,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 900,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 9.127400000579655,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 900,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.8460485802257954,
+          "entity_retention": 0.0,
+          "factual_retention": 0.0,
+          "final_tokens": 900,
+          "hard_constraint_retention": 0.0,
+          "latency_ms": 254.65170000097714,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 0.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 900,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.8460485802257954,
+          "decisions": {
+            "drop": 84,
+            "raw": 16
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.026352,
+          "estimated_input_cost_before_inr": 0.17117088,
+          "factual_retention": 1.0,
+          "final_tokens": 900,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 673.4452999953646,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 280,
+      "category": "chat",
+      "id": "chat-conflicting-untrusted-instruction",
+      "language": "English",
+      "original_tokens": 156,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 280,
+          "budget_utilization": 0.5571428571428572,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 156,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 280,
+          "budget_utilization": 0.5571428571428572,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 156,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.16969999705906957,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 280,
+          "budget_utilization": 0.5571428571428572,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 156,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.65030000184197,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 280,
+          "budget_utilization": 0.5571428571428572,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00456768,
+          "estimated_input_cost_before_inr": 0.00456768,
+          "factual_retention": 1.0,
+          "final_tokens": 156,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 14.671800003270619,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 300,
+      "category": "chat",
+      "id": "chat-recent-reference",
+      "language": "English",
+      "original_tokens": 178,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.5933333333333334,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 178,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.5933333333333334,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 178,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.057600002037361264,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.5933333333333334,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 178,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 9.449499993934296,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.5933333333333334,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 4
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00521184,
+          "estimated_input_cost_before_inr": 0.00521184,
+          "factual_retention": 1.0,
+          "final_tokens": 178,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.220500003313646,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 360,
+      "category": "rag",
+      "id": "rag-relevant-irrelevant",
+      "language": "English",
+      "original_tokens": 269,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 360,
+          "budget_utilization": 0.7472222222222222,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 269,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 360,
+          "budget_utilization": 0.7472222222222222,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 269,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.08230000094044954,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 360,
+          "budget_utilization": 0.7444444444444445,
+          "context_reduction": 0.0037174721189591198,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 268,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 10.248399994452484,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 360,
+          "budget_utilization": 0.7472222222222222,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 4
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00787632,
+          "estimated_input_cost_before_inr": 0.00787632,
+          "factual_retention": 1.0,
+          "final_tokens": 269,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 50.95439999422524,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "rejected extractive candidate 0.30 for document:0:2a1062cb5117: Entity retention too low: 50% (min 70%, kept 4/8)",
+            "rejected extractive candidate 0.30 for document:1:f0678ec04a61: Entity retention too low: 0% (min 70%, kept 0/1)",
+            "rejected extractive candidate 0.30 for document:2:9b204a867a6a: Entity retention too low: 0% (min 70%, kept 0/1)",
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 300,
+      "category": "rag",
+      "id": "rag-numerical-entities",
+      "language": "English",
+      "original_tokens": 194,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.6466666666666666,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 194,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.6466666666666666,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 194,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.10640000982675701,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.6433333333333333,
+          "context_reduction": 0.005154639175257714,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 193,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 10.078899998916313,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.6466666666666666,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00568032,
+          "estimated_input_cost_before_inr": 0.00568032,
+          "factual_retention": 1.0,
+          "final_tokens": 194,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 25.374000004376285,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "rag",
+      "id": "rag-adversarial-imperative",
+      "language": "English",
+      "original_tokens": 208,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.8,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 208,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.8,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 208,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.06479999865405262,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.7884615384615384,
+          "context_reduction": 0.014423076923076872,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 205,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 9.80090000666678,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.8,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 4
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00609024,
+          "estimated_input_cost_before_inr": 0.00609024,
+          "factual_retention": 1.0,
+          "final_tokens": 208,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 14.431200004764833,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "rejected extractive candidate 0.50 for document:0:cc6f55e652e3: Entity retention too low: 57% (min 70%, kept 4/7)",
+            "rejected extractive candidate 0.30 for document:0:cc6f55e652e3: Entity retention too low: 57% (min 70%, kept 4/7)",
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 180,
+      "category": "rag",
+      "id": "rag-front-loaded-fact",
+      "language": "English",
+      "original_tokens": 110,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 180,
+          "budget_utilization": 0.6111111111111112,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 110,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 180,
+          "budget_utilization": 0.6111111111111112,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 110,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.03609999839682132,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 180,
+          "budget_utilization": 0.6055555555555555,
+          "context_reduction": 0.009090909090909038,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 109,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 6.909199990332127,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 180,
+          "budget_utilization": 0.6111111111111112,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.0032208000000000002,
+          "estimated_input_cost_before_inr": 0.0032208000000000002,
+          "factual_retention": 1.0,
+          "final_tokens": 110,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 10.862800001632422,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 600,
+      "category": "tools",
+      "id": "tools-small-full",
+      "language": "English",
+      "original_tokens": 359,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 600,
+          "budget_utilization": 0.5983333333333334,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 359,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 600,
+          "budget_utilization": 0.5983333333333334,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 359,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.11479998647700995,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 600,
+          "budget_utilization": 0.5966666666666667,
+          "context_reduction": 0.0027855153203342198,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 358,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 11.901899997610599,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 600,
+          "budget_utilization": 0.5983333333333334,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 4
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.01051152,
+          "estimated_input_cost_before_inr": 0.01051152,
+          "factual_retention": 1.0,
+          "final_tokens": 359,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 2.7166000072611496,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 2600,
+      "category": "tools",
+      "id": "tools-medium-full",
+      "language": "English",
+      "original_tokens": 2597,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 2600,
+          "budget_utilization": 0.9988461538461538,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 2597,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 2600,
+          "budget_utilization": 0.9988461538461538,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 2597,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 1.3335000112419948,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 2600,
+          "budget_utilization": 0.9911538461538462,
+          "context_reduction": 0.0077011936850212015,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 2577,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 67.0580999867525,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 2600,
+          "budget_utilization": 0.9988461538461538,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 26
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.07604016,
+          "estimated_input_cost_before_inr": 0.07604016,
+          "factual_retention": 1.0,
+          "final_tokens": 2597,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 19.298600003821775,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 1200,
+      "category": "tools",
+      "id": "tools-large-overflow",
+      "language": "English",
+      "original_tokens": 10256,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 1200,
+          "budget_utilization": 8.546666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 10256,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 1200,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.8829953198127926,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 1200,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.527400001999922,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 1200,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.8829953198127926,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 1200,
+          "hard_constraint_retention": 0.0,
+          "latency_ms": 273.39370000117924,
+          "tool_availability": 0.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": false,
+          "budget_tokens": 1200,
+          "budget_utilization": 8.546666666666667,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 101
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.30029568,
+          "estimated_input_cost_before_inr": 0.30029568,
+          "factual_retention": 1.0,
+          "final_tokens": 10256,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 65.79710000369232,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": false,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage",
+            "infeasible plan: mandatory/minimum-safe context exceeds the available budget; trusted content was not truncated"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 700,
+      "category": "mixed",
+      "id": "mixed-all-context",
+      "language": "English",
+      "original_tokens": 617,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 700,
+          "budget_utilization": 0.8814285714285715,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 617,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 700,
+          "budget_utilization": 0.8814285714285715,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 617,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.19160000374540687,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 700,
+          "budget_utilization": 0.8814285714285715,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 617,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 22.134300001198426,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 700,
+          "budget_utilization": 0.8814285714285715,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 8
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.01806576,
+          "estimated_input_cost_before_inr": 0.01806576,
+          "factual_retention": 1.0,
+          "final_tokens": 617,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 10.499399999389425,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 520,
+      "category": "mixed",
+      "id": "mixed-memory-tools",
+      "language": "English",
+      "original_tokens": 457,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 0.8788461538461538,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 457,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 0.8788461538461538,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 457,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.14859999646432698,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 0.8788461538461538,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 457,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 13.828700000885874,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 520,
+          "budget_utilization": 0.8788461538461538,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 6
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.01338096,
+          "estimated_input_cost_before_inr": 0.01338096,
+          "factual_retention": 1.0,
+          "final_tokens": 457,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 13.487200005329214,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 300,
+      "category": "external",
+      "id": "external-zoho-crm-mock",
+      "language": "English",
+      "original_tokens": 102,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.34,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 102,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.34,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 102,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.031000003218650818,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.33666666666666667,
+          "context_reduction": 0.009803921568627416,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 101,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 5.314900001394562,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.34,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00298656,
+          "estimated_input_cost_before_inr": 0.00298656,
+          "factual_retention": 1.0,
+          "final_tokens": 102,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 5.419299995992333,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 300,
+      "category": "external",
+      "id": "external-workdrive-mock",
+      "language": "English",
+      "original_tokens": 94,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.31333333333333335,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 94,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.31333333333333335,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 94,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.031200004741549492,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.31,
+          "context_reduction": 0.010638297872340385,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 93,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 6.143899998278357,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.31333333333333335,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00275232,
+          "estimated_input_cost_before_inr": 0.00275232,
+          "factual_retention": 1.0,
+          "final_tokens": 94,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 6.313199992291629,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 300,
+      "category": "external",
+      "id": "external-mongodb-mock",
+      "language": "English",
+      "original_tokens": 89,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.2966666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 89,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.2966666666666667,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 89,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.05570000212173909,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.29333333333333333,
+          "context_reduction": 0.011235955056179803,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 88,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.690700003877282,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 300,
+          "budget_utilization": 0.2966666666666667,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00260592,
+          "estimated_input_cost_before_inr": 0.00260592,
+          "factual_retention": 1.0,
+          "final_tokens": 89,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 5.41160001012031,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-hindi",
+      "language": "Hindi",
+      "original_tokens": 249,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9576923076923077,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 249,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9576923076923077,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 249,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.06540000322274864,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9461538461538461,
+          "context_reduction": 0.012048192771084376,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 246,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.3228000003146,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9576923076923077,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00729072,
+          "estimated_input_cost_before_inr": 0.00729072,
+          "factual_retention": 1.0,
+          "final_tokens": 249,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 13.442899988149293,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-hinglish",
+      "language": "Hinglish",
+      "original_tokens": 146,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.5615384615384615,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 146,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.5615384615384615,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 146,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.04889999399892986,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.5576923076923077,
+          "context_reduction": 0.006849315068493178,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 145,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.880299996235408,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.5615384615384615,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00427488,
+          "estimated_input_cost_before_inr": 0.00427488,
+          "factual_retention": 1.0,
+          "final_tokens": 146,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.796099996194243,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-bengali",
+      "language": "Bengali",
+      "original_tokens": 264,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0153846153846153,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 264,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.015151515151515138,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 260,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.852100012707524,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0038461538461538,
+          "context_reduction": 0.011363636363636354,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 261,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.73699999647215,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.6576923076923077,
+          "context_reduction": 0.3522727272727273,
+          "decisions": {
+            "drop": 1,
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.005006880000000001,
+          "estimated_input_cost_before_inr": 0.007729920000000001,
+          "factual_retention": 1.0,
+          "final_tokens": 171,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 15.519599997787736,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-marathi",
+      "language": "Marathi",
+      "original_tokens": 241,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.926923076923077,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 241,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.926923076923077,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 241,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.06219999340828508,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9230769230769231,
+          "context_reduction": 0.004149377593360981,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 240,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.986600005300716,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.926923076923077,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00705648,
+          "estimated_input_cost_before_inr": 0.00705648,
+          "factual_retention": 1.0,
+          "final_tokens": 241,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.973799995961599,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-gujarati",
+      "language": "Gujarati",
+      "original_tokens": 250,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9615384615384616,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 250,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9615384615384616,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 250,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.056900011259131134,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9576923076923077,
+          "context_reduction": 0.0040000000000000036,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 249,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.997399996384047,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9615384615384616,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00732,
+          "estimated_input_cost_before_inr": 0.00732,
+          "factual_retention": 1.0,
+          "final_tokens": 250,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.142199993832037,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-tamil",
+      "language": "Tamil",
+      "original_tokens": 238,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9153846153846154,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 238,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9153846153846154,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 238,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.057199998991563916,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9115384615384615,
+          "context_reduction": 0.004201680672268893,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 237,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.449000000837259,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9153846153846154,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.006968640000000001,
+          "estimated_input_cost_before_inr": 0.006968640000000001,
+          "factual_retention": 1.0,
+          "final_tokens": 238,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.328600001637824,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-telugu",
+      "language": "Telugu",
+      "original_tokens": 271,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0423076923076924,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 271,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.040590405904059046,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 260,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.5500999977812171,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0384615384615385,
+          "context_reduction": 0.0036900369003689537,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 270,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.749199998215772,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.6538461538461539,
+          "context_reduction": 0.3726937269372693,
+          "decisions": {
+            "drop": 1,
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.0049776,
+          "estimated_input_cost_before_inr": 0.00793488,
+          "factual_retention": 1.0,
+          "final_tokens": 170,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 12.13959998858627,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-kannada",
+      "language": "Kannada",
+      "original_tokens": 246,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9461538461538461,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 246,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9461538461538461,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 246,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.057900004321709275,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9423076923076923,
+          "context_reduction": 0.004065040650406471,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 245,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.448400006978773,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9461538461538461,
+          "context_reduction": 0.0,
+          "decisions": {
+            "raw": 3
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.007202880000000001,
+          "estimated_input_cost_before_inr": 0.007202880000000001,
+          "factual_retention": 1.0,
+          "final_tokens": 246,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 13.546499991207384,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-malayalam",
+      "language": "Malayalam",
+      "original_tokens": 267,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0269230769230768,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 267,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.02621722846441943,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 260,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.4802999901585281,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0307692307692307,
+          "context_reduction": -0.0037453183520599342,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 268,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.34739999845624,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.6807692307692308,
+          "context_reduction": 0.3370786516853933,
+          "decisions": {
+            "drop": 1,
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00518256,
+          "estimated_input_cost_before_inr": 0.00781776,
+          "factual_retention": 1.0,
+          "final_tokens": 177,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 16.405499991378747,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-punjabi",
+      "language": "Punjabi",
+      "original_tokens": 265,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0192307692307692,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 265,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0,
+          "context_reduction": 0.018867924528301883,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 260,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.5244999920250848,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0076923076923077,
+          "context_reduction": 0.01132075471698113,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 262,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 7.248499998240732,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.6461538461538462,
+          "context_reduction": 0.36603773584905663,
+          "decisions": {
+            "drop": 1,
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.0049190399999999995,
+          "estimated_input_cost_before_inr": 0.0077592,
+          "factual_retention": 1.0,
+          "final_tokens": 168,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 13.175000000046566,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    },
+    {
+      "budget_tokens": 260,
+      "category": "multilingual",
+      "id": "indic-odia",
+      "language": "Odia",
+      "original_tokens": 321,
+      "records": [
+        {
+          "baseline": "raw_full_context",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.2346153846153847,
+          "context_reduction": 0.0,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 321,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.0,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "naive_prefix_truncation",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.9961538461538462,
+          "context_reduction": 0.1931464174454829,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 259,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 0.4374999989522621,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "fixed_ratio",
+          "budget_success": false,
+          "budget_tokens": 260,
+          "budget_utilization": 1.0346153846153847,
+          "context_reduction": 0.161993769470405,
+          "entity_retention": 1.0,
+          "factual_retention": 1.0,
+          "final_tokens": 269,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 8.395199998631142,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0
+        },
+        {
+          "baseline": "adaptive_planner",
+          "budget_success": true,
+          "budget_tokens": 260,
+          "budget_utilization": 0.7923076923076923,
+          "context_reduction": 0.3582554517133957,
+          "decisions": {
+            "drop": 1,
+            "raw": 2
+          },
+          "entity_retention": 1.0,
+          "estimated_input_cost_after_inr": 0.00603168,
+          "estimated_input_cost_before_inr": 0.00939888,
+          "factual_retention": 1.0,
+          "final_tokens": 206,
+          "hard_constraint_retention": 1.0,
+          "latency_ms": 11.140500006149523,
+          "tool_availability": 1.0,
+          "trusted_instruction_retention": 1.0,
+          "validation_passed": true,
+          "warnings": [
+            "token counts are planner estimates unless a provider separately reports authoritative usage"
+          ]
+        }
+      ]
+    }
+  ],
+  "classification": "MEASURED_OFFLINE",
+  "dataset": {
+    "case_count": 28,
+    "categories": {
+      "chat": 5,
+      "external": 3,
+      "mixed": 2,
+      "multilingual": 11,
+      "rag": 4,
+      "tools": 3
+    },
+    "languages": {
+      "Bengali": 1,
+      "English": 17,
+      "Gujarati": 1,
+      "Hindi": 1,
+      "Hinglish": 1,
+      "Kannada": 1,
+      "Malayalam": 1,
+      "Marathi": 1,
+      "Odia": 1,
+      "Punjabi": 1,
+      "Tamil": 1,
+      "Telugu": 1
+    },
+    "path": "benchmarks\\datasets\\v06_context_planning.json",
+    "sha256": "2cb35850b8eab2026a849c6451b24864f1dc22aee98c69d277c9e085ac820deb"
+  },
+  "environment": {
+    "network_calls": 0,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "provider_calls": 0,
+    "python": "3.12.14",
+    "token_counter": "tiktoken"
+  },
+  "generated_at": "2026-09-26T11:28:36+00:00",
+  "live_sarvam": {
+    "classification": "NOT_RUN_BY_OFFLINE_BENCHMARK",
+    "required_opt_in": "LLMSLIM_RUN_LIVE_SARVAM=1"
+  },
+  "llmslim_version": "0.6.0",
+  "mcp": {
+    "modes": {
+      "full": {
+        "catalog_tokens": 1734,
+        "experimental": false,
+        "presented_tokens": 1734,
+        "required_tool_present": true,
+        "selected_tools": 25
+      },
+      "measure_only": {
+        "catalog_tokens": 1734,
+        "experimental": false,
+        "presented_tokens": 1734,
+        "required_tool_present": true,
+        "selected_tools": 25
+      },
+      "selective": {
+        "catalog_tokens": 1734,
+        "experimental": true,
+        "presented_tokens": 1734,
+        "required_tool_present": true,
+        "selected_tools": 25
+      }
+    },
+    "stale_plan_rejected": true,
+    "tool_execution_count": 0
+  },
+  "schema_version": "1.0",
+  "summary": {
+    "adaptive_planner": {
+      "budget_success": 0.9642857142857143,
+      "budget_utilization": 1.0069819466248038,
+      "case_count": 28,
+      "context_reduction": 0.11388303220902328,
+      "entity_retention": 1.0,
+      "factual_retention": 1.0,
+      "hard_constraint_retention": 1.0,
+      "latency_ms": 126.33481071316055,
+      "tool_availability": 1.0,
+      "trusted_instruction_retention": 1.0
+    },
+    "fixed_ratio": {
+      "budget_success": 0.7857142857142857,
+      "budget_utilization": 0.7973390894819465,
+      "case_count": 28,
+      "context_reduction": 0.09106927919315945,
+      "entity_retention": 0.9285714285714286,
+      "factual_retention": 0.9285714285714286,
+      "hard_constraint_retention": 0.8928571428571429,
+      "latency_ms": 31.195792856513954,
+      "tool_availability": 0.9642857142857143,
+      "trusted_instruction_retention": 0.9285714285714286
+    },
+    "naive_prefix_truncation": {
+      "budget_success": 1.0,
+      "budget_utilization": 0.7944636316064887,
+      "case_count": 28,
+      "context_reduction": 0.09161681830925453,
+      "entity_retention": 1.0,
+      "factual_retention": 1.0,
+      "hard_constraint_retention": 1.0,
+      "latency_ms": 1.0696571433592388,
+      "tool_availability": 1.0,
+      "trusted_instruction_retention": 1.0
+    },
+    "raw_full_context": {
+      "budget_success": 0.7142857142857143,
+      "budget_utilization": 1.3147902494331067,
+      "case_count": 28,
+      "context_reduction": 0.0,
+      "entity_retention": 1.0,
+      "factual_retention": 1.0,
+      "hard_constraint_retention": 1.0,
+      "latency_ms": 0.0,
+      "tool_availability": 1.0,
+      "trusted_instruction_retention": 1.0
+    }
+  }
+}

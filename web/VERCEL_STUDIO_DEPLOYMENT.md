@@ -4,8 +4,9 @@ The established web deployment is a Next.js application with same-origin
 Vercel Python Functions in `web/api`. `/api/plan` remains free, deterministic,
 and offline. `/api/sarvam` is a separate paid path and defaults to disabled.
 
-Production installs the exact bundled 0.7.0 wheel from `web/vendor` through
-`web/requirements.txt`. Rebuild and replace the wheel when the package source
+Production installs the exact hash-pinned 0.7.0 wheel from the `v0.7.0` GitHub
+tag through `web/requirements.txt`. The wheel remains in `web/vendor` for
+reproducibility. Rebuild and retag it for a future version when package source
 changes. Local development imports the sibling package; no planner, provider,
 or quota implementation is duplicated in the frontend.
 `/api/context` serves the Agent Context Runtime and requires the 0.7.0 package.

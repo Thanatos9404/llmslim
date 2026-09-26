@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   available unchanged.
 - Added a Studio Context Inspector, offline context CLI, a frozen 112-case
   five-baseline benchmark, and opt-in live Sarvam/OpenAI evaluation harness.
-- Bundled the 0.7.0 wheel with the Studio so its server functions install the
-  matching runtime without depending on a previous package release.
+- Tagged and hash-pinned the 0.7.0 wheel for Studio server functions so they
+  install the matching runtime without depending on a previous package release.
 
 ### Verification
 - Local release candidate: 623 tests passed, three optional MCP skips,

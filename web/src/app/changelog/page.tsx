@@ -14,7 +14,7 @@ const releases: Release[] = [
     version: "v0.7.0",
     date: "26 Sep 2026",
     theme: "Prepare context for every agent turn.",
-    summary: "A provider-neutral agent context runtime constructs model-visible input from conversation, retrieval, memory, and tools with provenance, dependencies, quality gates, and local traces. The website bundles the 0.7.0 package; hosted verification and PyPI publication remain open.",
+    summary: "A provider-neutral agent context runtime constructs model-visible input from conversation, retrieval, memory, and tools with provenance, dependencies, quality gates, and local traces. The website installs the tagged 0.7.0 package; hosted verification and PyPI publication remain open.",
     metrics: ["623 passing tests", "112 offline cases", "100% measured fact retention"],
     tag: "https://github.com/Thanatos9404/llmslim/tree/v0.7.0",
     items: [

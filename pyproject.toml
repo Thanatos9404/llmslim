@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "numpy>=1.21",
+    "numpy>=2.2.6",
     "scikit-learn>=1.0",
     "jsonschema>=4.18",
 ]

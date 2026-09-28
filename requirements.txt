@@ -1,5 +1,5 @@
 # Core (required) dependencies -- fully offline, no model downloads needed.
-numpy>=1.21
+numpy>=2.2.6
 scikit-learn>=1.0
 
 # Optional extras (install via `pip install "llmslim[all]"`):

@@ -55,7 +55,7 @@ mongodb = [
 ]
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
-structured = ["pyyaml>=6.0"]
+structured = ["pyyaml>=6.0.3"]
 all = [
     "sentence-transformers>=2.2",
     "mcp>=2.0,<3; python_version >= '3.10'",
@@ -67,7 +67,7 @@ all = [
     "pymongo>=4.13,<5; python_version >= '3.9'",
     "tiktoken>=0.5",
     "nltk>=3.8",
-    "pyyaml>=6.0",
+    "pyyaml>=6.0.3",
 ]
 dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21", "mypy>=1.8", "build>=1.0"]
 

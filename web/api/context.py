@@ -27,8 +27,13 @@ _add_repository_package_to_path()
 
 try:
     from llmslim import ContextRuntime  # noqa: E402
-except ImportError:  # Installed web dependency may still be v0.6.
+except ImportError:  # A missing server dependency leaves Studio unavailable.
     ContextRuntime = None  # type: ignore[assignment,misc]
+
+try:
+    from llmslim import CachePolicy  # noqa: E402
+except ImportError:  # An older installed wheel still supports the core inspector.
+    CachePolicy = None  # type: ignore[assignment,misc]
 
 MAX_BODY_BYTES = 160_000
 MAX_TOTAL_CHARS = 96_000
@@ -37,9 +42,12 @@ RATE_LIMIT_MAX_REQUESTS = 20
 RATE_LIMIT_WINDOW_SECONDS = 60
 ALLOWED_MODELS = frozenset({"generic-128k", "sarvam-105b", "sarvam-105b-conversations"})
 ALLOWED_OBJECTIVES = frozenset({"balanced", "quality", "cost", "latency", "minimize_tokens"})
+ALLOWED_CACHE_PROVIDERS = frozenset({"generic", "openai", "anthropic", "gemini", "sarvam", "vllm"})
+ALLOWED_CACHE_MODES = frozenset({"disabled", "auto", "provider_memory"})
 ALLOWED_FIELDS = frozenset({
     "messages", "documents", "memories", "tool_results", "tools", "query", "model",
     "max_input_tokens", "reserve_output_tokens", "quality_floor", "objective",
+    "cache_provider", "cache_mode",
 })
 _request_windows: defaultdict[str, deque[float]] = defaultdict(deque)
 
@@ -86,23 +94,35 @@ def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
     floor = payload.get("quality_floor", 0.80)
     budget = payload.get("max_input_tokens", 8192)
     reserve = payload.get("reserve_output_tokens", 1024)
+    cache_provider = payload.get("cache_provider", "sarvam" if str(model).startswith("sarvam") else "generic")
+    cache_mode = payload.get("cache_mode", "disabled")
     if not isinstance(query, str):
         raise _problem(422, "invalid_query", "query must be text.")
     if not isinstance(model, str) or model not in ALLOWED_MODELS:
         raise _problem(422, "invalid_model", "model is not available in Studio.")
     if not isinstance(objective, str) or objective not in ALLOWED_OBJECTIVES:
         raise _problem(422, "invalid_objective", "objective is not available in Studio.")
+    if cache_provider not in ALLOWED_CACHE_PROVIDERS or cache_mode not in ALLOWED_CACHE_MODES:
+        raise _problem(422, "invalid_cache_policy", "Choose an available cache provider and mode.")
     if isinstance(floor, bool) or not isinstance(floor, (int, float)) or not 0 <= floor <= 1:
         raise _problem(422, "invalid_quality_floor", "quality_floor must be between 0 and 1.")
     if isinstance(budget, bool) or not isinstance(budget, int) or not 256 <= budget <= 131072:
         raise _problem(422, "invalid_max_input_tokens", "max_input_tokens is outside Studio limits.")
     if isinstance(reserve, bool) or not isinstance(reserve, int) or not 0 <= reserve <= 32768:
         raise _problem(422, "invalid_reserve_output_tokens", "reserve_output_tokens is outside Studio limits.")
+    if CachePolicy is None and cache_mode != "disabled":
+        raise _problem(503, "cache_runtime_unavailable",
+                       "Cache diagnostics are unavailable on this Studio deployment.")
     try:
+        runtime_options: dict[str, Any] = {}
+        if CachePolicy is not None:
+            runtime_options["cache_policy"] = CachePolicy(
+                mode=cache_mode, provider=cache_provider,
+                tenant_id="studio-request" if cache_mode != "disabled" else None)
         prepared = ContextRuntime(
             model=model, objective=objective, quality_floor=float(floor),
             max_input_tokens=budget, reserve_output_tokens=reserve,
-            safety_margin_tokens=128,
+            safety_margin_tokens=128, **runtime_options,
         ).prepare_sync(
             user_input=query, messages=arrays["messages"], documents=arrays["documents"],
             memories=arrays["memories"], tool_results=arrays["tool_results"], tools=arrays["tools"],
@@ -176,10 +196,11 @@ class handler(BaseHTTPRequestHandler):
             self._respond(500, {"error": {"code": "planning_failed", "message": "Planning could not be completed."}})
 
     def do_GET(self) -> None:  # noqa: N802
-        self._respond(200, {"status": "ok", "service": "llmslim-context-inspector"})
+        self._respond(200, {"status": "ok", "service": "llmslim-context-inspector",
+                            "cache_diagnostics_available": CachePolicy is not None})
 
 
 if __name__ == "__main__":  # pragma: no cover
-    from http.server import HTTPServer
+    from http.server import ThreadingHTTPServer
 
-    HTTPServer(("127.0.0.1", 8768), handler).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", 8768), handler).serve_forever()

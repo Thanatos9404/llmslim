@@ -10,6 +10,15 @@ from dataclasses import dataclass, field, replace
 from threading import Lock
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
+from .cache import (
+    CacheManager,
+    CachePlan,
+    CachePolicy,
+    CacheStatus,
+    CacheTelemetry,
+    classify_stability,
+    compile_cache_plan,
+)
 from .context import ContextSource, collect_context_sources
 from .context_graph import ContextGraph
 from .context_policy import ContextPolicy
@@ -35,6 +44,7 @@ class ModelInput:
     messages: Tuple[Mapping[str, Any], ...]
     tools: Tuple[Mapping[str, Any], ...]
     context: str
+    message_stabilities: Tuple[str, ...] = field(default=(), repr=False)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -66,6 +76,8 @@ class ContextTrace:
     estimated_cost_after: Optional[float]
     cost_currency: Optional[str]
     warnings: Tuple[str, ...] = ()
+    cache: Optional[CachePlan] = None
+    provider_cache_telemetry: Optional[CacheTelemetry] = None
 
     @classmethod
     def from_plan(
@@ -132,6 +144,10 @@ class ContextTrace:
             "estimated_cost_after": self.estimated_cost_after,
             "cost_currency": self.cost_currency,
             "warnings": list(self.warnings),
+            "cache": self.cache.to_dict() if self.cache else None,
+            "provider_cache_telemetry": (
+                self.provider_cache_telemetry.to_dict() if self.provider_cache_telemetry else None
+            ),
         }
 
     def explain(self) -> str:
@@ -150,6 +166,25 @@ class PreparedContext:
     quality: QualityReport
     model_input: ModelInput
     trace: ContextTrace
+    cache_plan: Optional[CachePlan] = None
+
+    def with_provider_telemetry(self, telemetry: CacheTelemetry) -> "PreparedContext":
+        """Attach provider-reported usage without mutating the local estimate."""
+        if telemetry.source != "provider_reported":
+            raise ValueError("provider telemetry must come from a provider response")
+        cache_plan = self.cache_plan
+        provider_hit = (telemetry.provider_cache_hit if telemetry.provider_cache_hit is not None
+                        else telemetry.cache_read_tokens > 0
+                        if telemetry.cache_read_tokens is not None else None)
+        if cache_plan and provider_hit is not None:
+            cache_plan = replace(cache_plan,
+                status=(CacheStatus.REPORTED_HIT if provider_hit
+                        else CacheStatus.REPORTED_MISS),
+                invalidation_reason=("provider reported miss" if not provider_hit
+                                     and cache_plan.estimated_cache_read_tokens else
+                                     cache_plan.invalidation_reason))
+        trace = replace(self.trace, cache=cache_plan, provider_cache_telemetry=telemetry)
+        return replace(self, trace=trace, cache_plan=cache_plan)
 
     @property
     def feasible(self) -> bool:
@@ -163,6 +198,12 @@ class PreparedContext:
             "planned_estimated_input_cost": metrics.estimated_input_cost_after,
             "estimated_saving": metrics.estimated_input_cost_saving,
             "currency": metrics.cost_currency,
+            "estimated_cache_saving": (
+                self.cache_plan.estimated_cache_saving if self.cache_plan else None
+            ),
+            "estimated_effective_input_cost": (
+                self.cache_plan.estimated_effective_input_cost if self.cache_plan else None
+            ),
         }
 
     @property
@@ -170,8 +211,8 @@ class PreparedContext:
         return self.trace.explain()
 
 
-def _model_input(plan: ContextPlan) -> ModelInput:
-    messages = []
+def _model_input(plan: ContextPlan, cache_policy: Optional[CachePolicy] = None) -> ModelInput:
+    messages: list[tuple[Mapping[str, Any], str, bool]] = []
     tools = []
     current_user = None
     for decision in plan.decisions:
@@ -189,14 +230,30 @@ def _model_input(plan: ContextPlan) -> ModelInput:
             if item.required and role == "user":
                 current_user = message
             else:
-                messages.append(message)
+                messages.append((message, classify_stability(item), False))
         else:
-            messages.append(
-                {"role": "user", "content": render_context_item(item, candidate.content)}
-            )
+            messages.append((
+                {"role": "user", "content": render_context_item(item, candidate.content)},
+                classify_stability(item),
+                item.metadata.get("cache_order_safe") is True,
+            ))
     if current_user is not None:
-        messages.append(current_user)
-    return ModelInput(plan.model_profile.model_id, tuple(messages), tuple(tools), plan.final_context)
+        messages.append((current_user, "dynamic", False))
+    if cache_policy is not None and cache_policy.mode != "disabled":
+        # Only caller-authorized evidence can move ahead of prior dialogue.
+        # It remains a user/evidence message, never a system instruction.
+        head = []
+        tail = list(messages)
+        while tail and tail[0][0]["role"] in {"system", "developer"}:
+            head.append(tail.pop(0))
+        movable_indices = {index for index, part in enumerate(tail)
+                           if part[1] == "stable" and part[2]}
+        movable = [part for index, part in enumerate(tail) if index in movable_indices]
+        tail = [part for index, part in enumerate(tail) if index not in movable_indices]
+        messages = head + movable + tail
+    return ModelInput(plan.model_profile.model_id,
+                      tuple(part[0] for part in messages), tuple(tools), plan.final_context,
+                      tuple(part[1] for part in messages))
 
 
 class ContextRuntime:
@@ -214,6 +271,8 @@ class ContextRuntime:
         policy: Optional[ContextPolicy] = None,
         model_profile: Optional[ModelProfile] = None,
         max_session_messages: int = 100,
+        cache_policy: Optional[CachePolicy] = None,
+        cache_manager: Optional[CacheManager] = None,
     ) -> None:
         if not 1 <= max_session_messages <= 256:
             raise ValueError("max_session_messages must be between 1 and 256")
@@ -226,6 +285,9 @@ class ContextRuntime:
         self.policy = policy
         self.model_profile = model_profile
         self.max_session_messages = max_session_messages
+        self.cache_policy = cache_policy or CachePolicy()
+        self.cache_policy.validate_capabilities()
+        self.cache_manager = cache_manager or CacheManager()
         self._sessions: Dict[str, RuntimeSession] = {}
         self._session_lock = Lock()
 
@@ -268,9 +330,31 @@ class ContextRuntime:
             objective=self.objective,
             context_policy=self.policy,
             model_profile=self.model_profile,
+            cache_policy=self.cache_policy,
+            cached_stable_digests=self.cache_manager.cached_stable_digests(
+                self.cache_policy, session_id, self.model),
         )
-        trace = ContextTrace.from_plan(envelope, plan, quality, graph, exclusions)
-        return PreparedContext(envelope, graph, plan, quality, _model_input(plan), trace)
+        model_input = _model_input(plan, self.cache_policy)
+        policy_settings = {
+            "objective": self.objective, "quality_floor": self.quality_floor,
+            "max_input_tokens": self.max_input_tokens,
+            "context_policy": {
+                "never_drop_roles": sorted(role.value for role in self.policy.never_drop_roles),
+                "max_memory_tokens": self.policy.max_memory_tokens,
+                "max_rag_tokens": self.policy.max_rag_tokens,
+                "stale_tool_result_seconds": self.policy.stale_tool_result_seconds,
+                "allowed_sources": sorted(self.policy.allowed_sources) if self.policy.allowed_sources else None,
+                "denied_sources": sorted(self.policy.denied_sources),
+                "redactor_identity": id(self.policy.redactor) if self.policy.redactor else None,
+            } if self.policy else None,
+        }
+        cache_plan = compile_cache_plan(plan, model_input, self.cache_policy, policy_settings)
+        if plan.feasible:
+            cache_plan = self.cache_manager.observe(cache_plan, self.cache_policy,
+                                                    session_id, self.model)
+        trace = replace(ContextTrace.from_plan(envelope, plan, quality, graph, exclusions),
+                        cache=cache_plan)
+        return PreparedContext(envelope, graph, plan, quality, model_input, trace, cache_plan)
 
     async def prepare(
         self,
@@ -328,6 +412,8 @@ class ContextRuntime:
     def clear_session(self, session_id: str) -> None:
         with self._session_lock:
             self._sessions.pop(session_id, None)
+        if self.cache_policy.tenant_id:
+            self.cache_manager.clear(tenant_id=self.cache_policy.tenant_id, session_id=session_id)
 
 
 @dataclass

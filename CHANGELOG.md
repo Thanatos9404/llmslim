@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-30
+
+### Added
+- Added opt-in cache planning with provenance-aware segmentation, provider-
+  visible prefix fingerprints, append-only reuse estimates, generations,
+  invalidation reasons, tenant-scoped metadata, and separate provider usage.
+- Added execution-free request builders for OpenAI Responses, Anthropic
+  Messages, Gemini CachedContent, and vLLM, plus strict in-process
+  Transformers KV continuation checks. Sarvam prompt caching remains
+  unverified and disabled.
+- Added optional OpenAI provider-stateful continuation with guarded
+  `previous_response_id`, Studio cache diagnostics, and a multi-turn offline
+  benchmark. Existing runtime, planner, and compression calls remain valid.
+
+### Verification
+- The offline benchmark measures structural reuse opportunities and serialized
+  request bytes; it does not claim provider hits, latency, or billed savings.
+  See the release engineering report for test and deployment gates.
+
 ## [0.7.0] - 2026-09-26
 
 ### Added

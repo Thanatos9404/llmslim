@@ -9,8 +9,9 @@ import re
 import time
 from collections import defaultdict
 from dataclasses import replace
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
+from ..cache import CachePolicy, cache_item_digest, cache_item_key, classify_stability
 from ..context_graph import ContextGraph
 from ..context_policy import ContextPolicy
 from ..envelope import ContextEnvelope
@@ -97,6 +98,8 @@ def plan_context_v2(
     objective: str = "balanced",
     context_policy: Optional[ContextPolicy] = None,
     model_profile: Optional[ModelProfile] = None,
+    cache_policy: Optional[CachePolicy] = None,
+    cached_stable_digests: Optional[Mapping[str, str]] = None,
 ) -> Tuple[ContextPlan, QualityReport, ContextGraph, Tuple[str, ...]]:
     """Reduce context only under budget pressure, preserving known dependencies.
 
@@ -142,6 +145,21 @@ def plan_context_v2(
     selected: List[ContextCandidate] = [
         _raw(item, envelope.current_query, policy) for item in items
     ]
+    cached_stable_digests = cached_stable_digests or {}
+    cache_rates_reliable = bool(
+        cache_policy and cache_policy.mode != "disabled"
+        and cache_policy.capabilities.verified
+        and (cache_policy.capabilities.automatic_prefix_cache
+             or cache_policy.capabilities.explicit_prefix_cache)
+        and cache_policy.uncached_input_rate is not None
+        and cache_policy.cached_input_rate is not None
+        and cache_policy.uncached_input_rate > 0
+    )
+    protected_ids = {
+        item.item_id for item in items
+        if cache_rates_reliable and classify_stability(item) == "stable"
+        and cached_stable_digests.get(cache_item_key(item)) == cache_item_digest(item, item.content)
+    }
     raw_tokens = sum(candidate.token_cost for candidate in selected)
     envelope_tokens = sum(item.token_count for item in envelope.items)
     groups: Sequence[CandidateSet] = ()
@@ -185,12 +203,25 @@ def plan_context_v2(
                     ):
                         continue
                     loss = max(0.0, current.utility - candidate.utility)
+                    # A rewrite of a previously reusable stable item can cost
+                    # more than the tokens it removes. This changes preference,
+                    # never the hard budget or quality constraints.
+                    lost_reuse_equivalent = 0.0
+                    if (item.item_id in protected_ids and cache_policy is not None
+                            and cache_policy.cached_input_rate is not None
+                            and cache_policy.uncached_input_rate is not None):
+                        lost_reuse_equivalent = item.token_count * max(
+                            0.0, 1.0 - cache_policy.cached_input_rate / cache_policy.uncached_input_rate
+                        )
+                    effective_saving = saving - lost_reuse_equivalent
                     if objective in {"cost", "minimize_tokens"}:
-                        key = (-float(saving), loss, 0.0, item.original_order, candidate.method.value)
+                        key = (-effective_saving, loss, -float(saving), item.original_order, candidate.method.value)
                     elif objective == "latency":
-                        key = (loss / saving, -float(saving), 0.0, item.original_order, candidate.method.value)
+                        key = (int(lost_reuse_equivalent > saving), loss / saving,
+                               -effective_saving, item.original_order, candidate.method.value)
                     else:
-                        key = (loss / saving, loss, -float(saving), item.original_order, candidate.method.value)
+                        key = (int(lost_reuse_equivalent > saving), loss / saving,
+                               -effective_saving, item.original_order, candidate.method.value)
                     alternatives.append((key, index, candidate))
             if not alternatives:
                 break
@@ -214,7 +245,9 @@ def plan_context_v2(
             selected=candidate,
             candidate_count=len(groups[index].candidates) if groups else 1,
             reason=(
-                "retained raw because it fits the budget or is required by policy/dependency"
+                ("RAW retained to preserve a previously reusable stable prefix"
+                 if item.item_id in protected_ids else
+                 "retained raw because it fits the budget or is required by policy/dependency")
                 if candidate.method is CandidateMethod.RAW
                 else candidate.reason + "; selected after quality and dependency checks"
             ),

@@ -624,3 +624,37 @@ See the [architecture](docs/runtime/ARCHITECTURE.md),
 [migration guide](docs/releases/v0.7.0-MIGRATION.md),
 [benchmark](docs/releases/v0.7.0-BENCHMARK.md), and
 [engineering report](docs/releases/v0.7.0-ENGINEERING-REPORT.md).
+
+## Cache-Aware Context Runtime (v0.7.1)
+
+Cache planning is an opt-in layer for repeated agent turns. LLMSlim identifies
+stable provider-visible prefixes, keeps append-only conversation context when
+safe, fingerprints cache-sensitive settings, and reports local cache estimates
+separately from provider-reported usage. A tenant-scoped `CacheManager` stores
+metadata and provider references, never prompt bodies or KV tensors.
+
+```python
+from llmslim import CacheManager, CachePolicy, ContextRuntime
+
+runtime = ContextRuntime(
+    model="generic-128k",
+    cache_policy=CachePolicy(mode="auto", provider="openai", tenant_id="my-workspace"),
+    cache_manager=CacheManager(),
+)
+prepared = runtime.prepare_sync(
+    session_id="conversation-1",
+    messages=[{"role": "system", "content": "Use verified sources."}],
+    user_input="What changed?",
+)
+print(prepared.trace.to_dict()["cache"])
+```
+
+Execution-free request builders cover OpenAI Responses, Anthropic Messages,
+Gemini cached resources, and self-hosted vLLM. An advanced in-process
+Transformers adapter validates KV continuation state. OpenAI provider-stateful
+continuation and Gemini cached-resource creation require explicit host opt-in.
+Sarvam prompt caching remains unverified and is disabled by default. The
+Context Inspector shows prefix segmentation and cache diagnostics without
+calling a provider. See [caching guidance](docs/runtime/CACHING.md),
+[multi-turn benchmark](docs/releases/v0.7.1-BENCHMARK.md), and
+[engineering report](docs/releases/v0.7.1-ENGINEERING-REPORT.md).

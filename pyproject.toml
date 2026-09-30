@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.7.0"
+version = "0.7.1"
 description = "Local-first model context runtime and planning for AI agents."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -56,6 +56,7 @@ mongodb = [
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
 structured = ["pyyaml>=6.0"]
+transformers-cache = ["transformers>=4.53,<6; python_version >= '3.10'", "torch>=2.0; python_version >= '3.10'"]
 all = [
     "sentence-transformers>=2.2",
     "mcp>=2.0,<3; python_version >= '3.10'",

@@ -11,10 +11,23 @@ type Release = { version: string; date: string; theme: string; summary: string; 
 
 const releases: Release[] = [
   {
+    version: "v0.7.1",
+    date: "30 Sep 2026",
+    theme: "Plan context with provider caches in mind.",
+    summary: "An opt-in cache-aware runtime classifies reusable context, preserves safe prefixes, and separates local estimates from provider-reported usage. The Studio server installs the tagged package; paid provider cache performance remains unmeasured.",
+    metrics: ["Tenant-scoped cache metadata", "Offline multi-turn benchmark", "Provider hits unmeasured"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.7.1",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "Cache plans and diagnostics", body: "Stable-prefix fingerprints, append-only reuse estimates, cache generations, invalidation reasons, and separate network-byte and token metrics are visible in Context Inspector." },
+      { label: "Integrations", icon: Wrench, title: "Provider request builders", body: "Execution-free OpenAI, Anthropic, Gemini, and vLLM builders expose supported cache controls. OpenAI state continuation and Gemini cached resources require explicit host opt-in." },
+      { label: "Boundary", icon: ShieldCheck, title: "Reported data stays distinct", body: "Local prefix matches are estimates until a provider reports usage. Sarvam caching remains unverified; raw KV is confined to an explicit self-hosted process adapter." },
+    ],
+  },
+  {
     version: "v0.7.0",
     date: "26 Sep 2026",
     theme: "Prepare context for every agent turn.",
-    summary: "A provider-neutral agent context runtime constructs model-visible input from conversation, retrieval, memory, and tools with provenance, dependencies, quality gates, and local traces. The website installs the tagged 0.7.0 package; hosted verification and PyPI publication remain open.",
+    summary: "A provider-neutral agent context runtime constructs model-visible input from conversation, retrieval, memory, and tools with provenance, dependencies, quality gates, and local traces. Its tagged 0.7.0 wheel remains available; hosted verification and PyPI publication were separate gates.",
     metrics: ["623 passing tests", "112 offline cases", "100% measured fact retention"],
     tag: "https://github.com/Thanatos9404/llmslim/tree/v0.7.0",
     items: [
@@ -120,7 +133,7 @@ const releases: Release[] = [
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "LLMSlim package history through v0.7.0, including context runtime, compatibility, and security changes.",
+  description: "LLMSlim package history through v0.7.1, including cache-aware context runtime changes.",
 });
 
 export default function ChangelogPage() {

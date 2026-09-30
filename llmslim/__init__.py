@@ -14,6 +14,27 @@ from .adapters import (
     sarvam_messages,
 )
 from .analysis import ContentProfile, ContentType, analyze
+from .cache import (
+    PROVIDER_CAPABILITIES,
+    CacheCapabilities,
+    CacheManager,
+    CachePlan,
+    CachePolicy,
+    CacheSegment,
+    CacheStatus,
+    CacheTelemetry,
+    cache_cost_breakdown,
+    estimate_cache_cost,
+)
+from .cache_adapters import (
+    anthropic_messages_request,
+    gemini_cached_content_request,
+    gemini_generate_request,
+    openai_responses_request,
+    parse_cache_telemetry,
+    request_bytes,
+    vllm_chat_request,
+)
 from .context import (
     ContextSource,
     ContextSourceError,
@@ -56,9 +77,10 @@ from .rewrite import (
     ValidationResult,
 )
 from .runtime import ContextRuntime, ContextTrace, ModelInput, PreparedContext, RuntimeSession
+from .self_hosted import TransformersKVSession
 from .tokens import count_tokens, count_tokens_batch
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 __all__ = [
     "compress",
@@ -120,5 +142,11 @@ __all__ = [
     "sarvam_messages",
     "openai_compatible_request",
     "make_openai_agents_input_filter",
+    "CacheCapabilities", "CacheManager", "CachePlan", "CachePolicy",
+    "CacheSegment", "CacheStatus", "CacheTelemetry", "PROVIDER_CAPABILITIES",
+    "estimate_cache_cost", "cache_cost_breakdown", "openai_responses_request", "anthropic_messages_request",
+    "gemini_generate_request", "gemini_cached_content_request",
+    "parse_cache_telemetry", "request_bytes", "vllm_chat_request",
+    "TransformersKVSession",
     "__version__",
 ]

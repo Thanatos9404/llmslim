@@ -39,7 +39,21 @@ type ContextResult = {
     warnings: string[]
   }
   quality: { passed: boolean; quality_floor: number; metrics: Record<string, number>; failures: string[] }
-  trace: { trace_id: string; tokens_avoided: number; warnings: string[] }
+  trace: {
+    trace_id: string; tokens_avoided: number; warnings: string[]
+    cache: {
+      provider: string; mode: string; status: string; stable_prefix_tokens: number
+      semi_stable_tokens: number; dynamic_suffix_tokens: number
+      logical_context_tokens: number; transmitted_input_bytes: number
+      estimated_cache_read_tokens: number; estimated_cache_saving: number | null
+      generation: number; prefix_fingerprint: string; invalidation_reason: string | null
+      explanation: string
+    } | null
+    provider_cache_telemetry: {
+      source: string; input_tokens: number | null; cache_read_tokens: number | null
+      cache_write_tokens: number | null; cache_hit_ratio: number | null
+    } | null
+  }
   graph: { nodes: string[]; edges: { source_id: string; target_id: string; kind: string }[] }
 }
 
@@ -80,6 +94,9 @@ export function ContextInspectorStudio() {
   const [query, setQuery] = useState("When does it renew?")
   const [model, setModel] = useState("sarvam-105b")
   const [objective, setObjective] = useState("balanced")
+  const [cacheProvider, setCacheProvider] = useState("sarvam")
+  const [cacheMode, setCacheMode] = useState("disabled")
+  const [cacheAvailable, setCacheAvailable] = useState(false)
   const [qualityFloor, setQualityFloor] = useState("0.8")
   const [budget, setBudget] = useState("500")
   const [reserve, setReserve] = useState("256")
@@ -94,6 +111,15 @@ export function ContextInspectorStudio() {
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }
   }, [result])
+
+  useEffect(() => {
+    let active = true
+    fetch("/api/context", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (active) setCacheAvailable(data?.cache_diagnostics_available === true) })
+      .catch(() => { if (active) setCacheAvailable(false) })
+    return () => { active = false }
+  }, [])
 
   async function run() {
     setRunning(true)
@@ -121,6 +147,7 @@ export function ContextInspectorStudio() {
           memories: parseArray(memories, "Memories"),
           tool_results: parseArray(toolResults, "Tool results"),
           tools: parseArray(tools, "Tools"), query, model, objective,
+          cache_provider: cacheProvider, cache_mode: cacheMode,
           quality_floor: minimumQuality, max_input_tokens: maxInputTokens,
           reserve_output_tokens: reserveOutputTokens,
         }),
@@ -152,10 +179,13 @@ export function ContextInspectorStudio() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label htmlFor="ctx-model">Target model</Label><select id="ctx-model" className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm" value={model} onChange={event => setModel(event.target.value)}><option value="sarvam-105b">Sarvam 105B</option><option value="sarvam-105b-conversations">Sarvam Conversations</option><option value="generic-128k">Generic 128K</option></select></div>
           <div className="space-y-2"><Label htmlFor="ctx-objective">Objective</Label><select id="ctx-objective" className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm" value={objective} onChange={event => setObjective(event.target.value)}><option value="balanced">Balanced</option><option value="quality">Quality</option><option value="cost">Cost</option><option value="latency">Latency</option><option value="minimize_tokens">Minimum tokens</option></select></div>
+          <div className="space-y-2"><Label htmlFor="ctx-cache-provider">Cache behavior to inspect</Label><select id="ctx-cache-provider" className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50" value={cacheProvider} disabled={!cacheAvailable} onChange={event => { const provider = event.target.value; setCacheProvider(provider); if ((provider === "sarvam" || provider === "generic") && cacheMode === "provider_memory") setCacheMode("auto") }}><option value="sarvam">Sarvam (unverified)</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option><option value="vllm">vLLM</option><option value="generic">Generic</option></select></div>
+          <div className="space-y-2"><Label htmlFor="ctx-cache-mode">Cache planning</Label><select id="ctx-cache-mode" className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50" value={cacheMode} disabled={!cacheAvailable} onChange={event => setCacheMode(event.target.value)}><option value="disabled">Disabled</option><option value="auto">Observe automatic caching</option><option value="provider_memory" disabled={cacheProvider === "sarvam" || cacheProvider === "generic"}>Provider memory controls</option></select></div>
           <div className="space-y-2"><Label htmlFor="ctx-budget">Maximum input tokens</Label><Input id="ctx-budget" type="number" min="256" max="131072" value={budget} onChange={event => setBudget(event.target.value)} /></div>
           <div className="space-y-2"><Label htmlFor="ctx-reserve">Reserve output tokens</Label><Input id="ctx-reserve" type="number" min="0" max="32768" value={reserve} onChange={event => setReserve(event.target.value)} /></div>
           <div className="space-y-2"><Label htmlFor="ctx-floor">Quality floor (0–1)</Label><Input id="ctx-floor" type="number" min="0" max="1" step="0.01" value={qualityFloor} onChange={event => setQualityFloor(event.target.value)} /></div>
         </div>
+        {!cacheAvailable && <p className="text-xs text-muted-foreground">Cache diagnostics will appear when the server runtime supports them. Core context inspection remains available.</p>}
         <div className="space-y-2"><Label htmlFor="ctx-query">Current user query</Label><Textarea id="ctx-query" value={query} onChange={event => setQuery(event.target.value)} className="min-h-16" /></div>
         <details ref={sourcesRef} className="group rounded-lg border border-border/80 bg-muted/20 p-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden"><span>Edit context sources <span className="font-normal text-muted-foreground">· messages, documents, memory, tools</span></span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" /></summary>
@@ -177,6 +207,14 @@ export function ContextInspectorStudio() {
       {!result ? <Card><CardContent className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">Prepare a turn to inspect its actual plan, quality gates, dependency graph, and local trace.</CardContent></Card> : <>
         <Card><CardHeader><Badge variant={result.plan.feasible ? "secondary" : "destructive"} className="w-fit">{result.plan.status}</Badge><CardTitle>Before and after</CardTitle><CardDescription>{result.plan.metrics.original_tokens.toLocaleString()} → {result.plan.metrics.planned_tokens.toLocaleString()} estimated tokens of {result.plan.metrics.budget_tokens.toLocaleString()} available</CardDescription></CardHeader><CardContent><div className="space-y-2">{categories.map(([kind, row]) => <div key={kind} className="flex justify-between gap-3 border-b pb-2 text-sm"><span className="capitalize">{labelFor(kind)}</span><span className="tabular-nums">{row.before.toLocaleString()} → {row.after.toLocaleString()}</span></div>)}</div></CardContent></Card>
         <Card><CardHeader><CardTitle>Quality gates</CardTitle><CardDescription>Measured checks on the selected representation; floor {result.quality.quality_floor.toFixed(2)}.</CardDescription></CardHeader><CardContent><div className="grid gap-2 sm:grid-cols-2">{Object.entries(result.quality.metrics).map(([name, value]) => <div key={name} className="flex justify-between rounded-md border p-3 text-xs"><span className="capitalize">{labelFor(name)}</span><strong>{Math.round(value * 100)}%</strong></div>)}</div>{result.quality.failures.length > 0 && <p className="mt-3 text-sm text-destructive">{result.quality.failures.join("; ")}</p>}</CardContent></Card>
+        {result.trace.cache && <Card><CardHeader><CardTitle>Provider cache plan</CardTitle><CardDescription>Local estimate for {result.trace.cache.provider}; no provider call is made here. Cache hits require provider usage to confirm.</CardDescription></CardHeader><CardContent className="space-y-4 text-sm"><div className="grid gap-2 sm:grid-cols-2">{([
+          ["Stable prefix", result.trace.cache.stable_prefix_tokens],
+          ["Semi-stable context", result.trace.cache.semi_stable_tokens],
+          ["Dynamic suffix", result.trace.cache.dynamic_suffix_tokens],
+          ["Logical context", result.trace.cache.logical_context_tokens],
+          ["Estimated cache read", result.trace.cache.estimated_cache_read_tokens],
+          ["Transmitted bytes", result.trace.cache.transmitted_input_bytes],
+        ] as const).map(([label, value]) => <div key={label} className="flex justify-between gap-3 rounded-md border p-3"><span>{label}</span><strong className="tabular-nums">{value.toLocaleString()}</strong></div>)}</div><p>State: <strong className="capitalize">{labelFor(result.trace.cache.status)}</strong> · generation {result.trace.cache.generation} · prefix {result.trace.cache.prefix_fingerprint}</p><p className="text-muted-foreground">{result.trace.cache.explanation}</p>{result.trace.cache.invalidation_reason && <p>Invalidation: {result.trace.cache.invalidation_reason}</p>}<p>Estimated cache saving: {result.trace.cache.estimated_cache_saving == null ? "Unavailable without provider rates" : result.trace.cache.estimated_cache_saving.toFixed(6)}</p><p>Provider-reported cache read: {result.trace.provider_cache_telemetry?.cache_read_tokens?.toLocaleString() ?? "Not reported"}</p></CardContent></Card>}
         <Card><CardHeader><CardTitle>Decision trace</CardTitle><CardDescription>Each item shows its actual representation and reason. Selection never authorizes tool execution.</CardDescription></CardHeader><CardContent className="space-y-2">{result.plan.decisions.map(decision => <details key={decision.item.id} className="rounded-md border p-3 text-sm"><summary className="cursor-pointer"><span className="capitalize">{labelFor(decision.item.kind)}</span> · <strong>{decision.method}</strong> · {decision.item.token_count} → {decision.planned_tokens}</summary><div className="mt-2 space-y-1 text-xs text-muted-foreground"><p>{decision.reason}</p><p>{decision.candidate_count} candidate{decision.candidate_count === 1 ? "" : "s"} evaluated · {decision.item.role} provenance</p>{Boolean(decision.validation.failure_reasons) && <p>Validation: {String(decision.validation.failure_reasons)}</p>}</div></details>)}</CardContent></Card>
         <Card><CardHeader><CardTitle>Context graph</CardTitle><CardDescription>{result.graph.nodes.length} nodes · {result.graph.edges.length} evidenced edges</CardDescription></CardHeader><CardContent className="space-y-2">{result.graph.edges.length ? result.graph.edges.map((edge, index) => <div key={`${edge.source_id}-${edge.target_id}-${index}`} className="rounded-md border p-2 font-mono text-xs">{edge.source_id} → {edge.target_id} <Badge variant="outline">{labelFor(edge.kind)}</Badge></div>) : <p className="text-sm text-muted-foreground">No explicit dependency or entity links were present in this turn.</p>}</CardContent></Card>
         <Card><CardHeader><CardTitle>Local trace</CardTitle><CardDescription>{result.trace.trace_id} · {result.trace.tokens_avoided.toLocaleString()} tokens avoided</CardDescription></CardHeader><CardContent className="space-y-2 text-sm"><p>Planning {result.plan.metrics.planning_latency_ms.toFixed(1)} ms · transformation {result.plan.metrics.transformation_latency_ms.toFixed(1)} ms</p>{result.plan.metrics.estimated_input_cost_after != null && <p>Estimated input cost: {result.plan.metrics.cost_currency} {result.plan.metrics.estimated_input_cost_before?.toFixed(6)} → {result.plan.metrics.estimated_input_cost_after.toFixed(6)}</p>}{result.trace.warnings.map((warning, index) => <p key={index} className="text-muted-foreground">{warning}</p>)}<p className="flex items-center gap-2 text-muted-foreground"><ShieldCheck className="size-4" /> Trace omits prompt bodies by default.</p></CardContent></Card>

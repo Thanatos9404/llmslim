@@ -70,3 +70,22 @@ def test_context_inspector_reports_missing_runtime(monkeypatch):
         studio_context_api.execute_context(_payload())
     assert error.value.status == 503
     assert error.value.code == "runtime_unavailable"
+
+
+def test_context_inspector_retains_core_planning_with_pinned_legacy_wheel(monkeypatch):
+    monkeypatch.setattr(studio_context_api, "CachePolicy", None)
+    response = studio_context_api.execute_context(_payload())
+    assert response["plan"]["feasible"]
+    with pytest.raises(studio_context_api.RequestProblem) as error:
+        studio_context_api.execute_context(_payload(cache_mode="auto"))
+    assert error.value.code == "cache_runtime_unavailable"
+
+
+def test_context_inspector_exposes_offline_cache_plan_without_prompt_text():
+    response = studio_context_api.execute_context(_payload(
+        cache_provider="sarvam", cache_mode="auto"))
+    cache = response["trace"]["cache"]
+    assert cache["provider"] == "sarvam"
+    assert cache["estimated_cache_read_tokens"] == 0
+    assert "Acme renews November 9" not in str(cache)
+    assert response["trace"]["provider_cache_telemetry"] is None

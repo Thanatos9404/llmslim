@@ -1,0 +1,11 @@
+{
+  "classification": "MEASURED_LOCAL_CPU",
+  "trials": 10,
+  "model": "random two-layer Llama, hidden_size=64, 128-token prefix plus one token",
+  "full_forward_median_ms": 1.8032,
+  "cached_continuation_median_ms": 1.1589,
+  "max_last_logit_absolute_error": 1.3e-07,
+  "provider_calls": 0,
+  "answer_quality_measured": false,
+  "notes": "Prefill was performed before timing continuation. This is a tiny CPU model, not provider TTFT."
+}

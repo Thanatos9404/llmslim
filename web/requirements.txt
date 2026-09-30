@@ -1,6 +1,6 @@
-# Production Studio installs the hash-pinned 0.7.0 wheel from its GitHub tag.
+# Production Studio installs the hash-pinned 0.7.1 wheel from its GitHub tag.
 # Hosted inference remains disabled unless its server-only secrets and durable
 # quotas are configured.
 numpy>=1.21
 scikit-learn>=1.0
-llmslim[sarvam,mongodb] @ https://raw.githubusercontent.com/Thanatos9404/llmslim/v0.7.0/web/vendor/llmslim-0.7.0-py3-none-any.whl#sha256=d5d5c9ee52467e9ef00e3139e9bff781dcc661e5a13fa42fecd7df0f774f071d
+llmslim[sarvam,mongodb] @ https://raw.githubusercontent.com/Thanatos9404/llmslim/v0.7.1/web/vendor/llmslim-0.7.1-py3-none-any.whl#sha256=6e713fdb31c41d5d85099b90e9cdda446a65cb993a4c046ef023fa7a7302313b

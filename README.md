@@ -658,3 +658,8 @@ Context Inspector shows prefix segmentation and cache diagnostics without
 calling a provider. See [caching guidance](docs/runtime/CACHING.md),
 [multi-turn benchmark](docs/releases/v0.7.1-BENCHMARK.md), and
 [engineering report](docs/releases/v0.7.1-ENGINEERING-REPORT.md).
+
+## Open-source security tooling
+
+[Snyk](https://snyk.io/) provides developer security tooling for open-source projects. Learn more about its [Secure Developer Program](https://snyk.io/open-source/).
+

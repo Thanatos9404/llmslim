@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import "./globals.css";
 import { constructMetadata, getStructuredDataGraph } from "@/lib/seo";
+import { ErrorReporting } from "@/components/site/Telemetry";
 
 const themeController = `(() => {
   const key = "llmslim-theme";
@@ -66,6 +67,8 @@ export default function RootLayout({
         {/* Vercel Web Analytics & Real User Speed Insights Tracking */}
         <Analytics />
         <SpeedInsights />
+        {/* Optional, errors-only client reporting; inert unless NEXT_PUBLIC_SENTRY_DSN is set. */}
+        <ErrorReporting />
       </body>
     </html>
   );

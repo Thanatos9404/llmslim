@@ -215,7 +215,8 @@
   .hero-artwork { top:255px; max-width:none; width:790px; }
   .cinema-hero::before { background:linear-gradient(var(--surface) 0%,color-mix(in srgb,var(--surface) 90%,transparent) 29%,color-mix(in srgb,var(--surface) 40%,transparent) 51%,transparent 80%); }
   .hero-base { left:20px; right:20px; bottom:25px; font-size:8px; letter-spacing:1px; }
-  .hero-base > span:nth-child(2) { display:none; }
+  .hero-base > span:first-child { display:none; }
+  #hero-title br { display:none; }
   .install-command { margin-top:19px; font-size:10px; }
   .focus-section { padding:58px 0 70px; }
   .section-kicker { font-size:12px; margin-bottom:19px; }
@@ -282,12 +283,9 @@
 
 /* Startup program showcase. */
 .startup-partnership { flex-direction:column; gap:20px; }
-.startup-program-brands { display:flex; justify-content:center; flex-wrap:wrap; gap:28px; width:100%; }
+.startup-program-brands { display:flex; justify-content:center; flex-wrap:wrap; gap:28px; width:100%; margin:0; padding:0; list-style:none; }
 .startup-program-brand { width:170px; display:flex; flex-direction:column; align-items:center; gap:16px; }
 .startup-logo { display:flex; align-items:center; justify-content:center; width:100%; height:76px; }
-.startup-logo .sarvam-brand { gap:9px; }
-.startup-logo .sarvam-symbol { width:40px; height:40px; flex-shrink:0; }
-.startup-logo .sarvam-wordmark { width:112px; height:28px; }
 .zoho-brand { display:flex; align-items:center; justify-content:center; width:145px; }
 .zoho-brand img { width:100%; height:auto; max-height:70px; object-fit:contain; }
 .zoho-brand .art-light { mix-blend-mode:multiply; }
@@ -295,12 +293,15 @@
 .mongodb-brand img { width:100%; height:51px; object-fit:cover; object-position:center; border-radius:6px; }
 .startup-ai-brand { display:flex; align-items:center; gap:9px; color:var(--ink); font-size:28px; letter-spacing:-1px; font-weight:500; white-space:nowrap; }
 .claude-brand { font-family:Georgia,serif; font-size:32px; }
-.startup-ai-symbol { width:33px; height:33px; background:currentColor; flex-shrink:0; }
-.claude-symbol { mask:url('/claude-symbol.svg') center / contain no-repeat; background:#d97757; }
-.openai-symbol { mask:url('/openai-symbol.svg') center / contain no-repeat; }
-.startup-supplied-logo { display:block; width:145px; height:70px; background:var(--ink); }
-.auth0-brand { mask:url('/auth0-logo.png') center / contain no-repeat; }
-.zendesk-brand { mask:url('/zendesk-logo.png') center / contain no-repeat; }
+.startup-ai-symbol { width:33px; height:33px; background:currentColor; flex-shrink:0; mask:var(--startup-mark) center / contain no-repeat; }
+.claude-symbol { background:#d97757; }
+.startup-ai-brand.sarvam-brand { gap:9px; }
+.sarvam-brand .startup-ai-symbol { width:40px; height:40px; }
+.startup-wordmark { display:block; width:112px; height:28px; background:var(--ink); mask:var(--startup-mark) center / contain no-repeat; }
+.startup-supplied-logo { display:block; width:145px; height:70px; background:var(--ink); mask:var(--startup-mark) center / contain no-repeat; }
+/* Zero-specificity defaults so per-brand rules (zoho, mongodb) keep precedence. */
+:where(.startup-artwork) { display:flex; align-items:center; justify-content:center; max-width:160px; }
+:where(.startup-artwork) img { max-width:160px; object-fit:contain; }
 .startup-marquee-item .startup-supplied-logo { height:48px; }
 .startup-program-name { font-size:10px; color:var(--subtle); white-space:nowrap; }
 .startup-program-links { display:flex; justify-content:center; flex-wrap:wrap; gap:0 28px; }
@@ -309,7 +310,7 @@
 .startup-motion-control { display:flex; align-items:center; gap:6px; font-size:9px; letter-spacing:.3px; text-transform:none; cursor:pointer; }
 .startup-motion-control input { width:11px; height:11px; accent-color:var(--ink); cursor:pointer; }
 .startup-marquee-window { overflow:hidden; mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent); padding:12px 0; }
-.startup-marquee-track { display:flex; width:max-content; animation:startup-drift 38s linear infinite; }
+.startup-marquee-track { display:flex; width:max-content; animation:startup-drift var(--marquee-duration,66s) linear infinite; }
 .startup-marquee-group { display:flex; flex-shrink:0; }
 .startup-marquee-item { width:180px; display:flex; flex-shrink:0; flex-direction:column; align-items:center; gap:7px; padding:8px 15px; transition:opacity .2s; }
 .startup-marquee-item .startup-logo { height:40px; transform:scale(.78); }
@@ -323,14 +324,15 @@
   .startup-program-brands { gap:24px 16px; }
   .startup-program-brand { width:145px; gap:8px; }
   .startup-logo { height:64px; }
-  .startup-logo .sarvam-symbol { width:32px; height:32px; }
-  .startup-logo .sarvam-wordmark { width:99px; height:25px; }
   .mongodb-brand { width:145px; }
   .mongodb-brand img { height:44px; }
   .zoho-brand { width:130px; }
   .startup-ai-brand { font-size:25px; }
   .claude-brand { font-size:29px; }
   .startup-ai-symbol { width:29px; height:29px; }
+  .sarvam-brand .startup-ai-symbol { width:32px; height:32px; }
+  .startup-wordmark { width:99px; height:25px; }
+  :where(.startup-artwork), :where(.startup-artwork) img { max-width:130px; }
   .startup-program-name { font-size:9px; }
   .startup-partnership .partnership-cross { line-height:1; }
 }
@@ -340,4 +342,50 @@
   .startup-marquee-group { width:100%; flex-wrap:wrap; justify-content:center; }
   .startup-marquee-item { width:145px; }
   .startup-marquee-copy, .startup-motion-control { display:none; }
+}
+
+/* Core and Platform positioning. */
+.layers-section { padding-block:40px 110px; }
+.layer-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:24px; margin-top:48px; }
+.layer-card { display:flex; flex-direction:column; gap:14px; padding:32px; border:1px solid var(--line); border-radius:20px; background:var(--soft); text-align:left; }
+.layer-card h2,.layer-card h3 { font-size:20px; font-weight:500; letter-spacing:-.4px; }
+.layer-card p { font-size:14px; line-height:1.8; color:var(--subtle); }
+.layer-card ul { display:grid; gap:8px; margin:4px 0 8px; padding:0; list-style:none; }
+.layer-card li { display:flex; align-items:center; gap:8px; font-size:13px; }
+.layer-card li svg, .platform-caveats svg { color:var(--brand); flex-shrink:0; }
+.layer-card .text-link { margin-top:auto; }
+.platform-page { padding-bottom:40px; }
+.platform-hero { padding-block:110px 72px; text-align:center; }
+.platform-hero h1 { margin:22px 0 26px; font-size:clamp(36px,5.4vw,68px); line-height:1.12; letter-spacing:-2.4px; font-weight:500; }
+.platform-hero h1 span, .platform-evidence h2 span { color:var(--subtle); }
+.platform-hero > p { max-width:640px; margin:0 auto 34px; font-size:16px; line-height:1.8; color:var(--subtle); }
+.platform-hero .hero-actions { justify-content:center; }
+.platform-capabilities { display:grid; grid-template-columns:repeat(2,1fr); gap:24px; }
+.platform-evidence, .platform-compare, .platform-beta { padding-top:100px; }
+.platform-evidence h2, .platform-compare h2, .platform-beta h2 { font-size:clamp(28px,3.3vw,40px); line-height:1.3; letter-spacing:-1px; font-weight:500; margin-bottom:22px; }
+.platform-evidence > p, .platform-beta > p { max-width:720px; font-size:15px; line-height:1.8; color:var(--subtle); margin-bottom:22px; }
+.platform-caveats { display:grid; gap:10px; padding:0; list-style:none; }
+.platform-caveats li { display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.6; }
+.platform-caveats svg { margin-top:4px; }
+.platform-table { border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+.platform-row { display:grid; grid-template-columns:.7fr 1fr 1fr; gap:16px; padding:16px 22px; border-top:1px solid var(--line); font-size:14px; }
+.platform-row:first-child { border-top:0; }
+.platform-row [role=rowheader] { color:var(--subtle); }
+.platform-row-head { background:var(--soft); font-weight:550; font-size:13px; }
+.platform-note { margin-top:18px; font-size:13px; color:var(--subtle); }
+.platform-note code, .privacy-page code { font:12px Consolas,monospace; padding:2px 6px; border-radius:6px; background:var(--soft); border:1px solid var(--line); color:var(--ink); }
+.privacy-page { max-width:760px; padding-block:96px 120px; }
+.privacy-page h1 { margin:18px 0 22px; font-size:clamp(34px,4.6vw,52px); letter-spacing:-1.6px; font-weight:500; }
+.privacy-page h2 { margin:44px 0 14px; font-size:20px; font-weight:500; letter-spacing:-.4px; }
+.privacy-page p, .privacy-page li { font-size:15px; line-height:1.85; color:var(--subtle); }
+.privacy-page strong { color:var(--ink); font-weight:550; }
+.privacy-page ul { display:grid; gap:12px; padding-left:20px; list-style:disc; }
+@media (max-width:820px) {
+  .layer-cards, .platform-capabilities { grid-template-columns:1fr; }
+  .layer-card { padding:24px; }
+  .platform-hero { padding-block:72px 48px; }
+  .platform-row { grid-template-columns:1fr; gap:4px; }
+  .platform-row-head { display:none; }
+  .platform-row [role=cell]:nth-of-type(2)::before { content:'Core: '; color:var(--subtle); }
+  .platform-row [role=cell]:nth-of-type(3)::before { content:'Platform: '; color:var(--subtle); }
 }

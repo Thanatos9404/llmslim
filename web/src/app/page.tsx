@@ -23,7 +23,7 @@ export default function Home() {
       <HeroArtwork />
       <div className="cinema-copy">
         <StartupMarquee />
-        <h1 id="hero-title">The context layer for<br /><span>production AI agents.</span></h1>
+        <h1 id="hero-title">The context layer for{" "}<br /><span>production AI agents.</span></h1>
         <p>LLMSlim controls what your agents know, remembers what changed, and learns which context improves their decisions.</p>
         <div className="hero-actions"><TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Explore LLMSlim Core <ArrowRight size={16} /></TrackedLink><TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Platform Beta Access <ArrowUpRight size={16} /></TrackedLink></div>
         <CopyCommand />

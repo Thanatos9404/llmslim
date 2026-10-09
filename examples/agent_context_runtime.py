@@ -28,11 +28,13 @@ async def main() -> None:
         session.record("assistant", "I recorded that Acme is your customer.")
         second = await session.prepare(
             "When does it renew?",
-            documents=[{
-                "id": "signed-renewal",
-                "content": "Verified contract: Acme renews on 9 November 2026.",
-                "metadata": {"required_keywords": ["9 November 2026"]},
-            }],
+            documents=[
+                {
+                    "id": "signed-renewal",
+                    "content": "Verified contract: Acme renews on 9 November 2026.",
+                    "metadata": {"required_keywords": ["9 November 2026"]},
+                }
+            ],
         )
         if not second.feasible:
             raise RuntimeError(second.explanation)

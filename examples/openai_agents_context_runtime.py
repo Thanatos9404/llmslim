@@ -22,9 +22,7 @@ async def main() -> None:
     session = SQLiteSession("llmslim-demo-session")
     run_config = RunConfig(call_model_input_filter=make_openai_agents_input_filter(runtime))
     await Runner.run(agent, "My customer is Acme.", session=session, run_config=run_config)
-    result = await Runner.run(
-        agent, "When does it renew?", session=session, run_config=run_config
-    )
+    result = await Runner.run(agent, "When does it renew?", session=session, run_config=run_config)
     print(result.final_output)
 
 

@@ -29,7 +29,11 @@ class ContextPolicy:
     def __post_init__(self) -> None:
         if any(
             value is not None and value < 0
-            for value in (self.max_memory_tokens, self.max_rag_tokens, self.stale_tool_result_seconds)
+            for value in (
+                self.max_memory_tokens,
+                self.max_rag_tokens,
+                self.stale_tool_result_seconds,
+            )
         ):
             raise ValueError("context policy limits must be non-negative")
         if not {ContextRole.SYSTEM, ContextRole.DEVELOPER} <= self.never_drop_roles:

@@ -15,7 +15,11 @@ from typing import Any
 
 
 def _add_repository_package_to_path() -> None:
-    for candidate in (Path.cwd(), Path(__file__).resolve().parents[1], Path(__file__).resolve().parents[2]):
+    for candidate in (
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path(__file__).resolve().parents[2],
+    ):
         if (candidate / "llmslim" / "__init__.py").is_file():
             sys.path.insert(0, str(candidate))
             return
@@ -44,11 +48,23 @@ ALLOWED_MODELS = frozenset({"generic-128k", "sarvam-105b", "sarvam-105b-conversa
 ALLOWED_OBJECTIVES = frozenset({"balanced", "quality", "cost", "latency", "minimize_tokens"})
 ALLOWED_CACHE_PROVIDERS = frozenset({"generic", "openai", "anthropic", "gemini", "sarvam", "vllm"})
 ALLOWED_CACHE_MODES = frozenset({"disabled", "auto", "provider_memory"})
-ALLOWED_FIELDS = frozenset({
-    "messages", "documents", "memories", "tool_results", "tools", "query", "model",
-    "max_input_tokens", "reserve_output_tokens", "quality_floor", "objective",
-    "cache_provider", "cache_mode",
-})
+ALLOWED_FIELDS = frozenset(
+    {
+        "messages",
+        "documents",
+        "memories",
+        "tool_results",
+        "tools",
+        "query",
+        "model",
+        "max_input_tokens",
+        "reserve_output_tokens",
+        "quality_floor",
+        "objective",
+        "cache_provider",
+        "cache_mode",
+    }
+)
 _request_windows: defaultdict[str, deque[float]] = defaultdict(deque)
 
 
@@ -64,7 +80,11 @@ def _problem(status: int, code: str, message: str) -> RequestProblem:
 
 def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
     if ContextRuntime is None:
-        raise _problem(503, "runtime_unavailable", "Context Inspector requires the LLMSlim v0.7 runtime on the Studio server.")
+        raise _problem(
+            503,
+            "runtime_unavailable",
+            "Context Inspector requires the LLMSlim v0.7 runtime on the Studio server.",
+        )
     if set(payload).difference(ALLOWED_FIELDS):
         raise _problem(400, "unsupported_field", "Request includes an unsupported field.")
     arrays: dict[str, list[Any]] = {}
@@ -75,14 +95,23 @@ def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
         arrays[name] = list(value)
         if len(arrays[name]) > MAX_ITEMS_PER_KIND:
             raise _problem(413, "too_many_items", "A context category exceeds 100 items.")
-    if not all(isinstance(value, Mapping) and isinstance(value.get("content"), str)
-               and value.get("role") in {"system", "developer", "user", "assistant", "tool"}
-               for value in arrays["messages"]):
+    if not all(
+        isinstance(value, Mapping)
+        and isinstance(value.get("content"), str)
+        and value.get("role") in {"system", "developer", "user", "assistant", "tool"}
+        for value in arrays["messages"]
+    ):
         raise _problem(422, "invalid_messages", "Messages need a valid role and text content.")
-    if not all(isinstance(value, (str, Mapping)) for value in arrays["documents"] + arrays["memories"]):
-        raise _problem(422, "invalid_evidence", "Documents and memories must be strings or objects.")
-    if not all(isinstance(value, Mapping) and isinstance(value.get("content"), str)
-               for value in arrays["tool_results"]):
+    if not all(
+        isinstance(value, (str, Mapping)) for value in arrays["documents"] + arrays["memories"]
+    ):
+        raise _problem(
+            422, "invalid_evidence", "Documents and memories must be strings or objects."
+        )
+    if not all(
+        isinstance(value, Mapping) and isinstance(value.get("content"), str)
+        for value in arrays["tool_results"]
+    ):
         raise _problem(422, "invalid_tool_results", "Tool results need text content.")
     if not all(isinstance(value, Mapping) for value in arrays["tools"]):
         raise _problem(422, "invalid_tools", "Tool schemas must be objects.")
@@ -94,7 +123,9 @@ def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
     floor = payload.get("quality_floor", 0.80)
     budget = payload.get("max_input_tokens", 8192)
     reserve = payload.get("reserve_output_tokens", 1024)
-    cache_provider = payload.get("cache_provider", "sarvam" if str(model).startswith("sarvam") else "generic")
+    cache_provider = payload.get(
+        "cache_provider", "sarvam" if str(model).startswith("sarvam") else "generic"
+    )
     cache_mode = payload.get("cache_mode", "disabled")
     if not isinstance(query, str):
         raise _problem(422, "invalid_query", "query must be text.")
@@ -107,31 +138,51 @@ def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(floor, bool) or not isinstance(floor, (int, float)) or not 0 <= floor <= 1:
         raise _problem(422, "invalid_quality_floor", "quality_floor must be between 0 and 1.")
     if isinstance(budget, bool) or not isinstance(budget, int) or not 256 <= budget <= 131072:
-        raise _problem(422, "invalid_max_input_tokens", "max_input_tokens is outside Studio limits.")
+        raise _problem(
+            422, "invalid_max_input_tokens", "max_input_tokens is outside Studio limits."
+        )
     if isinstance(reserve, bool) or not isinstance(reserve, int) or not 0 <= reserve <= 32768:
-        raise _problem(422, "invalid_reserve_output_tokens", "reserve_output_tokens is outside Studio limits.")
+        raise _problem(
+            422, "invalid_reserve_output_tokens", "reserve_output_tokens is outside Studio limits."
+        )
     if CachePolicy is None and cache_mode != "disabled":
-        raise _problem(503, "cache_runtime_unavailable",
-                       "Cache diagnostics are unavailable on this Studio deployment.")
+        raise _problem(
+            503,
+            "cache_runtime_unavailable",
+            "Cache diagnostics are unavailable on this Studio deployment.",
+        )
     try:
         runtime_options: dict[str, Any] = {}
         if CachePolicy is not None:
             runtime_options["cache_policy"] = CachePolicy(
-                mode=cache_mode, provider=cache_provider,
-                tenant_id="studio-request" if cache_mode != "disabled" else None)
+                mode=cache_mode,
+                provider=cache_provider,
+                tenant_id="studio-request" if cache_mode != "disabled" else None,
+            )
         prepared = ContextRuntime(
-            model=model, objective=objective, quality_floor=float(floor),
-            max_input_tokens=budget, reserve_output_tokens=reserve,
-            safety_margin_tokens=128, **runtime_options,
+            model=model,
+            objective=objective,
+            quality_floor=float(floor),
+            max_input_tokens=budget,
+            reserve_output_tokens=reserve,
+            safety_margin_tokens=128,
+            **runtime_options,
         ).prepare_sync(
-            user_input=query, messages=arrays["messages"], documents=arrays["documents"],
-            memories=arrays["memories"], tool_results=arrays["tool_results"], tools=arrays["tools"],
+            user_input=query,
+            messages=arrays["messages"],
+            documents=arrays["documents"],
+            memories=arrays["memories"],
+            tool_results=arrays["tool_results"],
+            tools=arrays["tools"],
         )
     except (TypeError, ValueError) as exc:
-        raise _problem(422, "invalid_context", "Context could not be normalized or planned.") from exc
+        raise _problem(
+            422, "invalid_context", "Context could not be normalized or planned."
+        ) from exc
     plan = prepared.plan.to_dict(include_content=True)
     plan["warnings"] = [
-        warning for warning in plan["warnings"]
+        warning
+        for warning in plan["warnings"]
         if not warning.startswith("rejected extractive candidate ")
     ]
     return {
@@ -172,14 +223,30 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         client = self.headers.get("x-forwarded-for", "").split(",")[0].strip() or "anonymous"
         if not _allow_request(client, time.monotonic()):
-            self._respond(429, {"error": {"code": "rate_limited", "message": "Please wait before planning again."}})
+            self._respond(
+                429,
+                {
+                    "error": {
+                        "code": "rate_limited",
+                        "message": "Please wait before planning again.",
+                    }
+                },
+            )
             return
         try:
             length = int(self.headers.get("content-length", ""))
             if not 0 < length <= MAX_BODY_BYTES:
                 raise ValueError
         except ValueError:
-            self._respond(413, {"error": {"code": "body_too_large", "message": "Request body exceeds the Studio limit."}})
+            self._respond(
+                413,
+                {
+                    "error": {
+                        "code": "body_too_large",
+                        "message": "Request body exceeds the Studio limit.",
+                    }
+                },
+            )
             return
         try:
             if not self.headers.get("content-type", "").lower().startswith("application/json"):
@@ -191,13 +258,29 @@ class handler(BaseHTTPRequestHandler):
         except RequestProblem as exc:
             self._respond(exc.status, {"error": {"code": exc.code, "message": exc.message}})
         except (UnicodeDecodeError, json.JSONDecodeError):
-            self._respond(400, {"error": {"code": "invalid_json", "message": "Valid UTF-8 JSON is required."}})
+            self._respond(
+                400, {"error": {"code": "invalid_json", "message": "Valid UTF-8 JSON is required."}}
+            )
         except Exception:
-            self._respond(500, {"error": {"code": "planning_failed", "message": "Planning could not be completed."}})
+            self._respond(
+                500,
+                {
+                    "error": {
+                        "code": "planning_failed",
+                        "message": "Planning could not be completed.",
+                    }
+                },
+            )
 
     def do_GET(self) -> None:  # noqa: N802
-        self._respond(200, {"status": "ok", "service": "llmslim-context-inspector",
-                            "cache_diagnostics_available": CachePolicy is not None})
+        self._respond(
+            200,
+            {
+                "status": "ok",
+                "service": "llmslim-context-inspector",
+                "cache_diagnostics_available": CachePolicy is not None,
+            },
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

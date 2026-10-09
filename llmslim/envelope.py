@@ -12,7 +12,16 @@ from typing import Any, Mapping, Optional, Sequence, Tuple
 from .planning.models import ContextBundle, ContextItem
 from .planning.planner import AdaptiveContextPlanner
 
-_SECRET_KEYS = ("api_key", "apikey", "authorization", "password", "secret", "credential", "access_token", "refresh_token")
+_SECRET_KEYS = (
+    "api_key",
+    "apikey",
+    "authorization",
+    "password",
+    "secret",
+    "credential",
+    "access_token",
+    "refresh_token",
+)
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")
 _SAFE_MODEL = re.compile(r"^[A-Za-z0-9_.:/-]{1,128}$")
 
@@ -95,12 +104,14 @@ class ContextEnvelope:
 
         safe_documents = tuple(
             replace(value, kind=ContextKind.RAG_DOCUMENT, role=ContextRole.RAG)
-            if isinstance(value, ContextItem) else value
+            if isinstance(value, ContextItem)
+            else value
             for value in documents
         )
         safe_memories = tuple(
             replace(value, kind=ContextKind.MEMORY, role=ContextRole.RAG)
-            if isinstance(value, ContextItem) else value
+            if isinstance(value, ContextItem)
+            else value
             for value in memories
         )
         items = planner._normalize(

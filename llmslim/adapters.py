@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional, cast
 
 from .planning.models import InfeasibleContextError
 from .runtime import ContextRuntime, PreparedContext
@@ -77,9 +77,14 @@ def make_openai_agents_input_filter(
         outbound = [
             dict(message)
             for message in prepared.model_input.messages
-            if not (source.instructions and message["role"] == "system" and message["content"] == source.instructions)
+            if not (
+                source.instructions
+                and message["role"] == "system"
+                and message["content"] == source.instructions
+            )
         ]
-        return ModelInputData(input=outbound, instructions=source.instructions)
+        # Entries were validated above as plain text messages, which the SDK accepts.
+        return ModelInputData(input=cast(Any, outbound), instructions=source.instructions)
 
     return filter_input
 

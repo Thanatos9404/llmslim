@@ -91,8 +91,7 @@ def test_studio_plan_hides_normal_candidate_pruning_from_public_warnings() -> No
         )
     )
     assert all(
-        not warning.startswith("rejected extractive candidate ")
-        for warning in response["warnings"]
+        not warning.startswith("rejected extractive candidate ") for warning in response["warnings"]
     )
     assert all(
         not warning.startswith("rejected extractive candidate ")

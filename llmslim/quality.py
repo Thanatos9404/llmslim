@@ -38,7 +38,9 @@ def assess_quality(
     query: str = "",
 ) -> QualityReport:
     by_id = {candidate.item_id: candidate for candidate in selected}
-    alive = {key for key, candidate in by_id.items() if candidate.method is not CandidateMethod.DROP}
+    alive = {
+        key for key, candidate in by_id.items() if candidate.method is not CandidateMethod.DROP
+    }
     failures = []
     trusted = []
     required = []
@@ -85,8 +87,11 @@ def assess_quality(
         default=0.0,
     )
     selected_relevance = max(
-        (lexical_relevance(query, by_id[item.item_id].content)
-         for item in items if not item.required and item.item_id in alive),
+        (
+            lexical_relevance(query, by_id[item.item_id].content)
+            for item in items
+            if not item.required and item.item_id in alive
+        ),
         default=0.0,
     )
     relevance_retention = (

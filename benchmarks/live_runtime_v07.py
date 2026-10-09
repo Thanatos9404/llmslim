@@ -24,22 +24,25 @@ TASKS = (
         "id": "account-renewal",
         "query": "When does Acme renew?",
         "fact": "9 November 2026",
-        "documents": ["Verified contract: Acme renews on 9 November 2026.",
-                      "Old unrelated meeting note from 2024."],
+        "documents": [
+            "Verified contract: Acme renews on 9 November 2026.",
+            "Old unrelated meeting note from 2024.",
+        ],
     },
     {
         "id": "support-deadline",
         "query": "What is the support deadline?",
         "fact": "24 hours",
-        "documents": ["Verified support agreement: response deadline is 24 hours.",
-                      "Outdated draft mentioned a different target."],
+        "documents": [
+            "Verified support agreement: response deadline is 24 hours.",
+            "Outdated draft mentioned a different target.",
+        ],
     },
     {
         "id": "hindi-renewal",
         "query": "नवीनीकरण कब है?",
         "fact": "12 December 2026",
-        "documents": ["सत्यापित अनुबंध: नवीनीकरण 12 December 2026 को है।",
-                      "असंबंधित कार्यालय सूचना।"],
+        "documents": ["सत्यापित अनुबंध: नवीनीकरण 12 December 2026 को है।", "असंबंधित कार्यालय सूचना।"],
     },
 )
 
@@ -77,7 +80,9 @@ def _call_openai(messages: Sequence[Mapping[str, str]], model: str) -> Dict[str,
     client = OpenAI()
     started = time.perf_counter()
     response = client.chat.completions.create(
-        model=model, messages=list(messages), max_completion_tokens=128,
+        model=model,
+        messages=list(messages),
+        max_completion_tokens=128,
     )
     return {
         "answer": str(response.choices[0].message.content or ""),
@@ -99,34 +104,43 @@ def run_live(provider: str = "sarvam", model: str | None = None) -> Dict[str, An
     records = []
     for task in TASKS:
         prepared = ContextRuntime(
-            model=resolved_model, max_input_tokens=512,
-            reserve_output_tokens=0, safety_margin_tokens=0,
+            model=resolved_model,
+            max_input_tokens=512,
+            reserve_output_tokens=0,
+            safety_margin_tokens=0,
         ).prepare_sync(
             user_input=str(task["query"]),
-            messages=[{"role": "system", "content": "Answer only from verified evidence. Be concise."}],
+            messages=[
+                {"role": "system", "content": "Answer only from verified evidence. Be concise."}
+            ],
             documents=task["documents"],
         )
         if not prepared.feasible:
             records.append({"id": task["id"], "planning_feasible": False})
             continue
         result = call(sarvam_messages(prepared), resolved_model)
-        records.append({
-            "id": task["id"],
-            "planning_feasible": True,
-            "task_success_exact": str(task["fact"]).casefold() in result["answer"].casefold(),
-            "instruction_adherence_grounded": bool(result["answer"].strip()),
-            "latency_ms": result["latency_ms"],
-            "prompt_tokens": result["prompt_tokens"],
-            "completion_tokens": result["completion_tokens"],
-            "usage_classification": result["usage_classification"],
-            "estimated_input_cost": prepared.cost["planned_estimated_input_cost"],
-            "cost_currency": prepared.cost["currency"],
-        })
+        records.append(
+            {
+                "id": task["id"],
+                "planning_feasible": True,
+                "task_success_exact": str(task["fact"]).casefold() in result["answer"].casefold(),
+                "instruction_adherence_grounded": bool(result["answer"].strip()),
+                "latency_ms": result["latency_ms"],
+                "prompt_tokens": result["prompt_tokens"],
+                "completion_tokens": result["completion_tokens"],
+                "usage_classification": result["usage_classification"],
+                "estimated_input_cost": prepared.cost["planned_estimated_input_cost"],
+                "cost_currency": prepared.cost["currency"],
+            }
+        )
     return {
-        "schema_version": "1.0", "classification": "MEASURED_LIVE",
-        "provider": provider, "model": resolved_model,
+        "schema_version": "1.0",
+        "classification": "MEASURED_LIVE",
+        "provider": provider,
+        "model": resolved_model,
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "task_count": len(records), "records": records,
+        "task_count": len(records),
+        "records": records,
         "raw_answers_or_credentials_persisted": False,
     }
 
@@ -139,7 +153,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run_live(args.provider, args.model)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"wrote sanitized live result to {args.output}")
     return 0
 

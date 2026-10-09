@@ -121,7 +121,9 @@ class ContextTrace:
             estimated_cost_after=plan.metrics.estimated_input_cost_after,
             cost_currency=plan.metrics.cost_currency,
             warnings=tuple("policy excluded an optional item" for _ in exclusions)
-            + tuple("planning constraint was infeasible" for _ in plan.warnings if not plan.feasible),
+            + tuple(
+                "planning constraint was infeasible" for _ in plan.warnings if not plan.feasible
+            ),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -173,16 +175,23 @@ class PreparedContext:
         if telemetry.source != "provider_reported":
             raise ValueError("provider telemetry must come from a provider response")
         cache_plan = self.cache_plan
-        provider_hit = (telemetry.provider_cache_hit if telemetry.provider_cache_hit is not None
-                        else telemetry.cache_read_tokens > 0
-                        if telemetry.cache_read_tokens is not None else None)
+        provider_hit = (
+            telemetry.provider_cache_hit
+            if telemetry.provider_cache_hit is not None
+            else telemetry.cache_read_tokens > 0
+            if telemetry.cache_read_tokens is not None
+            else None
+        )
         if cache_plan and provider_hit is not None:
-            cache_plan = replace(cache_plan,
-                status=(CacheStatus.REPORTED_HIT if provider_hit
-                        else CacheStatus.REPORTED_MISS),
-                invalidation_reason=("provider reported miss" if not provider_hit
-                                     and cache_plan.estimated_cache_read_tokens else
-                                     cache_plan.invalidation_reason))
+            cache_plan = replace(
+                cache_plan,
+                status=(CacheStatus.REPORTED_HIT if provider_hit else CacheStatus.REPORTED_MISS),
+                invalidation_reason=(
+                    "provider reported miss"
+                    if not provider_hit and cache_plan.estimated_cache_read_tokens
+                    else cache_plan.invalidation_reason
+                ),
+            )
         trace = replace(self.trace, cache=cache_plan, provider_cache_telemetry=telemetry)
         return replace(self, trace=trace, cache_plan=cache_plan)
 
@@ -224,7 +233,10 @@ def _model_input(plan: ContextPlan, cache_policy: Optional[CachePolicy] = None) 
             continue
         role = item.metadata.get("message_role")
         if item.kind in {
-            ContextKind.SYSTEM, ContextKind.DEVELOPER, ContextKind.USER, ContextKind.ASSISTANT
+            ContextKind.SYSTEM,
+            ContextKind.DEVELOPER,
+            ContextKind.USER,
+            ContextKind.ASSISTANT,
         } and role in {"system", "developer", "user", "assistant"}:
             message: Mapping[str, Any] = {"role": role, "content": candidate.content}
             if item.required and role == "user":
@@ -232,11 +244,13 @@ def _model_input(plan: ContextPlan, cache_policy: Optional[CachePolicy] = None) 
             else:
                 messages.append((message, classify_stability(item), False))
         else:
-            messages.append((
-                {"role": "user", "content": render_context_item(item, candidate.content)},
-                classify_stability(item),
-                item.metadata.get("cache_order_safe") is True,
-            ))
+            messages.append(
+                (
+                    {"role": "user", "content": render_context_item(item, candidate.content)},
+                    classify_stability(item),
+                    item.metadata.get("cache_order_safe") is True,
+                )
+            )
     if current_user is not None:
         messages.append((current_user, "dynamic", False))
     if cache_policy is not None and cache_policy.mode != "disabled":
@@ -246,14 +260,19 @@ def _model_input(plan: ContextPlan, cache_policy: Optional[CachePolicy] = None) 
         tail = list(messages)
         while tail and tail[0][0]["role"] in {"system", "developer"}:
             head.append(tail.pop(0))
-        movable_indices = {index for index, part in enumerate(tail)
-                           if part[1] == "stable" and part[2]}
+        movable_indices = {
+            index for index, part in enumerate(tail) if part[1] == "stable" and part[2]
+        }
         movable = [part for index, part in enumerate(tail) if index in movable_indices]
         tail = [part for index, part in enumerate(tail) if index not in movable_indices]
         messages = head + movable + tail
-    return ModelInput(plan.model_profile.model_id,
-                      tuple(part[0] for part in messages), tuple(tools), plan.final_context,
-                      tuple(part[1] for part in messages))
+    return ModelInput(
+        plan.model_profile.model_id,
+        tuple(part[0] for part in messages),
+        tuple(tools),
+        plan.final_context,
+        tuple(part[1] for part in messages),
+    )
 
 
 class ContextRuntime:
@@ -332,28 +351,36 @@ class ContextRuntime:
             model_profile=self.model_profile,
             cache_policy=self.cache_policy,
             cached_stable_digests=self.cache_manager.cached_stable_digests(
-                self.cache_policy, session_id, self.model),
+                self.cache_policy, session_id, self.model
+            ),
         )
         model_input = _model_input(plan, self.cache_policy)
         policy_settings = {
-            "objective": self.objective, "quality_floor": self.quality_floor,
+            "objective": self.objective,
+            "quality_floor": self.quality_floor,
             "max_input_tokens": self.max_input_tokens,
             "context_policy": {
                 "never_drop_roles": sorted(role.value for role in self.policy.never_drop_roles),
                 "max_memory_tokens": self.policy.max_memory_tokens,
                 "max_rag_tokens": self.policy.max_rag_tokens,
                 "stale_tool_result_seconds": self.policy.stale_tool_result_seconds,
-                "allowed_sources": sorted(self.policy.allowed_sources) if self.policy.allowed_sources else None,
+                "allowed_sources": sorted(self.policy.allowed_sources)
+                if self.policy.allowed_sources
+                else None,
                 "denied_sources": sorted(self.policy.denied_sources),
                 "redactor_identity": id(self.policy.redactor) if self.policy.redactor else None,
-            } if self.policy else None,
+            }
+            if self.policy
+            else None,
         }
         cache_plan = compile_cache_plan(plan, model_input, self.cache_policy, policy_settings)
         if plan.feasible:
-            cache_plan = self.cache_manager.observe(cache_plan, self.cache_policy,
-                                                    session_id, self.model)
-        trace = replace(ContextTrace.from_plan(envelope, plan, quality, graph, exclusions),
-                        cache=cache_plan)
+            cache_plan = self.cache_manager.observe(
+                cache_plan, self.cache_policy, session_id, self.model
+            )
+        trace = replace(
+            ContextTrace.from_plan(envelope, plan, quality, graph, exclusions), cache=cache_plan
+        )
         return PreparedContext(envelope, graph, plan, quality, model_input, trace, cache_plan)
 
     async def prepare(
@@ -376,7 +403,8 @@ class ContextRuntime:
         for item in result.items:
             # Retrieval can rank evidence, never grant system/developer authority.
             safe_metadata = {
-                key: value for key, value in item.metadata.items()
+                key: value
+                for key, value in item.metadata.items()
                 if key in {"created_at", "entity_ids", "record_id"}
             }
             demoted = replace(
@@ -388,7 +416,9 @@ class ContextRuntime:
                 source="external:" + item.source,
                 metadata=safe_metadata,
             )
-            external.append(replace(demoted, token_count=rendered_token_count(demoted, demoted.content)))
+            external.append(
+                replace(demoted, token_count=rendered_token_count(demoted, demoted.content))
+            )
         prepared = self.prepare_sync(
             user_input=user_input,
             documents=tuple(documents) + tuple(external),
@@ -398,9 +428,10 @@ class ContextRuntime:
             safe_warnings = tuple(
                 f"source failure: {failure.error_type}" for failure in result.failures
             )
-            return replace(prepared, trace=replace(
-                prepared.trace, warnings=prepared.trace.warnings + safe_warnings
-            ))
+            return replace(
+                prepared,
+                trace=replace(prepared.trace, warnings=prepared.trace.warnings + safe_warnings),
+            )
         return prepared
 
     def session(self, session_id: str) -> "RuntimeSession":
@@ -421,7 +452,16 @@ class RuntimeSession:
     runtime: ContextRuntime
     session_id: str
     _messages: list[Mapping[str, Any]] = field(default_factory=list, repr=False)
-    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    # Created lazily inside the running loop: before Python 3.10, asyncio.Lock binds to the
+    # loop current at construction, which fails or mismatches outside a running loop.
+    _lock: Optional[asyncio.Lock] = field(default=None, repr=False)
+    _lock_loop: Optional[asyncio.AbstractEventLoop] = field(default=None, repr=False)
+
+    def _loop_lock(self) -> asyncio.Lock:
+        loop = asyncio.get_running_loop()
+        if self._lock is None or self._lock_loop is not loop:
+            self._lock, self._lock_loop = asyncio.Lock(), loop
+        return self._lock
 
     async def __aenter__(self) -> "RuntimeSession":
         return self
@@ -444,7 +484,7 @@ class RuntimeSession:
         self._messages = trusted + (recent[-slots:] if slots else [])
 
     async def prepare(self, user_input: str, **kwargs: Any) -> PreparedContext:
-        async with self._lock:
+        async with self._loop_lock():
             prepared = await self.runtime.prepare(
                 session_id=self.session_id,
                 user_input=user_input,

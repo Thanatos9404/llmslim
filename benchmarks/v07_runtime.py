@@ -43,8 +43,13 @@ def _expanded(case: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def _measure(
-    name: str, text: str, case: Mapping[str, Any], raw_tokens: int, budget: int,
-    latency_ms: float, feasible: bool | None = None,
+    name: str,
+    text: str,
+    case: Mapping[str, Any],
+    raw_tokens: int,
+    budget: int,
+    latency_ms: float,
+    feasible: bool | None = None,
 ) -> Dict[str, Any]:
     final_tokens = count_tokens(text)
     return {
@@ -62,8 +67,11 @@ def _measure(
 
 def _runtime(case: Mapping[str, Any], budget: int):
     runtime = ContextRuntime(
-        model="sarvam-105b", max_input_tokens=budget,
-        reserve_output_tokens=0, safety_margin_tokens=0, quality_floor=0.80,
+        model="sarvam-105b",
+        max_input_tokens=budget,
+        reserve_output_tokens=0,
+        safety_margin_tokens=0,
+        quality_floor=0.80,
     )
     return runtime.prepare_sync(
         user_input=str(case.get("query", "")),
@@ -134,35 +142,63 @@ def evaluate_case(case: Mapping[str, Any], *, max_safe_probes: int = 5) -> Dict[
     v06 = plan_context(**inputs)
     v06_ms = (time.perf_counter() - started) * 1000.0
     raw = "".join(
-        render_context_item(decision.item, decision.item.content)
-        for decision in v06.decisions
+        render_context_item(decision.item, decision.item.content) for decision in v06.decisions
     ).rstrip()
     raw_tokens = count_tokens(raw)
     records = [_measure("raw", raw, expanded, raw_tokens, budget, 0.0)]
     started = time.perf_counter()
     prefix = _truncate_to_tokens(raw, budget)
-    records.append(_measure("prefix", prefix, expanded, raw_tokens, budget,
-                            (time.perf_counter() - started) * 1000.0))
+    records.append(
+        _measure(
+            "prefix", prefix, expanded, raw_tokens, budget, (time.perf_counter() - started) * 1000.0
+        )
+    )
     started = time.perf_counter()
     ratio = min(1.0, max(0.05, budget / max(1, raw_tokens)))
     fixed = compress(raw, target_ratio=ratio, min_tokens_for_compression=0).compressed_text
-    records.append(_measure("fixed_ratio", fixed, expanded, raw_tokens, budget,
-                            (time.perf_counter() - started) * 1000.0))
-    records.append(_measure("v06_adaptive", v06.final_context, expanded, raw_tokens,
-                            budget, v06_ms, feasible=v06.feasible))
+    records.append(
+        _measure(
+            "fixed_ratio",
+            fixed,
+            expanded,
+            raw_tokens,
+            budget,
+            (time.perf_counter() - started) * 1000.0,
+        )
+    )
+    records.append(
+        _measure(
+            "v06_adaptive",
+            v06.final_context,
+            expanded,
+            raw_tokens,
+            budget,
+            v06_ms,
+            feasible=v06.feasible,
+        )
+    )
     started = time.perf_counter()
     v07 = _runtime(expanded, budget)
     v07_ms = (time.perf_counter() - started) * 1000.0
-    record = _measure("v07_runtime", v07.plan.final_context, expanded, raw_tokens, budget,
-                      v07_ms, feasible=v07.feasible)
-    record.update({
-        "quality_gate_passed": v07.quality.passed,
-        "dependency_integrity": v07.quality.metrics["dependency_integrity"],
-        "quality_floor_violation": not v07.quality.passed,
-        "planner_latency_ms": v07.plan.metrics.planning_latency_ms,
-        "transformation_latency_ms": v07.plan.metrics.transformation_latency_ms,
-        "selected_methods": dict(Counter(d.selected.method.value for d in v07.plan.decisions)),
-    })
+    record = _measure(
+        "v07_runtime",
+        v07.plan.final_context,
+        expanded,
+        raw_tokens,
+        budget,
+        v07_ms,
+        feasible=v07.feasible,
+    )
+    record.update(
+        {
+            "quality_gate_passed": v07.quality.passed,
+            "dependency_integrity": v07.quality.metrics["dependency_integrity"],
+            "quality_floor_violation": not v07.quality.passed,
+            "planner_latency_ms": v07.plan.metrics.planning_latency_ms,
+            "transformation_latency_ms": v07.plan.metrics.transformation_latency_ms,
+            "selected_methods": dict(Counter(d.selected.method.value for d in v07.plan.decisions)),
+        }
+    )
     records.append(record)
     return {
         "id": expanded["id"],
@@ -183,8 +219,15 @@ def build_result(dataset: Path = DATASET, *, max_safe_probes: int = 5) -> Dict[s
     for case in cases:
         for record in case["records"]:
             groups[record["baseline"]].append(record)
-    fields = ("budget_success", "hard_constraint_retention", "required_fact_retention",
-              "entity_retention", "tool_availability", "token_reduction", "latency_ms")
+    fields = (
+        "budget_success",
+        "hard_constraint_retention",
+        "required_fact_retention",
+        "entity_retention",
+        "tool_availability",
+        "token_reduction",
+        "latency_ms",
+    )
     summary = {
         baseline: {
             field: statistics.fmean(float(record[field]) for record in groups[baseline])
@@ -202,9 +245,11 @@ def build_result(dataset: Path = DATASET, *, max_safe_probes: int = 5) -> Dict[s
         "categories": dict(sorted(Counter(case["category"] for case in cases).items())),
         "languages": dict(sorted(Counter(case["language"] for case in cases).items())),
         "environment": {
-            "python": platform.python_version(), "platform": platform.platform(),
+            "python": platform.python_version(),
+            "platform": platform.platform(),
             "token_counter": get_active_token_counter_name(),
-            "network_calls": 0, "provider_calls": 0,
+            "network_calls": 0,
+            "provider_calls": 0,
         },
         "summary": summary,
         "v07_quality_floor_violations": sum(
@@ -213,7 +258,8 @@ def build_result(dataset: Path = DATASET, *, max_safe_probes: int = 5) -> Dict[s
         "maximum_safe_context_reduction_observed": {
             "mean": statistics.fmean(safe_values),
             "median": statistics.median(safe_values),
-            "min": min(safe_values), "max": max(safe_values),
+            "min": min(safe_values),
+            "max": max(safe_values),
             "probes_per_case": max_safe_probes,
             "interpretation": "lowest safe representation observed at tested budgets; task-grounded exact checks and local quality gates only",
         },
@@ -223,10 +269,13 @@ def build_result(dataset: Path = DATASET, *, max_safe_probes: int = 5) -> Dict[s
 
 def render_report(result: Mapping[str, Any]) -> str:
     lines = [
-        "# LLMSlim v0.7 Agent Context Runtime benchmark", "",
-        "Classification: **MEASURED_OFFLINE**. No provider or network calls.", "",
+        "# LLMSlim v0.7 Agent Context Runtime benchmark",
+        "",
+        "Classification: **MEASURED_OFFLINE**. No provider or network calls.",
+        "",
         f"Corpus: {result['case_count']} frozen cases; SHA-256 `{result['dataset_sha256']}`.",
-        f"Categories: `{json.dumps(result['categories'], sort_keys=True)}`.", "",
+        f"Categories: `{json.dumps(result['categories'], sort_keys=True)}`.",
+        "",
         "| Baseline | Budget success | Hard constraints | Required facts | Tool availability | Reduction | Mean latency ms |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
@@ -238,20 +287,33 @@ def render_report(result: Mapping[str, Any]) -> str:
             f"{row['token_reduction']:.1%} | {row['latency_ms']:.2f} |"
         )
     safe = result["maximum_safe_context_reduction_observed"]
-    lines += ["", "## Maximum Safe Context Reduction", "",
-              f"Observed mean `{safe['mean']:.1%}`, median `{safe['median']:.1%}`, range "
-              f"`{safe['min']:.1%}–{safe['max']:.1%}` across {safe['probes_per_case']} "
-              "budget probes per case. This is an observed lower bound at tested budgets, not "
-              "a universal optimal percentage or real-model task-success result.", "",
-              f"v0.7 quality-floor violations: `{result['v07_quality_floor_violations']}`.", "",
-              "Tool-contract and dependency integrity for v0.7 are in per-case JSON; "
-              "the four older baselines do not expose comparable graph artifacts.", "",
-              "## Limits", "",
-              "- Exact string checks may miss semantic errors or valid paraphrases.",
-              "- Token counts are estimates, not provider-reported usage.",
-              "- Latency depends on this machine and Python environment.",
-              "- The v0.6 planner code and dataset were not modified.", "",
-              "## Reproduction", "", "```bash", "python -m benchmarks.v07_runtime", "```"]
+    lines += [
+        "",
+        "## Maximum Safe Context Reduction",
+        "",
+        f"Observed mean `{safe['mean']:.1%}`, median `{safe['median']:.1%}`, range "
+        f"`{safe['min']:.1%}–{safe['max']:.1%}` across {safe['probes_per_case']} "
+        "budget probes per case. This is an observed lower bound at tested budgets, not "
+        "a universal optimal percentage or real-model task-success result.",
+        "",
+        f"v0.7 quality-floor violations: `{result['v07_quality_floor_violations']}`.",
+        "",
+        "Tool-contract and dependency integrity for v0.7 are in per-case JSON; "
+        "the four older baselines do not expose comparable graph artifacts.",
+        "",
+        "## Limits",
+        "",
+        "- Exact string checks may miss semantic errors or valid paraphrases.",
+        "- Token counts are estimates, not provider-reported usage.",
+        "- Latency depends on this machine and Python environment.",
+        "- The v0.6 planner code and dataset were not modified.",
+        "",
+        "## Reproduction",
+        "",
+        "```bash",
+        "python -m benchmarks.v07_runtime",
+        "```",
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -266,8 +328,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("max-safe-probes must be between 0 and 20")
     result = build_result(args.dataset, max_safe_probes=args.max_safe_probes)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                           encoding="utf-8")
+    args.output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(render_report(result), encoding="utf-8")
     print(f"wrote {args.output}")

@@ -20,7 +20,7 @@ export function constructMetadata({
     alternates: { canonical: canonicalUrl || siteConfig.url },
     verification: { google: siteConfig.googleSiteVerification },
     icons: { icon: icons, shortcut: "/llmslim_logo.png", apple: "/llmslim_logo.png" },
-    openGraph: { title, description, url: canonicalUrl || siteConfig.url, siteName: siteConfig.name, images: [{ url: image, width: 1200, height: 630, alt: "LLMSlim Python context compression" }], locale: "en_US", type: "website" },
+    openGraph: { title, description, url: canonicalUrl || siteConfig.url, siteName: siteConfig.name, images: [{ url: image, width: 1200, height: 630, alt: "LLMSlim, the context layer for production AI agents" }], locale: "en_US", type: "website" },
     twitter: { card: "summary_large_image", title, description, images: [image], creator: "@Thanatos9404", site: "@Thanatos9404" },
     robots: { index: !noIndex, follow: !noIndex, googleBot: { index: !noIndex, follow: !noIndex, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 } },
   };
@@ -28,11 +28,11 @@ export function constructMetadata({
 export function getStructuredDataGraph() {
   const softwareApplication = {
     "@type": "SoftwareApplication", "@id": siteConfig.url + "/#software", name: siteConfig.name,
-    operatingSystem: "Platform Independent", applicationCategory: "DeveloperApplication", softwareVersion: siteConfig.version,
+    operatingSystem: "Platform Independent", applicationCategory: "DeveloperApplication", softwareVersion: siteConfig.coreVersion,
     description: siteConfig.description, url: siteConfig.url, downloadUrl: siteConfig.pypi, programmingLanguage: "Python", license: siteConfig.license,
     author: { "@type": "Person", name: siteConfig.author, url: siteConfig.github },
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" },
-    featureList: ["Extractive, rewrite, and hybrid Python compression", "Provenance-aware ContextRole handling", "Role-aware chat and RAG pipeline helpers", "Token-counter telemetry"],
+    featureList: ["Local extractive, rewrite, and hybrid context compression", "Provenance-aware ContextRole handling", "Adaptive token-budget context planning", "Role-aware chat and RAG pipeline helpers"],
   };
   const organization = { "@type": "Organization", "@id": siteConfig.url + "/#organization", name: siteConfig.name, url: siteConfig.url, logo: { "@type": "ImageObject", url: siteConfig.logo, width: 512, height: 512 }, sameAs: [siteConfig.github, siteConfig.linkedin, siteConfig.pypi, siteConfig.productHunt] };
   const webSite = { "@type": "WebSite", "@id": siteConfig.url + "/#website", url: siteConfig.url, name: siteConfig.name, description: siteConfig.description, publisher: { "@id": siteConfig.url + "/#organization" } };
@@ -40,6 +40,7 @@ export function getStructuredDataGraph() {
     { "@type": "Question", name: "What does provenance-aware priority handling do?", acceptedAnswer: { "@type": "Answer", text: "It prevents untrusted RAG, tool, and assistant content from gaining protected priority solely through imperative or safety-critical wording." } },
     { "@type": "Question", name: "Does LLMSlim prevent prompt injection?", acceptedAnswer: { "@type": "Answer", text: "No. It mitigates compression-induced instruction elevation and applications still need defense in depth." } },
     { "@type": "Question", name: "Does LLMSlim require remote calls?", acceptedAnswer: { "@type": "Answer", text: "The default extractive strategy runs locally. Rewrite and hybrid strategies use a caller-supplied provider." } },
+    { "@type": "Question", name: "What is LLMSlim Platform?", acceptedAnswer: { "@type": "Answer", text: "A private beta that builds on the open-source LLMSlim Core. It keeps a verifiable timeline of agent state, explains and replays context decisions, and can learn from outcomes which context helps. Learned policies start in shadow mode. Core remains MIT licensed." } },
   ] };
   return { "@context": "https://schema.org", "@graph": [softwareApplication, organization, webSite, faqPage] };
 }

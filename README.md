@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim — part of five startup programs" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 12 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi and Nebius" width="100%">
 </a>
 
 <br/><br/>
@@ -16,8 +16,8 @@
 
 <br/>
 
-**Local-first context planning and compression for modern LLM applications and agents.**
-*Plan prompts, conversation history, RAG, memory, and tool schemas against real token budgets while preserving instructions and execution boundaries.*
+**The context layer for production AI agents.**
+*This repository is **LLMSlim Core** (v0.7.1, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
@@ -27,7 +27,25 @@
 
 ---
 
-## What's new in v0.6.0
+## LLMSlim Core and LLMSlim Platform
+
+| | **LLMSlim Core** | **LLMSlim Platform** |
+|---|---|---|
+| Version | 0.7.1 | 0.9.0 beta |
+| License | MIT, this repository | Proprietary, private beta |
+| Install | `pip install llmslim` | By invitation; not published to PyPI |
+| What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
+
+Core is and stays fully open source. Platform is a separate product that depends on
+Core; none of its code lives in this repository. Read more and request beta access at
+[llmslim.app/platform](https://www.llmslim.app/platform).
+
+What's new in Core: the [agent context runtime (v0.7.0)](#agent-context-runtime-v070)
+and the [cache-aware context runtime (v0.7.1)](#cache-aware-context-runtime-v071).
+
+---
+
+## Adaptive Context Planner (v0.6.0)
 
 LLMSlim is no longer only a fixed-ratio prompt compressor. The Adaptive
 Context Planner chooses safe representations for each context item, then uses
@@ -75,24 +93,25 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of the **Sarvam Startup Program**, **Zoho for Startups**, **MongoDB for Startups**, **Claude for Startups**, **OpenAI for Startups**, **Auth0 for Startups**, and **Zendesk for Startups**.
+LLMSlim is part of 12 startup programs. They provide credits, tools, and guidance;
+none of them is an investor, and membership does not imply endorsement.
 
-<table>
-  <tr>
-    <td align="center" width="33%"><a href="https://www.sarvam.ai/startup-program"><img src="assets/sarvam-program-logo.svg" alt="Sarvam logo" width="180"></a></td>
-    <td align="center" width="33%"><a href="https://www.zoho.com/startups/"><picture><source media="(prefers-color-scheme: dark)" srcset="web/public/zoho-logo-dark.png"><img src="web/public/zoho-logo-light.png" alt="Zoho logo" width="180"></picture></a></td>
-    <td align="center" width="33%"><a href="https://www.mongodb.com/startups"><img src="web/public/mongodb-logo.png" alt="MongoDB logo" width="180"></a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="https://www.sarvam.ai/startup-program">Sarvam Startup Program</a></td>
-    <td align="center"><a href="https://www.zoho.com/startups/">Zoho for Startups</a></td>
-    <td align="center"><a href="https://www.mongodb.com/startups">MongoDB for Startups</a></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="web/public/auth0-logo.png" alt="Auth0 logo" width="180"><br>Auth0 for Startups</td>
-    <td align="center"><img src="web/public/zendesk-logo.png" alt="Zendesk logo" width="140"><br>Zendesk for Startups</td>
-  </tr>
-</table>
+| Program | Company |
+|---|---|
+| [Sarvam Startup Program](https://www.sarvam.ai/startup-program) | Sarvam AI |
+| [Zoho for Startups](https://www.zoho.com/startups/) | Zoho |
+| [MongoDB for Startups](https://www.mongodb.com/startups) | MongoDB |
+| [Claude for Startups](https://claude.com/programs/startups) | Anthropic |
+| [OpenAI for Startups](https://openai.com/startups/) | OpenAI |
+| [Auth0 for Startups](https://auth0.com/startups) | Okta (Auth0) |
+| [Zendesk for Startups](https://www.zendesk.com/startups/) | Zendesk |
+| [Mixpanel for Startups](https://mixpanel.com/startups/) | Mixpanel |
+| [Sentry for Startups](https://sentry.io/for/startups/) | Sentry |
+| [Descope Hello World Startup Program](https://www.descope.com/for-startups) | Descope |
+| [Pulumi for Startups](https://www.pulumi.com/pulumi-for-startups/) | Pulumi |
+| [Nebius AI Builder Program](https://dev.nebius.com/builders) | Nebius |
+
+Logos are trademarks of their owners and are used unmodified from official brand sources.
 
 ---
 

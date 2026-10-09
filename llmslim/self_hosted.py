@@ -18,11 +18,22 @@ class TransformersKVSession:
     must call ``clear`` after changing model weights, config, or chat template.
     """
 
-    def __init__(self, *, model: Any, tokenizer: Any, model_revision: str,
-                 tokenizer_revision: str, renderer_version: str, tenant_id: str,
-                 cache_kind: str = "dynamic", max_cache_len: Optional[int] = None) -> None:
-        if not all(isinstance(value, str) and value for value in
-                   (model_revision, tokenizer_revision, renderer_version, tenant_id)):
+    def __init__(
+        self,
+        *,
+        model: Any,
+        tokenizer: Any,
+        model_revision: str,
+        tokenizer_revision: str,
+        renderer_version: str,
+        tenant_id: str,
+        cache_kind: str = "dynamic",
+        max_cache_len: Optional[int] = None,
+    ) -> None:
+        if not all(
+            isinstance(value, str) and value
+            for value in (model_revision, tokenizer_revision, renderer_version, tenant_id)
+        ):
             raise ValueError("model, tokenizer, renderer, and tenant identities are required")
         if cache_kind not in {"dynamic", "static"}:
             raise ValueError("cache_kind must be dynamic or static")
@@ -48,36 +59,55 @@ class TransformersKVSession:
         config = getattr(model, "config", None)
         if config is None or not hasattr(config, "to_dict"):
             raise ValueError("model config must expose to_dict for cache compatibility")
-        return hashlib.sha256(json.dumps(config.to_dict(), sort_keys=True,
-            default=str, separators=(",", ":")).encode("utf-8")).hexdigest()
+        return hashlib.sha256(
+            json.dumps(config.to_dict(), sort_keys=True, default=str, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest()
 
     @property
     def cached_tokens(self) -> int:
         return len(self._token_ids)
 
-    def _validate_identity(self, *, model_revision: str, tokenizer_revision: str,
-                           renderer_version: str, tenant_id: str) -> None:
-        if (model_revision != self.model_revision or tokenizer_revision != self.tokenizer_revision
-                or renderer_version != self.renderer_version or tenant_id != self.tenant_id
-                or id(self.model) != self._model_identity
-                or id(self.tokenizer) != self._tokenizer_identity
-                or self._config_hash(self.model) != self._config_digest):
+    def _validate_identity(
+        self, *, model_revision: str, tokenizer_revision: str, renderer_version: str, tenant_id: str
+    ) -> None:
+        if (
+            model_revision != self.model_revision
+            or tokenizer_revision != self.tokenizer_revision
+            or renderer_version != self.renderer_version
+            or tenant_id != self.tenant_id
+            or id(self.model) != self._model_identity
+            or id(self.tokenizer) != self._tokenizer_identity
+            or self._config_hash(self.model) != self._config_digest
+        ):
             raise ValueError("model, tokenizer, renderer, tenant, or configuration changed")
 
-    def prepare_forward(self, *, full_token_ids: Sequence[int], attention_mask: Sequence[int],
-                        position_ids: Sequence[int], device: str, model_revision: str,
-                        tokenizer_revision: str, renderer_version: str,
-                        tenant_id: str) -> dict[str, Any]:
+    def prepare_forward(
+        self,
+        *,
+        full_token_ids: Sequence[int],
+        attention_mask: Sequence[int],
+        position_ids: Sequence[int],
+        device: str,
+        model_revision: str,
+        tokenizer_revision: str,
+        renderer_version: str,
+        tenant_id: str,
+    ) -> dict[str, Any]:
         """Return only new token IDs and offsets after validating the cached prefix."""
-        self._validate_identity(model_revision=model_revision,
-            tokenizer_revision=tokenizer_revision, renderer_version=renderer_version,
-            tenant_id=tenant_id)
+        self._validate_identity(
+            model_revision=model_revision,
+            tokenizer_revision=tokenizer_revision,
+            renderer_version=renderer_version,
+            tenant_id=tenant_id,
+        )
         if self._pending is not None:
             raise RuntimeError("commit or abort the pending forward before continuing")
         ids = tuple(full_token_ids)
         if not ids or not all(isinstance(value, int) and value >= 0 for value in ids):
             raise ValueError("full_token_ids must be non-negative integers")
-        if ids[:len(self._token_ids)] != self._token_ids:
+        if ids[: len(self._token_ids)] != self._token_ids:
             raise ValueError("prefix tokens changed; cached KV cannot be reused")
         if len(ids) <= len(self._token_ids):
             raise ValueError("continuation must append new tokens")
@@ -91,21 +121,28 @@ class TransformersKVSession:
         if self.max_cache_len is not None and len(ids) > self.max_cache_len:
             raise ValueError("sequence exceeds the static cache capacity")
         if self._cache is not None:
-            length = self._cache.get_seq_length() if hasattr(self._cache, "get_seq_length") else None
+            length = (
+                self._cache.get_seq_length() if hasattr(self._cache, "get_seq_length") else None
+            )
             if length != len(self._token_ids):
                 raise ValueError("KV cache length does not match the token prefix")
         self._pending = ids
         offset = len(self._token_ids)
-        return {"input_ids": ids[offset:], "attention_mask": tuple(attention_mask),
-                "position_ids": tuple(position_ids[offset:]),
-                "past_key_values": self._cache, "use_cache": True}
+        return {
+            "input_ids": ids[offset:],
+            "attention_mask": tuple(attention_mask),
+            "position_ids": tuple(position_ids[offset:]),
+            "past_key_values": self._cache,
+            "use_cache": True,
+        }
 
     def commit_forward(self, *, past_key_values: Any) -> None:
         """Accept a host-produced cache only if its length matches the input."""
         if self._pending is None:
             raise RuntimeError("no forward is pending")
-        length = (past_key_values.get_seq_length()
-                  if hasattr(past_key_values, "get_seq_length") else None)
+        length = (
+            past_key_values.get_seq_length() if hasattr(past_key_values, "get_seq_length") else None
+        )
         if length != len(self._pending):
             self._pending = None
             raise ValueError("returned KV cache length is incompatible")
@@ -113,15 +150,29 @@ class TransformersKVSession:
         self._token_ids = self._pending
         self._pending = None
 
-    def forward(self, *, full_token_ids: Sequence[int], attention_mask: Sequence[int],
-                position_ids: Sequence[int], device: str, model_revision: str,
-                tokenizer_revision: str, renderer_version: str,
-                tenant_id: str) -> Any:
+    def forward(
+        self,
+        *,
+        full_token_ids: Sequence[int],
+        attention_mask: Sequence[int],
+        position_ids: Sequence[int],
+        device: str,
+        model_revision: str,
+        tokenizer_revision: str,
+        renderer_version: str,
+        tenant_id: str,
+    ) -> Any:
         """Run one local prefill/continuation and keep its KV cache in memory."""
-        parts = self.prepare_forward(full_token_ids=full_token_ids,
-            attention_mask=attention_mask, position_ids=position_ids, device=device,
-            model_revision=model_revision, tokenizer_revision=tokenizer_revision,
-            renderer_version=renderer_version, tenant_id=tenant_id)
+        parts = self.prepare_forward(
+            full_token_ids=full_token_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            device=device,
+            model_revision=model_revision,
+            tokenizer_revision=tokenizer_revision,
+            renderer_version=renderer_version,
+            tenant_id=tenant_id,
+        )
         try:
             import torch
             from transformers import DynamicCache, StaticCache
@@ -135,9 +186,15 @@ class TransformersKVSession:
             with torch.no_grad():
                 output = self.model(
                     input_ids=torch.tensor([parts["input_ids"]], dtype=torch.long, device=device),
-                    attention_mask=torch.tensor([parts["attention_mask"]], dtype=torch.long, device=device),
-                    position_ids=torch.tensor([parts["position_ids"]], dtype=torch.long, device=device),
-                    past_key_values=cache, use_cache=True, return_dict=True,
+                    attention_mask=torch.tensor(
+                        [parts["attention_mask"]], dtype=torch.long, device=device
+                    ),
+                    position_ids=torch.tensor(
+                        [parts["position_ids"]], dtype=torch.long, device=device
+                    ),
+                    past_key_values=cache,
+                    use_cache=True,
+                    return_dict=True,
                 )
             self.commit_forward(past_key_values=output.past_key_values)
             return output

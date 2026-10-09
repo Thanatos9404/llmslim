@@ -4,28 +4,39 @@ import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { CopyCommand, HomeEffects, CodeExample, ContextPreview, HeroArtwork } from "@/components/landing/RedesignInteractions"
-import { StartupBrands, StartupMarquee } from "@/components/landing/StartupPrograms"
+import { StartupBrands, StartupMarquee, startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
+import { TrackedLink } from "@/components/site/TrackedLink"
+import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
 
 const faqs = [
   ["Does it need an API key?", "Not for local extraction. LLMSlim’s default extractive strategy runs in your Python application. Rewrite and hybrid strategies use a provider you supply."],
   ["Does it work with my model?", "LLMSlim prepares text before your model call. Use the output with Sarvam, OpenAI, Anthropic, Gemini, or a local model. Your application keeps control of the request."],
   ["How much should I compress?", "Start with a conservative target ratio and evaluate the answers your application produces. The right setting depends on the documents, question, and model. Compression can remove useful information; there is no universal quality guarantee."],
-  ["What do the startup program announcements mean?", "LLMSlim is part of the Sarvam Startup Program, Zoho for Startups, MongoDB for Startups, Claude for Startups, OpenAI for Startups, Auth0 for Startups, and Zendesk for Startups. Our Sarvam integration guide shows how to combine local context compression with the official Sarvam Python SDK."],
+  ["What is LLMSlim Platform?", "A private beta that builds on the open-source Core. It keeps a verifiable timeline of what your agents were told and what changed, explains and replays every context decision, and can learn from outcomes which context helps. Learned policies start in shadow mode and change nothing until an administrator promotes them. Core stays MIT licensed: pip install llmslim."],
+  ["What do the startup program announcements mean?", `LLMSlim is part of ${startupProgramCount} startup programs: ${startupProgramNames}. These programs offer credits, tools, or guidance. They are not investments and do not imply endorsement. Our Sarvam integration guide shows how to combine local context compression with the official Sarvam Python SDK.`],
 ]
 
 export default function Home() {
-  return <div className="slim-site"><HomeEffects /><SiteHeader /><main id="main-content">
+  return <div className="slim-site"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
     <section className="cinema-hero" aria-labelledby="hero-title">
       <HeroArtwork />
       <div className="cinema-copy">
         <StartupMarquee />
-        <h1 id="hero-title">Your context.<br /><span>Only what matters.</span></h1>
-        <p>Less noise between your ideas and your AI.<br />An open-source Python library for thoughtful context compression.</p>
-        <div className="hero-actions"><Link className="button" href="/docs/getting-started">Start building <ArrowRight size={16} /></Link><Link className="button button-outline" href="/playground" prefetch={false}>Try it in Studio <ArrowUpRight size={16} /></Link></div>
+        <h1 id="hero-title">The context layer for<br /><span>production AI agents.</span></h1>
+        <p>LLMSlim controls what your agents know, remembers what changed, and learns which context improves their decisions.</p>
+        <div className="hero-actions"><TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Explore LLMSlim Core <ArrowRight size={16} /></TrackedLink><TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Platform Beta Access <ArrowUpRight size={16} /></TrackedLink></div>
         <CopyCommand />
       </div>
-      <div className="hero-base"><span>LOCAL BY DEFAULT</span><span>OPEN SOURCE, ALWAYS</span><a href="#features">A closer look <span>↓</span></a></div>
+      <div className="hero-base"><span>LOCAL BY DEFAULT</span><span>OPEN-SOURCE CORE · PRIVATE PLATFORM</span><a href="#features">A closer look <span>↓</span></a></div>
+    </section>
+
+    <section className="layers-section site-width" id="layers" aria-labelledby="layers-title">
+      <div className="focus-heading" data-reveal><p className="section-kicker">Open-source core. Private platform.</p><h2 id="layers-title">Start with the library.<br /> <span>Add memory and judgment when you need them.</span></h2></div>
+      <div className="layer-cards">
+        <article className="layer-card" data-reveal><span className="eyebrow">LLMSLIM CORE · v{siteConfig.coreVersion} · MIT</span><h3>Shape what reaches the model.</h3><p>A Python library you can install today. It compresses context locally, keeps track of where each piece came from, and plans what fits your token budget.</p><ul><li><Check size={14} /> Local extractive compression</li><li><Check size={14} /> Provenance-aware roles</li><li><Check size={14} /> Adaptive context planning</li></ul><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Explore LLMSlim Core <ArrowUpRight size={15} /></TrackedLink></article>
+        <article className="layer-card" data-reveal><span className="eyebrow">LLMSLIM PLATFORM · v{siteConfig.platformVersion} BETA · PRIVATE</span><h3>Give agents a memory you can audit.</h3><p>A private service built on Core. It keeps a timeline of what your agents were told and what changed, explains every context decision, and learns from outcomes under rules you control.</p><ul><li><Check size={14} /> State that knows what is current</li><li><Check size={14} /> Decision traces you can replay</li><li><Check size={14} /> Learned policies, shadow by default</li></ul><TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>About the Platform beta <ArrowUpRight size={15} /></TrackedLink></article>
+      </div>
     </section>
 
     <section className="focus-section site-width" id="features">
@@ -37,7 +48,7 @@ export default function Home() {
 
     <section className="sarvam-story" id="sarvam"><div className="sarvam-halo" aria-hidden="true" data-parallax="0.08" /><div className="site-width sarvam-content">
       <div className="partnership-logos startup-partnership" data-reveal><StartupBrands /><span className="partnership-cross">×</span><span className="partnership-slim"><span className="brand-symbol" aria-hidden="true" />LLM<span>Slim</span></span></div>
-      <p className="section-kicker" data-reveal>Part of seven startup programs</p><h2 data-reveal>A shared beginning.<br /><span>Built from India.</span></h2><p className="sarvam-description" data-reveal>We’re building LLMSlim with support from the Sarvam Startup Program, Zoho for Startups, MongoDB for Startups, Claude for Startups, OpenAI for Startups, Auth0 for Startups, and Zendesk for Startups. Start with local context compression, then bring Sarvam’s models into your application.</p><Link className="button" href="/integrations/sarvam">Explore the integration <ArrowRight size={16} /></Link><div className="startup-program-links"><a className="program-link" href="https://www.sarvam.ai/startup-program" target="_blank" rel="noreferrer">About Sarvam’s program <ArrowUpRight size={13} /></a><a className="program-link" href="https://www.zoho.com/startups/" target="_blank" rel="noreferrer">About Zoho for Startups <ArrowUpRight size={13} /></a><a className="program-link" href="https://www.mongodb.com/startups" target="_blank" rel="noreferrer">About MongoDB for Startups <ArrowUpRight size={13} /></a></div>
+      <p className="section-kicker" data-reveal>Part of {startupProgramCount} startup programs</p><h2 data-reveal>A shared beginning.<br /><span>Built from India.</span></h2><p className="sarvam-description" data-reveal>We’re building LLMSlim with support from {startupProgramCount} startup programs. They offer credits, tools, and guidance; none is an investor or an endorsement. Start with local context compression, then bring Sarvam’s models into your application.</p><Link className="button" href="/integrations/sarvam">Explore the integration <ArrowRight size={16} /></Link>
     </div></section>
 
     <section className="build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="section-kicker">Small library. Familiar workflow.</p><h2>A few lines.<br /><span>Then back to building.</span></h2><p>Add LLMSlim before your model call. Run extraction locally, or bring a provider for rewrite and hybrid strategies.</p><div className="build-points"><span><Check size={15} /> Python-native</span><span><Check size={15} /> Provider-agnostic</span><span><Check size={15} /> MIT licensed</span></div><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link></div><CodeExample /></section>

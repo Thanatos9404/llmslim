@@ -54,7 +54,11 @@ def _raw(item: ContextItem, query: str, policy: PlannerPolicy) -> ContextCandida
 
 
 def _candidate_allowed(
-    item: ContextItem, candidate: ContextCandidate, quality_floor: float, relevance: float, query: str
+    item: ContextItem,
+    candidate: ContextCandidate,
+    quality_floor: float,
+    relevance: float,
+    query: str,
 ) -> bool:
     if candidate.method is CandidateMethod.RAW:
         return True
@@ -71,7 +75,8 @@ def _candidate_allowed(
             and min(len(query_word), len(content_word)) >= 5
             and any(ord(char) > 127 for char in query_word)
             and (query_word in content_word or content_word in query_word)
-            for query_word in query_words for content_word in content_words
+            for query_word in query_words
+            for content_word in content_words
         )
         return (
             not item.required
@@ -115,12 +120,15 @@ def plan_context_v2(
     items, exclusions = local_policy.apply(envelope.items, envelope.current_query)
     if len(items) > 256:
         raise ValueError("progressive planner exceeds the 256-item safety limit")
-    evidence = [item for item in items if item.kind.value in {"rag_document", "memory", "tool_result"}]
+    evidence = [
+        item for item in items if item.kind.value in {"rag_document", "memory", "tool_result"}
+    ]
     if len(evidence) == 1 and envelope.current_query:
         sole_id = evidence[0].item_id
         items = tuple(
             replace(item, metadata={**item.metadata, "no_drop": True})
-            if item.item_id == sole_id else item
+            if item.item_id == sole_id
+            else item
             for item in items
         )
     graph = ContextGraph.from_items(items)
@@ -147,17 +155,22 @@ def plan_context_v2(
     ]
     cached_stable_digests = cached_stable_digests or {}
     cache_rates_reliable = bool(
-        cache_policy and cache_policy.mode != "disabled"
+        cache_policy
+        and cache_policy.mode != "disabled"
         and cache_policy.capabilities.verified
-        and (cache_policy.capabilities.automatic_prefix_cache
-             or cache_policy.capabilities.explicit_prefix_cache)
+        and (
+            cache_policy.capabilities.automatic_prefix_cache
+            or cache_policy.capabilities.explicit_prefix_cache
+        )
         and cache_policy.uncached_input_rate is not None
         and cache_policy.cached_input_rate is not None
         and cache_policy.uncached_input_rate > 0
     )
     protected_ids = {
-        item.item_id for item in items
-        if cache_rates_reliable and classify_stability(item) == "stable"
+        item.item_id
+        for item in items
+        if cache_rates_reliable
+        and classify_stability(item) == "stable"
         and cached_stable_digests.get(cache_item_key(item)) == cache_item_digest(item, item.content)
     }
     raw_tokens = sum(candidate.token_cost for candidate in selected)
@@ -169,8 +182,7 @@ def plan_context_v2(
     # entirely for a context that already fits.
     if raw_tokens > budget.available_input_tokens:
         groups = tuple(
-            generate_candidates(item, query=envelope.current_query, policy=policy)
-            for item in items
+            generate_candidates(item, query=envelope.current_query, policy=policy) for item in items
         )
         transformation_ms = sum(group.transformation_latency_ms for group in groups)
         warnings.extend(warning for group in groups for warning in group.warnings)
@@ -187,9 +199,7 @@ def plan_context_v2(
                 for candidate in selected
                 if candidate.method is not CandidateMethod.DROP
             }
-            locked = frozenset(
-                target for source in alive for target in graph.dependencies(source)
-            )
+            locked = frozenset(target for source in alive for target in graph.dependencies(source))
             for index, (item, group) in enumerate(zip(items, groups)):
                 current = selected[index]
                 for candidate in group.candidates[:8]:
@@ -199,7 +209,11 @@ def plan_context_v2(
                     if item.item_id in locked and candidate.method is not CandidateMethod.RAW:
                         continue
                     if not _candidate_allowed(
-                        item, candidate, quality_floor, group.score.relevance, envelope.current_query
+                        item,
+                        candidate,
+                        quality_floor,
+                        group.score.relevance,
+                        envelope.current_query,
                     ):
                         continue
                     loss = max(0.0, current.utility - candidate.utility)
@@ -207,21 +221,41 @@ def plan_context_v2(
                     # more than the tokens it removes. This changes preference,
                     # never the hard budget or quality constraints.
                     lost_reuse_equivalent = 0.0
-                    if (item.item_id in protected_ids and cache_policy is not None
-                            and cache_policy.cached_input_rate is not None
-                            and cache_policy.uncached_input_rate is not None):
+                    if (
+                        item.item_id in protected_ids
+                        and cache_policy is not None
+                        and cache_policy.cached_input_rate is not None
+                        and cache_policy.uncached_input_rate is not None
+                    ):
                         lost_reuse_equivalent = item.token_count * max(
-                            0.0, 1.0 - cache_policy.cached_input_rate / cache_policy.uncached_input_rate
+                            0.0,
+                            1.0 - cache_policy.cached_input_rate / cache_policy.uncached_input_rate,
                         )
                     effective_saving = saving - lost_reuse_equivalent
                     if objective in {"cost", "minimize_tokens"}:
-                        key = (-effective_saving, loss, -float(saving), item.original_order, candidate.method.value)
+                        key = (
+                            -effective_saving,
+                            loss,
+                            -float(saving),
+                            item.original_order,
+                            candidate.method.value,
+                        )
                     elif objective == "latency":
-                        key = (int(lost_reuse_equivalent > saving), loss / saving,
-                               -effective_saving, item.original_order, candidate.method.value)
+                        key = (
+                            int(lost_reuse_equivalent > saving),
+                            loss / saving,
+                            -effective_saving,
+                            item.original_order,
+                            candidate.method.value,
+                        )
                     else:
-                        key = (int(lost_reuse_equivalent > saving), loss / saving,
-                               -effective_saving, item.original_order, candidate.method.value)
+                        key = (
+                            int(lost_reuse_equivalent > saving),
+                            loss / saving,
+                            -effective_saving,
+                            item.original_order,
+                            candidate.method.value,
+                        )
                     alternatives.append((key, index, candidate))
             if not alternatives:
                 break
@@ -238,16 +272,20 @@ def plan_context_v2(
     validation = validate_selection(items, selected, budget, final_tokens)
     quality = assess_quality(items, selected, graph, quality_floor, envelope.current_query)
     validation_ms = (time.perf_counter() - validation_started) * 1000.0
-    feasible = final_tokens <= budget.available_input_tokens and validation.passed and quality.passed
+    feasible = (
+        final_tokens <= budget.available_input_tokens and validation.passed and quality.passed
+    )
     decisions = tuple(
         ContextDecision(
             item=item,
             selected=candidate,
             candidate_count=len(groups[index].candidates) if groups else 1,
             reason=(
-                ("RAW retained to preserve a previously reusable stable prefix"
-                 if item.item_id in protected_ids else
-                 "retained raw because it fits the budget or is required by policy/dependency")
+                (
+                    "RAW retained to preserve a previously reusable stable prefix"
+                    if item.item_id in protected_ids
+                    else "retained raw because it fits the budget or is required by policy/dependency"
+                )
                 if candidate.method is CandidateMethod.RAW
                 else candidate.reason + "; selected after quality and dependency checks"
             ),
@@ -278,7 +316,9 @@ def plan_context_v2(
         mandatory_tokens=sum(item.token_count for item in items if item.required),
         utilization=final_tokens / budget.available_input_tokens,
         items_kept_raw=sum(c.method is CandidateMethod.RAW for c in selected),
-        items_compressed=sum(c.method not in {CandidateMethod.RAW, CandidateMethod.DROP} for c in selected),
+        items_compressed=sum(
+            c.method not in {CandidateMethod.RAW, CandidateMethod.DROP} for c in selected
+        ),
         items_dropped=sum(c.method is CandidateMethod.DROP for c in selected),
         tokens_by_kind=dict(sorted(by_kind.items())),
         planning_latency_ms=(time.perf_counter() - started) * 1000.0,
@@ -288,7 +328,9 @@ def plan_context_v2(
         token_count_classification="HEURISTIC_ESTIMATE",
         estimated_input_cost_before=before_cost,
         estimated_input_cost_after=after_cost,
-        estimated_input_cost_saving=(before_cost - after_cost) if before_cost is not None and after_cost is not None else None,
+        estimated_input_cost_saving=(before_cost - after_cost)
+        if before_cost is not None and after_cost is not None
+        else None,
         cost_currency=profile.currency if before_cost is not None else None,
     )
     if not feasible:

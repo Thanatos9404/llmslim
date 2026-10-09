@@ -113,17 +113,18 @@ def _provider_usage(
     estimated_input_tokens: int,
     max_output_tokens: int,
 ) -> dict[str, Any]:
-    maximum_cost = estimate_sarvam_cost_micros(
-        model, estimated_input_tokens, max_output_tokens
-    ) / 1_000_000.0
+    maximum_cost = (
+        estimate_sarvam_cost_micros(model, estimated_input_tokens, max_output_tokens) / 1_000_000.0
+    )
     reported = None
     accounted_cost = maximum_cost
     if usage is not None:
         reported_cost = None
         if usage.prompt_tokens is not None and usage.completion_tokens is not None:
-            reported_cost = estimate_sarvam_cost_micros(
-                model, usage.prompt_tokens, usage.completion_tokens
-            ) / 1_000_000.0
+            reported_cost = (
+                estimate_sarvam_cost_micros(model, usage.prompt_tokens, usage.completion_tokens)
+                / 1_000_000.0
+            )
             accounted_cost = reported_cost
         reported = {
             "prompt_tokens": usage.prompt_tokens,
@@ -166,12 +167,8 @@ def execute_byok(
             "invalid_model",
             "BYOK supports the Sarvam models listed in Studio.",
         )
-    max_input_tokens = _integer(
-        request, "max_input_tokens", 2_048, MAX_INPUT_TOKENS
-    )
-    max_output_tokens = _integer(
-        request, "max_output_tokens", 128, MAX_OUTPUT_TOKENS
-    )
+    max_input_tokens = _integer(request, "max_input_tokens", 2_048, MAX_INPUT_TOKENS)
+    max_output_tokens = _integer(request, "max_output_tokens", 128, MAX_OUTPUT_TOKENS)
     request.pop("max_output_tokens", None)
     request["max_input_tokens"] = max_input_tokens
     request["reserve_output_tokens"] = max_output_tokens

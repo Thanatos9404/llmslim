@@ -40,15 +40,18 @@ def test_context_inspector_returns_real_plan_trace_graph():
     assert "Acme renews November 9" not in str(response["envelope"])
 
 
-@pytest.mark.parametrize("change,code", [
-    ({"secret": "x"}, "unsupported_field"),
-    ({"model": "unknown"}, "invalid_model"),
-    ({"objective": "magic"}, "invalid_objective"),
-    ({"quality_floor": 1.1}, "invalid_quality_floor"),
-    ({"messages": "bad"}, "invalid_messages"),
-    ({"documents": ["x" * 100_000]}, "input_too_large"),
-    ({"tools": ["bad"]}, "invalid_tools"),
-])
+@pytest.mark.parametrize(
+    "change,code",
+    [
+        ({"secret": "x"}, "unsupported_field"),
+        ({"model": "unknown"}, "invalid_model"),
+        ({"objective": "magic"}, "invalid_objective"),
+        ({"quality_floor": 1.1}, "invalid_quality_floor"),
+        ({"messages": "bad"}, "invalid_messages"),
+        ({"documents": ["x" * 100_000]}, "input_too_large"),
+        ({"tools": ["bad"]}, "invalid_tools"),
+    ],
+)
 def test_context_inspector_rejects_invalid_inputs(change, code):
     with pytest.raises(studio_context_api.RequestProblem) as error:
         studio_context_api.execute_context(_payload(**change))
@@ -57,9 +60,9 @@ def test_context_inspector_rejects_invalid_inputs(change, code):
 
 def test_context_inspector_sanitizes_credential_metadata():
     with pytest.raises(studio_context_api.RequestProblem) as error:
-        studio_context_api.execute_context(_payload(
-            documents=[{"content": "text", "metadata": {"api_key": "never-return-me"}}]
-        ))
+        studio_context_api.execute_context(
+            _payload(documents=[{"content": "text", "metadata": {"api_key": "never-return-me"}}])
+        )
     assert error.value.code == "invalid_context"
     assert "never-return-me" not in error.value.message
 
@@ -82,8 +85,9 @@ def test_context_inspector_retains_core_planning_with_pinned_legacy_wheel(monkey
 
 
 def test_context_inspector_exposes_offline_cache_plan_without_prompt_text():
-    response = studio_context_api.execute_context(_payload(
-        cache_provider="sarvam", cache_mode="auto"))
+    response = studio_context_api.execute_context(
+        _payload(cache_provider="sarvam", cache_mode="auto")
+    )
     cache = response["trace"]["cache"]
     assert cache["provider"] == "sarvam"
     assert cache["estimated_cache_read_tokens"] == 0

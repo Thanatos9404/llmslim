@@ -196,11 +196,14 @@ def build_context_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-input-tokens", type=int, default=None)
     parser.add_argument("--quality-floor", type=float, default=0.80)
     parser.add_argument(
-        "--objective", choices=("balanced", "quality", "cost", "latency", "minimize_tokens"),
+        "--objective",
+        choices=("balanced", "quality", "cost", "latency", "minimize_tokens"),
         default="balanced",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    parser.add_argument("--include-content", action="store_true", help="Include prompt bodies in local output.")
+    parser.add_argument(
+        "--include-content", action="store_true", help="Include prompt bodies in local output."
+    )
     parser.add_argument("--fail-on-infeasible", action="store_true")
     return parser
 

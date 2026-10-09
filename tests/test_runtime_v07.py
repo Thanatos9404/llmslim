@@ -265,6 +265,15 @@ def test_sessions_keep_bounded_local_history_without_cross_session_leakage():
     assert runtime.session("alpha")._messages == []
 
 
+def test_session_is_created_outside_a_loop_and_reused_across_event_loops():
+    runtime = _runtime(max_session_messages=4)
+    session = runtime.session("loops")  # no running loop here (Python 3.9 regression)
+    first = asyncio.run(session.prepare("My customer is Acme."))
+    second = asyncio.run(session.prepare("When does it renew?"))
+    assert first.feasible and second.feasible
+    assert "My customer is Acme" in second.plan.final_context
+
+
 def test_openai_agents_input_filter_uses_real_hook_shape_without_execution(monkeypatch):
     package = types.ModuleType("agents")
     run_module = types.ModuleType("agents.run")

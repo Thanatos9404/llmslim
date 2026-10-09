@@ -452,7 +452,16 @@ class RuntimeSession:
     runtime: ContextRuntime
     session_id: str
     _messages: list[Mapping[str, Any]] = field(default_factory=list, repr=False)
-    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    # Created lazily inside the running loop: before Python 3.10, asyncio.Lock binds to the
+    # loop current at construction, which fails or mismatches outside a running loop.
+    _lock: Optional[asyncio.Lock] = field(default=None, repr=False)
+    _lock_loop: Optional[asyncio.AbstractEventLoop] = field(default=None, repr=False)
+
+    def _loop_lock(self) -> asyncio.Lock:
+        loop = asyncio.get_running_loop()
+        if self._lock is None or self._lock_loop is not loop:
+            self._lock, self._lock_loop = asyncio.Lock(), loop
+        return self._lock
 
     async def __aenter__(self) -> "RuntimeSession":
         return self
@@ -475,7 +484,7 @@ class RuntimeSession:
         self._messages = trusted + (recent[-slots:] if slots else [])
 
     async def prepare(self, user_input: str, **kwargs: Any) -> PreparedContext:
-        async with self._lock:
+        async with self._loop_lock():
             prepared = await self.runtime.prepare(
                 session_id=self.session_id,
                 user_input=user_input,

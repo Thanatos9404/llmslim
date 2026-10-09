@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 12 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi and Nebius" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 11 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope and Pulumi" width="100%">
 </a>
 
 <br/><br/>
@@ -9,8 +9,8 @@
 [![PyPI Version](https://img.shields.io/pypi/v/llmslim.svg?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=for-the-badge&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
 [![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=for-the-badge&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
-[![Tests Passing](https://img.shields.io/badge/Tests-589%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
-[![Coverage](https://img.shields.io/badge/Branch%20Coverage-90.60%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
+[![Tests Passing](https://img.shields.io/badge/Tests-678%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
+[![Coverage](https://img.shields.io/badge/Branch%20Coverage-90.21%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
 [![License](https://img.shields.io/badge/License-MIT-94a3b8?style=for-the-badge)](LICENSE)
 [![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app)
 
@@ -93,7 +93,7 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of 12 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 11 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -109,9 +109,8 @@ none of them is an investor, and membership does not imply endorsement.
 | [Sentry for Startups](https://sentry.io/for/startups/) | Sentry |
 | [Descope Hello World Startup Program](https://www.descope.com/for-startups) | Descope |
 | [Pulumi for Startups](https://www.pulumi.com/pulumi-for-startups/) | Pulumi |
-| [Nebius AI Builder Program](https://dev.nebius.com/builders) | Nebius |
 
-Logos are trademarks of their owners and are used unmodified from official brand sources.
+Logos are trademarks of their owners and identify each program.
 
 ---
 
@@ -180,7 +179,7 @@ Modern LLM systems suffer from the **Context Window Dilemma**:
 
 | Pillar | How LLMSlim Solves It |
 | :--- | :--- |
-| **🏎️ Ultra-Low Overhead** | Pure Python + NumPy/Scikit-learn. Compresses 10,000 tokens in under **3ms** on standard CPU. |
+| **🏎️ Ultra-Low Overhead** | Pure Python + NumPy/Scikit-learn. Median **0.026 ms** per sample (p95 1.889 ms) in the [Phase 2 evaluation](benchmarks/reports/latest.md), with no model calls on the default path. |
 | **🔒 100% Deterministic** | Default extractive mode guarantees reproducible output. Zero random variance, zero hallucinated facts. |
 | **🛡️ CVSS 9.1 Provenance Security** | `ContextRole` hierarchy isolates untrusted RAG/tool text so prompt injections cannot escalate to `system` priority. |
 | **🧩 Contract-Safe Tool Schemas** | Canonical JSON normalization, SHA-256 contract fingerprints, and zero execution rewrites for agent tooling. |
@@ -446,7 +445,7 @@ source = MCPToolCatalogSource.from_streamable_http(
 )
 
 snapshot = await source.list_tools()
-plan = plan_catalog_context(snapshot, mode=PlanMode.FULL_CATALOG)
+plan = plan_catalog_context(snapshot, mode=PlanMode.FULL)
 
 print(f"Catalog contains {len(snapshot.tools)} tools ({plan.metrics.catalog_tokens} tokens)")
 ```
@@ -488,10 +487,10 @@ Compress files, streams, or prompts directly from your terminal:
 llmslim document.txt -o compressed.txt --ratio 0.5
 
 # Pipeline integration with jq / curl
-cat input.txt | llmslim --ratio 0.4 --role rag > rag_context.txt
+cat input.txt | llmslim --ratio 0.4 --mode rag > rag_context.txt
 
 # Inspect token count differences
-llmslim document.txt --verbose
+llmslim document.txt --stats
 ```
 
 ---

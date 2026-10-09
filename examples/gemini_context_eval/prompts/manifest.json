@@ -1,0 +1,36 @@
+{
+  "built_at": "2026-10-09T21:33:30+00:00",
+  "model": "gemini-2.5-flash",
+  "cases": [
+    {
+      "id": "injected-instruction",
+      "baseline_tokens": 253,
+      "llmslim_tokens": 212
+    },
+    {
+      "id": "stale-tool-result",
+      "baseline_tokens": 238,
+      "llmslim_tokens": 198
+    },
+    {
+      "id": "source-authority",
+      "baseline_tokens": 233,
+      "llmslim_tokens": 208
+    },
+    {
+      "id": "tenant-leak",
+      "baseline_tokens": 215,
+      "llmslim_tokens": 184
+    },
+    {
+      "id": "secret-redaction",
+      "baseline_tokens": 195,
+      "llmslim_tokens": 219
+    },
+    {
+      "id": "changing-fact",
+      "baseline_tokens": 240,
+      "llmslim_tokens": 240
+    }
+  ]
+}

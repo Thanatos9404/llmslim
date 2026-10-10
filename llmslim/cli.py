@@ -27,7 +27,7 @@ from .tools import canonical_json, fingerprint_tool_schema, from_mcp_tool, inspe
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim",
-        description="Compress text/prompts to reduce LLM token usage by 40-70%.",
+        description="Compress text and prompts to fit an LLM token budget while preserving instructions and entities.",
     )
     parser.add_argument(
         "input",

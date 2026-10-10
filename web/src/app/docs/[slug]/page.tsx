@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { DOCS_REGISTRY } from "@/data/docs"
 import { breadcrumbJsonLd, constructMetadata, faqJsonLd, isoDate, jsonLdScript, techArticleJsonLd } from "@/lib/seo"
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const doc = DOCS_REGISTRY[slug]; return doc ? constructMetadata({ title: `${doc.title} — LLMSlim Documentation`, description: doc.description, path: `/docs/${doc.slug}`, markdownPath: `/docs/${doc.slug}.md`, type: "article" }) : constructMetadata({ title: "Page Not Found | LLMSlim Docs", description: "Requested documentation guide not found." }) }
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const doc = DOCS_REGISTRY[slug]; return doc ? constructMetadata({ title: `${doc.title} | LLMSlim Documentation`, description: doc.description, path: `/docs/${doc.slug}`, markdownPath: `/docs/${doc.slug}.md`, type: "article" }) : constructMetadata({ title: "Page Not Found | LLMSlim Docs", description: "Requested documentation guide not found." }) }
 export async function generateStaticParams() { return Object.keys(DOCS_REGISTRY).map((slug) => ({ slug })) }
 
 export default async function DocSlugPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -12,14 +12,13 @@ export function constructMetadata({
   title = siteConfig.title,
   description = siteConfig.description,
   image = siteConfig.ogImage,
-  icons = [{ url: "/llmslim_logo.png", type: "image/png" }, { url: "/favicon.png", type: "image/png" }],
   noIndex = false,
   path,
   canonicalUrl,
   markdownPath,
   type = "website",
 }: {
-  title?: string; description?: string; image?: string; icons?: Array<{ url: string; type?: string }>; noIndex?: boolean;
+  title?: string; description?: string; image?: string; noIndex?: boolean;
   /** Site path of this page. Sets the canonical URL and og:url; without it a page would claim to be the homepage. */
   path?: string;
   /** Full canonical URL; prefer `path`. */
@@ -39,7 +38,7 @@ export function constructMetadata({
     creator: siteConfig.creator, publisher: siteConfig.publisher, category: siteConfig.category, applicationName: siteConfig.name,
     alternates: { canonical: url, ...(markdownPath ? { types: { "text/markdown": absoluteUrl(markdownPath) } } : {}) },
     verification: { google: siteConfig.googleSiteVerification },
-    icons: { icon: icons, shortcut: "/llmslim_logo.png", apple: "/llmslim_logo.png" },
+    // Icons come from the file conventions: src/app/favicon.ico, icon.png and apple-icon.png.
     openGraph: { title, description, url, siteName: siteConfig.name, images: [{ url: image, width: 1200, height: 630, alt: "LLMSlim, the context layer for production AI agents" }], locale: "en_US", type },
     twitter: { card: "summary_large_image", title, description, images: [image], creator: "@Thanatos9404", site: "@Thanatos9404" },
     robots: { index: !noIndex, follow: !noIndex, googleBot: { index: !noIndex, follow: !noIndex, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 } },
@@ -123,7 +122,7 @@ export function getStructuredDataGraph() {
     "@type": "SoftwareSourceCode", "@id": siteConfig.url + "/#source", name: "LLMSlim Core", codeRepository: siteConfig.github,
     programmingLanguage: "Python", license: siteConfig.license, version: siteConfig.coreVersion, targetProduct: { "@id": siteConfig.url + "/#software" },
   };
-  const organization = { "@type": "Organization", "@id": siteConfig.url + "/#organization", name: siteConfig.name, url: siteConfig.url, logo: { "@type": "ImageObject", url: siteConfig.logo, width: 512, height: 512 }, founder: { "@type": "Person", name: siteConfig.author, url: siteConfig.linkedin }, sameAs: [siteConfig.github, siteConfig.linkedin, siteConfig.pypi, siteConfig.productHunt] };
+  const organization = { "@type": "Organization", "@id": siteConfig.url + "/#organization", name: siteConfig.name, url: siteConfig.url, logo: { "@type": "ImageObject", url: siteConfig.logo, width: 512, height: 512 }, founder: { "@type": "Person", name: siteConfig.author, url: siteConfig.linkedin }, parentOrganization: { "@type": "Organization", name: "AMEYOR", description: "Indian sole proprietorship" }, sameAs: [siteConfig.github, siteConfig.linkedin, siteConfig.pypi, siteConfig.productHunt] };
   const webSite = { "@type": "WebSite", "@id": siteConfig.url + "/#website", url: siteConfig.url, name: siteConfig.name, description: siteConfig.description, inLanguage: "en", publisher: { "@id": siteConfig.url + "/#organization" } };
   return { "@context": "https://schema.org", "@graph": [softwareApplication, sourceCode, organization, webSite] };
 }

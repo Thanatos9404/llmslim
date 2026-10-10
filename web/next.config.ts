@@ -26,14 +26,20 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "framer-motion", "@radix-ui/react-dialog"],
   },
   async rewrites() {
-    if (!localStudioApiOrigin) return [];
-    return [
+    // Markdown twins for agents: "/index.md", "/docs.md", "/docs/<slug>.md" and so on (src/app/md).
+    // afterFiles rewrites run before dynamic routes, so "/docs/<slug>.md" never reaches docs/[slug].
+    const markdown = [
+      { source: "/:page(index|changelog|docs|articles|integrations|benchmarks)\\.md", destination: "/md/:page" },
+      { source: "/:section(docs|articles|integrations|benchmarks)/:slug([a-z0-9-]+)\\.md", destination: "/md/:section/:slug" },
+    ];
+    const studio = localStudioApiOrigin ? [
       { source: "/api/compress", destination: `${localStudioApiOrigin}/api/compress` },
       { source: "/api/plan", destination: `${localStudioApiOrigin}/api/plan` },
       { source: "/api/context", destination: `${localContextApiOrigin}/api/context` },
       { source: "/api/sarvam", destination: `${localSarvamApiOrigin}/api/sarvam` },
       { source: "/api/sarvam_byok", destination: `${localSarvamByokApiOrigin}/api/sarvam_byok` },
-    ];
+    ] : [];
+    return { beforeFiles: [], afterFiles: [...markdown, ...studio], fallback: [] };
   },
 };
 

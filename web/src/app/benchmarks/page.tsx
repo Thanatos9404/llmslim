@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { constructMetadata } from "@/lib/seo"
 import { getPhase2Truth, phase2ReleaseGate } from "@/lib/phase2-data"
 
-export const metadata = constructMetadata({ title: "Benchmarks | LLMSlim", description: "Phase 2 evaluation: reproducible context-compression, security, structure, and schema-tax evidence.", canonicalUrl: "https://www.llmslim.app/benchmarks" })
+export const metadata = constructMetadata({ title: "Benchmarks | LLMSlim", description: "Phase 2 evaluation: reproducible context-compression, security, structure, and schema-tax evidence.", path: "/benchmarks", markdownPath: "/benchmarks.md" })
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`
 
 export default function BenchmarksPage() {

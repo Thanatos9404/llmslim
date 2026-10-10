@@ -8,7 +8,7 @@ import { constructMetadata } from "@/lib/seo";
 
 export const metadata = constructMetadata({
   title: "LLMSlim release history | Changelog",
-  description: "LLMSlim package history through v0.7.1, including cache-aware context runtime changes.",
+  description: "LLMSlim package history through v0.7.2, including planner relevance fixes and the cache-aware context runtime.",
   path: "/changelog", markdownPath: "/changelog.md"
 });
 

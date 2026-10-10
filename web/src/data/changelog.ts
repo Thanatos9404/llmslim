@@ -5,6 +5,19 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.7.2",
+    date: "11 Oct 2026",
+    theme: "Keep the evidence that answers the question.",
+    summary: "A patch release. plan_context() no longer drops the most relevant retrieved document in favour of cheaper, less relevant ones, and documents marked superseded are dropped before current evidence. Also fixes runtime sessions on Python 3.9.",
+    metrics: ["Relevance guard in plan_context()", "Superseded metadata respected", "Python 3.9 session fix"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.7.2",
+    items: [
+      { label: "Fixed", icon: CheckCircle2, title: "Most relevant evidence is kept", body: "After the budget allocation, a deterministic guard keeps the single most relevant, non-superseded document, memory or tool result whenever it fits by dropping or compressing lower-relevance evidence." },
+      { label: "Fixed", icon: Wrench, title: "Superseded documents go first", body: "Items whose metadata sets superseded, superseded_by, or a past valid_until are scaled down and dropped before current evidence, with a warning in the plan." },
+      { label: "Boundary", icon: ShieldCheck, title: "Untrusted wording earns no value", body: "Imperative text inside retrieved, tool or assistant content no longer raises its planning value. It is still rendered as untrusted data; there is no injection detector." },
+    ],
+  },
+  {
     version: "v0.7.1",
     date: "30 Sep 2026",
     theme: "Plan context with provider caches in mind.",

@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-11
+
 ### Fixed
+- On Python 3.9, creating a `RuntimeSession` outside a running event loop no
+  longer raises "There is no current event loop". The session lock is now
+  created lazily inside the running loop and recreated when the loop changes.
+  Behaviour on Python 3.10+ is unchanged.
 - `plan_context()` no longer drops the most relevant optional document in
   favour of strictly lower-relevance documents that merely cost fewer tokens.
   After the value-maximizing knapsack, a deterministic relevance guard

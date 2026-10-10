@@ -43,7 +43,15 @@ export function TiltCard({ children, className = "", depth = 10, as = "div" }: {
 
 /* ------------------------------------------------------------------ Pixel displace field */
 
-/** Canvas grid of small squares that scatter away from the cursor and spring back. Runs only while visible. */
+type Dot = { ox: number; oy: number; x: number; y: number; vx: number; vy: number }
+
+/**
+ * Grid of small squares that scatter away from the cursor and spring back.
+ *
+ * Cost is kept local: the resting grid is drawn once (lazily, when the wall first becomes visible),
+ * then each frame repaints only the small rectangle around the cursor and the dots still settling.
+ * Nothing runs during scrolling, on touch devices, or with reduced motion.
+ */
 function PixelField() {
   const canvas = useRef<HTMLCanvasElement>(null)
   const reduced = useReducedMotion()
@@ -51,58 +59,82 @@ function PixelField() {
     const element = canvas.current
     const host = element?.parentElement
     const context = element?.getContext("2d")
-    if (!element || !host || !context) return
-    const gap = 22
-    let points: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = []
-    let width = 0, height = 0, frame = 0, visible = false
-    const pointer = { x: -9999, y: -9999 }
-    const resize = () => {
-      const ratio = Math.min(window.devicePixelRatio || 1, 2)
-      width = host.clientWidth; height = host.clientHeight
-      element.width = width * ratio; element.height = height * ratio
-      context.setTransform(ratio, 0, 0, ratio, 0, 0)
-      points = []
-      for (let y = gap / 2; y < height; y += gap) for (let x = gap / 2; x < width; x += gap) points.push({ x, y, ox: x, oy: y, vx: 0, vy: 0 })
-      draw()
-    }
-    const draw = () => {
-      context.clearRect(0, 0, width, height)
-      const ink = getComputedStyle(host).getPropertyValue("--field-ink").trim() || "rgba(128,128,128,.35)"
-      const hot = getComputedStyle(host).getPropertyValue("--field-hot").trim() || "#57dbb7"
-      for (const p of points) {
-        const dist = Math.hypot(p.x - p.ox, p.y - p.oy)
-        context.fillStyle = dist > 3 ? hot : ink
-        const size = dist > 3 ? 3 : 2
-        context.fillRect(Math.round(p.x - size / 2), Math.round(p.y - size / 2), size, size)
+    if (!element || !host || !context || reduced) return
+    const GAP = 22, RADIUS = 110
+    const active = new Map<number, Dot>()
+    let width = 0, height = 0, cols = 0, frame = 0, ready = false
+    let ink = "", hot = ""
+    let dirty: { x0: number; y0: number; x1: number; y1: number } | null = null
+    const pointer = { x: 0, y: 0, inside: false }
+    const origin = (index: number) => ({ ox: (index % cols) * GAP + GAP / 2, oy: Math.floor(index / cols) * GAP + GAP / 2 })
+    const square = (x: number, y: number, size: number, color: string) => { context.fillStyle = color; context.fillRect(Math.round(x - size / 2), Math.round(y - size / 2), size, size) }
+    // Resting dots inside a rectangle, skipping the ones currently displaced.
+    const restIn = (x0: number, y0: number, x1: number, y1: number) => {
+      const c0 = Math.max(0, Math.floor(x0 / GAP)), c1 = Math.min(cols - 1, Math.ceil(x1 / GAP))
+      const r0 = Math.max(0, Math.floor(y0 / GAP)), r1 = Math.ceil(y1 / GAP)
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const index = r * cols + c, { ox, oy } = origin(index)
+        if (oy > height || active.has(index)) continue
+        square(ox, oy, 2, ink)
       }
+    }
+    const setup = () => {
+      const w = host.clientWidth, h = host.clientHeight
+      if (ready && w === width && h === height) return
+      width = w; height = h; cols = Math.ceil(width / GAP)
+      element.width = width; element.height = height  // 1x: these are 2-3px squares, extra pixels buy nothing
+      const style = getComputedStyle(host)
+      ink = style.getPropertyValue("--field-ink").trim() || "rgba(128,128,128,.3)"
+      hot = style.getPropertyValue("--field-hot").trim() || "#57dbb7"
+      active.clear(); dirty = null
+      context.clearRect(0, 0, width, height)
+      restIn(0, 0, width, height)
+      ready = true
     }
     const step = () => {
       frame = 0
-      let moving = false
-      for (const p of points) {
-        const dx = p.x - pointer.x, dy = p.y - pointer.y
-        const d2 = dx * dx + dy * dy
-        if (d2 < 14400) { const force = (14400 - d2) / 14400 * 2.4; const d = Math.sqrt(d2) || 1; p.vx += dx / d * force; p.vy += dy / d * force }
-        p.vx += (p.ox - p.x) * 0.06; p.vy += (p.oy - p.y) * 0.06
-        p.vx *= 0.82; p.vy *= 0.82
-        p.x += p.vx; p.y += p.vy
-        // Snap to the grid as it settles, for the pixel look.
-        if (Math.abs(p.vx) + Math.abs(p.vy) > 0.05) moving = true
+      if (pointer.inside) {
+        const c0 = Math.max(0, Math.floor((pointer.x - RADIUS) / GAP)), c1 = Math.min(cols - 1, Math.ceil((pointer.x + RADIUS) / GAP))
+        const r0 = Math.max(0, Math.floor((pointer.y - RADIUS) / GAP)), r1 = Math.ceil((pointer.y + RADIUS) / GAP)
+        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+          const index = r * cols + c
+          const dot = active.get(index) ?? (() => { const { ox, oy } = origin(index); return { ox, oy, x: ox, y: oy, vx: 0, vy: 0 } })()
+          const dx = dot.x - pointer.x, dy = dot.y - pointer.y, d2 = dx * dx + dy * dy
+          if (d2 >= RADIUS * RADIUS) continue
+          const d = Math.sqrt(d2) || 1, force = (1 - d2 / (RADIUS * RADIUS)) * 2.4
+          dot.vx += (dx / d) * force; dot.vy += (dy / d) * force
+          active.set(index, dot)
+        }
       }
-      draw()
-      if (visible && (moving || pointer.x > -9000)) frame = requestAnimationFrame(step)
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+      for (const [index, dot] of active) {
+        dot.vx = (dot.vx + (dot.ox - dot.x) * 0.06) * 0.82; dot.vy = (dot.vy + (dot.oy - dot.y) * 0.06) * 0.82
+        dot.x += dot.vx; dot.y += dot.vy
+        if (Math.abs(dot.vx) + Math.abs(dot.vy) < 0.04 && Math.abs(dot.x - dot.ox) + Math.abs(dot.y - dot.oy) < 0.5) { active.delete(index); continue }
+        x0 = Math.min(x0, dot.x, dot.ox); y0 = Math.min(y0, dot.y, dot.oy); x1 = Math.max(x1, dot.x, dot.ox); y1 = Math.max(y1, dot.y, dot.oy)
+      }
+      // Repaint only the union of last frame's and this frame's affected area.
+      const next = active.size ? { x0: x0 - 4, y0: y0 - 4, x1: x1 + 4, y1: y1 + 4 } : null
+      const area = dirty && next ? { x0: Math.min(dirty.x0, next.x0), y0: Math.min(dirty.y0, next.y0), x1: Math.max(dirty.x1, next.x1), y1: Math.max(dirty.y1, next.y1) } : dirty ?? next
+      if (area) {
+        context.clearRect(area.x0 - GAP, area.y0 - GAP, area.x1 - area.x0 + GAP * 2, area.y1 - area.y0 + GAP * 2)
+        restIn(area.x0 - GAP, area.y0 - GAP, area.x1 + GAP, area.y1 + GAP)
+        for (const dot of active.values()) square(dot.x, dot.y, Math.abs(dot.x - dot.ox) + Math.abs(dot.y - dot.oy) > 3 ? 3 : 2, Math.abs(dot.x - dot.ox) + Math.abs(dot.y - dot.oy) > 3 ? hot : ink)
+      }
+      dirty = next
+      if (pointer.inside || active.size) frame = requestAnimationFrame(step)
     }
-    const kick = () => { if (!frame && visible && !reduced) frame = requestAnimationFrame(step) }
+    const kick = () => { if (!frame && ready) frame = requestAnimationFrame(step) }
     const move = (event: globalThis.PointerEvent) => {
       if (event.pointerType !== "mouse") return
       const box = host.getBoundingClientRect()
-      pointer.x = event.clientX - box.left; pointer.y = event.clientY - box.top
+      pointer.x = event.clientX - box.left; pointer.y = event.clientY - box.top; pointer.inside = true
       kick()
     }
-    const leave = () => { pointer.x = -9999; pointer.y = -9999; kick() }
-    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) kick() })
-    const resizer = new ResizeObserver(resize)
-    resize()
+    const leave = () => { pointer.inside = false; kick() }
+    // Draw the resting grid only once the wall is near the viewport, and again only if its size changes.
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setup() }, { rootMargin: "200px" })
+    const resizer = new ResizeObserver(() => { if (ready) setup() })
     observer.observe(host); resizer.observe(host)
     host.addEventListener("pointermove", move); host.addEventListener("pointerleave", leave)
     return () => { cancelAnimationFrame(frame); observer.disconnect(); resizer.disconnect(); host.removeEventListener("pointermove", move); host.removeEventListener("pointerleave", leave) }

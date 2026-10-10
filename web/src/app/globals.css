@@ -357,7 +357,7 @@
 @property --glow-angle { syntax:"<angle>"; inherits:false; initial-value:0deg; }
 @keyframes glow-spin { to { --glow-angle:360deg; } }
 
-.tilt-card { position:relative; isolation:isolate; will-change:transform; transition:box-shadow .3s,border-color .3s; }
+.tilt-card { position:relative; isolation:isolate; transition:box-shadow .3s,border-color .3s; }
 .tilt-spotlight { position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; opacity:0; transition:opacity .3s; }
 .tilt-card:hover .tilt-spotlight { opacity:1; }
 .tilt-card:hover { box-shadow:0 24px 60px -24px color-mix(in srgb,var(--brand) 45%,transparent); }

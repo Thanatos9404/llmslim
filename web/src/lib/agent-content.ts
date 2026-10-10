@@ -19,8 +19,10 @@ export type Section = (typeof SECTIONS)[number]
 
 const md = (path: string) => absoluteUrl(path === "/" ? "/index.md" : `${path}.md`)
 const fence = (language: string, code: string) => "```" + (language || "") + "\n" + code.replace(/\n+$/, "") + "\n```"
+// Backslashes first, then pipes, so a cell can never close itself early; "\\" renders as "\" in Markdown.
+const cell = (value: string | number) => String(value).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ")
 const table = (headers: readonly string[], rows: ReadonlyArray<ReadonlyArray<string | number>>) =>
-  [`| ${headers.join(" | ")} |`, `|${headers.map(() => "---").join("|")}|`, ...rows.map((row) => `| ${row.map((cell) => String(cell).replace(/\|/g, "\\|").replace(/\n/g, " ")).join(" | ")} |`)].join("\n")
+  [`| ${headers.map(cell).join(" | ")} |`, `|${headers.map(() => "---").join("|")}|`, ...rows.map((row) => `| ${row.map(cell).join(" | ")} |`)].join("\n")
 const source = (path: string) => `Canonical page: ${absoluteUrl(path)}`
 const join = (...blocks: Array<string | false | undefined>) => blocks.filter(Boolean).join("\n\n") + "\n"
 

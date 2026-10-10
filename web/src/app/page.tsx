@@ -8,17 +8,19 @@ import { StartupBrands, StartupMarquee, startupProgramCount, startupProgramNames
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
+import { homeFaqs } from "@/data/home"
+import { constructMetadata, faqJsonLd, jsonLdScript } from "@/lib/seo"
 
-const faqs = [
-  ["Does it need an API key?", "Not for local extraction. LLMSlim’s default extractive strategy runs in your Python application. Rewrite and hybrid strategies use a provider you supply."],
-  ["Does it work with my model?", "LLMSlim prepares text before your model call. Use the output with Sarvam, OpenAI, Anthropic, Gemini, or a local model. Your application keeps control of the request."],
-  ["How much should I compress?", "Start with a conservative target ratio and evaluate the answers your application produces. The right setting depends on the documents, question, and model. Compression can remove useful information; there is no universal quality guarantee."],
-  ["What is LLMSlim Platform?", "A private beta that builds on the open-source Core. It keeps a verifiable timeline of what your agents were told and what changed, explains and replays every context decision, and can learn from outcomes which context helps. Learned policies start in shadow mode and change nothing until an administrator promotes them. Core stays MIT licensed: pip install llmslim."],
+export const metadata = constructMetadata({ path: "/", markdownPath: "/index.md" })
+
+const faqs: ReadonlyArray<readonly [string, string]> = [
+  ...homeFaqs,
   ["What do the startup program announcements mean?", `LLMSlim is part of ${startupProgramCount} startup programs: ${startupProgramNames}. These programs offer credits, tools, or guidance. They are not investments and do not imply endorsement. Our Sarvam integration guide shows how to combine local context compression with the official Sarvam Python SDK.`],
 ]
 
 export default function Home() {
   return <div className="slim-site"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
     <section className="cinema-hero" aria-labelledby="hero-title">
       <HeroArtwork />
       <div className="cinema-copy">

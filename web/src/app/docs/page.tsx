@@ -6,7 +6,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { constructMetadata } from "@/lib/seo"
 import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs"
 
-export const metadata = constructMetadata({ title: "Documentation — LLMSlim Prompt & Context Compression", description: "Released developer documentation for LLMSlim." })
+export const metadata = constructMetadata({ title: "Documentation — LLMSlim Prompt & Context Compression", description: "Released developer documentation for LLMSlim.", path: "/docs", markdownPath: "/docs.md" })
 
 export default function DocsIndexPage() {
   const docs = Object.values(DOCS_REGISTRY)

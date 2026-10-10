@@ -6,7 +6,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { constructMetadata } from "@/lib/seo"
 import { ARTICLES_REGISTRY, ARTICLE_CATEGORIES } from "@/data/articles"
 
-export const metadata = constructMetadata({ title: "Engineering Articles & Research Papers — LLMSlim", description: "Technical writing about prompt compression, context safety, and evaluation." })
+export const metadata = constructMetadata({ title: "Engineering Articles & Research Papers — LLMSlim", description: "Technical writing about prompt compression, context safety, and evaluation.", path: "/articles", markdownPath: "/articles.md" })
 
 export default function ArticlesIndexPage() {
   const articles = Object.values(ARTICLES_REGISTRY); const featured = articles[0]

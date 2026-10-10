@@ -7,7 +7,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { constructMetadata } from "@/lib/seo"
 import { INTEGRATIONS_REGISTRY, INTEGRATION_CATEGORIES } from "@/data/integrations"
 
-export const metadata = constructMetadata({ title: "Python Integrations | LLMSlim", description: "Use LLMSlim output with documented Python model-client examples." })
+export const metadata = constructMetadata({ title: "Python Integrations | LLMSlim", description: "Use LLMSlim output with documented Python model-client examples.", path: "/integrations", markdownPath: "/integrations.md" })
 
 export default function IntegrationsIndexPage() {
   const integrations = Object.values(INTEGRATIONS_REGISTRY)

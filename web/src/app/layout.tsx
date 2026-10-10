@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import "./globals.css";
-import { constructMetadata, getStructuredDataGraph } from "@/lib/seo";
+import { constructMetadata, getStructuredDataGraph, jsonLdScript } from "@/lib/seo";
 import { ErrorReporting } from "@/components/site/Telemetry";
 
 const themeController = `(() => {
@@ -51,7 +51,7 @@ export default function RootLayout({
         {/* Schema.org Complete JSON-LD Graph for Google AI Overviews, Perplexity & Rich Snippets */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLdGraph) }}
         />
         <Script id="theme-controller" strategy="beforeInteractive">{themeController}</Script>
 

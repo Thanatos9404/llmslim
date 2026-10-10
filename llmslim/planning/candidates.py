@@ -13,7 +13,13 @@ from ..rewrite.validation import RewriteValidator
 from ..tokens import count_tokens
 from .models import CandidateMethod, ContextCandidate, ContextItem, ContextKind
 from .policy import PlannerPolicy
-from .scoring import ScoreBreakdown, candidate_utility, score_item
+from .scoring import (
+    ScoreBreakdown,
+    candidate_utility,
+    parse_timestamp,
+    score_item,
+    supersession_reason,
+)
 
 _TRUSTED_ROLES = {ContextRole.SYSTEM, ContextRole.DEVELOPER}
 _UNTRUSTED_KINDS = {
@@ -170,6 +176,17 @@ def generate_candidates(
     started = time.perf_counter()
     score = score_item(item, query, policy)
     warnings: List[str] = []
+    if score.superseded:
+        reason = supersession_reason(item) or "caller metadata"
+        warnings.append(
+            f"{item.item_id} is superseded ({reason}); "
+            f"its planning value is scaled by {score.freshness:g}"
+        )
+    if (
+        item.metadata.get("valid_until") is not None
+        and parse_timestamp(item.metadata["valid_until"]) is None
+    ):
+        warnings.append(f"{item.item_id} has an unparseable metadata.valid_until; it was ignored")
     candidates = [
         _build_candidate(
             item,

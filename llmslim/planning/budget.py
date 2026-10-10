@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass, replace
+from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 from .candidates import CandidateSet
-from .models import ContextCandidate
+from .models import CandidateMethod, ContextCandidate, ContextKind
+
+# Optional retrieved evidence protected by the top-relevance guard.
+_EVIDENCE_KINDS: FrozenSet[ContextKind] = frozenset(
+    {ContextKind.RAG_DOCUMENT, ContextKind.MEMORY, ContextKind.TOOL_RESULT}
+)
 
 
 @dataclass(frozen=True)
@@ -17,6 +22,9 @@ class AllocationResult:
     minimum_required_tokens: int
     capacity_tokens: int
     granularity_tokens: int
+    #: Item IDs kept by :func:`allocate_with_relevance_guard` that the
+    #: unconstrained value-maximizing allocation would have dropped.
+    relevance_guarded: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -106,4 +114,79 @@ def allocate_candidates(groups: Sequence[CandidateSet], capacity_tokens: int) ->
     return AllocationResult(selected, feasible, minimum_required, capacity_tokens, unit)
 
 
-__all__ = ["AllocationResult", "allocate_candidates"]
+def _is_dropped(candidate: ContextCandidate) -> bool:
+    return candidate.method is CandidateMethod.DROP
+
+
+def _superseded(group: CandidateSet) -> bool:
+    return bool(getattr(group.score, "superseded", False))
+
+
+def allocate_with_relevance_guard(
+    groups: Sequence[CandidateSet], capacity_tokens: int
+) -> AllocationResult:
+    """Allocate by value, but never sacrifice the most relevant optional evidence.
+
+    Item value is mostly relevance-independent (provenance, kind and priority
+    contribute a baseline), so a pure value-sum knapsack can prefer two small,
+    weakly relevant documents over one larger, clearly more relevant one.
+
+    Guard: let ``top`` be the optional (droppable), non-superseded retrieved
+    evidence item with the highest relevance (first in input order on ties).
+    If the value-optimal allocation drops ``top`` while keeping optional
+    evidence of strictly lower relevance (or superseded evidence), ``top`` and
+    those lower items are re-solved with ``top`` required to keep a non-drop
+    representation; all other items keep their original choice. The
+    constrained solution is accepted only if it is feasible, i.e. ``top`` fits
+    by dropping or compressing lower-relevance evidence; otherwise the
+    unconstrained result stands. The procedure is deterministic.
+    """
+
+    result = allocate_candidates(groups, capacity_tokens)
+    if not result.feasible:
+        return result
+
+    def droppable(group: CandidateSet) -> bool:
+        return any(_is_dropped(candidate) for candidate in group.candidates)
+
+    evidence = [
+        index
+        for index, group in enumerate(groups)
+        if group.item.kind in _EVIDENCE_KINDS and droppable(group) and not _superseded(group)
+    ]
+    if not evidence:
+        return result
+    # max() keeps the first of equal keys, so ties resolve to input order.
+    top = max(evidence, key=lambda index: groups[index].score.relevance)
+    if not _is_dropped(result.selected[top]):
+        return result
+    top_relevance = groups[top].score.relevance
+    lower = {
+        index
+        for index, group in enumerate(groups)
+        if index != top
+        and group.item.kind in _EVIDENCE_KINDS
+        and droppable(group)
+        and (_superseded(group) or group.score.relevance < top_relevance)
+    }
+    if all(_is_dropped(result.selected[index]) for index in lower):
+        return result
+
+    # Re-solve only ``top`` (which may no longer be dropped) and the lower
+    # evidence it displaced; every other item keeps its original choice.
+    constrained: List[CandidateSet] = []
+    for index, (group, chosen) in enumerate(zip(groups, result.selected)):
+        if index == top:
+            options = tuple(c for c in group.candidates if not _is_dropped(c))
+        elif index in lower:
+            options = group.candidates
+        else:
+            options = (chosen,)
+        constrained.append(replace(group, candidates=options))
+    guarded = allocate_candidates(constrained, capacity_tokens)
+    if not guarded.feasible:
+        return result
+    return replace(result, selected=guarded.selected, relevance_guarded=(groups[top].item.item_id,))
+
+
+__all__ = ["AllocationResult", "allocate_candidates", "allocate_with_relevance_guard"]

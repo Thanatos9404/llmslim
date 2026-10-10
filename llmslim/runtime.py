@@ -402,10 +402,19 @@ class ContextRuntime:
         external = []
         for item in result.items:
             # Retrieval can rank evidence, never grant system/developer authority.
+            # Supersession keys can only lower an item's planning value.
             safe_metadata = {
                 key: value
                 for key, value in item.metadata.items()
-                if key in {"created_at", "entity_ids", "record_id"}
+                if key
+                in {
+                    "created_at",
+                    "entity_ids",
+                    "record_id",
+                    "superseded",
+                    "superseded_by",
+                    "valid_until",
+                }
             }
             demoted = replace(
                 item,

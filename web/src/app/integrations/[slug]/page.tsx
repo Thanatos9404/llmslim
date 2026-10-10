@@ -7,12 +7,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations"
 import { breadcrumbJsonLd, constructMetadata, faqJsonLd, jsonLdScript, techArticleJsonLd } from "@/lib/seo"
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const item = INTEGRATIONS_REGISTRY[slug]; return item ? constructMetadata({ title: `LLMSlim + ${item.name} Integration Guide — Prompt & Context Compression`, description: item.description, path: `/integrations/${item.slug}`, markdownPath: `/integrations/${item.slug}.md`, type: "article" }) : constructMetadata({ title: "Integration Not Found | LLMSlim", description: "Requested platform integration not found." }) }
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const item = INTEGRATIONS_REGISTRY[slug]; return item ? constructMetadata({ title: `LLMSlim + ${item.name} Integration Guide: Prompt & Context Compression`, description: item.description, path: `/integrations/${item.slug}`, markdownPath: `/integrations/${item.slug}.md`, type: "article" }) : constructMetadata({ title: "Integration Not Found | LLMSlim", description: "Requested platform integration not found." }) }
 export async function generateStaticParams() { return Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ({ slug })) }
 
 export default async function IntegrationSlugPage({ params }: { params: Promise<{ slug: string }> }) {

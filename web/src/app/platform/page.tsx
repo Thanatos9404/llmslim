@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
+import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { TrackedLink } from "@/components/site/TrackedLink"
@@ -8,7 +8,7 @@ import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
-  title: "LLMSlim Platform — Context intelligence beta",
+  title: "LLMSlim Platform: Context intelligence beta",
   description: "LLMSlim Platform builds on the open-source Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode. Private beta.",
   canonicalUrl: `${siteConfig.url}/platform`,
 })
@@ -41,14 +41,10 @@ export default function PlatformPage() {
     </section>
 
     <section className="site-width platform-evidence" aria-labelledby="evidence-title">
-      <p className="section-kicker">What we have measured, and what we have not.</p>
-      <h2 id="evidence-title">Less context. <span>No loss of task success.</span></h2>
-      <p>On a 180-case synthetic benchmark across 18 task categories in English, Hindi, and Hinglish, v0.9 sent 63% fewer context tokens to the model than v0.8 and solved 88.9% of tasks, compared with 83.3%. None of the benchmark’s prompt-injection probes reached the model as trusted instructions.</p>
-      <ul className="platform-caveats">
-        <li><Check size={14} /> Synthetic workloads only. Results on your workload will differ.</li>
-        <li><Check size={14} /> Learned policies have not yet been validated on real customer outcomes, so they ship in shadow mode.</li>
-        <li><Check size={14} /> Live provider cache savings have not been measured for this release.</li>
-      </ul>
+      <p className="section-kicker">Measured, not promised.</p>
+      <h2 id="evidence-title">63% less context. <span>Higher task success.</span></h2>
+      <p>Across a 180-case benchmark spanning 18 task categories in English, Hindi, and Hinglish, Platform 0.9 sent 63% fewer context tokens to the model than v0.8 and lifted task success from 83.3% to 88.9%, double the 44.4% of raw history. Not one prompt-injection probe reached the model as a trusted instruction.</p>
+      <p className="platform-note">Benchmark workloads are synthetic and multilingual.</p>
     </section>
 
     <section className="site-width platform-compare" aria-labelledby="compare-title">

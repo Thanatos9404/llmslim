@@ -34,6 +34,7 @@ const SUMMARY =
 const CORE_FACTS = [
   `Package: \`llmslim\` on PyPI (${siteConfig.pypi}), current Core version ${siteConfig.coreVersion}, MIT license.`,
   `Source: ${siteConfig.github}`,
+  "Publisher: LLMSlim is a product of AMEYOR, an Indian sole proprietorship.",
   "Runs inside your Python process. The default extractive strategy runs locally and needs no API key; rewrite and hybrid strategies use a model provider you supply.",
   "Provider-neutral: prepare context for Sarvam, OpenAI, Anthropic, Gemini or a local model; your application keeps control of the model call.",
   "Provenance-aware: ContextRole labels (system, developer, user, assistant, tool, RAG) keep untrusted retrieved or tool text from gaining protected priority. This mitigates compression-induced instruction elevation; it is not a complete prompt-injection defense.",

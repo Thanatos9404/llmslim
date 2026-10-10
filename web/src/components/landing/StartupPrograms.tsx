@@ -1,9 +1,8 @@
 import Image from "next/image"
 import type { CSSProperties } from "react"
-import { TrackedLink } from "@/components/site/TrackedLink"
 
 /**
- * Verified startup programs. One list drives the hero marquee, the showcase and every count.
+ * Verified startup programs. One list drives the program wall and every count.
  *
  * Logos are the companies' official artwork, unmodified. `logoDark` is the vendor's own variant
  * for dark backgrounds. Two treatments predate this list: "mask" tints a supplied single-colour
@@ -50,7 +49,7 @@ export const startupProgramNames = new Intl.ListFormat("en", { style: "long", ty
 
 type Mark = CSSProperties & { "--startup-mark"?: string }
 
-function ProgramLogo({ program }: { program: StartupProgram }) {
+export function ProgramLogo({ program }: { program: StartupProgram }) {
   const { id, logo, logoDark, alt, width, height, display, treatment = "image" } = program
   if (treatment === "mask") return <span className={`startup-supplied-logo ${id}-brand`} style={{ "--startup-mark": `url('${logo}')` } as Mark} />
   if (treatment === "symbol") return <span className={`startup-ai-brand ${id}-brand`}>
@@ -62,24 +61,4 @@ function ProgramLogo({ program }: { program: StartupProgram }) {
     <Image src={logo} alt={alt} width={width} height={height} sizes="160px" style={style} className={logoDark ? "art-light" : undefined} />
     {logoDark && <Image src={logoDark} alt={alt} width={width} height={height} sizes="160px" style={style} className="art-dark" />}
   </span>
-}
-
-/** The visible program name is the accessible name; the artwork beside it is decorative. */
-function Program({ program }: { program: StartupProgram }) {
-  return <><span className="startup-logo" aria-hidden="true"><ProgramLogo program={program} /></span><span className="startup-program-name">{program.name}</span></>
-}
-
-export function StartupBrands() {
-  return <ul className="startup-program-brands" aria-label={`${startupProgramCount} startup programs`}>{startupPrograms.map(program => <li className="startup-program-brand" key={program.id}><Program program={program} /></li>)}</ul>
-}
-
-export function StartupMarquee() {
-  const duration = { "--marquee-duration": `${startupProgramCount * 5.5}s` } as CSSProperties
-  return <div className="startup-marquee" role="region" aria-label="LLMSlim startup programs">
-    <div className="startup-marquee-heading"><span>Building with support from</span><label className="startup-motion-control"><input type="checkbox" aria-label="Pause startup logo animation" /><span>Pause motion</span></label></div>
-    <div className="startup-marquee-window"><div className="startup-marquee-track" style={duration}>
-      <div className="startup-marquee-group">{startupPrograms.map(program => <TrackedLink className="startup-marquee-item" href={program.href} key={program.id} event="startup_program_clicked" properties={{ program: program.id }} target="_blank" rel="noreferrer"><Program program={program} /></TrackedLink>)}</div>
-      <div className="startup-marquee-group startup-marquee-copy" aria-hidden="true" inert>{startupPrograms.map(program => <span className="startup-marquee-item" key={program.id}><Program program={program} /></span>)}</div>
-    </div></div>
-  </div>
 }

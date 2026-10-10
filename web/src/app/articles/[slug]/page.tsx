@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ARTICLES_REGISTRY } from "@/data/articles"
 import { breadcrumbJsonLd, constructMetadata, isoDate, jsonLdScript, techArticleJsonLd } from "@/lib/seo"
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const article = ARTICLES_REGISTRY[slug]; return article ? constructMetadata({ title: `${article.title} — LLMSlim Technical Papers`, description: `${article.subtitle}. ${article.abstract}`, path: `/articles/${article.slug}`, markdownPath: `/articles/${article.slug}.md`, type: "article" }) : constructMetadata({ title: "Article Not Found | LLMSlim Research", description: "Requested engineering article not found." }) }
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const { slug } = await params; const article = ARTICLES_REGISTRY[slug]; return article ? constructMetadata({ title: `${article.title} | LLMSlim Technical Papers`, description: `${article.subtitle}. ${article.abstract}`, path: `/articles/${article.slug}`, markdownPath: `/articles/${article.slug}.md`, type: "article" }) : constructMetadata({ title: "Article Not Found | LLMSlim Research", description: "Requested engineering article not found." }) }
 export async function generateStaticParams() { return Object.keys(ARTICLES_REGISTRY).map((slug) => ({ slug })) }
 
 export default async function ArticleSlugPage({ params }: { params: Promise<{ slug: string }> }) {

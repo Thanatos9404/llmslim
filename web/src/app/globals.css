@@ -367,6 +367,17 @@
 .platform-caveats { display:grid; gap:10px; padding:0; list-style:none; }
 .platform-caveats li { display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.6; }
 .platform-caveats svg { margin-top:4px; }
+.beta-form { display:grid; gap:16px; max-width:720px; }
+.beta-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.beta-form label { display:grid; gap:7px; font-size:13px; font-weight:500; color:var(--ink); }
+.beta-form label span { color:var(--subtle); font-weight:400; }
+.beta-form input:not([type=checkbox]), .beta-form select, .beta-form textarea { width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:10px; background:var(--soft); color:var(--ink); font-size:14px; }
+.beta-form textarea { resize:vertical; }
+.beta-form .beta-check { display:flex; align-items:flex-start; gap:10px; font-weight:400; line-height:1.6; }
+.beta-check input { margin-top:5px; accent-color:var(--brand); }
+.beta-privacy, .beta-status { font-size:12px; line-height:1.7; color:var(--subtle); }
+.beta-actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; font-size:13px; color:var(--subtle); }
+@media (max-width:640px) { .beta-form-grid { grid-template-columns:1fr; } }
 .platform-table { border:1px solid var(--line); border-radius:16px; overflow:hidden; }
 .platform-row { display:grid; grid-template-columns:.7fr 1fr 1fr; gap:16px; padding:16px 22px; border-top:1px solid var(--line); font-size:14px; }
 .platform-row:first-child { border-top:0; }

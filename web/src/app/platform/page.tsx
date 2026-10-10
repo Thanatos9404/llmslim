@@ -2,6 +2,7 @@ import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { TrackedLink } from "@/components/site/TrackedLink"
+import { BetaRequestForm } from "@/components/site/BetaRequestForm"
 import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
@@ -61,8 +62,8 @@ export default function PlatformPage() {
 
     <section className="site-width platform-beta" id="beta" aria-labelledby="beta-title">
       <h2 id="beta-title">Join the beta.</h2>
-      <p>We are working with a small number of design partners who run agents in production. Tell us about your agent, your workload, and where context goes wrong today, and we will reply personally.</p>
-      <div className="hero-actions"><TrackedLink className="button" href={siteConfig.linkedin} event="platform_beta_clicked" properties={{ location: "platform_beta" }} target="_blank" rel="noreferrer">Message the founder on LinkedIn <ArrowUpRight size={16} /></TrackedLink></div>
+      <p>We are working with a small number of design partners who run agents in production. Tell us about your agent, your workload, and where context goes wrong today, and the founder will reply personally. Evaluations start with sanitized or test workloads.</p>
+      <BetaRequestForm />
     </section>
   </main><SiteFooter /></div>
 }

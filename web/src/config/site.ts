@@ -18,6 +18,8 @@ export const siteConfig = {
   platformVersion: "0.9.0",
   github: "https://github.com/Thanatos9404/llmslim",
   linkedin: "https://www.linkedin.com/in/yashvardhan-thanvi-2a3a661a8/",
+  founderEmail: "founder@llmslim.app",
+  supportEmail: "support@llmslim.app",
   pypi: "https://pypi.org/project/llmslim/",
   productHunt: "https://www.producthunt.com/products/llmslim",
   license: "https://opensource.org/licenses/MIT",

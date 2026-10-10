@@ -14,6 +14,7 @@ const EVENTS = {
   core_docs_clicked: ["location"],
   studio_clicked: ["location"],
   platform_beta_clicked: ["location"],
+  beta_request_submitted: ["location"],
   startup_program_clicked: ["program"],
 } as const satisfies Record<string, readonly string[]>
 

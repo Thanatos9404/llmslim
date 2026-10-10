@@ -59,11 +59,16 @@ def _candidate_allowed(
     quality_floor: float,
     relevance: float,
     query: str,
+    superseded: bool = False,
 ) -> bool:
     if candidate.method is CandidateMethod.RAW:
         return True
     if not bool(candidate.validation.get("passed", False)):
         return False
+    if candidate.method is CandidateMethod.DROP and superseded:
+        # Caller metadata says newer evidence replaces this item, so its
+        # lexical relevance is not a reason to keep it under budget pressure.
+        return not item.required and not item.metadata.get("required_keywords")
     if candidate.method is CandidateMethod.DROP:
         # Python's \w splits Indic letters at combining marks, so use
         # whitespace tokens for this conservative inflection check.
@@ -214,6 +219,7 @@ def plan_context_v2(
                         quality_floor,
                         group.score.relevance,
                         envelope.current_query,
+                        superseded=bool(getattr(group.score, "superseded", False)),
                     ):
                         continue
                     loss = max(0.0, current.utility - candidate.utility)

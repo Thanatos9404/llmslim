@@ -14,7 +14,7 @@ from ..core import ContextRole
 from ..rewrite import BaseRewriteProvider
 from ..tokens import count_tokens, get_active_token_counter_name
 from ..tools import ToolSchema, canonical_json, fingerprint_tool_schema
-from .budget import allocate_candidates
+from .budget import allocate_with_relevance_guard
 from .candidates import CandidateSet, generate_candidates, render_context_item, rendered_token_count
 from .models import (
     CandidateMethod,
@@ -416,7 +416,7 @@ class AdaptiveContextPlanner:
             )
             for item in items
         )
-        allocation = allocate_candidates(groups, resolved_budget.available_input_tokens)
+        allocation = allocate_with_relevance_guard(groups, resolved_budget.available_input_tokens)
         selected, fallbacks = self._safe_fallbacks(
             groups, allocation.selected, resolved_budget.available_input_tokens
         )
@@ -433,6 +433,7 @@ class AdaptiveContextPlanner:
         feasible = allocation.feasible and final_tokens <= resolved_budget.available_input_tokens
         status = PlanStatus.FEASIBLE if feasible else PlanStatus.INFEASIBLE
 
+        guarded_ids = set(allocation.relevance_guarded)
         decisions = tuple(
             ContextDecision(
                 item=item,
@@ -441,6 +442,18 @@ class AdaptiveContextPlanner:
                 reason=(
                     candidate.reason + f"; value signals: relevance={group.score.relevance:.3f}, "
                     f"recency={group.score.recency:.3f}, provenance={group.score.provenance:.3f}"
+                    + (
+                        "; superseded by caller metadata: value scaled by "
+                        f"{group.score.freshness:g}"
+                        if group.score.superseded
+                        else ""
+                    )
+                    + (
+                        "; relevance guard: highest-relevance optional evidence is kept "
+                        "instead of lower-relevance evidence"
+                        if item.item_id in guarded_ids
+                        else ""
+                    )
                 ),
                 warnings=group.warnings,
             )
@@ -586,7 +599,23 @@ def plan_context(
     model_profile: Optional[ModelProfile] = None,
     raise_on_infeasible: bool = False,
 ) -> ContextPlan:
-    """Convenience API for one-shot adaptive context planning."""
+    """Convenience API for one-shot adaptive context planning.
+
+    Optional items are chosen by a deterministic value-maximizing knapsack
+    with two documented adjustments (see ``docs/planning/ALGORITHM.md``):
+
+    - Documents, memories and tool results whose ``metadata`` marks them
+      superseded (``superseded`` truthy, ``superseded_by`` set, or
+      ``valid_until`` in the past) have their value scaled by
+      ``llmslim.planning.scoring.SUPERSEDED_VALUE_FACTOR`` (0.05), so they are
+      dropped before current evidence under budget pressure.
+    - The single most relevant optional, non-superseded evidence item is not
+      dropped in favour of strictly lower-relevance evidence when it fits by
+      dropping or compressing that evidence.
+
+    Retrieved content is always rendered with ``trusted="false"``; neither
+    its wording nor a ``role`` key in a document mapping changes that.
+    """
 
     return AdaptiveContextPlanner(policy=policy, provider=provider).plan(
         messages=messages,

@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `plan_context()` no longer drops the most relevant optional document in
+  favour of strictly lower-relevance documents that merely cost fewer tokens.
+  After the value-maximizing knapsack, a deterministic relevance guard
+  re-solves the allocation so the single most relevant, non-superseded
+  evidence item is kept whenever it fits by dropping or compressing
+  lower-relevance evidence. The decision reason records when the guard applied.
+- Documents, memories and tool results whose caller metadata marks them
+  superseded (`superseded` truthy, `superseded_by` set, or `valid_until` in the
+  past) now have their planning value scaled by 0.05, so they are dropped
+  before current evidence; the plan warns for each one. The v0.7 progressive
+  planner may drop such non-required items regardless of lexical relevance,
+  and `ContextRuntime` keeps these three metadata keys on external source items.
+- Imperative wording in untrusted RAG, tool or assistant content no longer
+  raises its planning value through instruction density. Such content remains
+  rendered with `trusted="false"`.
+
 ## [0.7.1] - 2026-09-30
 
 ### Added

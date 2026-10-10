@@ -5,7 +5,8 @@ import type { CSSProperties } from "react"
  * Verified startup programs. One list drives the program wall and every count.
  *
  * Logos are the companies' official artwork, unmodified. `logoDark` is the vendor's own variant
- * for dark backgrounds. Two treatments predate this list: "mask" tints a supplied single-colour
+ * for dark backgrounds; MongoDB's is its reverse logo (white wordmark, green leaf), cut from the
+ * official artwork. Two treatments predate this list: "mask" tints a supplied single-colour
  * mark to the text colour, and "symbol" pairs an official symbol with the product name.
  */
 export type StartupProgram = {
@@ -29,7 +30,7 @@ export type StartupProgram = {
 export const startupPrograms: readonly StartupProgram[] = [
   { id: "sarvam", name: "Sarvam Startup Program", href: "https://www.sarvam.ai/startup-program", logo: "/sarvam-symbol.svg", wordmark: "/sarvam-wordmark.svg", alt: "Sarvam logo", width: 1, height: 1, treatment: "symbol" },
   { id: "zoho", name: "Zoho for Startups", href: "https://www.zoho.com/startups/", logo: "/zoho-logo-light.png", logoDark: "/zoho-logo-dark.png", alt: "Zoho logo", width: 860, height: 409 },
-  { id: "mongodb", name: "MongoDB for Startups", href: "https://www.mongodb.com/startups", logo: "/mongodb-logo.png", alt: "MongoDB logo", width: 600, height: 600 },
+  { id: "mongodb", name: "MongoDB for Startups", href: "https://www.mongodb.com/startups", logo: "/mongodb-logo.png", logoDark: "/mongodb-logo-dark.png", alt: "MongoDB logo", width: 600, height: 600 },
   { id: "claude", name: "Claude for Startups", href: "https://claude.com/programs/startups", logo: "/claude-symbol.svg", label: "Claude", alt: "Claude logo", width: 1, height: 1, treatment: "symbol" },
   { id: "openai", name: "OpenAI for Startups", href: "https://openai.com/startups/", logo: "/openai-symbol.svg", label: "OpenAI", alt: "OpenAI logo", width: 1, height: 1, treatment: "symbol" },
   { id: "auth0", name: "Auth0 for Startups", href: "https://auth0.com/startups", logo: "/auth0-logo.png", alt: "Auth0 logo", width: 1, height: 1, treatment: "mask" },

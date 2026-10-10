@@ -1,10 +1,9 @@
-import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
+import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { CopyCommand, HomeEffects, CodeExample, ContextPreview, HeroArtwork } from "@/components/landing/RedesignInteractions"
-import { DecodeText, PixelProgramWall, Receipts, TiltCard, type Receipt } from "@/components/landing/HypeEffects"
+import { CopyCommand, HomeEffects, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
+import { GlassSheet, LogoCloud, PhotoSection, PremiumHero, Receipts, Reveal, RevealWords, type Receipt } from "@/components/landing/Premium"
 import { startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { PageView } from "@/components/site/Telemetry"
@@ -22,64 +21,81 @@ const faqs: ReadonlyArray<readonly [string, string]> = [
 // Every figure is measured and published: the Platform benchmark (180 cases, 18 categories, en/hi/Hinglish)
 // and the Core Phase 2 evaluation. See /platform and /benchmarks.
 const receipts: Receipt[] = [
-  { value: 2, suffix: "×", label: "the task success of raw history", note: "Platform 0.9, 180-case benchmark" },
-  { value: 84, suffix: "%", label: "fewer context tokens than v0.8", note: "Platform, 1,000-turn sessions" },
-  { value: 0, suffix: "", label: "injected prompts promoted to trusted instructions", note: "Across all 180 benchmark cases" },
-  { value: 0.026, decimals: 3, suffix: " ms", label: "median planning time per sample", note: "Core, Phase 2 evaluation" },
+  { value: 2, suffix: "×", label: "the task success of raw history", note: "Platform 0.9 · 180-case benchmark" },
+  { value: 84, suffix: "%", label: "fewer context tokens than v0.8", note: "Platform · 1,000-turn sessions" },
+  { value: 0, suffix: "", label: "injected prompts promoted to trusted instructions", note: "All 180 benchmark cases" },
+  { value: 0.026, decimals: 3, suffix: " ms", label: "median planning time per sample", note: "Core · Phase 2 evaluation" },
 ]
 
 export default function Home() {
-  return <div className="slim-site"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
+  return <div className="slim-site premium"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
-    <section className="cinema-hero" aria-labelledby="hero-title">
-      <HeroArtwork />
-      <div className="hero-grid" aria-hidden="true" />
-      <div className="cinema-copy">
-        <span className="hero-badge"><span className="hero-badge-dot" aria-hidden="true" />Core v{siteConfig.coreVersion} is live · Platform v{siteConfig.platformVersion} beta</span>
-        <h1 id="hero-title">The context layer for{" "}<br /><DecodeText text="production AI agents." className="hero-accent" /></h1>
-        <p>Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p>
-        <div className="hero-actions"><TrackedLink className="button button-glow" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Start with Core <ArrowRight size={16} /></TrackedLink><TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Get Platform beta access <ArrowUpRight size={16} /></TrackedLink></div>
-        <CopyCommand />
-      </div>
-      <div className="hero-base"><span>RUNS LOCALLY · NO API KEY</span><span>OPEN-SOURCE CORE · PRIVATE PLATFORM</span><a href="#receipts">The receipts <span>↓</span></a></div>
-    </section>
 
-    <section className="receipts-section site-width" id="receipts" aria-labelledby="receipts-title">
-      <div className="focus-heading" data-reveal><p className="section-kicker">The receipts.</p><h2 id="receipts-title">Less context.<br /> <span>Sharper agents.</span></h2></div>
+    <PremiumHero>
+      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" />Core v{siteConfig.coreVersion} is out<span className="p-announce-sep" aria-hidden="true" />Platform v{siteConfig.platformVersion} in beta<ArrowRight size={14} aria-hidden="true" /></Link>
+      <h1 id="hero-title"><RevealWords text="The context layer" /><br /><RevealWords className="p-hero-dim" text="for production AI agents." delay={0.25} /></h1>
+      <Reveal delay={0.55}><p className="p-hero-lede">Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p></Reveal>
+      <Reveal delay={0.7} className="p-hero-actions">
+        <TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Get started <ArrowRight size={16} /></TrackedLink>
+        <TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Platform beta</TrackedLink>
+      </Reveal>
+      <Reveal delay={0.85}><CopyCommand /></Reveal>
+    </PremiumHero>
+
+    <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">
+      <Reveal className="p-head"><p className="p-kicker">The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
       <Receipts items={receipts} />
-      <p className="receipts-foot" data-reveal>678 tests · 90% branch coverage · MIT licensed · <Link className="text-link" href="/benchmarks">Read the full benchmarks <ArrowUpRight size={14} /></Link></p>
+      <Reveal className="p-foot"><span>678 tests · 90% branch coverage · MIT licensed</span><Link className="text-link" href="/benchmarks">Read the benchmarks <ArrowUpRight size={14} /></Link></Reveal>
     </section>
 
-    <section className="layers-section site-width" id="layers" aria-labelledby="layers-title">
-      <div className="focus-heading" data-reveal><p className="section-kicker">Open-source core. Private platform.</p><h2 id="layers-title">Start in one line.<br /> <span>Scale to agents that remember and learn.</span></h2></div>
-      <div className="layer-cards">
-        <TiltCard as="article" className="layer-card" depth={7}><span className="eyebrow">LLMSLIM CORE · v{siteConfig.coreVersion} · MIT</span><h3>Control exactly what reaches the model.</h3><p>Install it in seconds. Core compresses context in your own process, tracks where every piece came from, and fits it all into your token budget, deterministically.</p><ul><li><Check size={14} /> Local extractive compression, no API key</li><li><Check size={14} /> Provenance-aware roles that keep untrusted text untrusted</li><li><Check size={14} /> Adaptive context planning to the token</li></ul><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></TiltCard>
-        <TiltCard as="article" className="layer-card layer-card-accent" depth={7}><span className="eyebrow">LLMSLIM PLATFORM · v{siteConfig.platformVersion} BETA · PRIVATE</span><h3>Give your agents a memory you can audit.</h3><p>A private service built on Core. It keeps a tamper-evident timeline of everything your agents were told, explains every context decision, and learns from real outcomes which context wins.</p><ul><li><Check size={14} /> State that always knows what is current</li><li><Check size={14} /> Every decision traced and replayable</li><li><Check size={14} /> Learned policies with instant rollback</li></ul><TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink></TiltCard>
+    <section className="p-section p-split site-width" id="layers" aria-labelledby="layers-title">
+      <div className="p-split-aside"><Reveal><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2><p className="p-body">Core runs in your Python process and controls exactly what reaches the model. Platform adds the memory, traces, and learning that production agents need.</p></Reveal></div>
+      <div className="p-split-main">
+        <GlassSheet>
+          <p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p>
+          <h3>Control exactly what reaches the model.</h3>
+          <p>Compress context in your own process, track where every piece came from, and fit everything into your token budget, deterministically.</p>
+          <ul className="sheet-points"><li>Local extractive compression, no API key</li><li>Provenance-aware roles that keep untrusted text untrusted</li><li>Adaptive planning, to the token</li></ul>
+          <TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink>
+        </GlassSheet>
+        <GlassSheet className="glass-sheet-accent">
+          <p className="sheet-eyebrow">LLMSlim Platform · v{siteConfig.platformVersion} beta · private</p>
+          <h3>Give your agents a memory you can audit.</h3>
+          <p>A tamper-evident timeline of everything your agents were told, an explanation for every context decision, and policies that learn from real outcomes which context wins.</p>
+          <ul className="sheet-points"><li>State that always knows what is current</li><li>Every decision traced and replayable</li><li>Learned policies with instant rollback</li></ul>
+          <TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink>
+        </GlassSheet>
       </div>
     </section>
 
-    <section className="focus-section site-width" id="features">
-      <div className="focus-heading" data-reveal><p className="section-kicker">Signal in. Noise out.</p><h2>Great context makes great agents.<br /> <span>Everything else is a tax.</span></h2></div>
+    <section className="p-section site-width" id="features" aria-labelledby="features-title">
+      <Reveal className="p-head p-head-center"><p className="p-kicker">Signal in · noise out</p><h2 id="features-title">Great context makes great agents. <span>Everything else is a tax.</span></h2></Reveal>
       <ContextPreview />
-      <div className="focus-notes" data-reveal><TiltCard depth={5} className="focus-note"><h3>Keep what matters.</h3><p>Rank and select content around the question before a single token reaches the model.</p></TiltCard><TiltCard depth={5} className="focus-note"><h3>Know where it came from.</h3><p>Instructions, retrieved documents, and tool output each keep their role, so untrusted text never gets promoted.</p></TiltCard><TiltCard depth={5} className="focus-note"><h3>Stay in control.</h3><p>Pick your budget, inspect every decision, and tune it against your own workload.</p></TiltCard></div>
-      <Link className="text-link" href="/benchmarks" id="benchmarks">See the benchmarks <ArrowUpRight size={15} /></Link>
+      <ol className="p-notes">
+        <Reveal as="li"><span className="p-note-index">01</span><h3>Keep what matters</h3><p>Rank and select content around the question before a single token reaches the model.</p></Reveal>
+        <Reveal as="li" delay={0.08}><span className="p-note-index">02</span><h3>Know where it came from</h3><p>Instructions, retrieved documents, and tool output keep their roles, so untrusted text never gets promoted.</p></Reveal>
+        <Reveal as="li" delay={0.16}><span className="p-note-index">03</span><h3>Stay in control</h3><p>Pick your budget, inspect every decision, and tune it against your own workload.</p></Reveal>
+      </ol>
     </section>
 
-    <section className="programs-section" id="programs" aria-labelledby="programs-title">
-      <div className="programs-halo" aria-hidden="true" data-parallax="0.08" />
-      <div className="site-width programs-head">
-        <p className="section-kicker" data-reveal>Supported by {startupProgramCount} startup programs</p>
-        <h2 id="programs-title" data-reveal>Built in India.<br /><span>Fuelled by {startupProgramCount} startup programs.</span></h2>
-        <p className="programs-description" data-reveal>Credits, tools, and guidance from {startupProgramCount} startup programs, from Sarvam and MongoDB to Anthropic, OpenAI, and Sentry. Move your cursor across the wall.</p>
+    <PhotoSection src="/media/india-night.webp" id="programs" labelledBy="programs-title" className="p-programs" position="60% 40%">
+      <div className="site-width">
+        <Reveal className="p-head p-head-center"><p className="p-kicker">Supported by {startupProgramCount} startup programs</p><h2 id="programs-title">Built in India. <span>Fuelled by {startupProgramCount} startup programs.</span></h2></Reveal>
+        <LogoCloud />
+        <Reveal className="p-programs-foot"><Link className="text-link" href="/integrations/sarvam">Explore the Sarvam integration <ArrowUpRight size={15} /></Link></Reveal>
       </div>
-      <PixelProgramWall />
-      <div className="site-width programs-foot" data-reveal><Link className="button" href="/integrations/sarvam">Explore the Sarvam integration <ArrowRight size={16} /></Link></div>
-    </section>
+    </PhotoSection>
 
-    <section className="build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="section-kicker">Tiny library. Massive leverage.</p><h2>Three lines.<br /><span>Then back to shipping.</span></h2><p>Drop LLMSlim in front of your model call. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><div className="build-points"><span><Check size={15} /> Python-native</span><span><Check size={15} /> Any model provider</span><span><Check size={15} /> MIT licensed</span></div><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link></div><CodeExample /></section>
+    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link></div><CodeExample /></section>
 
-    <section className="questions-section site-width" id="faq"><div data-reveal><p className="section-kicker">Before you start.</p><h2>A few good<br /> <span>questions.</span></h2></div><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus">+</span></summary><p>{answer}</p></details>)}</div></section>
+    <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
 
-    <section className="end-section"><div className="end-ribbon" aria-hidden="true" data-parallax="-0.07"><Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} className="art-dark" /><Image src="/compression-ribbon-light.webp" alt="" width={1536} height={1024} className="art-light" /></div><div className="end-copy"><span className="brand-symbol" aria-hidden="true" /><h2>Ship agents that know exactly enough.</h2><p>One install. Your next model call gets sharper.</p><div className="hero-actions"><Link className="button button-glow" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="text-link" href={siteConfig.github} target="_blank" rel="noreferrer">Star it on GitHub <ArrowUpRight size={16} /></a></div></div></section>
+    <PhotoSection src="/media/earth-limb.webp" className="p-final" labelledBy="final-title" position="30% 50%">
+      <div className="site-width p-final-copy">
+        <Reveal><h2 id="final-title">Ship agents that know <span>exactly enough.</span></h2></Reveal>
+        <Reveal delay={0.1}><p className="p-hero-lede">One install. Your next model call gets sharper.</p></Reveal>
+        <Reveal delay={0.2} className="p-hero-actions"><Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer">Star on GitHub <ArrowUpRight size={16} /></a></Reveal>
+      </div>
+    </PhotoSection>
   </main><SiteFooter /></div>
 }

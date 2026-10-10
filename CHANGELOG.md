@@ -135,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agents bridges reject mismatched plans and hydrate authoritative schemas before exposing tools.
 
 ### Website
-- Redesigned responsive landing page, dark/light themes, restrained parallax, and official Sarvam co-branding.
+- Redesigned responsive landing page, dark/light themes, restrained parallax, and a Sarvam integration section.
 - LLMSlim is accepted into the Sarvam Startup Program; existing indexing routes are preserved.
 
 ## [0.4.0] - 2026-08-20
@@ -184,7 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Ruff passed; `benchmark.py` reported 432 passed / 0 failed.
 
 ### Security
-- **Provenance-aware priority locking (P0-1, CVSS 9.1 mitigation).** Added a
+- **Provenance-aware priority locking (P0-1, prompt-injection hardening;
+  internally found, no CVE or advisory).** Added a
   `ContextRole` trust boundary (`system`/`developer`/`user`/`assistant`/`tool`/
   `rag`/`general`). Untrusted content (`rag`/`tool`/`assistant`) can no longer
   reach the hard-locked Priority Tier 4 or become `must_keep` from imperative

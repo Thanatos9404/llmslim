@@ -124,7 +124,7 @@
   <!-- Light Beam Sweep -->
   <rect x="0" y="-100" width="80" height="600" fill="url(#primaryGrad)" class="beam-sweep" opacity="0.15" filter="url(#softGlow)" />
 
-  <!-- Top Announcement Badge: Sarvam x LLMSlim -->
+  <!-- Top Announcement Badge: Sarvam Startup Program acceptance -->
   <g transform="translate(600, 56)">
     <g transform="translate(-250, -18)">
       <!-- Badge Pill Container -->
@@ -142,7 +142,7 @@
 
       <!-- Announcement Text -->
       <text x="44" y="23" fill="#fef3c7" class="sans-text" font-size="13" font-weight="600" letter-spacing="0.5">
-        PARTNERSHIP: Accepted into the Sarvam Startup Program
+        Accepted into the Sarvam Startup Program
       </text>
 
       <!-- Sparkle / Arrow -->

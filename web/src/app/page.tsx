@@ -49,7 +49,7 @@ export default function Home() {
     </section>
 
     <section className="sarvam-story" id="sarvam"><div className="sarvam-halo" aria-hidden="true" data-parallax="0.08" /><div className="site-width sarvam-content">
-      <div className="partnership-logos startup-partnership" data-reveal><StartupBrands /><span className="partnership-cross">×</span><span className="partnership-slim"><span className="brand-symbol" aria-hidden="true" />LLM<span>Slim</span></span></div>
+      <div className="partnership-logos startup-partnership" data-reveal><StartupBrands /></div>
       <p className="section-kicker" data-reveal>Part of {startupProgramCount} startup programs</p><h2 data-reveal>A shared beginning.<br /><span>Built from India.</span></h2><p className="sarvam-description" data-reveal>We’re building LLMSlim with support from {startupProgramCount} startup programs. They offer credits, tools, and guidance; none is an investor or an endorsement. Start with local context compression, then bring Sarvam’s models into your application.</p><Link className="button" href="/integrations/sarvam">Explore the integration <ArrowRight size={16} /></Link>
     </div></section>
 

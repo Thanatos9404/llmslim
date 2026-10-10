@@ -39,7 +39,6 @@ export const startupPrograms: readonly StartupProgram[] = [
   { id: "sentry", name: "Sentry for Startups", href: "https://sentry.io/for/startups/", logo: "/startups/sentry-dark-text.svg", logoDark: "/startups/sentry-white-text.svg", alt: "Sentry logo", width: 222, height: 66, display: 44 },
   { id: "descope", name: "Descope Hello World Startup Program", href: "https://www.descope.com/for-startups", logo: "/startups/descope-dark-text.svg", logoDark: "/startups/descope-white-text.svg", alt: "Descope logo", width: 281, height: 64, display: 30 },
   { id: "pulumi", name: "Pulumi for Startups", href: "https://www.pulumi.com/pulumi-for-startups/", logo: "/startups/pulumi-light.svg", logoDark: "/startups/pulumi-dark.svg", alt: "Pulumi logo", width: 425, height: 106, display: 32 },
-  { id: "nebius", name: "Nebius AI Builder Program", href: "https://dev.nebius.com/builders", logo: "/startups/nebius.svg", alt: "Nebius logo", width: 1134, height: 312, display: 34 },
 ]
 
 export const startupProgramCount = startupPrograms.length

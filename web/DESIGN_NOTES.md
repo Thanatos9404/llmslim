@@ -11,7 +11,7 @@ The landing page follows the user's Raycast reference: a cinematic composition, 
 - `public/sarvam-wordmark.svg` — official Sarvam wordmark.
 - `public/fonts/geist-latin.woff2` — self-hosted variable font; license in `public/fonts/OFL.txt`.
 
-Sarvam assets came from its public brand website. The co-brand arrangement and acceptance wording follow the user's supplied `Untitled design (8).png` reference. Both brands remain independently identifiable.
+Sarvam assets came from its public brand website. The program-logo layout and acceptance wording follow the user's supplied `Untitled design (8).png` reference. Both brands remain independently identifiable. The relationship is Sarvam Startup Program acceptance only: not a partnership, collaboration, co-branding, or endorsement.
 
 Sources:
 - https://www.raycast.com/

@@ -53,7 +53,7 @@ export const releases: Release[] = [
     items: [
       { label: "Added", icon: CheckCircle2, title: "MCP catalog sources", body: "Streamable HTTP and literal-argv stdio support bounded pagination, scoped caching, contract fingerprints, and stale-plan detection." },
       { label: "Boundary", icon: ShieldCheck, title: "Execution belongs to the host", body: "The optional Agents SDK bridge requires a host callback. Full and measure-only plans retain every schema; selective exposure remains research-only." },
-      { label: "Website", icon: Wrench, title: "A new home for LLMSlim", body: "A redesigned website with light and dark themes, and official Sarvam co-branding marking acceptance into the Sarvam Startup Program." },
+      { label: "Website", icon: Wrench, title: "A new home for LLMSlim", body: "A redesigned website with light and dark themes, a Sarvam integration guide, and a note on LLMSlim's acceptance into the Sarvam Startup Program." },
     ],
   },
   {

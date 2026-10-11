@@ -5,16 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmslim"
 version = "0.8.0"
-description = "Local-first model context runtime and planning for AI agents."
+description = "Context compression and planning for RAG and AI agents: fit retrieved documents, chat history and tool output into a token budget."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [{ name = "Yashvardhan Thanvi", email = "thanatos9404@users.noreply.github.com" }]
 keywords = [
     "llm",
+    "prompt-compression",
+    "context-compression",
     "prompt-engineering",
     "token-optimization",
     "rag",
+    "reranker",
+    "agents",
+    "langchain",
+    "llamaindex",
+    "haystack",
     "nlp",
     "summarization",
     "openai",
@@ -29,13 +36,16 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "numpy>=1.21",
@@ -56,6 +66,12 @@ mongodb = [
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
 structured = ["pyyaml>=6.0"]
+# Framework adapters in llmslim.integrations. llama-index-core needs Python 3.10+ in practice:
+# 0.14.17 dropped 3.9, and on 3.9 the last 3.9 release fails to import (its "banks" dependency
+# uses 3.10-only syntax).
+langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.12; python_version >= '3.10'"]
+haystack = ["haystack-ai>=2.0"]
 transformers-cache = ["transformers>=4.53,<6; python_version >= '3.10'", "torch>=2.0; python_version >= '3.10'"]
 all = [
     "sentence-transformers>=2.2",
@@ -69,6 +85,9 @@ all = [
     "tiktoken>=0.5",
     "nltk>=3.8",
     "pyyaml>=6.0",
+    "langchain-core>=0.3",
+    "llama-index-core>=0.12; python_version >= '3.10'",
+    "haystack-ai>=2.0",
 ]
 dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21", "mypy>=1.8", "build>=1.0"]
 
@@ -96,7 +115,17 @@ python_files = ["test_*.py"]
 [tool.coverage.run]
 source = ["llmslim"]
 branch = true
-omit = ["tests/*", "benchmarks/*"]
+# The LangChain, LlamaIndex and Haystack adapters import their framework at module import time and
+# their tests skip when it is missing, so measuring them would make the coverage gate depend on
+# which optional extras are installed. Their framework-free logic lives in
+# llmslim/integrations/_documents.py, which is measured and tested everywhere.
+omit = [
+    "tests/*",
+    "benchmarks/*",
+    "llmslim/integrations/langchain.py",
+    "llmslim/integrations/llama_index.py",
+    "llmslim/integrations/haystack.py",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -169,6 +198,9 @@ module = [
     "openai.*",
     "httpx2.*",
     "mcp.*",
+    "langchain_core.*",
+    "llama_index.*",
+    "haystack.*",
 ]
 ignore_missing_imports = true
 

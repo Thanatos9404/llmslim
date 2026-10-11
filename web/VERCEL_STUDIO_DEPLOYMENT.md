@@ -7,7 +7,7 @@ The Studio is a Next.js page with same-origin Vercel Python Functions in `web/ap
   returns which parts of the original were kept. It calls no model provider and needs no secrets.
 - `/api/compress`, `/api/plan` and `/api/context` remain available for scripted use.
 
-Production installs the released package from PyPI through `web/requirements.txt` (`llmslim==0.8.0`).
+Production installs the released package from PyPI through `web/requirements.txt` (`llmslim==0.8.1`).
 Release that version to PyPI before deploying a site that pins it.
 
 ## Local development

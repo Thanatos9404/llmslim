@@ -39,44 +39,15 @@ a bounded retry policy based on their idempotency and spend controls.
 Studio hosted route. It validates message roles/content, accepts an explicit
 output ceiling, and stores only sanitized provider usage in `last_usage`.
 
-## Hosted Studio mode
+## Hosting your own route
 
-`web/api/sarvam.py` provides an optional same-origin server route. It is not a
-public proxy and is disabled unless all of these server-only values are set:
-
-```dotenv
-LLMSLIM_HOSTED_SARVAM_ENABLED=true
-SARVAM_API_KEY=
-MONGODB_URI=
-LLMSLIM_RATE_LIMIT_HMAC_SECRET=
-```
-
-The route plans locally, reserves a conservative maximum cost, then calls the
-official SDK. MongoDB conditional updates enforce sliding burst/minute/hour/day
-limits against HMAC-pseudonymized network and HttpOnly-session identities,
-per-identity token allowance, atomic global daily/monthly spend reservations,
-and expiring client/global concurrency slots. Provider usage reconciles the
-reservation when available. If reconciliation fails after a completed call,
-the larger conservative reservation remains charged.
-
-Defaults are deliberately small: two requests per 10-second burst, four per
-minute, twenty per hour, forty per day, one concurrent request per request
-identity, two globally, an 8,192-token input ceiling, 256 output tokens, ₹1
-maximum reserved request cost, ₹100 daily project spend, and ₹2,000 monthly
-project spend. Every value is deployment-configurable; increasing it is an
-explicit operator decision. The total provider credit balance is never exposed
-to clients.
-
-The hosted route returns 429 for caller limits, 413 for oversized bodies/context,
-and 503 when the kill switch, durable ledger, or global spend budget blocks paid
-inference. Responses and aggregate telemetry exclude prompts, credentials,
-raw network addresses, authorization headers, and database URIs.
-
-The public Studio also provides request-only BYOK. A visitor's Sarvam key is
-held in page memory, sent only in the `X-Sarvam-API-Key` header to the
-same-origin server function, used for one request, and never persisted or
-returned. BYOK uses the visitor's provider balance and remains subject to
-bounded payload, token, output, and request-rate controls.
+The llmslim.app Studio no longer calls Sarvam; it runs extractive compression
+only. If you host a paid Sarvam route yourself, `llmslim.hosted` provides the
+controls the earlier Studio route used: a local plan before any call, a
+conservative cost reservation, and MongoDB-backed sliding rate windows,
+per-identity token allowances, daily and monthly spend limits and concurrency
+leases (`MongoDBHostedQuotaStore`). Keep the provider key and database URI
+server-side, and make paid inference opt-in with an explicit switch.
 
 Offline Indic coverage is in `benchmarks/datasets/v06_context_planning.json`.
 The paid evaluation is separate:

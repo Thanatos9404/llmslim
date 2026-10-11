@@ -1,8 +1,10 @@
+import Link from "next/link"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { BetaRequestForm } from "@/components/site/BetaRequestForm"
+import { FeatureRow, GuardVisual, PolicyVisual, Showcase, StatsBand, TimelineVisual, TraceVisual, type Stat } from "@/components/landing/Visuals"
 import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
@@ -13,12 +15,13 @@ export const metadata = constructMetadata({
   canonicalUrl: `${siteConfig.url}/platform`,
 })
 
-const capabilities = [
-  ["Know what is still true.", "An append-only, tamper-evident timeline of conversation, retrieval, memory, and tool events. Corrections replace the facts they correct instead of sitting beside them, and long sessions resume from verified checkpoints."],
-  ["See why context was chosen.", "Every prepared context comes with a trace: what was included, what was left out and why, and where each token went. Traces replay deterministically, so a decision can be audited long after it was made."],
-  ["Learn from outcomes.", "Record whether a task succeeded and connect it to the context behind it. Offline training proposes context policies. They run in shadow mode until an evaluation passes and an administrator promotes them, and rollback is instant."],
-  ["Keep the guardrails first.", "Learned suggestions can only leave out optional context. Trust boundaries, mandatory instructions, tenant isolation, and dependencies always take precedence."],
-] as const
+// Claude Haiku 5.5 on LongMemEval-S (90 questions); see /benchmarks for every arm and the weak spots.
+const platformStats: Stat[] = [
+  { value: "63.3", unit: "%", label: "accuracy at an 8k-token budget, default settings", note: "Platform 0.9.1 · 0.9.0 scored 18.9%" },
+  { value: "86.7", unit: "%", label: "on knowledge-update questions", note: "Full 115k-token history: 80.0%" },
+  { value: "67", unit: "×", label: "lower cost per question than sending the whole history", note: "$1.36 vs $90.72 per 1,000 questions" },
+  { value: "0", label: "histories that fail to compile at default settings", note: "0.9.0 failed 28 of 90" },
+]
 
 const comparison = [
   ["License", "MIT, open source", "Proprietary"],
@@ -36,15 +39,30 @@ export default function PlatformPage() {
       <div className="hero-actions"><TrackedLink className="button" href="#beta" event="platform_beta_clicked" properties={{ location: "platform_hero" }}>Request Platform Beta Access <ArrowRight size={16} /></TrackedLink><TrackedLink className="button button-outline" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "platform_hero" }}>Explore LLMSlim Core <ArrowUpRight size={16} /></TrackedLink></div>
     </section>
 
-    <section className="site-width platform-capabilities" aria-label="Platform capabilities">
-      {capabilities.map(([title, body]) => <article className="layer-card" key={title}><h2>{title}</h2><p>{body}</p></article>)}
+    <section className="site-width platform-features feature-rows" aria-label="Platform capabilities">
+      <FeatureRow kicker="Temporal state" title="Know what is still true." visual={<Showcase tone="teal"><TimelineVisual /></Showcase>}>
+        <p>An append-only, tamper-evident timeline of conversation, retrieval, memory, and tool events. Corrections replace the facts they correct instead of sitting beside them.</p>
+        <p>Long sessions resume from verified checkpoints.</p>
+      </FeatureRow>
+      <FeatureRow flip kicker="Context traces" title="See why context was chosen." visual={<Showcase tone="violet"><TraceVisual /></Showcase>}>
+        <p>Every prepared request comes with a trace: what went in, what was left out and why, and where each token went.</p>
+        <p>Traces replay deterministically, so a decision can be audited long after it was made.</p>
+      </FeatureRow>
+      <FeatureRow kicker="Outcome learning" title="Learn which context wins." visual={<Showcase tone="amber"><PolicyVisual /></Showcase>}>
+        <p>Record whether a task succeeded and link it to the context behind it. Offline training proposes context policies.</p>
+        <p>They run in shadow until an evaluation passes and an administrator promotes them. Rollback is instant.</p>
+      </FeatureRow>
+      <FeatureRow flip kicker="Guardrails" title="Keep the guardrails first." visual={<Showcase tone="rose"><GuardVisual /></Showcase>}>
+        <p>Learned suggestions can only leave out optional context. Trust boundaries, mandatory instructions, tenant isolation, and dependencies always win.</p>
+        <p>Tool output and retrieved text reach the model as data, never as instructions.</p>
+      </FeatureRow>
     </section>
 
     <section className="site-width platform-evidence" aria-labelledby="evidence-title">
-      <p className="section-kicker">Measured, not promised.</p>
-      <h2 id="evidence-title">63% less context. <span>Higher task success.</span></h2>
-      <p>Across a 180-case benchmark spanning 18 task categories in English, Hindi, and Hinglish, Platform 0.9 sent 63% fewer context tokens to the model than v0.8 and lifted task success from 83.3% to 88.9%, double the 44.4% of raw history. Not one prompt-injection probe reached the model as a trusted instruction.</p>
-      <p className="platform-note">Benchmark workloads are synthetic and multilingual.</p>
+      <p className="p-kicker">Measured on Claude Haiku 5.5</p>
+      <h2 id="evidence-title">Remembers what matters from 500 turns ago. <span>At 1/67 of the cost.</span></h2>
+      <StatsBand stats={platformStats} />
+      <p className="platform-evidence-note">LongMemEval-S, 90 questions over histories of about 50 chat sessions (115k tokens), official judge prompts. Platform 0.9.1 at its default settings and an 8k-token budget. The 0.9.0 figures published earlier came from a synthetic offline suite with no model answering; these replace them. <Link href="/benchmarks#longmemeval">Full results and weak spots</Link></p>
     </section>
 
     <section className="site-width platform-compare" aria-labelledby="compare-title">

@@ -1,19 +1,81 @@
 import Link from "next/link"
-import { BarChart3, CheckCircle2, ExternalLink, ShieldCheck, Timer, TriangleAlert } from "lucide-react"
-import { SchemaTaxExplorer } from "@/components/benchmarks/SchemaTaxExplorer"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowUpRight } from "lucide-react"
+import { ResultBars } from "@/components/benchmarks/ResultBars"
+import { Reveal } from "@/components/landing/Premium"
+import { StatsBand, type Stat } from "@/components/landing/Visuals"
+import { BENCHMARK_SUITES } from "@/data/benchmarks"
+import { AGENT_FINDINGS, CORE_VERSION_TESTED, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
+import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
-import { getPhase2Truth, phase2ReleaseGate } from "@/lib/phase2-data"
 
-export const metadata = constructMetadata({ title: "Benchmarks | LLMSlim", description: "Phase 2 evaluation: reproducible context-compression, security, structure, and schema-tax evidence.", path: "/benchmarks", markdownPath: "/benchmarks.md" })
-const percent = (value: number) => `${(value * 100).toFixed(1)}%`
+export const metadata = constructMetadata({
+  title: "Benchmarks | LLMSlim",
+  description: `LLMSlim measured on ${LIVE_MODEL} with LongMemEval, LongBench v1 and v2, HotpotQA, NaturalQuestions, SWE-bench Verified and InjecAgent: scores, tokens and cost against full context and truncation, weak spots included.`,
+  path: "/benchmarks",
+  markdownPath: "/benchmarks.md",
+})
+
+const stats: Stat[] = [
+  { value: "62", unit: "×", label: "lower cost per question over long chat histories", note: "LongMemEval · 70% vs 82% with full history" },
+  { value: "72", unit: "%", label: "fewer tokens on long documents and codebases", note: "LongBench v2 · 53% vs 60% accuracy" },
+  { value: "+7.7", label: "points over truncation at the same token budget", note: "LongBench v1 · 95% CI +2.7 to +12.9" },
+  { value: "45", unit: "%", label: "lower cost on multi-hop retrieval QA", note: "HotpotQA · F1 68.0 vs 74.9" },
+]
 
 export default function BenchmarksPage() {
-  const phase2 = getPhase2Truth(); const micro = phase2.summary.micro; const structural = phase2.summary.structural_integrity
-  const metrics = [[`${phase2ReleaseGate.testsPassed}`, "tests passing"], [`${phase2ReleaseGate.branchCoverage}%`, "branch coverage"], [`${Object.keys(phase2.dataset.categories).length}`, "evaluation categories"], [`${Object.keys(phase2.dataset.languages).length}`, "languages"], [`${phase2.schema_tax.tool_schema_count}`, "generated schemas"], ["0", "provenance violations"]]
-  const retention = [[ShieldCheck, "Instruction retention", percent(micro.instruction_retention.mean), `${micro.instruction_retention.count} applicable labels`], [CheckCircle2, "Entity retention", percent(micro.entity_retention.mean), `${micro.entity_retention.count} applicable labels`], [BarChart3, "Lexical Jaccard", percent(micro.semantic_similarity.mean), `${micro.semantic_similarity.count} samples`], [Timer, "Median latency", `${micro.latency_ms.median.toFixed(3)} ms`, `p95 ${micro.latency_ms.p95.toFixed(3)} ms`]] as const
-  return <div className="mx-auto max-w-6xl space-y-10"><header><Badge variant="secondary">Phase 2 evaluation system</Badge><h1 className="mt-4 text-4xl font-semibold tracking-tight">Evidence that keeps its limitations visible.</h1><p className="mt-3 max-w-3xl text-muted-foreground">The offline deterministic evaluation separates measured results from derived totals and work that is not applicable to the released local engine.</p><div className="mt-5 flex flex-wrap gap-3"><Button render={<Link href="/docs/getting-started" />}>Read the docs</Button><Button variant="outline" render={<a href="https://github.com/Thanatos9404/llmslim" target="_blank" rel="noreferrer" />}>Inspect source <ExternalLink /></Button></div></header><Card><CardHeader><div className="flex flex-wrap items-center gap-2"><Badge>Release gate: PASS</Badge><Badge variant="outline">Offline runner</Badge><Badge variant="outline">Canonical JSON</Badge></div><CardDescription>Independent labels · measured, derived, and not-applicable findings remain distinct.</CardDescription></CardHeader></Card><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{metrics.map(([value, label]) => <Card key={label} size="sm"><CardHeader><CardDescription>{label}</CardDescription><CardTitle className="text-3xl">{value}</CardTitle></CardHeader></Card>)}</div><section><div className="mb-4"><Badge variant="outline">Compression quality</Badge><h2 className="mt-3 text-2xl font-semibold">Small corpus. Explicitly scoped.</h2></div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">{retention.map(([Icon, label, value, note]) => <Card key={label}><CardHeader><Icon className="size-5" /><CardTitle className="mt-3">{value}</CardTitle><CardDescription>{label}<br />{note}</CardDescription></CardHeader></Card>)}</div></section><SchemaTaxExplorer catalogs={phase2.schema_tax_details.catalogs} /><div className="grid gap-4 md:grid-cols-3"><Card><CardHeader><TriangleAlert className="size-5" /><CardTitle className="mt-3">Structural integrity</CardTitle><CardDescription>{structural.valid_count} / {structural.applicable_count} checks passed. Markdown is retained as a visible limitation.</CardDescription></CardHeader></Card><Card><CardHeader><ShieldCheck className="size-5" /><CardTitle className="mt-3">Security regression</CardTitle><CardDescription>RAG, tool, and assistant text cannot earn protected priority from wording alone.</CardDescription></CardHeader></Card><Card><CardHeader><CheckCircle2 className="size-5" /><CardTitle className="mt-3">Reproducibility</CardTitle><CardDescription>Dataset composition, modes, classification, and environment details ship with canonical output.</CardDescription></CardHeader></Card></div><Alert id="methodology"><ShieldCheck /><AlertTitle>Methodology</AlertTitle><AlertDescription>Measured findings come from the deterministic suite. Derived values use explicit arithmetic from catalog tokens. Provider-dependent rewrite and hybrid outcomes are not fabricated for the local suite.</AlertDescription></Alert></div>
+  return <div className="bm-page">
+    <header className="bm-hero">
+      <p className="p-kicker">Benchmarks · {LIVE_MODEL} · {LIVE_DATE}</p>
+      <h1>Measured on a real model. <span>Weak spots included.</span></h1>
+      <p className="bm-lede">Public datasets, official prompts and scoring, and the same model for every configuration. Only the context changes: the full context, LLMSlim, and truncation cut to exactly LLMSlim&apos;s token count.</p>
+      <p className="bm-versions">LLMSlim Core {CORE_VERSION_TESTED} · LLMSlim Platform {PLATFORM_VERSION_TESTED} · harness and raw results in the <a href={`${siteConfig.github}/tree/main/benchmarks/live`} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
+    </header>
+
+    <section className="bm-band" aria-label="Headline results"><StatsBand stats={stats} /></section>
+
+    <section className="bm-suites" aria-label="Results by benchmark">
+      {LIVE_SUITES.map((suite) => <article key={suite.id} id={suite.id} className="bm-suite">
+        <Reveal className="bm-suite-copy">
+          <p className="bm-suite-meta">{suite.n} · {suite.metric}</p>
+          <h2>{suite.name}</h2>
+          <p className="bm-what">{suite.what}</p>
+          <p className="bm-takeaway">{suite.takeaway}</p>
+          {suite.caveat && <p className="bm-caveat"><span>Weak spot</span>{suite.caveat}</p>}
+        </Reveal>
+        <ResultBars arms={suite.arms} metric={suite.metric} />
+      </article>)}
+    </section>
+
+    <section className="bm-section" aria-labelledby="agents-title">
+      <Reveal className="p-head"><p className="p-kicker">Agents</p><h2 id="agents-title">Where compression does not help. <span>Yet.</span></h2></Reveal>
+      {AGENT_FINDINGS.map((finding) => <div key={finding.name} className="bm-agent">
+        <div className="bm-agent-copy"><h3>{finding.name}</h3><p>{finding.what}</p><p className="bm-takeaway">{finding.takeaway}</p></div>
+        <dl className="bm-rows">{finding.rows.map((row) => <div key={row.arm}><dt>{row.arm}</dt><dd><strong>{row.result}</strong><span>{row.detail}</span></dd></div>)}</dl>
+      </div>)}
+    </section>
+
+    <section className="bm-section" aria-labelledby="others-title">
+      <Reveal className="p-head"><p className="p-kicker">Other systems</p><h2 id="others-title">Published results, side by side. <span>With their readers.</span></h2>
+        <p className="p-body">These numbers come from each project&apos;s paper or a third-party re-run, with different reader models. Compare each system&apos;s gap to its own full-context baseline, not raw scores across models.</p></Reveal>
+      <div className="bm-table-wrap"><table className="bm-table">
+        <thead><tr><th scope="col">System</th><th scope="col">Benchmark</th><th scope="col">Reader</th><th scope="col">Score</th><th scope="col">Full context</th><th scope="col">Tokens</th><th scope="col">Source</th></tr></thead>
+        <tbody>{PUBLISHED.map((row) => <tr key={`${row.system}-${row.benchmark}`}>
+          <th scope="row">{row.system}</th><td>{row.benchmark}</td><td>{row.reader}</td><td>{row.score}</td><td>{row.fullContext}</td><td>{row.tokens}</td>
+          <td><a href={row.url} target="_blank" rel="noreferrer">{row.source} <ArrowUpRight size={12} /></a></td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>
+
+    <section className="bm-section bm-method" aria-labelledby="method-title">
+      <Reveal className="p-head"><p className="p-kicker">How we measured</p><h2 id="method-title">Same model. Same questions. <span>Only the context changes.</span></h2></Reveal>
+      <ol className="p-notes">{METHOD_NOTES.map((note, index) => <li key={note}><span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><p>{note}</p></li>)}</ol>
+    </section>
+
+    <section className="bm-section" aria-labelledby="offline-title">
+      <h2 id="offline-title" className="bm-small-title">Earlier offline suites</h2>
+      <ul className="int-list">{Object.values(BENCHMARK_SUITES).map((suite) => <li key={suite.slug}>
+        <Link className="int-row bm-offline-row" href={`/benchmarks/${suite.slug}`}><span className="int-name">{suite.title}<small>deterministic, no model call</small></span><span className="int-tagline">{suite.subtitle}</span><ArrowUpRight className="int-arrow" size={18} aria-hidden="true" /></Link>
+      </li>)}</ul>
+    </section>
+  </div>
 }

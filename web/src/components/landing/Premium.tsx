@@ -1,8 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion"
-import { Fragment, useEffect, useRef, type PointerEvent, type ReactNode } from "react"
+import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion"
+import { Fragment, useRef, type PointerEvent, type ReactNode } from "react"
 import { track } from "@/lib/analytics"
 import { ProgramLogo, startupPrograms } from "./StartupPrograms"
 
@@ -99,50 +99,4 @@ export function LogoCloud() {
       </a>
     </motion.li>)}
   </motion.ul>
-}
-
-/* ------------------------------------------------------------------ Stacked glass sheets */
-
-/** Two glass sheets that tilt flat as they scroll into view, with a light glare sweeping across. */
-export function GlassSheet({ children, className = "" }: { children: ReactNode; className?: string }) {
-  const sheet = useRef<HTMLDivElement>(null)
-  const reduced = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: sheet, offset: ["start end", "start 0.62"] })
-  const rotateX = useTransform(scrollYProgress, [0, 1], [18, 0])
-  const y = useTransform(scrollYProgress, [0, 1], [60, 0])
-  const opacity = useTransform(scrollYProgress, [0, 0.6], [0.2, 1])
-  const glare = useTransform(scrollYProgress, [0.3, 1], ["-60%", "160%"])
-  return <div className="glass-stage">
-    <motion.div ref={sheet} className={`glass-sheet ${className}`} style={reduced ? undefined : { rotateX, y, opacity, transformPerspective: 1200 }}>
-      <motion.span className="glass-glare" aria-hidden="true" style={reduced ? undefined : { x: glare }} />
-      {children}
-    </motion.div>
-  </div>
-}
-
-/* ------------------------------------------------------------------ Count-up receipts */
-
-export type Receipt = { value: number; decimals?: number; prefix?: string; suffix: string; label: string; note: string }
-
-function CountUp({ receipt }: { receipt: Receipt }) {
-  const node = useRef<HTMLSpanElement>(null)
-  const inView = useInView(node, { once: true, amount: 0.6 })
-  const reduced = useReducedMotion()
-  const format = (v: number) => `${receipt.prefix ?? ""}${v.toLocaleString("en-US", { minimumFractionDigits: receipt.decimals ?? 0, maximumFractionDigits: receipt.decimals ?? 0 })}`
-  useEffect(() => {
-    if (!inView || !node.current) return
-    if (reduced) { node.current.textContent = format(receipt.value); return }
-    const controls = animate(0, receipt.value, { duration: 1.6, ease: [0.16, 1, 0.3, 1], onUpdate: (v) => { if (node.current) node.current.textContent = format(v) } })
-    return () => controls.stop()
-  }, [inView, reduced]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Server markup shows the final value, so the number is correct without JavaScript.
-  return <span className="receipt-value"><span ref={node}>{format(receipt.value)}</span><span className="receipt-unit">{receipt.suffix}</span></span>
-}
-
-/** Large figures on hairlines: no boxes. Each counts up once when it scrolls into view. */
-export function Receipts({ items }: { items: Receipt[] }) {
-  return <dl className="receipts">{items.map((item) => <div key={item.label} className="receipt">
-    <dt className="receipt-label">{item.label}</dt>
-    <dd><CountUp receipt={item} /><span className="receipt-note">{item.note}</span></dd>
-  </div>)}</dl>
 }

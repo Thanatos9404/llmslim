@@ -3,7 +3,8 @@ import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { CopyCommand, HomeEffects, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
-import { GlassSheet, LogoCloud, PhotoSection, PremiumHero, Receipts, Reveal, RevealWords, type Receipt } from "@/components/landing/Premium"
+import { LogoCloud, PhotoSection, PremiumHero, Reveal, RevealWords } from "@/components/landing/Premium"
+import { CompressVisual, Showcase, StatsBand, TraceVisual, type Stat } from "@/components/landing/Visuals"
 import { startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { PageView } from "@/components/site/Telemetry"
@@ -18,13 +19,13 @@ const faqs: ReadonlyArray<readonly [string, string]> = [
   ["What do the startup programs give LLMSlim?", `LLMSlim is part of ${startupProgramCount} startup programs: ${startupProgramNames}. They provide credits, tools, and guidance. Our Sarvam integration guide shows how to pair local context compression with the official Sarvam Python SDK.`],
 ]
 
-// Every figure is measured and published: the Platform benchmark (180 cases, 18 categories, en/hi/Hinglish)
-// and the Core Phase 2 evaluation. See /platform and /benchmarks.
-const receipts: Receipt[] = [
-  { value: 2, suffix: "×", label: "the task success of raw history", note: "Platform 0.9 · 180-case benchmark" },
-  { value: 84, suffix: "%", label: "fewer context tokens than v0.8", note: "Platform · 1,000-turn sessions" },
-  { value: 0, suffix: "", label: "injected prompts promoted to trusted instructions", note: "All 180 benchmark cases" },
-  { value: 0.026, decimals: 3, suffix: " ms", label: "median planning time per sample", note: "Core · Phase 2 evaluation" },
+// Real-model results only (Claude Haiku 5.5, public benchmarks, paired against full context and truncation).
+// The full report, weak spots included, is on /benchmarks.
+const stats: Stat[] = [
+  { value: "62", unit: "×", label: "lower cost per question over long chat histories", note: "LongMemEval · 70% vs 82% with full history" },
+  { value: "72", unit: "%", label: "fewer tokens on long documents and codebases", note: "LongBench v2 · 53% vs 60% accuracy" },
+  { value: "+7.7", label: "points over truncation at the same token budget", note: "LongBench v1 · 95% CI +2.7 to +12.9" },
+  { value: "45", unit: "%", label: "lower cost on multi-hop retrieval QA", note: "HotpotQA · F1 68.0 vs 74.9" },
 ]
 
 export default function Home() {
@@ -44,27 +45,21 @@ export default function Home() {
 
     <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">
       <Reveal className="p-head"><p className="p-kicker">The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
-      <Receipts items={receipts} />
-      <Reveal className="p-foot"><span>678 tests · 90% branch coverage · MIT licensed</span><Link className="text-link" href="/benchmarks">Read the benchmarks <ArrowUpRight size={14} /></Link></Reveal>
+      <StatsBand stats={stats} />
+      <Reveal className="p-foot"><span>Claude Haiku 5.5 · public benchmarks · weak spots published</span><Link className="text-link" href="/benchmarks">Read the benchmarks <ArrowUpRight size={14} /></Link></Reveal>
     </section>
 
-    <section className="p-section p-split site-width" id="layers" aria-labelledby="layers-title">
-      <div className="p-split-aside"><Reveal><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2><p className="p-body">Core runs in your Python process and controls exactly what reaches the model. Platform adds the memory, traces, and learning that production agents need.</p></Reveal></div>
-      <div className="p-split-main">
-        <GlassSheet>
-          <p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p>
-          <h3>Control exactly what reaches the model.</h3>
-          <p>Compress context in your own process, track where every piece came from, and fit everything into your token budget, deterministically.</p>
-          <ul className="sheet-points"><li>Local extractive compression, no API key</li><li>Provenance-aware roles that keep untrusted text untrusted</li><li>Adaptive planning, to the token</li></ul>
-          <TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink>
-        </GlassSheet>
-        <GlassSheet className="glass-sheet-accent">
-          <p className="sheet-eyebrow">LLMSlim Platform · v{siteConfig.platformVersion} beta · private</p>
-          <h3>Give your agents a memory you can audit.</h3>
-          <p>A tamper-evident timeline of everything your agents were told, an explanation for every context decision, and policies that learn from real outcomes which context wins.</p>
-          <ul className="sheet-points"><li>State that always knows what is current</li><li>Every decision traced and replayable</li><li>Learned policies with instant rollback</li></ul>
-          <TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink>
-        </GlassSheet>
+    <section className="p-section site-width" id="layers" aria-labelledby="layers-title">
+      <Reveal className="p-head"><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
+      <div className="duo">
+        <div>
+          <Showcase tone="teal"><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval · Claude Haiku 5.5</span></>} /></Showcase>
+          <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
+        </div>
+        <div>
+          <Showcase tone="violet"><TraceVisual /></Showcase>
+          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Platform · v{siteConfig.platformVersion} beta · private</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink></Reveal>
+        </div>
       </div>
     </section>
 

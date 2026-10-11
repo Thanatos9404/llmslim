@@ -8,6 +8,7 @@
 import { siteConfig } from "@/config/site"
 import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
+import { AGENT_FINDINGS, CORE_VERSION_TESTED, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
 import { homeFaqs } from "@/data/home"
@@ -168,8 +169,23 @@ function sectionIndex(section: Section): string {
   )
   return join(
     "# LLMSlim benchmarks",
-    "> Reproducible evaluations with their methodology and limitations. Results depend on workload; measure your own.",
-    Object.values(BENCHMARK_SUITES).map((suite) => `- [${suite.title}](${md(`/benchmarks/${suite.slug}`)}): ${suite.subtitle}`).join("\n"),
+    `> Measured on ${LIVE_MODEL} (${LIVE_DATE}) with public datasets and official scoring. Only the context changes between configurations. LLMSlim Core ${CORE_VERSION_TESTED}, Platform ${PLATFORM_VERSION_TESTED}. Weak spots are listed with each result.`,
+    ...LIVE_SUITES.map((suite) => join(
+      `## ${suite.name}`,
+      `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
+      table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], suite.arms.map((arm) => [arm.name, arm.score.toFixed(1), arm.tokens?.toLocaleString("en-US") ?? "", arm.cost !== undefined ? `$${arm.cost}` : ""])),
+      suite.takeaway,
+      suite.caveat && `Weak spot: ${suite.caveat}`,
+    ).trimEnd()),
+    ...AGENT_FINDINGS.map((finding) => join(
+      `## ${finding.name}`,
+      finding.what,
+      table(["Configuration", "Result", "Detail"], finding.rows.map((row) => [row.arm, row.result, row.detail])),
+      finding.takeaway,
+    ).trimEnd()),
+    "## Published results from other systems\n\nDifferent reader models: compare each system's gap to its own full-context baseline.\n\n" + table(["System", "Benchmark", "Reader", "Score", "Full context", "Source"], PUBLISHED.map((row) => [row.system, row.benchmark, row.reader, row.score, row.fullContext, `${row.source}: ${row.url}`])),
+    "## Method\n\n" + METHOD_NOTES.map((note) => `- ${note}`).join("\n"),
+    "## Earlier offline suites\n\n" + Object.values(BENCHMARK_SUITES).map((suite) => `- [${suite.title}](${md(`/benchmarks/${suite.slug}`)}): ${suite.subtitle}`).join("\n"),
     source("/benchmarks"),
   )
 }

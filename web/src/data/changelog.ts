@@ -5,6 +5,19 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.8.0",
+    date: "Oct 2026",
+    theme: "Keep what the question needs. Drop the rest.",
+    summary: "With a query, compress() now ranks whole documents, chat rounds and paragraphs against it and keeps the best ones intact, instead of trimming every chunk by the same ratio. Code, logs and test output keep their lines. Measured on Claude Haiku 5.5 with public benchmarks, weak spots included.",
+    metrics: ["LongMemEval 25.6% to 70.0% at 8k tokens", "HotpotQA F1 61.7 to 68.0", "SWE-bench Verified Mini 38 of 50"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.8.0",
+    items: [
+      { label: "Changed", icon: CheckCircle2, title: "Query-focused selection", body: "Structural units are ranked with BM25, light stemming, pseudo-relevance feedback and a document prior, kept whole in their original order, then topped up sentence by sentence. compress_documents() shares one budget across documents by relevance." },
+      { label: "Changed", icon: Wrench, title: "Code and logs keep their lines", body: "Failures and tracebacks come first, repeated lines collapse into a count, the tail is kept, and code keeps its skeleton plus the most relevant bodies. Compressing a 1.3k-token file dropped from about 3.5 s to 7 ms." },
+      { label: "Boundary", icon: ShieldCheck, title: "Guardrails still win", body: "Trusted instructions and preserve_patterns survive inside large units; untrusted retrieved, tool and assistant text still cannot reach the protected tier. Query-less prose behaves exactly as in 0.7." },
+    ],
+  },
+  {
     version: "v0.7.2",
     date: "11 Oct 2026",
     theme: "Keep the evidence that answers the question.",

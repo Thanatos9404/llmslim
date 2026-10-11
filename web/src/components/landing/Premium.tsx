@@ -2,31 +2,29 @@
 
 import Image from "next/image"
 import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion"
-import { Fragment, useRef, type PointerEvent, type ReactNode } from "react"
+import { useRef, type PointerEvent, type ReactNode } from "react"
 import { track } from "@/lib/analytics"
 import { ProgramLogo, startupPrograms } from "./StartupPrograms"
 
 // Every effect here animates transform/opacity only (compositor work, no layout or canvas),
-// and reduced-motion users get the final, still state.
+// and reduced-motion users get the final, still state. Above-the-fold copy never starts hidden:
+// the hero headline is static and its other lines use `fade={false}`, so they are painted on first load.
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
 /* ------------------------------------------------------------------ Reveal */
 
-export function Reveal({ children, className = "", delay = 0, as = "div" }: { children: ReactNode; className?: string; delay?: number; as?: "div" | "section" | "li" }) {
+/**
+ * Rises into place when scrolled into view. With `fade={false}` it only moves (a short transform, no opacity),
+ * so the content is visible from the first paint: use that above the fold, where hidden text delays LCP.
+ */
+export function Reveal({ children, className = "", delay = 0, as = "div", fade = true }: { children: ReactNode; className?: string; delay?: number; as?: "div" | "section" | "li"; fade?: boolean }) {
   const reduced = useReducedMotion()
   const Component = as === "section" ? motion.section : as === "li" ? motion.li : motion.div
   if (reduced) return <Component className={className}>{children}</Component>
-  return <Component className={className} initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.9, ease: EASE, delay }}>{children}</Component>
-}
-
-/** A headline whose words rise out of a soft blur, one after another. The full text stays in the DOM for readers. */
-export function RevealWords({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) {
-  const reduced = useReducedMotion()
-  if (reduced) return <span className={className}>{text}</span>
-  return <span className={className}>
-    {text.split(" ").map((word, index) => <Fragment key={index}>{index > 0 && " "}<span className="word-mask"><motion.span className="word" initial={{ y: "105%", opacity: 0, filter: "blur(8px)" }} animate={{ y: "0%", opacity: 1, filter: "blur(0px)" }} transition={{ duration: 1, ease: EASE, delay: delay + index * 0.07 }}>{word}</motion.span></span></Fragment>)}
-  </span>
+  const from = fade ? { opacity: 0, y: 28 } : { y: 14 }
+  const to = fade ? { opacity: 1, y: 0 } : { y: 0 }
+  return <Component className={className} initial={from} whileInView={to} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.9, ease: EASE, delay }}>{children}</Component>
 }
 
 /* ------------------------------------------------------------------ Hero */

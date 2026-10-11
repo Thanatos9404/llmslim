@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
-import { SiteHeader } from "@/components/site/SiteHeader"
+import { GitHubMark, SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { CopyCommand, HomeEffects, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
-import { LogoCloud, PhotoSection, PremiumHero, Reveal, RevealWords } from "@/components/landing/Premium"
+import { LogoCloud, PhotoSection, PremiumHero, Reveal } from "@/components/landing/Premium"
 import { CompressVisual, Showcase, StatsBand, TraceVisual, type Stat } from "@/components/landing/Visuals"
 import { startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
 import { TrackedLink } from "@/components/site/TrackedLink"
@@ -37,14 +37,18 @@ export default function Home() {
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
 
     <PremiumHero>
-      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" />Core v{siteConfig.coreVersion} is out<span className="p-announce-sep" aria-hidden="true" />Platform v{siteConfig.platformVersion} in beta<ArrowRight size={14} aria-hidden="true" /></Link>
-      <h1 id="hero-title"><RevealWords text="The context layer" /><br /><RevealWords className="p-hero-dim" text="for production AI agents." delay={0.25} /></h1>
-      <Reveal delay={0.55}><p className="p-hero-lede">Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p></Reveal>
-      <Reveal delay={0.7} className="p-hero-actions">
+      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Platform v{siteConfig.platformVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
+      {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
+          The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
+      <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
+      <Reveal fade={false} delay={0.1}><p className="p-hero-sub">Open-source context compression for RAG and agents. <Link className="p-hero-proof" href="/benchmarks">Level with LongLLMLingua on NaturalQuestions at about 100× the speed, with a 22M reranker instead of a 7B model.<ArrowRight size={15} aria-hidden="true" /></Link></p></Reveal>
+      <Reveal fade={false} delay={0.2}><p className="p-hero-lede">Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p></Reveal>
+      <Reveal fade={false} delay={0.3} className="p-hero-actions">
         <TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Get started <ArrowRight size={16} /></TrackedLink>
+        <a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> View on GitHub</a>
         <TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Platform beta</TrackedLink>
       </Reveal>
-      <Reveal delay={0.85}><CopyCommand /></Reveal>
+      <Reveal fade={false} delay={0.4}><CopyCommand /></Reveal>
     </PremiumHero>
 
     <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">

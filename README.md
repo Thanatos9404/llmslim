@@ -374,8 +374,8 @@ print(f"Saved {sum(r.tokens_saved for r in results)} tokens across {len(results)
 ```
 
 With a query, the documents share one budget and it goes where the query points. Relevance is lexical by default
-(BM25 with feedback: no model, deterministic, a few milliseconds). For RAG and long chat memory, where the answer
-often shares few words with the question, add the optional reranker:
+(BM25 with feedback: no model, deterministic, tens of milliseconds on a 3k-token context). For RAG and long chat
+memory, where the answer often shares few words with the question, add the optional reranker:
 
 ```python
 # pip install "llmslim[semantic]"   (sentence-transformers; uses a GPU when there is one)

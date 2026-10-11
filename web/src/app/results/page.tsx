@@ -10,6 +10,8 @@ export const metadata = constructMetadata({
   description: "What LLMSlim keeps and what it does to the answers: long chat memory, retrieval, long documents and agents, measured against full context, truncation, LLMLingua-2 and LongLLMLingua.",
   path: "/results",
   markdownPath: "/benchmarks.md",
+  // The share images are results/opengraph-image.tsx and twitter-image.tsx.
+  image: null,
 })
 
 export default function ResultsPage() {

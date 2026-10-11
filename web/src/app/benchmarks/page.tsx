@@ -13,6 +13,8 @@ export const metadata = constructMetadata({
   description: "LLMSlim on seven public benchmarks, head to head with LLMLingua-2 and LongLLMLingua at the same token budget: scores, tokens, cost, confidence intervals, weak spots and raw results.",
   path: "/benchmarks",
   markdownPath: "/benchmarks.md",
+  // The share images are benchmarks/opengraph-image.tsx and twitter-image.tsx.
+  image: null,
 })
 
 const stats: Stat[] = [

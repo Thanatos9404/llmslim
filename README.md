@@ -383,6 +383,17 @@ print(context)
 print(f"Saved {sum(r.tokens_saved for r in results)} tokens across {len(results)} documents")
 ```
 
+With a query, the documents share one budget and it goes where the query points. Relevance is lexical by default
+(BM25 with feedback: no model, deterministic, a few milliseconds). For RAG and long chat memory, where the answer
+often shares few words with the question, add the optional reranker:
+
+```python
+# pip install "llmslim[semantic]"   (sentence-transformers; uses a GPU when there is one)
+results = compress_documents(documents, query=question, target_ratio=0.25, relevance="semantic")
+```
+
+`relevance` also accepts any callable `scorer(query, texts) -> scores`, such as a hosted reranking API.
+
 > [!NOTE]
 > `compress_documents` treats documents as untrusted (`ContextRole.RAG`) by default,
 > so imperative wording inside a retrieved document is never force-kept as a

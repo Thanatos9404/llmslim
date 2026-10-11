@@ -228,3 +228,66 @@ def test_selection_option():
     assert forced.selection == "focus"
     with pytest.raises(ValueError):
         ContextCompressor(selection="random")
+
+
+def test_compounds_match_in_either_direction():
+    docs = [
+        "Document [1](Title: Football) The Eagles are Super Bowl champions, having won Super Bowl LII in 2018.",
+        "Document [2](Title: Anatomy) The gallbladder lies beneath the liver in humans.",
+    ] + [f"Document [{i + 3}](Title: Note) {FILLER[i % 5]}" for i in range(8)]
+    units = segment("\n".join(docs), 60)
+    for query, expected in (
+        ("when did philadelphia last win the superbowl", "Super Bowl LII"),
+        ("where is the gall bladder situated", "gallbladder lies beneath"),
+    ):
+        scores = rank(units, query)
+        assert expected in units[max(range(len(units)), key=scores.__getitem__)].text
+
+
+def test_custom_relevance_scorer_reranks_candidates():
+    docs = [f"Document [{i + 1}](Title: Note {i + 1}) {FILLER[i % 5]}" for i in range(8)]
+    calls = []
+
+    def scorer(query, texts):
+        calls.append(len(texts))
+        return [1.0 if "bakery" in t else 0.0 for t in texts]
+
+    out = compress_documents(
+        docs, query="Which museum opened a maritime wing?", target_ratio=0.15, relevance=scorer
+    )
+    kept = "\n".join(r.compressed_text for r in out)
+    assert calls and "bakery" in kept
+    assert out[0].backend == "bm25+rerank"
+    plain = compress("\n".join(docs), target_ratio=0.15, query="maritime museum", relevance=scorer)
+    assert "bakery" in plain.compressed_text
+    with pytest.raises(ValueError):
+        ContextCompressor(relevance="psychic")
+
+
+def test_semantic_relevance_uses_a_cross_encoder(monkeypatch):
+    import sys
+    import types
+
+    from llmslim import rerank
+
+    loaded = []
+
+    class FakeCrossEncoder:
+        def __init__(self, name, device=None, max_length=256):
+            loaded.append(name)
+
+        def predict(self, pairs, batch_size=32, show_progress_bar=False):
+            return [float("bakery" in text) for _, text in pairs]
+
+    monkeypatch.setitem(
+        sys.modules, "sentence_transformers", types.SimpleNamespace(CrossEncoder=FakeCrossEncoder)
+    )
+    monkeypatch.setattr(rerank, "_SCORERS", {})
+    monkeypatch.setenv("LLMSLIM_RERANK_MODEL", "fake/reranker")
+    docs = [f"Document [{i + 1}](Title: Note {i + 1}) {FILLER[i % 5]}" for i in range(8)]
+    out = compress_documents(docs, query="what opened?", target_ratio=0.15, relevance="semantic")
+    assert "bakery" in "\n".join(r.compressed_text for r in out)
+    assert rerank.resolve_relevance("semantic") is rerank.resolve_relevance("semantic")
+    assert loaded == ["fake/reranker"]  # the model loads once and is shared
+    assert rerank.resolve_relevance("lexical") is None
+    assert rerank.CrossEncoderScorer()("q", []) == []

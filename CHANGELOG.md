@@ -35,6 +35,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ContextCompressor(selection=...)`: `"auto"` (default) as above,
   `"focus"` to always use query-focused selection, `"proportional"` for the
   0.7 behaviour. `CompressionResult.selection` records the path used.
+- Compound words match in either direction ("superbowl" finds "Super Bowl",
+  "gall bladder" finds "gallbladder").
+- Units are about 1/32 of the budget (between 40 and 220 tokens), so a
+  multi-passage context keeps more distinct passages.
+
+### Added
+- `relevance="semantic"` (on `compress()`, `compress_documents()` and
+  `ContextCompressor`): an optional cross-encoder reranker,
+  `cross-encoder/ms-marco-MiniLM-L-6-v2` (22M parameters, trained on MS MARCO
+  only), rescoring the 80 strongest lexical candidates. It finds answers that
+  share few words with the question. It runs on CPU, or on a GPU when one is
+  available; install with `pip install "llmslim[semantic]"`. Any callable
+  `scorer(query, texts) -> scores` can be passed instead, for example a hosted
+  reranking API. The default stays `"lexical"`: no model, no download.
+
+### Performance
+- Sentence splitting looked for NLTK's punkt data on disk on every call. It
+  now looks once per process: query-focused compression of a 2.9k-token,
+  20-document context went from 213 ms to 24 ms, and of a 115k-token chat
+  history from 2.4 s to 0.8 s.
+- Guardrail detection skips text that cannot contain a protected sentence and
+  no longer computes entity scores it does not need. The result is unchanged
+  (checked on 109,424 sentence, role and floor combinations).
 
 ### Fixed
 - Compression never returns empty text for non-empty input: if no whole unit
@@ -42,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trusted guardrails and developer `preserve_patterns` survive selection even
   inside units too large to keep whole (only the protected sentences are
   kept). Untrusted RAG, tool and assistant text still cannot earn this tier.
+- A `ContextRole` enum passed as `context_role` is recognised as system or
+  developer for guardrail protection (its `str()` form was compared before).
 
 ### Measured (Claude Haiku 5.5, `effort: low`)
 - LongMemEval-S, 90 questions, 8,000-token budget: 25.6% → 70.0%

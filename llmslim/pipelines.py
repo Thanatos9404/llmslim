@@ -178,6 +178,7 @@ def _focus_documents(
 
     from .core import _resolve_context_role
     from .focus import focus_documents
+    from .rerank import resolve_relevance
     from .tokens import count_tokens, get_active_token_counter_name
 
     if not (0.0 < target_ratio <= 1.0):
@@ -187,7 +188,10 @@ def _focus_documents(
     originals = [count_tokens(doc) for doc in documents]
     budget = max(1, round(sum(originals) * target_ratio))
     preserve_res = [re.compile(p, re.IGNORECASE) for p in options.get("preserve_patterns") or []]
-    texts = focus_documents(documents, query, budget, preserve_res=preserve_res, context_role=role)
+    scorer = resolve_relevance(options.get("relevance", "lexical"))
+    texts = focus_documents(
+        documents, query, budget, preserve_res=preserve_res, context_role=role, scorer=scorer
+    )
     elapsed = round((time.perf_counter() - started) * 1000, 2)
     return [
         CompressionResult(
@@ -199,7 +203,7 @@ def _focus_documents(
             sentences_total=0,
             sentences_kept=0,
             num_chunks=0,
-            backend="bm25",
+            backend="bm25" if scorer is None else "bm25+rerank",
             elapsed_ms=elapsed,
             token_counter_used=get_active_token_counter_name(),
             selection="focus",

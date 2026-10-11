@@ -310,6 +310,10 @@ class ContextCompressor:
             other line-structured text; ``"focus"`` always uses query-focused
             selection; ``"proportional"`` restores the v0.7 behaviour (every
             chunk keeps its share of the budget).
+        relevance: How query-focused selection scores relevance: ``"lexical"``
+            (default; BM25 with feedback, no model), ``"semantic"`` (adds a
+            small cross-encoder reranker on CPU; needs the ``semantic``
+            extra), or a callable ``scorer(query, texts) -> scores``.
 
     .. versionchanged:: 0.8.0
        Query-focused selection and line-preserving compression are the default
@@ -328,9 +332,13 @@ class ContextCompressor:
         detect_content: bool = False,
         context_role: Union[ContextRole, str] = ContextRole.GENERAL,
         selection: str = "auto",
+        relevance: Any = "lexical",
     ):
         if selection not in ("auto", "focus", "proportional"):
             raise ValueError("selection must be 'auto', 'focus' or 'proportional'")
+        from .rerank import resolve_relevance
+
+        self.scorer = resolve_relevance(relevance)
         self.backend = get_backend(embedding_backend)
         if similarity_threshold is None:
             similarity_threshold = 0.10 if self.backend.name == "tfidf" else 0.35
@@ -786,7 +794,12 @@ class ContextCompressor:
         else:
             preserve_res = [re.compile(p, re.IGNORECASE) for p in self.preserve_patterns]
             compressed_text, total, kept = focus(
-                text, query or "", budget, preserve_res=preserve_res, context_role=context_role
+                text,
+                query or "",
+                budget,
+                preserve_res=preserve_res,
+                context_role=context_role,
+                scorer=self.scorer,
             )
             label = "focus"
         elapsed_ms = (time.perf_counter() - t_start) * 1000

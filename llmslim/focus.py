@@ -20,9 +20,11 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
-from .ranking import get_sentence_priority
+from .ranking import may_reach_priority, reaches_priority
+from .rerank import Scorer
 from .tokenization import split_sentences
 from .tokens import count_tokens
 
@@ -60,6 +62,7 @@ _SUFFIXES = (
 )
 
 
+@lru_cache(maxsize=1 << 16)
 def _stem(word: str) -> str:
     if len(word) <= 3 or word[0].isdigit():
         return word
@@ -293,9 +296,40 @@ def _answer_type(query: str) -> Optional[str]:
     return None
 
 
-def rank(units: Sequence[Unit], query: str) -> List[float]:
+def _joined(words: Sequence[str]) -> List[str]:
+    """Adjacent word pairs written as one word: "super bowl" -> "superbowl", "gall bladder" -> "gallbladder"."""
+    return [
+        _stem(a + b)
+        for a, b in zip(words, words[1:])
+        if len(a) >= 3
+        and len(b) >= 3
+        and a not in _STOP
+        and b not in _STOP
+        and not (a + b).isdigit()
+    ]
+
+
+def _with_compounds(
+    query: str, query_terms: List[str], units: Sequence[Unit], unit_terms: List[List[str]]
+) -> List[str]:
+    """Match compounds in either direction: a query word the text splits in two, or a query word pair the text
+    writes as one. Matching forms are added to the unit's terms (or the query's), so BM25 sees them as one term."""
+    vocab = {t for ts in unit_terms for t in ts}
+    wanted = set(query_terms)
+    joined_query = [
+        j for j in _joined(_WORD.findall(query.lower())) if j in vocab and j not in wanted
+    ]
+    for i, u in enumerate(units):
+        extra = [j for j in _joined(_WORD.findall(u.text.lower())) if j in wanted]
+        if extra:
+            unit_terms[i] = unit_terms[i] + extra
+    return query_terms + joined_query
+
+
+def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> List[float]:
     """BM25 of the query against each unit (headers count), one round of pseudo-relevance feedback,
-    and small bonuses for numbers and word pairs shared with the query."""
+    and small bonuses for numbers and word pairs shared with the query. With a ``scorer`` (a reranking
+    model), the strongest lexical candidates are rescored by the model."""
     query_terms = terms(query)
     if not units or not query_terms:
         return [0.0] * len(units)
@@ -303,6 +337,7 @@ def rank(units: Sequence[Unit], query: str) -> List[float]:
     unit_terms = [
         terms((u.header + " " + u.header + " " + u.text) if u.header else u.text) for u in units
     ]
+    query_terms = _with_compounds(query, query_terms, units, unit_terms)
     bm25 = BM25(unit_terms)
     weights = dict.fromkeys(query_terms, 1.0)
     base = bm25.scores(weights)
@@ -350,7 +385,41 @@ def rank(units: Sequence[Unit], query: str) -> List[float]:
             pairs = set(zip(unit_t, unit_t[1:]))
             bonus += 0.08 * min(3, len(query_pairs & pairs))
         scores[i] += bonus * top
+    if scorer is not None:
+        return _rerank(units, query, scores, scorer)
     return scores
+
+
+RERANK_CANDIDATES = 80  # units a reranking model reads: the strongest lexical candidates
+RERANK_LEXICAL = 0.5  # weight of the lexical score next to the model's, both scaled to [0, 1]
+RERANK_QUERY_WORDS = 64  # a longer query is cut to its last words for the model
+
+
+def _rerank(units: Sequence[Unit], query: str, lexical: List[float], scorer: Scorer) -> List[float]:
+    """Model score plus a share of the lexical score for the top lexical candidates; the rest keep only
+    their (scaled) lexical share, so they rank below the candidates the model liked."""
+    top = max(lexical) if lexical else 0.0
+    lex = [s / top if top > 0 else 0.0 for s in lexical]
+    candidates = sorted(range(len(units)), key=lambda i: (-lexical[i], i))[:RERANK_CANDIDATES]
+    texts = [
+        units[i].text
+        if not units[i].header or units[i].text.startswith(units[i].header)
+        else units[i].header + "\n" + units[i].text
+        for i in candidates
+    ]
+    # A reranker reads the query and the unit together in a short window: a long query (a prompt with examples,
+    # a pasted passage) keeps its end, where the question usually is.
+    words = query.split()
+    if len(words) > RERANK_QUERY_WORDS:
+        query = " ".join(words[-RERANK_QUERY_WORDS:])
+    model = list(scorer(query, texts))
+    low, high = min(model), max(model)
+    span = (high - low) or 1.0
+    out = [RERANK_LEXICAL * v - 1.0 for v in lex]
+    for i, m in zip(candidates, model):
+        out[i] = (m - low) / span + RERANK_LEXICAL * lex[i]
+    floor = min(out)
+    return [v - floor for v in out]
 
 
 # ------------------------------------------------------------------ selection
@@ -472,23 +541,25 @@ def _mark_must_keep(
     """Trusted guardrails and developer preserve patterns survive selection; untrusted text never earns this tier.
     A small unit is kept whole; from a large one, only the protected sentences. Instructions (tier 3) are
     protected when the text itself is an instruction (system or developer role); elsewhere they compete on relevance."""
-    floor = 3 if str(context_role).lower() in ("system", "developer") else 4
+    role = str(getattr(context_role, "value", context_role)).lower()
+    floor = 3 if role in ("system", "developer") else 4
     for u in units:
+        if not may_reach_priority(u.text, preserve_res, role):
+            continue
         sentences = split_sentences(u.text) or [u.text]
-        protected = [
-            s
-            for s in sentences
-            if get_sentence_priority(s, preserve_res, context_role=context_role) >= floor
-        ]
+        protected = [s for s in sentences if reaches_priority(s, floor, preserve_res, role)]
         if not protected:
             continue
         u.must_keep = True
         u.must_text = u.text if u.tokens <= max(40, budget // 2) else " ... ".join(protected)
 
 
+UNIT_DIVISOR = 32  # units of about 1/32 of the budget (dev split: LongBench answer retention 161 -> 166 of 192)
+
+
 def unit_size(budget: int) -> int:
-    """Finer units for tighter budgets: about a sixteenth of the budget, between 40 and 220 tokens."""
-    return max(40, min(220, budget // 16))
+    """Finer units for tighter budgets: about a thirty-second of the budget, between 40 and 220 tokens."""
+    return max(40, min(220, budget // UNIT_DIVISOR))
 
 
 def focus(
@@ -498,13 +569,14 @@ def focus(
     *,
     preserve_res: Sequence[re.Pattern] = (),
     context_role: str = "general",
+    scorer: Optional[Scorer] = None,
 ) -> Tuple[str, int, int]:
     """Query-focused selection over one text. Returns (compressed_text, units_total, units_kept)."""
     units = segment(text, unit_size(budget))
     if not units:
         return text, 0, 0
     _mark_must_keep(units, preserve_res, context_role, budget)
-    kept = select(units, rank(units, query), budget, query)
+    kept = select(units, rank(units, query, scorer if query.strip() else None), budget, query)
     return render(units, kept), len(units), len(kept)
 
 
@@ -515,6 +587,7 @@ def focus_documents(
     *,
     preserve_res: Sequence[re.Pattern] = (),
     context_role: str = "rag",
+    scorer: Optional[Scorer] = None,
 ) -> List[str]:
     """Share one budget across documents by relevance: the best documents stay whole, irrelevant ones drop out."""
     units: List[Unit] = []
@@ -529,7 +602,7 @@ def focus_documents(
     if not units:
         return list(documents)
     _mark_must_keep(units, preserve_res, context_role, budget)
-    kept = select(units, rank(units, query), budget, query)
+    kept = select(units, rank(units, query, scorer), budget, query)
     out = []
     for d in range(len(documents)):
         mine = {i: t for i, t in kept.items() if owner[i] == d}

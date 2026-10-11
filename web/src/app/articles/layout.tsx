@@ -1,6 +1,8 @@
 import React from "react";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+// Code windows in articles (DocCodeBlock) share the docs styles.
+import "../docs/docs.css";
 
 export default function ArticlesLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - Unreleased
+
+### Changed
+- **Query-focused selection.** With a `query`, `compress()` no longer gives
+  every chunk a proportional share of the budget. It ranks the context's
+  structural units (documents, chat rounds with their session headers,
+  paragraphs, or sentence windows of long paragraphs) against the query with
+  BM25, light stemming, one round of pseudo-relevance feedback and a
+  document-level prior, keeps the best units whole in their original order,
+  and fills what is left with the best sentences of the next unit. Headers
+  such as `Document [3](Title: ...)` or `Session Date: ...` are shown once
+  above any kept unit. Everything stays local and deterministic.
+- `compress_documents()` with a query shares one budget (`target_ratio` of the
+  combined tokens) across documents by relevance: the most relevant documents
+  stay whole and irrelevant ones come back empty. Without a query it still
+  compresses each document on its own.
+- **Line-structured text** (code, logs, test output, diffs, listings) keeps its
+  line breaks: failures, tracebacks and their neighbourhood are kept first,
+  runs of near-identical lines collapse into one line and a count, a
+  contiguous tail is kept (most of the budget without a query), code keeps its
+  skeleton (imports and every signature) plus the full bodies of the
+  definitions most relevant to the query, and omitted spans are marked
+  `... [N lines omitted]`.
+- `ContextCompressor(selection=...)`: `"auto"` (default) as above,
+  `"focus"` to always use query-focused selection, `"proportional"` for the
+  0.7 behaviour. `CompressionResult.selection` records the path used.
+
+### Fixed
+- Compression never returns empty text for non-empty input: if no whole unit
+  fits, the best sentences or, at worst, a word-boundary prefix are kept.
+- Trusted guardrails and developer `preserve_patterns` survive selection even
+  inside units too large to keep whole (only the protected sentences are
+  kept). Untrusted RAG, tool and assistant text still cannot earn this tier.
+
+### Measured (Claude Haiku 5.5, `effort: low`)
+- LongMemEval-S, 90 questions, 8,000-token budget: 25.6% → 70.0%
+  (full 114k-token history: 82.2%).
+- HotpotQA distractor, 200 questions: F1 61.7 → 68.0 with 19% fewer input
+  tokens (full context: 74.9).
+- Compressing a 1.3k-token Python file: about 3.5 s → 7 ms.
+
 ## [0.7.2] - 2026-10-11
 
 ### Fixed

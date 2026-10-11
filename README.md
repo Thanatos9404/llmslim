@@ -17,7 +17,7 @@
 <br/>
 
 **The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.7.2, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+*This repository is **LLMSlim Core** (v0.8.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
@@ -54,7 +54,7 @@ print(result.compressed_text)
 print(f"{result.original_tokens} -> {result.compressed_tokens} tokens ({result.reduction_percent:.1f}% fewer)")
 ```
 
-**3. What you should see** (llmslim 0.7.2, base install):
+**3. What you should see** (llmslim 0.8.0, base install):
 
 ```text
 Hi team, I hope you are all doing well and had a good weekend. I am writing about invoice INV-2291, which charged us $480 instead of $240. We upgraded to the Pro plan on 3 September, but the old Basic plan was billed as well. Please refund the duplicate $240 charge to the card ending 4417.
@@ -79,7 +79,7 @@ If LLMSlim is useful, consider starring the repo or opening an issue with feedba
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
-| Version | 0.7.2 | 0.9.0 beta |
+| Version | 0.8.0 | 0.9.1 beta |
 | License | MIT, this repository | Proprietary, private beta |
 | Install | `pip install llmslim` | By invitation; not published to PyPI |
 | What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
@@ -577,6 +577,21 @@ asyncio.run(main())
 ## 📊 Benchmarks & Radical Transparency
 
 Many libraries make unsubstantiated claims about 90% prompt compression. At LLMSlim, we practice **Radical Benchmark Transparency**:
+
+### Real-model results: Claude Haiku 5.5, Core 0.8.0
+
+Same model and prompt for every configuration; only the context changes. Truncation gets exactly LLMSlim's token
+count. Full tables, confidence intervals, weak spots, the harness and raw per-question results:
+[benchmarks/live](benchmarks/live/README.md).
+
+| Benchmark | Full context | LLMSlim 0.8.0 | Truncate, same budget | Tokens (full → LLMSlim) |
+| :--- | :---: | :---: | :---: | :---: |
+| LongMemEval-S, 90 q (accuracy) | 82.2 | **70.0** | 14.4 | 114,006 → 7,985 |
+| HotpotQA, 200 q (F1) | 74.9 | **68.0** | 49.5 | 2,179 → 935 |
+| LongBench v1, 210 samples (macro) | 54.9 | **52.9** | 45.2 | 15,532 → 5,216 |
+| LongBench v2, 180 q (accuracy) | 60.0 | **53.3** | 48.3 | 30,493 → 8,484 |
+| NaturalQuestions 20 docs, 300 q (accuracy) | 86.3 | **66.7** | 52.0 | 2,889 → 659 |
+| SWE-bench Verified Mini, 50 issues (resolved) | 36-38 | **38** | — | 48-58k → 51k per task |
 
 > [!NOTE]
 > **The Schema-Tax Measurement**: In our v0.4.0 benchmark across 375 synthetic tool schemas in 18 catalogs written for this repository (see the [dataset card](docs/phase-2/DATASET_CARD.md)), lossless schema compression saved **0 tokens (0.00%)** when the baseline was already compact canonical JSON. We publish this result transparently: we never claim imaginary savings where none exist.

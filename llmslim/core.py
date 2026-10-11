@@ -165,6 +165,10 @@ class CompressionResult:
     # "tiktoken" (exact) or "heuristic" (~4 chars/token fallback).
     token_counter_used: str = "tiktoken"
 
+    # --- v0.8: which selection produced the text ---
+    # "focus" (query-focused units), "lines" (line-preserving), or None (v0.7 proportional selection).
+    selection: Optional[str] = None
+
     @property
     def actual_ratio(self) -> float:
         """Fraction of original tokens retained (lower = more compression)."""
@@ -301,6 +305,15 @@ class ContextCompressor:
             injected imperative language cannot hijack the force-kept tier.
             Defaults to ``ContextRole.GENERAL`` (legacy v0.3.0 behaviour).
             May be overridden per call in :meth:`compress`.
+        selection: ``"auto"`` (default) ranks whole units against the query
+            when one is given, and keeps line structure for code, logs and
+            other line-structured text; ``"focus"`` always uses query-focused
+            selection; ``"proportional"`` restores the v0.7 behaviour (every
+            chunk keeps its share of the budget).
+
+    .. versionchanged:: 0.8.0
+       Query-focused selection and line-preserving compression are the default
+       for queries and line-structured text (``selection="auto"``).
     """
 
     def __init__(
@@ -314,7 +327,10 @@ class ContextCompressor:
         mode: Optional[str] = None,
         detect_content: bool = False,
         context_role: Union[ContextRole, str] = ContextRole.GENERAL,
+        selection: str = "auto",
     ):
+        if selection not in ("auto", "focus", "proportional"):
+            raise ValueError("selection must be 'auto', 'focus' or 'proportional'")
         self.backend = get_backend(embedding_backend)
         if similarity_threshold is None:
             similarity_threshold = 0.10 if self.backend.name == "tfidf" else 0.35
@@ -326,6 +342,7 @@ class ContextCompressor:
         self.mode = mode
         self.detect_content = detect_content
         self.context_role = context_role
+        self.selection = selection
 
     def compress(
         self,
@@ -563,6 +580,20 @@ class ContextCompressor:
             if structured_result is not None:
                 return structured_result
 
+        if self.selection != "proportional":
+            focused = self._try_focused(
+                text,
+                target_ratio,
+                query,
+                context_role,
+                original_tokens,
+                profile,
+                resolved_mode,
+                t_start,
+            )
+            if focused is not None:
+                return focused
+
         paragraphs = split_paragraphs(text)
         all_sentences: List[str] = []
         para_end_indices: List[int] = []
@@ -728,6 +759,53 @@ class ContextCompressor:
             entities_found=entities_found,
             entities_kept=entities_kept,
             token_counter_used=get_active_token_counter_name(),
+        )
+
+    def _try_focused(
+        self,
+        text: str,
+        target_ratio: float,
+        query: Optional[str],
+        context_role: str,
+        original_tokens: int,
+        profile: Optional[Any],
+        resolved_mode: Optional[Any],
+        t_start: float,
+    ) -> Optional[CompressionResult]:
+        """v0.8 selection: query-focused units, or line-preserving compression for line-structured text."""
+        from .focus import focus, focus_lines, is_line_structured
+
+        has_query = bool(query and query.strip())
+        line_mode = is_line_structured(text)
+        if not (has_query or line_mode or self.selection == "focus"):
+            return None
+        budget = max(1, round(original_tokens * target_ratio))
+        if line_mode:
+            compressed_text, total, kept = focus_lines(text, budget, query if has_query else None)
+            label = "lines"
+        else:
+            preserve_res = [re.compile(p, re.IGNORECASE) for p in self.preserve_patterns]
+            compressed_text, total, kept = focus(
+                text, query or "", budget, preserve_res=preserve_res, context_role=context_role
+            )
+            label = "focus"
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        return CompressionResult(
+            original_text=text,
+            compressed_text=compressed_text,
+            original_tokens=original_tokens,
+            compressed_tokens=count_tokens(compressed_text),
+            target_ratio=target_ratio,
+            sentences_total=total,
+            sentences_kept=kept,
+            num_chunks=0,
+            backend=self.backend.name,
+            content_type=profile.content_type.value if profile else None,
+            content_confidence=profile.confidence if profile else None,
+            mode=resolved_mode.name if resolved_mode else None,
+            elapsed_ms=round(elapsed_ms, 2) if resolved_mode else None,
+            token_counter_used=get_active_token_counter_name(),
+            selection=label,
         )
 
     def _passthrough(

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.7.2"
+version = "0.8.0"
 description = "Local-first model context runtime and planning for AI agents."
 readme = "README.md"
 requires-python = ">=3.9"

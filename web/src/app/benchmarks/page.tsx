@@ -10,13 +10,13 @@ import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
   title: "Benchmarks | LLMSlim",
-  description: `LLMSlim measured with LongMemEval, LongBench v1 and v2, HotpotQA, NaturalQuestions, SWE-bench Verified and InjecAgent: scores, tokens and cost against full context, truncation and other compressors.`,
+  description: "LLMSlim on seven public benchmarks, head to head with LLMLingua-2 and LongLLMLingua at the same token budget: scores, tokens, cost, confidence intervals, weak spots and raw results.",
   path: "/benchmarks",
   markdownPath: "/benchmarks.md",
 })
 
 const stats: Stat[] = [
-  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories", source: "LongMemEval, 76.7% vs 82.2% with the whole history",
+  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories, at Haiku 5.5 list prices", source: "LongMemEval, 76.7% vs 82.2% with the whole history; 14× fewer tokens",
     meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "LLMSlim", value: 1.45, display: "$1.45" }, max: 90.72 } },
   { topic: "Long documents", value: "3", unit: "×", label: "fewer tokens on long documents, for the same score", source: "LongBench v1, 54.9 vs 54.9 with full context",
     meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
@@ -69,6 +69,7 @@ export default function BenchmarksPage() {
         </tr>)}</tbody>
       </table></div>
       <p className="bm-note">{HEAD_TO_HEAD.note}</p>
+      <p className="bm-note bm-sources">Sources and reruns: {HEAD_TO_HEAD.sources.map((source, index) => <span key={source.url}>{index > 0 && " · "}<a href={source.url} target="_blank" rel="noreferrer">{source.label}</a></span>)}</p>
     </section>
 
     <section className="bm-section" aria-labelledby="agents-title">

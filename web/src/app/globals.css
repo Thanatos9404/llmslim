@@ -750,6 +750,8 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
 .bm-h2h td.is-best, .bm-h2h th.is-best { color:var(--ink); font-weight:600; }
 .bm-h2h td.num { font-family:var(--mono); font-variant-numeric:tabular-nums; }
 .bm-note { max-width:820px; margin-top:22px; font-size:14px; line-height:1.75; color:var(--subtle); }
+.bm-sources { margin-top:10px; font-size:13px; }
+.bm-sources a { color:var(--ink); text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); }
 
 .bm-section { padding-block:clamp(72px,9vw,120px) 0; }
 .bm-agent { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:clamp(28px,5vw,72px); padding-block:36px; border-top:1px solid var(--line); }
@@ -782,6 +784,9 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
   .bm-band { padding-block:48px 16px; }
   .bm-rows > div { grid-template-columns:1fr; gap:4px; }
   .bm-offline-row { grid-template-columns:minmax(0,1fr) 20px; }
+  /* These rows have no icon column, so the shared mobile placement would squeeze the tagline into the arrow column. */
+  .bm-offline-row .int-tagline { grid-column:1; }
+  .bm-offline-row .int-arrow { grid-column:2; }
 }
 .platform-evidence .ledger { margin-top:48px; }
 .platform-evidence-note { max-width:760px; margin-top:40px; font-size:14px; line-height:1.75; color:var(--subtle); }

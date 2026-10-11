@@ -13,9 +13,9 @@ import { Race } from "./Race"
 import { Squeeze } from "./Squeeze"
 
 const FIGURES = [
-  { value: "62", unit: "×", text: "cheaper long-chat memory, within noise of the whole history" },
+  { value: "62", unit: "×", text: "cheaper long-chat memory at Haiku 5.5 list prices (14× fewer tokens), within noise of the whole history" },
   { value: "3", unit: "×", text: "fewer tokens on long documents, for the same score" },
-  { value: "100", unit: "×", text: "less compute than LongLLMLingua, and level with it on retrieval" },
+  { value: "100", unit: "×", text: "faster per question than LongLLMLingua, and level with it on retrieval" },
 ]
 
 function Hero() {
@@ -31,7 +31,7 @@ function Hero() {
     <motion.div className="rs-hero-copy" style={reduced ? undefined : { y: copyY, opacity: fade }}>
       <motion.p className="rs-kicker" {...rise(0)}>Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></motion.p>
       <motion.h1 id="results-title" {...rise(0.1)}>Cut the context.<br /><em>Keep the answers.</em></motion.h1>
-      <motion.p className="rs-hero-lede" {...rise(0.2)}>Seven public benchmarks, run against full context, plain truncation and the best-known open compressors. Only the context changed between runs.</motion.p>
+      <motion.p className="rs-hero-lede" {...rise(0.2)}>Seven public benchmarks, run against full context and plain truncation, plus a head-to-head with the best-known open compressors on NaturalQuestions. Only the context changed between runs.</motion.p>
       <motion.dl className="rs-figures" {...rise(0.32)}>
         {FIGURES.map((figure) => <div key={figure.text}><dt><span>{figure.value}</span><em>{figure.unit}</em></dt><dd>{figure.text}</dd></div>)}
       </motion.dl>
@@ -79,7 +79,7 @@ function Close() {
       <a className="button button-outline" href={`${siteConfig.github}/tree/main/benchmarks/live`} target="_blank" rel="noreferrer">Full report <ArrowUpRight size={16} /></a>
     </div>
     <div id="fine-print" className="rs-fine">
-      <p>* Every context was read by {READER} with the same prompt; only the context changed. Confidence intervals are paired bootstrap 95% over the same questions. Times are to compress one question on one machine.</p>
+      <p>* Every context was read by {READER} with the same prompt; only the context changed. Confidence intervals are paired bootstrap 95% over the same questions. Times are to compress one question on one machine. The reranker is optional: <code>pip install &quot;llmslim[semantic]&quot;</code>, then <code>relevance=&quot;semantic&quot;</code>.</p>
       <p>{STILL_AHEAD} <Link href="/benchmarks">Every table and method</Link>.</p>
     </div>
   </section>

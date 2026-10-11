@@ -4,7 +4,7 @@ import { DocsHero } from "@/components/docs/DocsHero"
 import { constructMetadata } from "@/lib/seo"
 import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs"
 
-export const metadata = constructMetadata({ title: "Documentation | LLMSlim Prompt & Context Compression", description: "Released developer documentation for LLMSlim.", path: "/docs", markdownPath: "/docs.md" })
+export const metadata = constructMetadata({ title: "Documentation | LLMSlim Prompt & Context Compression", description: "Install LLMSlim with pip and compress prompts, chat history, RAG passages and tool output in Python: getting started, the optional reranker, ContextRole, pipelines and the context planner.", path: "/docs", markdownPath: "/docs.md" })
 
 const PATHS = [
   { slug: "getting-started", step: "Start here", title: "Your first compression", body: "Install, compress a long context, and focus it on the question your agent is answering." },

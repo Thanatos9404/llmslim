@@ -34,8 +34,8 @@ Several ideas were dropped because dev did not support them:
 - per-group diversity, which helped retrieval but cost chat memory 6 points;
 - passage titles in headers.
 
-After LongLLMLingua was measured, two more ideas were tested with the reader on 300 NQ dev questions. The
-reranker arm alone scored 83.0 (full context 88.7), and neither idea helped, so neither ships:
+After LongLLMLingua was measured, two more ideas were tested with the reader on 300 NQ dev cases (100 questions ×
+3 gold positions). The reranker arm alone scored 83.0 (full context 88.7), and neither idea helped, so neither ships:
 
 | Idea | Dev accuracy | Change |
 |---|---:|---:|
@@ -62,7 +62,9 @@ Histories of about 50 sessions (115k tokens). Official judge prompts, judged by 
 | LLMSlim 0.7.2 | 25.6 | | 10,482 | 1.86 |
 | Most recent sessions that fit | 14.4 | 14.4 | 6,693 | 1.23 |
 
-With the reranker, the difference from full history is within noise on both samples, at 1/62 of the cost:
+With the reranker, the difference from full history is within noise on both samples, at 1/62 of the cost at Haiku 5.5
+list prices. Every full-history prompt is over 100k tokens and bills at the long-prompt rate; the token reduction is
+14×:
 
 - **test_a:** −5.6 points (95% CI −15.6 to +4.4).
 - **test_b:** +4.4 points (95% CI −6.7 to +15.6).
@@ -91,7 +93,7 @@ On the dev split (320 questions, no model needed), the reranker keeps more of th
 
 100 questions × 3 gold positions (1st, 10th, 20th). Metric: a gold answer appears in the response. Budget 25%.
 
-| Configuration | test_a (300) | gold 1st | 10th | 20th | test_b (300, fresh) | Tokens |
+| Configuration | test_a (300 cases) | gold 1st | 10th | 20th | test_b (300 cases, fresh) | Tokens |
 |---|---:|---:|---:|---:|---:|---:|
 | Full context | 86.3 | 88.0 | 87.0 | 84.0 | 88.0 | 2,889 |
 | **LLMSlim 0.8 + reranker** | **75.0** | 74.0 | 75.0 | 76.0 | **75.7** | 668 |
@@ -99,29 +101,38 @@ On the dev split (320 questions, no model needed), the reranker keeps more of th
 | LLMSlim 0.7.2 | 62.3 | 63.0 | 58.0 | 66.0 | | 727 |
 | Passages in retrieval order, same budget | 52.0 | 95.0 | 32.0 | 29.0 | 48.3 | 669 |
 
-**Head to head with other compressors.** These runs use every second question of each split (150 each), with the
-same reader and the same budget. test_b was run once, after the code was frozen:
+**Head to head with other compressors.** These runs use every second case of each split: 150 cases per split, which
+works out to 50 questions × 3 gold positions, so 300 cases from 100 questions in all. Same reader and same budget.
+test_b was run once, after the code was frozen:
 
-| Compressor | Model it runs | test_a (150) | test_b (150) | All 300 | Tokens | Time per question |
+| Compressor | Model it runs | test_a (150 cases) | test_b (150 cases) | All 300 cases | Tokens | Time per question |
 |---|---|---:|---:|---:|---:|---|
 | Full context | | 87.3 | 90.7 | 89.0 | 2,889 | |
-| **LLMSlim 0.8 + reranker** | 22M cross-encoder | 74.0 | **83.3** | **78.7** | 668 | 0.1 s GPU (about 0.3 s CPU) |
-| LongLLMLingua (paper's NQ settings) | LLaMA-2-7B-chat, 4-bit | **80.0** | 76.0 | 78.0 | 630 | 9.5 s GPU |
-| LLMLingua-2, same token budget | XLM-RoBERTa-large | 64.7 | 73.3 | 69.0 | 680 | 2.9 s GPU (about 43 s CPU) |
-| LLMSlim 0.8, lexical | none | 63.3 | 74.0 | 68.7 | 658 | 23 ms CPU |
+| **LLMSlim 0.8 + reranker** | 22M cross-encoder | 74.0 | **83.3** | **78.7** | 668 | 0.1 s GPU |
+| LongLLMLingua (paper's NQ settings) | LLaMA-2-7B-chat, 4-bit | **80.0** | 76.0 | 78.0 | 630 | 9.3 s GPU |
+| LLMLingua-2, same token budget | XLM-RoBERTa-large | 64.7 | 73.3 | 69.0 | 680 | 2.3 s GPU (about 43 s CPU) |
+| LLMSlim 0.8, lexical | none | 63.3 | 74.0 | 68.7 | 658 | 25 ms CPU |
 | Passages in order | none | 49.3 | 47.3 | 48.3 | 627 | |
+
+Tokens are means and times are medians of `build_ms` over the 300 cases (the first call of each run includes model
+loading). LLMLingua-2's CPU time is the mean of the `rate=0.25` CPU run on test_a.
 
 Paired differences (bootstrap 95% intervals):
 
-| Comparison | test_a | test_b | All 300 |
+| Comparison | test_a | test_b | All 300 cases |
 |---|---:|---:|---:|
 | LLMSlim + reranker vs LongLLMLingua | −6.0 (−14.7, +2.0) | +7.3 (+0.7, +14.7) | +0.7 (−4.7, +6.0) |
 | LLMSlim + reranker vs LLMLingua-2 | +9.3 (+0.7, +18.0) | +10.0 (+1.3, +19.3) | +9.7 (+3.7, +15.7) |
 | LLMSlim lexical vs LLMLingua-2 | −1.3 (−8.7, +6.0) | +0.7 (−9.3, +10.7) | −0.3 (−6.7, +6.0) |
 
-LongLLMLingua won test_a by 6 points and LLMSlim won test_b by 7.3. Over all 300 questions the two are level, and
-LongLLMLingua runs a 7B model, about 100 times the compute of LLMSlim's reranker. On test_a the gap came from reading
-rather than retention: LLMSlim's output still contained a gold answer more often (79.3% of questions against 75.3%),
+These intervals resample cases. The three gold positions of one question are correlated, so intervals that resample
+whole questions are wider: over all 300 cases, reranker vs LLMLingua-2 becomes about 0.0 to +19.3, and reranker vs
+LongLLMLingua about −8 to +9.
+
+LongLLMLingua won test_a by 6 points and LLMSlim won test_b by 7.3. Over all 300 cases the two are level, and
+LLMSlim with the reranker is about 100 times faster per question (median wall-clock time to compress: 0.09 s against
+9.3 s on our machine); LongLLMLingua runs a 7B model. On test_a the gap came from reading
+rather than retention: LLMSlim's output still contained a gold answer more often (79.3% of cases against 75.3%),
 but when the answer was present the reader got it right 89.9% of the time with LLMSlim's fragments and 95.6% with
 LongLLMLingua's reordered, more complete passages. Two ideas aimed at that gap were tested on dev questions and
 dropped (see "How the numbers were kept honest"). LLMSlim with the reranker is ahead of LLMLingua-2 on both splits;
@@ -130,11 +141,12 @@ without any model it is level with LLMLingua-2.
 Notes on the competitors:
 - **LLMLingua-2** was asked for `rate=0.25` first. It kept only 16% of the tokens (469) and scored 64.7. Held to the
   same token count (`target_token`), it scored the same 64.7.
-- **LongLLMLingua** uses LLaMA-2-7B-chat quantised to 4-bit (NF4) so it fits a 6 GB GPU. The paper ran it in fp16.
+- **LongLLMLingua** uses LLaMA-2-7B-chat quantised to 4-bit (NF4) so it fits a 6 GB GPU. The paper does not state
+  its precision.
 
-On these 150 questions, LLMSlim without the reranker scores 63.3 against 68.0 for the pre-release 0.8. On the 75
-questions where both builds sent an identical prompt, Haiku's answers still differed 5 times. Over all 300
-questions the two builds score 65.7 and 66.7.
+On these 150 cases, LLMSlim without the reranker scores 63.3 against 68.0 for the pre-release 0.8. On the 75
+cases where both builds sent an identical prompt, Haiku's answers still differed 5 times. Over all 300
+cases the two builds score 65.7 and 66.7.
 
 ### HotpotQA (distractor): multi-hop retrieval QA
 

@@ -162,6 +162,9 @@
 .rs-fine p { margin:0; }
 .rs-fine p + p { margin-top:8px; }
 .rs-fine a { color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.rs-fine code { font-family:var(--mono); font-size:.95em; color:var(--ink); }
+.rs-sources { margin-top:10px; font-size:12.5px; }
+.rs-sources a { color:var(--ink); text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); }
 
 @media (max-width:960px) {
   .rs-squeeze-pin { grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); align-content:center; gap:18px; padding-top:86px; }

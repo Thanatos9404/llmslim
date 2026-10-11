@@ -103,7 +103,7 @@ export function SiteHeader() {
         <button ref={menuButton} className="island-menu" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
           <span className="island-menu-lines" aria-hidden="true"><i /><i /></span>
         </button>
-        <TrackedLink prefetch={false} className="island-cta" href="/playground" event="studio_clicked" properties={{ location: "header" }}><span>Try Studio</span><ArrowRight size={14} /></TrackedLink>
+        <TrackedLink prefetch={false} className="island-cta" href="/playground" event="studio_clicked" properties={{ location: "header" }} aria-label="Try Studio"><span>Try Studio</span><ArrowRight size={14} /></TrackedLink>
       </motion.div>
     </motion.div>
 

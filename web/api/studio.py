@@ -23,7 +23,11 @@ from typing import Any
 def _add_repository_package_to_path() -> None:
     """Prefer the sibling source tree in local runs; production installs the package."""
 
-    for candidate in (Path.cwd(), Path(__file__).resolve().parents[1], Path(__file__).resolve().parents[2]):
+    for candidate in (
+        Path.cwd(),
+        Path(__file__).resolve().parents[1],
+        Path(__file__).resolve().parents[2],
+    ):
         if (candidate / "llmslim" / "__init__.py").is_file():
             root = str(candidate)
             if root not in sys.path:
@@ -70,7 +74,9 @@ def _bad(code: str, message: str) -> RequestProblem:
 
 def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]:
     if not content_type or "application/json" not in content_type.lower():
-        raise RequestProblem(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type", "Send JSON.")
+        raise RequestProblem(
+            HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type", "Send JSON."
+        )
     try:
         payload = json.loads(raw_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -126,7 +132,11 @@ def run(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(question, str) or len(question) > MAX_QUESTION_CHARS:
         raise _bad("invalid_question", "The question must be text of at most 500 characters.")
     keep = payload.get("keep", 0.25)
-    if isinstance(keep, bool) or not isinstance(keep, (int, float)) or not MIN_KEEP <= float(keep) <= MAX_KEEP:
+    if (
+        isinstance(keep, bool)
+        or not isinstance(keep, (int, float))
+        or not MIN_KEEP <= float(keep) <= MAX_KEEP
+    ):
         raise _bad("invalid_keep", "keep must be between 0.10 and 0.60.")
     baseline = payload.get("baseline", "head")
     if baseline not in BASELINES:
@@ -189,17 +199,27 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         forwarded = self.headers.get("x-forwarded-for", "")
         if not allow_request(forwarded.split(",")[0].strip() or "anonymous"):
-            self._error(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "Please wait a moment before running the Studio again.")
+            self._error(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "rate_limited",
+                "Please wait a moment before running the Studio again.",
+            )
             return
         try:
             length = int(self.headers.get("content-length", ""))
         except ValueError:
             length = -1
         if length < 0:
-            self._error(HTTPStatus.BAD_REQUEST, "invalid_content_length", "Content-Length must be valid.")
+            self._error(
+                HTTPStatus.BAD_REQUEST, "invalid_content_length", "Content-Length must be valid."
+            )
             return
         if length > MAX_BODY_BYTES:
-            self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "body_too_large", "The text is longer than the Studio allows.")
+            self._error(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                "body_too_large",
+                "The text is longer than the Studio allows.",
+            )
             return
         try:
             payload = parse_json_body(self.rfile.read(length), self.headers.get("content-type"))
@@ -207,7 +227,11 @@ class handler(BaseHTTPRequestHandler):
         except RequestProblem as problem:
             self._error(problem.status, problem.code, problem.message)
         except Exception:
-            self._error(HTTPStatus.INTERNAL_SERVER_ERROR, "compression_failed", "Compression could not be completed. Please retry.")
+            self._error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "compression_failed",
+                "Compression could not be completed. Please retry.",
+            )
 
     def do_GET(self) -> None:  # noqa: N802
         self._error(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "Use POST.")

@@ -25,7 +25,9 @@ FILLER = [
 ]
 HISTORY = "\n".join(
     [f"Session {i + 1}\n{FILLER[i % len(FILLER)]}" for i in range(12)]
-    + ["Session 13\nUser: I moved to Pune. Ship any new card to Koregaon Park, Pune. Agent: Updated."]
+    + [
+        "Session 13\nUser: I moved to Pune. Ship any new card to Koregaon Park, Pune. Agent: Updated."
+    ]
     + [f"Session {i + 14}\n{FILLER[(i + 1) % len(FILLER)]}" for i in range(12)]
 )
 
@@ -46,7 +48,14 @@ def test_cut_to_keeps_the_head_or_the_tail_within_budget() -> None:
 
 
 def test_run_compresses_around_the_question() -> None:
-    data = studio.run({"text": HISTORY, "question": "Where should the new card be shipped?", "keep": 0.25, "baseline": "tail"})
+    data = studio.run(
+        {
+            "text": HISTORY,
+            "question": "Where should the new card be shipped?",
+            "keep": 0.25,
+            "baseline": "tail",
+        }
+    )
     assert data["kept_tokens"] < data["original_tokens"]
     assert "Koregaon Park" in data["compressed_text"]
     assert "".join(piece for piece, _ in data["segments"]) == HISTORY
@@ -88,8 +97,12 @@ def test_handler_round_trip() -> None:
     thread.start()
     try:
         connection = HTTPConnection("127.0.0.1", server.server_address[1], timeout=30)
-        body = json.dumps({"text": HISTORY, "question": "Where should the new card be shipped?", "keep": 0.3})
-        connection.request("POST", "/api/studio", body=body, headers={"content-type": "application/json"})
+        body = json.dumps(
+            {"text": HISTORY, "question": "Where should the new card be shipped?", "keep": 0.3}
+        )
+        connection.request(
+            "POST", "/api/studio", body=body, headers={"content-type": "application/json"}
+        )
         response = connection.getresponse()
         assert response.status == 200
         assert response.getheader("Cache-Control") == "no-store"

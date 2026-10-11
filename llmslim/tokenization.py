@@ -11,7 +11,7 @@ CJK ideographic sentence boundaries are still handled.
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 # Matches fenced code blocks so they are never split on sentence boundaries.
 _CODE_BLOCK_PATTERN = re.compile(r"```.*?```", re.DOTALL)
@@ -164,14 +164,29 @@ def _split_cjk_boundaries(sentences: List[str]) -> List[str]:
     return out
 
 
+_NLTK_SPLIT: Optional[Callable[[str], List[str]]] = None
+_NLTK_CHECKED = False
+
+
 def _try_nltk_split(text: str) -> Optional[List[str]]:
+    # Finding punkt searches every nltk data path on disk; done once per call it cost most of the compression
+    # time, so it now happens once per process.
+    global _NLTK_SPLIT, _NLTK_CHECKED
+    if not _NLTK_CHECKED:
+        _NLTK_CHECKED = True
+        try:
+            import nltk
+
+            nltk.data.find("tokenizers/punkt")
+            from nltk.tokenize import sent_tokenize
+
+            _NLTK_SPLIT = sent_tokenize
+        except Exception:
+            _NLTK_SPLIT = None
+    if _NLTK_SPLIT is None:
+        return None
     try:
-        import nltk
-
-        nltk.data.find("tokenizers/punkt")
-        from nltk.tokenize import sent_tokenize
-
-        return sent_tokenize(text)
+        return _NLTK_SPLIT(text)
     except Exception:
         return None
 

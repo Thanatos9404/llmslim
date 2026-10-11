@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmslim"
-version = "0.7.2"
+version = "0.8.0"
 description = "Local-first model context runtime and planning for AI agents."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -138,6 +138,10 @@ ignore = [
     "W291", # trailing whitespace in templates
 ]
 
+
+[tool.ruff.lint.per-file-ignores]
+# Research scripts for the real-model benchmarks: one-letter loop names, inline lambdas called on the spot.
+"benchmarks/live/*" = ["E741", "E731", "B023"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["llmslim", "benchmarks"]

@@ -263,6 +263,45 @@ def get_sentence_priority(
     return 1  # NORMAL (prose)
 
 
+# Whole-text screen for the protected tiers: the safety and role patterns without their line anchors, so a
+# match in any sentence is also a match here.
+_PROTECTED_HINT_RE = re.compile(
+    "|".join(p.lstrip("^") for p in _SAFETY_CRITICAL_PATTERNS + _HIGH_PRIORITY_PATTERNS),
+    re.IGNORECASE,
+)
+
+
+def reaches_priority(
+    sentence: str,
+    floor: int,
+    preserve_res: Optional[Sequence[re.Pattern]] = None,
+    context_role: str = "general",
+) -> bool:
+    """``get_sentence_priority(sentence, ...) >= floor`` for ``floor >= 3``, without the entity scoring that
+    only separates the lower tiers."""
+    role = _normalize_role(context_role)
+    if _is_untrusted_role(role):
+        return False
+    if preserve_res and any(p.search(sentence) for p in preserve_res):
+        return True
+    if role in _SEMI_TRUSTED_ROLES:
+        return floor <= 3 and bool(
+            _HIGH_PRIORITY_RE.search(sentence) or _SAFETY_CRITICAL_RE.search(sentence)
+        )
+    if _SAFETY_CRITICAL_RE.search(sentence):
+        return True
+    return floor <= 3 and bool(_HIGH_PRIORITY_RE.search(sentence))
+
+
+def may_reach_priority(
+    text: str, preserve_res: Optional[Sequence[re.Pattern]] = None, context_role: str = "general"
+) -> bool:
+    """False only when no sentence of ``text`` can reach the protected tiers (3 and 4)."""
+    if _is_untrusted_role(_normalize_role(context_role)):
+        return False
+    return bool(preserve_res) or bool(_PROTECTED_HINT_RE.search(text))
+
+
 _CODE_PATTERN = re.compile(r"```|`[^`\n]+`")
 
 

@@ -17,7 +17,7 @@
 <br/>
 
 **The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.7.2, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+*This repository is **LLMSlim Core** (v0.8.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
@@ -54,7 +54,7 @@ print(result.compressed_text)
 print(f"{result.original_tokens} -> {result.compressed_tokens} tokens ({result.reduction_percent:.1f}% fewer)")
 ```
 
-**3. What you should see** (llmslim 0.7.2, base install):
+**3. What you should see** (llmslim 0.8.0, base install):
 
 ```text
 Hi team, I hope you are all doing well and had a good weekend. I am writing about invoice INV-2291, which charged us $480 instead of $240. We upgraded to the Pro plan on 3 September, but the old Basic plan was billed as well. Please refund the duplicate $240 charge to the card ending 4417.
@@ -79,7 +79,7 @@ If LLMSlim is useful, consider starring the repo or opening an issue with feedba
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
-| Version | 0.7.2 | 0.9.0 beta |
+| Version | 0.8.0 | 0.9.1 beta |
 | License | MIT, this repository | Proprietary, private beta |
 | Install | `pip install llmslim` | By invitation; not published to PyPI |
 | What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
@@ -241,27 +241,17 @@ Modern LLM systems suffer from the **Context Window Dilemma**:
 
 ## 🖥️ Live Studio Playground ([www.llmslim.app](https://www.llmslim.app))
 
-Experience LLMSlim in the Next.js Studio. Offline mode plans context without a
-model call. The Studio also offers a protected, quota-limited **Sarvam AI —
-Hosted Demo** and request-only **Sarvam BYOK**. The project key remains
-server-only; a BYOK credential is held only in page memory for one same-origin
-request and is never persisted. The browser receives only the answer plus
-estimated/provider-reported usage:
+Paste a long chat, a stack of search results or a CI log, ask a question, and watch LLMSlim keep what
+answers it. The Studio shows the tokens and cost saved, whether the answer survived, and what plain truncation to
+the same size would have kept instead.
 
-<div align="center">
-  <img src="assets/screenshot-studio.png" alt="LLMSlim Studio Playground" width="100%" style="border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
-</div>
+- **Ready-made scenarios:** a six-month support chat, help-centre search results, and a CI log with one failure,
+  each with a question whose answer is known.
+- **Your own text:** paste up to about 16,000 tokens and choose how much to keep.
+- **In place:** kept lines are highlighted inside the original, next to the exact text the model would receive.
+- **No model call:** the Studio runs Core on the server and calls no provider. Nothing you paste is stored.
 
-- **Offline planner:** inspect budget use, decisions, provenance, and final context without consuming credits.
-- **Hosted Sarvam where enabled:** run the plan through the official SDK after distributed quota and spend checks.
-- **Request-only Sarvam BYOK:** use your own provider account without storing the credential in cookies, browser storage, logs, telemetry, or responses.
-- **Honest telemetry:** distinguish pre-call `ESTIMATED` tokens/cost from `PROVIDER_REPORTED` usage.
-- **Execution boundary:** LLMSlim still never executes tools or converts ranking into authorization.
-
-Hosted access is intentionally limited and may be disabled at any time. See
-[Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md),
-[Sarvam integration](docs/integrations/SARVAM.md), and the
-[security policy](SECURITY.md).
+See [Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md) and the [security policy](SECURITY.md).
 
 👉 **[Open Interactive Studio](https://www.llmslim.app)**
 
@@ -382,6 +372,17 @@ context = "\n\n".join(r.compressed_text for r in results)
 print(context)
 print(f"Saved {sum(r.tokens_saved for r in results)} tokens across {len(results)} documents")
 ```
+
+With a query, the documents share one budget and it goes where the query points. Relevance is lexical by default
+(BM25 with feedback: no model, deterministic, a few milliseconds). For RAG and long chat memory, where the answer
+often shares few words with the question, add the optional reranker:
+
+```python
+# pip install "llmslim[semantic]"   (sentence-transformers; uses a GPU when there is one)
+results = compress_documents(documents, query=question, target_ratio=0.25, relevance="semantic")
+```
+
+`relevance` also accepts any callable `scorer(query, texts) -> scores`, such as a hosted reranking API.
 
 > [!NOTE]
 > `compress_documents` treats documents as untrusted (`ContextRole.RAG`) by default,
@@ -577,6 +578,28 @@ asyncio.run(main())
 ## 📊 Benchmarks & Radical Transparency
 
 Many libraries make unsubstantiated claims about 90% prompt compression. At LLMSlim, we practice **Radical Benchmark Transparency**:
+
+### Real-model results: Claude Haiku 5.5, Core 0.8.0
+
+Same model and prompt for every configuration; only the context changes. Truncation gets exactly LLMSlim's token
+count. Tuning used separate development questions only, and every suite was rerun once on a fresh sample after the
+code was frozen. Full tables, confidence intervals, weak spots, head-to-head runs of LLMLingua-2 and LongLLMLingua,
+the harness and raw per-question results: [benchmarks/live](benchmarks/live/README.md).
+
+| Benchmark | Full context | LLMSlim 0.8 + reranker | LLMSlim 0.8 (no model) | Truncate, same budget | Tokens (full → LLMSlim) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| LongMemEval-S, 90 q (accuracy) | 82.2 | **76.7** | 68.9 | 14.4 | 114,006 → 7,985 |
+| … fresh 90 q | 72.2 | **76.7** | 67.8 | 14.4 | |
+| NaturalQuestions 20 docs, 300 q (accuracy) | 86.3 | **75.0** | 65.7 | 52.0 | 2,889 → 668 |
+| … fresh 300 q | 88.0 | **75.7** | 67.3 | 48.3 | |
+| HotpotQA, 200 q (F1) | 74.9 | **69.4** | 67.5 | 49.5 | 2,179 → 939 |
+| LongBench v1, 210 samples (macro) | 54.9 | 54.2 | **54.9** | 45.2 | 15,532 → 5,232 |
+| … fresh 210 samples | 55.1 | **55.4** | 55.0 | 46.8 | |
+| LongBench v2, 180 q (accuracy) | 60.0 | **55.6** | 53.9 | 48.3 | 30,493 → 8,469 |
+| SWE-bench Verified Mini, 50 issues (resolved) | 36-38 | not run | **38** | not run | 48-58k → 51k per task |
+
+The reranker is optional (`relevance="semantic"`, a 22M-parameter cross-encoder from the `semantic` extra); without
+it LLMSlim runs no model at all.
 
 > [!NOTE]
 > **The Schema-Tax Measurement**: In our v0.4.0 benchmark across 375 synthetic tool schemas in 18 catalogs written for this repository (see the [dataset card](docs/phase-2/DATASET_CARD.md)), lossless schema compression saved **0 tokens (0.00%)** when the baseline was already compact canonical JSON. We publish this result transparently: we never claim imaginary savings where none exist.

@@ -5,6 +5,19 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.8.1",
+    date: "12 Oct 2026",
+    theme: "Drop it into the framework you already use.",
+    summary: "Adapters that run LLMSlim's compress_documents inside LangChain, LlamaIndex and Haystack, where you would otherwise use LLMLinguaCompressor or LongLLMLinguaPostprocessor. No change to how compression itself behaves.",
+    metrics: ["LangChain, LlamaIndex, Haystack", "Order, ids, scores and metadata kept", "Tested on old and current framework versions"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.8.1",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "LangChain compressor", body: "LLMSlimCompressor is a BaseDocumentCompressor for ContextualCompressionRetriever. Install llmslim[langchain]." },
+      { label: "Added", icon: Wrench, title: "LlamaIndex postprocessor and Haystack component", body: "LLMSlimPostprocessor is a BaseNodePostprocessor (Python 3.10+, llmslim[llamaindex]); LLMSlimDocumentCompressor is a Haystack component with run(documents, query) (llmslim[haystack])." },
+      { label: "Boundary", icon: ShieldCheck, title: "Same rules as the core", body: "Retrieved text stays untrusted; documents that compress to nothing are dropped; token counts are recorded in metadata and kept out of the prompt for LlamaIndex." },
+    ],
+  },
+  {
     version: "v0.8.0",
     date: "Oct 2026",
     theme: "Keep what the question needs. Drop the rest.",

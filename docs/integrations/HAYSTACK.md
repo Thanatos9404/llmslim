@@ -6,7 +6,7 @@ Haystack 3. Put it between a retriever and the prompt builder: it takes
 locally with no model and no API call.
 
 ```bash
-pip install "llmslim[haystack]"   # haystack-ai; needs llmslim newer than 0.8.0
+pip install "llmslim[haystack]"   # haystack-ai; needs llmslim 0.8.1 or newer
 ```
 
 ## Example

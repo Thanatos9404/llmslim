@@ -6,7 +6,7 @@ would use `LLMLinguaCompressor`: as the `base_compressor` of a
 `DocumentCompressorPipeline`. It runs locally with no model and no API call.
 
 ```bash
-pip install "llmslim[langchain]"   # langchain-core; needs llmslim newer than 0.8.0
+pip install "llmslim[langchain]"   # langchain-core; needs llmslim 0.8.1 or newer
 pip install langchain-classic      # for ContextualCompressionRetriever (LangChain 1.x)
 ```
 

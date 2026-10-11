@@ -111,16 +111,18 @@ def compress_documents(
 ) -> List[CompressionResult]:
     """Compress a list of retrieved documents/chunks for a RAG pipeline.
 
-    When ``query`` is provided, sentences more relevant to the query are
-    favored during selection -- this lets you compress retrieved context
-    aggressively while keeping the parts most useful for answering the
-    user's question.
+    When ``query`` is provided, the documents share one budget
+    (``target_ratio`` of their combined tokens) and it goes where the query
+    points: the most relevant documents stay whole and irrelevant ones are
+    left out (their ``compressed_text`` is empty). Without a query, each
+    document is compressed to ``target_ratio`` on its own.
 
     Args:
         documents: Retrieved document texts/chunks.
         query: The user's query or search query, for relevance-aware
             ranking.
-        target_ratio: Fraction of tokens to retain per document.
+        target_ratio: Fraction of tokens to retain (across all documents
+            when ``query`` is given, per document otherwise).
         context_role: Provenance/trust role for the documents.  Defaults to
             :attr:`ContextRole.RAG` (untrusted) so that imperative wording
             inside retrieved passages cannot be force-kept as a
@@ -139,7 +141,18 @@ def compress_documents(
         >>> results = compress_documents(retrieved_chunks, query=user_query, target_ratio=0.4)
         >>> context = "\\n\\n".join(r.compressed_text for r in results)
         >>> total_saved = sum(r.tokens_saved for r in results)
+
+    .. versionchanged:: 0.8.0
+       With a query, the budget is shared across documents by relevance
+       (pass ``selection="proportional"`` for the v0.7 per-document split).
     """
+    if (
+        query
+        and query.strip()
+        and len(documents) > 1
+        and kwargs.get("selection", "auto") != "proportional"
+    ):
+        return _focus_documents(documents, query, target_ratio, context_role, kwargs)
     return [
         compress(
             doc,
@@ -149,4 +162,51 @@ def compress_documents(
             **kwargs,
         )
         for doc in documents
+    ]
+
+
+def _focus_documents(
+    documents: Sequence[str],
+    query: str,
+    target_ratio: float,
+    context_role: Union[ContextRole, str],
+    options: Dict,
+) -> List[CompressionResult]:
+    """One relevance-ranked budget across all documents (v0.8)."""
+    import re
+    import time
+
+    from .core import _resolve_context_role
+    from .focus import focus_documents
+    from .rerank import resolve_relevance
+    from .tokens import count_tokens, get_active_token_counter_name
+
+    if not (0.0 < target_ratio <= 1.0):
+        raise ValueError("target_ratio must be in the range (0, 1]")
+    started = time.perf_counter()
+    role = _resolve_context_role(context_role, ContextRole.GENERAL, options.get("mode"))
+    originals = [count_tokens(doc) for doc in documents]
+    budget = max(1, round(sum(originals) * target_ratio))
+    preserve_res = [re.compile(p, re.IGNORECASE) for p in options.get("preserve_patterns") or []]
+    scorer = resolve_relevance(options.get("relevance", "lexical"))
+    texts = focus_documents(
+        documents, query, budget, preserve_res=preserve_res, context_role=role, scorer=scorer
+    )
+    elapsed = round((time.perf_counter() - started) * 1000, 2)
+    return [
+        CompressionResult(
+            original_text=doc,
+            compressed_text=text,
+            original_tokens=tokens,
+            compressed_tokens=count_tokens(text) if text else 0,
+            target_ratio=target_ratio,
+            sentences_total=0,
+            sentences_kept=0,
+            num_chunks=0,
+            backend="bm25" if scorer is None else "bm25+rerank",
+            elapsed_ms=elapsed,
+            token_counter_used=get_active_token_counter_name(),
+            selection="focus",
+        )
+        for doc, tokens, text in zip(documents, originals, texts)
     ]

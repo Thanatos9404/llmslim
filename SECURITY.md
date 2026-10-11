@@ -8,6 +8,7 @@ Only the latest release receives security updates.
 
 | Version | Supported |
 | --- | --- |
+| 0.8.x | :white_check_mark: |
 | 0.7.x | :white_check_mark: |
 | < 0.7.0 | :x: |
 

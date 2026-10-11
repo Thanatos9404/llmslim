@@ -9,6 +9,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-12
+
+### Changed
+- **Query-focused selection.** With a `query`, `compress()` no longer gives
+  every chunk a proportional share of the budget. It ranks the context's
+  structural units (documents, chat rounds with their session headers,
+  paragraphs, or sentence windows of long paragraphs) against the query with
+  BM25, light stemming, one round of pseudo-relevance feedback and a
+  document-level prior, keeps the best units whole in their original order,
+  and fills what is left with the best sentences of the next unit. Headers
+  such as `Document [3](Title: ...)` or `Session Date: ...` are shown once
+  above any kept unit. Everything stays local and deterministic.
+- `compress_documents()` with a query shares one budget (`target_ratio` of the
+  combined tokens) across documents by relevance: the most relevant documents
+  stay whole and irrelevant ones come back empty. Without a query it still
+  compresses each document on its own.
+- **Line-structured text** (code, logs, test output, diffs, listings) keeps its
+  line breaks: failures, tracebacks and their neighbourhood are kept first,
+  runs of near-identical lines collapse into one line and a count, a
+  contiguous tail is kept (most of the budget without a query), code keeps its
+  skeleton (imports and every signature) plus the full bodies of the
+  definitions most relevant to the query, and omitted spans are marked
+  `... [N lines omitted]`.
+- `ContextCompressor(selection=...)`: `"auto"` (default) as above,
+  `"focus"` to always use query-focused selection, `"proportional"` for the
+  0.7 behaviour. `CompressionResult.selection` records the path used.
+- Compound words match in either direction ("superbowl" finds "Super Bowl",
+  "gall bladder" finds "gallbladder").
+- Units are about 1/32 of the budget (between 40 and 220 tokens), so a
+  multi-passage context keeps more distinct passages.
+
+### Added
+- `relevance="semantic"` (on `compress()`, `compress_documents()` and
+  `ContextCompressor`): an optional cross-encoder reranker,
+  `cross-encoder/ms-marco-MiniLM-L-6-v2` (22M parameters, trained on MS MARCO
+  only), rescoring the 80 strongest lexical candidates. It finds answers that
+  share few words with the question. It runs on CPU, or on a GPU when one is
+  available; install with `pip install "llmslim[semantic]"`. Any callable
+  `scorer(query, texts) -> scores` can be passed instead, for example a hosted
+  reranking API. The default stays `"lexical"`: no model, no download.
+
+### Performance
+- Sentence splitting looked for NLTK's punkt data on disk on every call. It
+  now looks once per process: query-focused compression of a 2.9k-token,
+  20-document context went from 213 ms to 24 ms, and of a 115k-token chat
+  history from 2.4 s to 0.8 s.
+- Guardrail detection skips text that cannot contain a protected sentence and
+  no longer computes entity scores it does not need. The result is unchanged
+  (checked on 109,424 sentence, role and floor combinations).
+
+### Fixed
+- Compression never returns empty text for non-empty input: if no whole unit
+  fits, the best sentences or, at worst, a word-boundary prefix are kept.
+- Trusted guardrails and developer `preserve_patterns` survive selection even
+  inside units too large to keep whole (only the protected sentences are
+  kept). Untrusted RAG, tool and assistant text still cannot earn this tier.
+- A `ContextRole` enum passed as `context_role` is recognised as system or
+  developer for guardrail protection (its `str()` form was compared before).
+
+### Measured (Claude Haiku 5.5, `effort: low`; 0.7.2 → 0.8.0 lexical → 0.8.0 + reranker)
+- LongMemEval-S, 90 questions, 8,000-token budget: 25.6% → 68.9% → 76.7%
+  (full 114k-token history: 82.2%; on 90 fresh questions 76.7% against 72.2%).
+- NaturalQuestions, 20 documents, 25% budget: 62.3 → 65.7 → 75.0 (full: 86.3).
+- HotpotQA distractor, 200 questions: F1 61.7 → 67.5 → 69.4 (full: 74.9).
+- LongBench v1 macro at 3,000 tokens: 52.4 → 54.9 → 54.2 (full: 54.9).
+- LongBench v2, 180 questions: 51.1 → 53.9 → 55.6 (full: 60.0).
+- Compressing a 1.3k-token Python file: about 3.5 s → 7 ms.
+- Head to head on NaturalQuestions, 300 questions at the same budget: 78.7 with the
+  reranker, against 78.0 for LongLLMLingua (a 7B model) and 69.0 for LLMLingua-2.
+- Full tables, fresh-sample reruns and head-to-head runs of LLMLingua-2 and
+  LongLLMLingua: `benchmarks/live/README.md`.
+
 ## [0.7.2] - 2026-10-11
 
 ### Fixed
@@ -212,7 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ContextRole` trust boundary (`system`/`developer`/`user`/`assistant`/`tool`/
   `rag`/`general`). Untrusted content (`rag`/`tool`/`assistant`) can no longer
   reach the hard-locked Priority Tier 4 or become `must_keep` from imperative
-  wording, safety patterns, **or** `preserve_patterns` — closing the indirect
+  wording, safety patterns, **or** `preserve_patterns`, closing the indirect
   prompt-injection amplification path. Trusted `system`/`developer` content
   retains full protection. This *mitigates compression-induced instruction
   elevation*; it is **not** complete prompt-injection prevention (defense in
@@ -230,7 +302,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inline backtick code-span protection in sentence splitting (P0-2).
 - CJK ideographic sentence boundaries `。` / `！` / `？` (P1-2).
 
-### Changed (intentional behavioural changes — NOT 100% backward compatible)
+### Changed (intentional behavioural changes, NOT 100% backward compatible)
 - **`compress_documents()` now defaults to `context_role=ContextRole.RAG`.**
   Imperative sentences in retrieved documents are no longer force-kept.
 - **`compress_chat_messages()` now propagates each message's role** as

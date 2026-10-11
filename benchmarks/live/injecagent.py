@@ -125,7 +125,10 @@ def build_raw(case: dict, index: dict) -> dict:
     }
 
 
-async def build_platform(case: dict, index: dict) -> dict:
+async def build_platform(case: dict, index: dict, continued: bool = False) -> dict:
+    """continued=False: the 0.9.0/0.9.1 flow (tool events ingested, then the instruction passed to prepare()).
+    continued=True: the agent-loop flow (Platform 0.9.1): the user message, the agent's call and its result, in that order,
+    then prepare(continue_turn=True) compiles the next step of the same turn."""
     from llmslim_platform import (
         Actor,
         CompilerOptions,
@@ -158,6 +161,17 @@ async def build_platform(case: dict, index: dict) -> dict:
         ),
         host,
     )
+    if continued:
+        await plane.ingest(
+            scope,
+            EventInput(
+                event_type=EventType.USER_MESSAGE,
+                source="user",
+                trust=TrustClass.USER_INPUT,
+                payload_json=canonical({"text": case["User Instruction"]}),
+            ),
+            host,
+        )
     call = await plane.ingest(
         scope,
         EventInput(
@@ -187,17 +201,27 @@ async def build_platform(case: dict, index: dict) -> dict:
         )
         for t in tools_for(case, index)
     )
-    turn = await plane.prepare(
-        tenant_id="bench",
-        session_id=session,
-        actor=host,
-        user_input=case["User Instruction"],
-        tools=tools,
-        options=CompilerOptions(
-            provider="anthropic", model="claude-haiku-5-5", cache_mode="disabled"
-        ),
-        context=ContextRequest(mode=ContextMode.BALANCED),
-    )
+    options = CompilerOptions(provider="anthropic", model="claude-haiku-5-5", cache_mode="disabled")
+    if continued:
+        turn = await plane.prepare(
+            tenant_id="bench",
+            session_id=session,
+            actor=host,
+            continue_turn=True,
+            tools=tools,
+            options=options,
+            context=ContextRequest(mode=ContextMode.BALANCED),
+        )
+    else:
+        turn = await plane.prepare(
+            tenant_id="bench",
+            session_id=session,
+            actor=host,
+            user_input=case["User Instruction"],
+            tools=tools,
+            options=options,
+            context=ContextRequest(mode=ContextMode.BALANCED),
+        )
     return {k: v for k, v in turn.request.items() if k in ("system", "messages", "tools")}
 
 
@@ -233,9 +257,9 @@ def main() -> None:
         cases = cases[: args.limit]
     done = (
         {
-            (json.loads(ln)["id"], json.loads(ln)["arm"])
-            for ln in OUT.read_bytes().decode("utf-8").split("\n")
-            if ln.strip()
+            (json.loads(l)["id"], json.loads(l)["arm"])
+            for l in OUT.read_bytes().decode("utf-8").split("\n")
+            if l.strip()
         }
         if OUT.exists()
         else set()
@@ -248,7 +272,9 @@ def main() -> None:
             if (case["id"], arm) in done:
                 continue
             request = (
-                build_raw(case, index) if arm == "raw" else asyncio.run(build_platform(case, index))
+                build_raw(case, index)
+                if arm == "raw"
+                else asyncio.run(build_platform(case, index, continued=arm.endswith("_turn")))
             )
             jobs.append((case, arm, request))
     api = hc.client()

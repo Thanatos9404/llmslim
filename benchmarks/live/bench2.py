@@ -36,6 +36,16 @@ HERE = Path(__file__).parent
 DATA = HERE / "data"
 BUILT = HERE / "built"
 RESULTS = HERE / "results"
+TRUNCATE_REF = {"arm": "llmslim_global"}
+SPLIT = {
+    "name": "test_a"
+}  # test_b: the fresh held-out sample in splits.json (built/<suite>_b, results/<suite>_b)
+
+
+def tag(suite: str) -> str:
+    return {"test_a": suite, "test_b": f"{suite}_b", "dev": f"{suite}_dev", "test_c": f"{suite}_c"}[
+        SPLIT["name"]
+    ]
 
 
 def count_tokens(text: str) -> int:
@@ -62,6 +72,11 @@ def nq_load(n: int) -> list[dict]:
             rows = [json.loads(line) for line in f]
         if picks is None:
             picks = sorted(random.Random(2026).sample(range(len(rows)), per_position))
+            if SPLIT["name"] != "test_a":
+                picks = json.loads((HERE / "splits.json").read_bytes())["nq"][SPLIT["name"]][
+                    :per_position
+                ]
+                picks = sorted(picks)
         for i in picks:
             row = rows[i]
             docs = [
@@ -180,9 +195,19 @@ def lme_load(n: int) -> list[dict]:
     rng = random.Random(2026)
     per_type = max(1, n // len(LME_TYPES))
     items = []
+    fresh = (
+        None
+        if SPLIT["name"] == "test_a"
+        else set(json.loads((HERE / "splits.json").read_bytes())["lme"][SPLIT["name"]])
+    )
     for qtype in LME_TYPES:
         group = [r for r in rows if r["question_type"] == qtype]
-        for r in rng.sample(group, min(per_type, len(group))):
+        chosen = (
+            rng.sample(group, min(per_type, len(group)))
+            if fresh is None
+            else [r for r in group if r["question_id"] in fresh]
+        )
+        for r in chosen:
             docs = [
                 lme_session_text(i, d, s)
                 for i, (d, s) in enumerate(zip(r["haystack_dates"], r["haystack_sessions"]))
@@ -307,24 +332,26 @@ def arm_full(suite, item):
     return item["context"]
 
 
-def arm_llmslim_global(suite, item):
+def arm_llmslim_global(suite, item, **options):
     from llmslim import compress
 
     ratio = target_ratio(suite, item)
     return (
         item["context"]
         if ratio >= 1
-        else compress(item["context"], target_ratio=ratio, query=query_of(item)).compressed_text
+        else compress(
+            item["context"], target_ratio=ratio, query=query_of(item), **options
+        ).compressed_text
     )
 
 
-def arm_llmslim_docs(suite, item):
+def arm_llmslim_docs(suite, item, **options):
     from llmslim import compress_documents
 
     if not item.get("docs"):
-        return arm_llmslim_global(suite, item)
+        return arm_llmslim_global(suite, item, **options)
     ratio = target_ratio(suite, item)
-    results = compress_documents(item["docs"], query=query_of(item), target_ratio=ratio)
+    results = compress_documents(item["docs"], query=query_of(item), target_ratio=ratio, **options)
     return "\n".join(r.compressed_text for r in results if r.compressed_text.strip())
 
 
@@ -339,7 +366,7 @@ def arm_lingua2(suite, item):
         _LINGUA = PromptCompressor(
             model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
             use_llmlingua2=True,
-            device_map="cpu",
+            device_map=LINGUA_DEVICE,
         )
     ratio = target_ratio(suite, item)
     if ratio >= 1:
@@ -347,6 +374,69 @@ def arm_lingua2(suite, item):
     context = item["docs"] if item.get("docs") else [item["context"]]
     out = _LINGUA.compress_prompt(
         context, rate=ratio, force_tokens=["\n", "?", ".", "!"], drop_consecutive=True
+    )
+    return out["compressed_prompt"]
+
+
+_LONG = None
+
+
+def arm_longllmlingua(suite, item):
+    """LongLLMLingua (Jiang et al., 2024) with the paper's NaturalQuestions settings: question-aware coarse-to-fine
+    compression, document reordering and dynamic ratios, scored by LLaMA-2-7B-chat (here in 4-bit to fit a 6 GB GPU),
+    held to the same token budget as LLMSlim."""
+    global _LONG
+    if _LONG is None:
+        import torch
+        from llmlingua import PromptCompressor
+        from transformers import BitsAndBytesConfig
+
+        quant = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_quant_type="nf4"
+        )
+        _LONG = PromptCompressor(
+            model_name="NousResearch/Llama-2-7b-chat-hf",
+            device_map="auto",
+            model_config={"quantization_config": quant},
+        )
+    ratio = target_ratio(suite, item)
+    if ratio >= 1:
+        return item["context"]
+    budget = round(ratio * count_tokens(item["context"]))
+    out = _LONG.compress_prompt(
+        item["docs"],
+        question=item["question"],
+        target_token=budget,
+        condition_in_question="after_condition",
+        reorder_context="sort",
+        dynamic_context_compression_ratio=0.3,
+        condition_compare=True,
+        context_budget="+100",
+        rank_method="longllmlingua",
+        concate_question=False,
+    )
+    return out["compressed_prompt"]
+
+
+def arm_lingua2_eq(suite, item):
+    """LLMLingua-2 held to LLMSlim's token budget: asked for `rate=0.25`, it keeps ~16% (its rate counts its own
+    tokens), so this arm passes the budget in tokens instead."""
+    global _LINGUA
+    if _LINGUA is None:
+        from llmlingua import PromptCompressor
+
+        _LINGUA = PromptCompressor(
+            model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
+            use_llmlingua2=True,
+            device_map=LINGUA_DEVICE,
+        )
+    ratio = target_ratio(suite, item)
+    if ratio >= 1:
+        return item["context"]
+    budget = round(ratio * count_tokens(item["context"]))
+    context = item["docs"] if item.get("docs") else [item["context"]]
+    out = _LINGUA.compress_prompt(
+        context, target_token=budget, force_tokens=["\n", "?", ".", "!"], drop_consecutive=True
     )
     return out["compressed_prompt"]
 
@@ -380,18 +470,34 @@ def arm_truncate(suite, item, budget_tokens: int):
     return enc.decode(ids[:half]) + enc.decode(ids[-half:])
 
 
-STRIDE = {"lingua2": 2}  # LLMLingua-2 runs on every second question (CPU cost)
+STRIDE = {"lingua2": 2, "lingua2_eq": 2, "longllmlingua": 2}
+LINGUA_DEVICE = __import__("os").environ.get(
+    "LINGUA_DEVICE", "cpu"
+)  # LLMLingua-2 runs on every second question (CPU cost)
 BUILDERS = {
     "full": arm_full,
     "llmslim_global": arm_llmslim_global,
     "llmslim_docs": arm_llmslim_docs,
     "lingua2": arm_lingua2,
+    "lingua2_eq": arm_lingua2_eq,
+    "longllmlingua": arm_longllmlingua,
 }
 # The same calls under the v0.8 source (run with the Core worktree on the import path); v0.7.2 arms keep their names.
 BUILDERS.update({"llmslim08_global": arm_llmslim_global, "llmslim08_docs": arm_llmslim_docs})
 BUILDERS.update(
     {"core080_global": arm_llmslim_global, "core080_docs": arm_llmslim_docs}
 )  # final 0.8.0
+
+
+# Frozen 0.8.0 release candidate: lexical (default) and with the reranker.
+BUILDERS.update(
+    {
+        "core08f_global": arm_llmslim_global,
+        "core08f_docs": arm_llmslim_docs,
+        "core08s_global": lambda s, it: arm_llmslim_global(s, it, relevance="semantic"),
+        "core08s_docs": lambda s, it: arm_llmslim_docs(s, it, relevance="semantic"),
+    }
+)
 
 
 def _build_one(job):
@@ -411,7 +517,7 @@ def build(suite: str, arms: list[str], n: int, workers: int) -> None:
     import llmslim
 
     items = SUITES[suite]["load"](n)
-    out_dir = BUILT / suite
+    out_dir = BUILT / tag(suite)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "meta.json").write_text(
         json.dumps({"llmslim": llmslim.__version__, "n": len(items)})
@@ -422,9 +528,9 @@ def build(suite: str, arms: list[str], n: int, workers: int) -> None:
         path = out_dir / f"{arm}.jsonl"
         done = (
             {
-                json.loads(ln)["id"]
-                for ln in path.read_bytes().decode("utf-8").split(chr(10))
-                if ln.strip()
+                json.loads(l)["id"]
+                for l in path.read_bytes().decode("utf-8").split(chr(10))
+                if l.strip()
             }
             if path.exists()
             else set()
@@ -437,7 +543,7 @@ def build(suite: str, arms: list[str], n: int, workers: int) -> None:
             if it["id"] not in done and i % STRIDE.get(arm, 1) == 0
         ]
         started = time.perf_counter()
-        pool_size = 1 if arm == "lingua2" else workers
+        pool_size = 1 if "lingua" in arm else workers
         with path.open("a", encoding="utf-8") as sink:
             if pool_size == 1:
                 results = map(_build_one, todo)
@@ -452,9 +558,12 @@ def build(suite: str, arms: list[str], n: int, workers: int) -> None:
         )
     if "truncate" in arms:
         reference = {
-            json.loads(ln)["id"]: json.loads(ln)["context_tokens"]
-            for ln in (out_dir / "llmslim_global.jsonl").read_bytes().decode("utf-8").split(chr(10))
-            if ln.strip()
+            json.loads(l)["id"]: json.loads(l)["context_tokens"]
+            for l in (out_dir / f"{TRUNCATE_REF['arm']}.jsonl")
+            .read_bytes()
+            .decode("utf-8")
+            .split(chr(10))
+            if l.strip()
         }
         with (out_dir / "truncate.jsonl").open("w", encoding="utf-8") as sink:
             for it in items:
@@ -476,20 +585,22 @@ def build(suite: str, arms: list[str], n: int, workers: int) -> None:
 
 def run(suite: str, arms: list[str], n: int, workers: int) -> None:
     items = {it["id"]: it for it in SUITES[suite]["load"](n)}
-    out = RESULTS / f"{suite}.jsonl"
+    out = RESULTS / f"{tag(suite)}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
     done = (
         {
-            (json.loads(ln)["id"], json.loads(ln)["arm"])
-            for ln in out.read_bytes().decode("utf-8").split(chr(10))
-            if ln.strip()
+            (json.loads(l)["id"], json.loads(l)["arm"])
+            for l in out.read_bytes().decode("utf-8").split(chr(10))
+            if l.strip()
         }
         if out.exists()
         else set()
     )
     jobs = []
     for arm in arms:
-        for line in (BUILT / suite / f"{arm}.jsonl").read_bytes().decode("utf-8").split(chr(10)):
+        for line in (
+            (BUILT / tag(suite) / f"{arm}.jsonl").read_bytes().decode("utf-8").split(chr(10))
+        ):
             if not line.strip():
                 continue
             row = json.loads(line)
@@ -559,7 +670,15 @@ def main() -> None:
     parser.add_argument("--arms", nargs="+", required=True)
     parser.add_argument("--n", type=int, required=True)
     parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--split", default="test_a", choices=["test_a", "test_b", "dev", "test_c"])
+    parser.add_argument(
+        "--truncate-ref",
+        default="llmslim_global",
+        help="arm whose token counts the truncate arm matches",
+    )
     args = parser.parse_args()
+    SPLIT["name"] = args.split
+    TRUNCATE_REF["arm"] = args.truncate_ref
     (build if args.stage == "build" else run)(args.suite, args.arms, args.n, args.workers)
 
 

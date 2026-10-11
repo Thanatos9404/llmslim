@@ -241,27 +241,17 @@ Modern LLM systems suffer from the **Context Window Dilemma**:
 
 ## 🖥️ Live Studio Playground ([www.llmslim.app](https://www.llmslim.app))
 
-Experience LLMSlim in the Next.js Studio. Offline mode plans context without a
-model call. The Studio also offers a protected, quota-limited **Sarvam AI —
-Hosted Demo** and request-only **Sarvam BYOK**. The project key remains
-server-only; a BYOK credential is held only in page memory for one same-origin
-request and is never persisted. The browser receives only the answer plus
-estimated/provider-reported usage:
+Paste a long chat, a stack of search results or a CI log, ask a question, and watch LLMSlim keep what
+answers it. The Studio shows the tokens and cost saved, whether the answer survived, and what plain truncation to
+the same size would have kept instead.
 
-<div align="center">
-  <img src="assets/screenshot-studio.png" alt="LLMSlim Studio Playground" width="100%" style="border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
-</div>
+- **Ready-made scenarios:** a six-month support chat, help-centre search results, and a CI log with one failure,
+  each with a question whose answer is known.
+- **Your own text:** paste up to about 16,000 tokens and choose how much to keep.
+- **In place:** kept lines are highlighted inside the original, next to the exact text the model would receive.
+- **No model call:** the Studio runs Core on the server and calls no provider. Nothing you paste is stored.
 
-- **Offline planner:** inspect budget use, decisions, provenance, and final context without consuming credits.
-- **Hosted Sarvam where enabled:** run the plan through the official SDK after distributed quota and spend checks.
-- **Request-only Sarvam BYOK:** use your own provider account without storing the credential in cookies, browser storage, logs, telemetry, or responses.
-- **Honest telemetry:** distinguish pre-call `ESTIMATED` tokens/cost from `PROVIDER_REPORTED` usage.
-- **Execution boundary:** LLMSlim still never executes tools or converts ranking into authorization.
-
-Hosted access is intentionally limited and may be disabled at any time. See
-[Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md),
-[Sarvam integration](docs/integrations/SARVAM.md), and the
-[security policy](SECURITY.md).
+See [Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md) and the [security policy](SECURITY.md).
 
 👉 **[Open Interactive Studio](https://www.llmslim.app)**
 
@@ -592,17 +582,24 @@ Many libraries make unsubstantiated claims about 90% prompt compression. At LLMS
 ### Real-model results: Claude Haiku 5.5, Core 0.8.0
 
 Same model and prompt for every configuration; only the context changes. Truncation gets exactly LLMSlim's token
-count. Full tables, confidence intervals, weak spots, the harness and raw per-question results:
-[benchmarks/live](benchmarks/live/README.md).
+count. Tuning used separate development questions only, and every suite was rerun once on a fresh sample after the
+code was frozen. Full tables, confidence intervals, weak spots, head-to-head runs of LLMLingua-2 and LongLLMLingua,
+the harness and raw per-question results: [benchmarks/live](benchmarks/live/README.md).
 
-| Benchmark | Full context | LLMSlim 0.8.0 | Truncate, same budget | Tokens (full → LLMSlim) |
-| :--- | :---: | :---: | :---: | :---: |
-| LongMemEval-S, 90 q (accuracy) | 82.2 | **70.0** | 14.4 | 114,006 → 7,985 |
-| HotpotQA, 200 q (F1) | 74.9 | **68.0** | 49.5 | 2,179 → 935 |
-| LongBench v1, 210 samples (macro) | 54.9 | **52.9** | 45.2 | 15,532 → 5,216 |
-| LongBench v2, 180 q (accuracy) | 60.0 | **53.3** | 48.3 | 30,493 → 8,484 |
-| NaturalQuestions 20 docs, 300 q (accuracy) | 86.3 | **66.7** | 52.0 | 2,889 → 659 |
-| SWE-bench Verified Mini, 50 issues (resolved) | 36-38 | **38** | — | 48-58k → 51k per task |
+| Benchmark | Full context | LLMSlim 0.8 + reranker | LLMSlim 0.8 (no model) | Truncate, same budget | Tokens (full → LLMSlim) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| LongMemEval-S, 90 q (accuracy) | 82.2 | **76.7** | 68.9 | 14.4 | 114,006 → 7,985 |
+| … fresh 90 q | 72.2 | **76.7** | 67.8 | 14.4 | |
+| NaturalQuestions 20 docs, 300 q (accuracy) | 86.3 | **75.0** | 65.7 | 52.0 | 2,889 → 668 |
+| … fresh 300 q | 88.0 | **75.7** | 67.3 | 48.3 | |
+| HotpotQA, 200 q (F1) | 74.9 | **69.4** | 67.5 | 49.5 | 2,179 → 939 |
+| LongBench v1, 210 samples (macro) | 54.9 | 54.2 | **54.9** | 45.2 | 15,532 → 5,232 |
+| … fresh 210 samples | 55.1 | **55.4** | 55.0 | 46.8 | |
+| LongBench v2, 180 q (accuracy) | 60.0 | **55.6** | 53.9 | 48.3 | 30,493 → 8,469 |
+| SWE-bench Verified Mini, 50 issues (resolved) | 36-38 | not run | **38** | not run | 48-58k → 51k per task |
+
+The reranker is optional (`relevance="semantic"`, a 22M-parameter cross-encoder from the `semantic` extra); without
+it LLMSlim runs no model at all.
 
 > [!NOTE]
 > **The Schema-Tax Measurement**: In our v0.4.0 benchmark across 375 synthetic tool schemas in 18 catalogs written for this repository (see the [dataset card](docs/phase-2/DATASET_CARD.md)), lossless schema compression saved **0 tokens (0.00%)** when the baseline was already compact canonical JSON. We publish this result transparently: we never claim imaginary savings where none exist.

@@ -19,6 +19,7 @@ import argparse
 import collections
 import concurrent.futures as cf
 import json
+import os
 import re
 import string
 import sys
@@ -44,14 +45,24 @@ SYSTEM_NO_CONTEXT = "Answer the question. Reply with the answer alone: a short p
 RATIO = 0.4
 
 
-def load(limit: int) -> list[dict]:
+REL = {"relevance": os.environ["BENCH_RELEVANCE"]} if os.environ.get("BENCH_RELEVANCE") else {}
+
+
+def load(limit: int, split: str = "test_a") -> list[dict]:
+    """test_a: the first 200 validation questions (reported since round 1); test_b: the fresh sample in splits.json."""
     rows = []
-    for name in ("hotpot_0.json", "hotpot_100.json"):
+    for offset in range(0, 800, 100):
         rows += [
             item["row"]
-            for item in json.loads((HERE / "data" / name).read_text(encoding="utf-8"))["rows"]
+            for item in json.loads(
+                (HERE / "data" / f"hotpot_{offset}.json").read_text(encoding="utf-8")
+            )["rows"]
         ]
-    return rows[:limit]
+    if split == "test_a":
+        return rows[:200][:limit]
+    wanted = json.loads((HERE / "splits.json").read_bytes())["hotpot"][split]
+    by_id = {row["id"]: row for row in rows}
+    return [by_id[i] for i in wanted][:limit]
 
 
 def paragraphs(row: dict) -> list[str]:
@@ -85,7 +96,7 @@ def build(row: dict) -> dict[str, dict]:
     started = time.perf_counter()
     compressed = "\n\n".join(
         r.compressed_text
-        for r in compress_documents(docs, query=question, target_ratio=RATIO)
+        for r in compress_documents(docs, query=question, target_ratio=RATIO, **REL)
         if r.compressed_text.strip()
     )
     doc_ms = (time.perf_counter() - started) * 1000
@@ -111,10 +122,7 @@ def build(row: dict) -> dict[str, dict]:
         if prepared.feasible
         else None
     )
-
-    def user(context: str) -> str:
-        return f"Context:\n{context}\n\nQuestion: {question}"
-
+    user = lambda context: f"Context:\n{context}\n\nQuestion: {question}"
     arms = {
         "no_context": {
             "system": SYSTEM_NO_CONTEXT,
@@ -190,12 +198,11 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--out", default=str(HERE / "results" / "suite_rag.jsonl"))
     parser.add_argument(
-        "--only",
-        default=None,
-        help="SRC=DEST: send only arm SRC, recorded as DEST (e.g. a new Core version)",
+        "--only", default=None, help="SRC=DEST[,SRC=DEST]: send only these arms, recorded as DEST"
     )
+    parser.add_argument("--split", default="test_a", choices=["test_a", "test_b"])
     args = parser.parse_args()
-    rows = load(args.limit)
+    rows = load(args.limit, args.split)
     with cf.ProcessPoolExecutor(6) as pool:
         built = list(zip(rows, pool.map(build, rows)))
     sizes = collections.defaultdict(list)
@@ -219,8 +226,8 @@ def main() -> None:
     if args.build_only:
         return
     if args.only:
-        src, dest = args.only.split("=")
-        built = [(row, {dest: arms[src]}) for row, arms in built]
+        pairs = [pair.split("=") for pair in args.only.split(",")]
+        built = [(row, {dest: arms[src] for src, dest in pairs}) for row, arms in built]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     done = (

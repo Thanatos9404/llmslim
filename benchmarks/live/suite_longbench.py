@@ -20,6 +20,7 @@ import collections
 import concurrent.futures as cf
 import difflib
 import json
+import os
 import random
 import re
 import string
@@ -39,14 +40,22 @@ PROMPTS = json.loads((DATA / "dataset2prompt.json").read_text(encoding="utf-8"))
 MAXLEN = json.loads((DATA / "dataset2maxlen.json").read_text(encoding="utf-8"))
 
 
+REL = {"relevance": os.environ["BENCH_RELEVANCE"]} if os.environ.get("BENCH_RELEVANCE") else {}
+SPLIT = {"name": "test_a"}
+
+
 def load(task: str, n: int) -> list[dict]:
+    """test_a: the first n of the seed-2026 shuffle (reported); test_b: rows 110-140 of it (splits.json)."""
     rows = [
         json.loads(line)
         for line in (DATA / f"{task}.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
     random.Random(2026).shuffle(rows)
-    return rows[:n]
+    if SPLIT["name"] == "test_a":
+        return rows[:n]
+    wanted = set(json.loads((HERE / "splits.json").read_bytes())["longbench"][task][SPLIT["name"]])
+    return [row for row in rows if row["_id"] in wanted][:n]
 
 
 def middle_truncate(text: str, budget: int) -> str:
@@ -68,15 +77,14 @@ def build(item: tuple[str, dict]) -> dict:
     started = time.perf_counter()
     if ctx_tokens > BUDGET:
         ratio = max(0.05, BUDGET / ctx_tokens)
-        compressed = compress(context, target_ratio=ratio, query=question or None).compressed_text
+        compressed = compress(
+            context, target_ratio=ratio, query=question or None, **REL
+        ).compressed_text
     else:
         compressed = context
     local_ms = (time.perf_counter() - started) * 1000
     template = PROMPTS[task]
-
-    def render(ctx: str) -> str:
-        return template.format(context=ctx, input=question)
-
+    render = lambda ctx: template.format(context=ctx, input=question)
     return {
         "task": task,
         "id": row["_id"],
@@ -129,9 +137,9 @@ def rouge_l(prediction: str, truth: str) -> float:
 def code_sim(prediction: str, truth: str) -> float:
     line = next(
         (
-            ln
-            for ln in prediction.lstrip("\n").split("\n")
-            if ln.strip() and not ln.strip().startswith(("#", "//", "`"))
+            l
+            for l in prediction.lstrip("\n").split("\n")
+            if l.strip() and not l.strip().startswith(("#", "//", "`"))
         ),
         "",
     )
@@ -186,11 +194,11 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--out", default=str(HERE / "results" / "suite_longbench.jsonl"))
     parser.add_argument(
-        "--only",
-        default=None,
-        help="SRC=DEST: send only arm SRC, recorded as DEST (e.g. a new Core version)",
+        "--only", default=None, help="SRC=DEST[,SRC=DEST]: send only these arms, recorded as DEST"
     )
+    parser.add_argument("--split", default="test_a", choices=["test_a", "test_b"])
     args = parser.parse_args()
+    SPLIT["name"] = args.split
     items = [(task, row) for task in TASKS for row in load(task, args.per_task)]
     started = time.perf_counter()
     with cf.ProcessPoolExecutor(6) as pool:
@@ -200,19 +208,16 @@ def main() -> None:
     for s in samples:
         by_task[s["task"]].append(s)
     for task, group in by_task.items():
-
-        def mean(arm: str, group: list = group) -> float:
-            return sum(count_tokens(s["arms"][arm]) for s in group) / len(group)
-
+        mean = lambda arm: sum(count_tokens(s["arms"][arm]) for s in group) / len(group)
         print(
             f"{task:12s} n={len(group)} ctx={sum(s['context_tokens'] for s in group) / len(group):7.0f} full={mean('full'):7.0f} llmslim={mean('llmslim'):6.0f} truncate={mean('truncate'):6.0f} llmslim_ms={sum(s['llmslim_ms'] for s in group) / len(group):7.0f}"
         )
     if args.build_only:
         return
     if args.only:
-        src, dest = args.only.split("=")
+        pairs = [pair.split("=") for pair in args.only.split(",")]
         for s in samples:
-            s["arms"] = {dest: s["arms"][src]}
+            s["arms"] = {dest: s["arms"][src] for src, dest in pairs}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     done = (

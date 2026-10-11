@@ -68,12 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `ContextRole` enum passed as `context_role` is recognised as system or
   developer for guardrail protection (its `str()` form was compared before).
 
-### Measured (Claude Haiku 5.5, `effort: low`)
-- LongMemEval-S, 90 questions, 8,000-token budget: 25.6% → 70.0%
-  (full 114k-token history: 82.2%).
-- HotpotQA distractor, 200 questions: F1 61.7 → 68.0 with 19% fewer input
-  tokens (full context: 74.9).
+### Measured (Claude Haiku 5.5, `effort: low`; 0.7.2 → 0.8.0 lexical → 0.8.0 + reranker)
+- LongMemEval-S, 90 questions, 8,000-token budget: 25.6% → 68.9% → 76.7%
+  (full 114k-token history: 82.2%; on 90 fresh questions 76.7% against 72.2%).
+- NaturalQuestions, 20 documents, 25% budget: 62.3 → 65.7 → 75.0 (full: 86.3).
+- HotpotQA distractor, 200 questions: F1 61.7 → 67.5 → 69.4 (full: 74.9).
+- LongBench v1 macro at 3,000 tokens: 52.4 → 54.9 → 54.2 (full: 54.9).
+- LongBench v2, 180 questions: 51.1 → 53.9 → 55.6 (full: 60.0).
 - Compressing a 1.3k-token Python file: about 3.5 s → 7 ms.
+- Full tables, fresh-sample reruns and head-to-head runs of LLMLingua-2 and
+  LongLLMLingua: `benchmarks/live/README.md`.
 
 ## [0.7.2] - 2026-10-11
 
@@ -277,7 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ContextRole` trust boundary (`system`/`developer`/`user`/`assistant`/`tool`/
   `rag`/`general`). Untrusted content (`rag`/`tool`/`assistant`) can no longer
   reach the hard-locked Priority Tier 4 or become `must_keep` from imperative
-  wording, safety patterns, **or** `preserve_patterns` — closing the indirect
+  wording, safety patterns, **or** `preserve_patterns`, closing the indirect
   prompt-injection amplification path. Trusted `system`/`developer` content
   retains full protection. This *mitigates compression-induced instruction
   elevation*; it is **not** complete prompt-injection prevention (defense in
@@ -295,7 +299,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inline backtick code-span protection in sentence splitting (P0-2).
 - CJK ideographic sentence boundaries `。` / `！` / `？` (P1-2).
 
-### Changed (intentional behavioural changes — NOT 100% backward compatible)
+### Changed (intentional behavioural changes, NOT 100% backward compatible)
 - **`compress_documents()` now defaults to `context_role=ContextRole.RAG`.**
   Imperative sentences in retrieved documents are no longer force-kept.
 - **`compress_chat_messages()` now propagates each message's role** as

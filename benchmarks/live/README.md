@@ -4,147 +4,230 @@ Measured in October 2026 with `claude-haiku-5-5` at `effort: low` through the Cl
 uses the same model, prompt template and scoring; only the context changes:
 
 - **full**: the complete context.
-- **LLMSlim**: the context after LLMSlim, at the stated budget.
-- **truncate / recent**: the context cut, by the dataset's own rule, to exactly the token count LLMSlim produced.
+- **LLMSlim**: the context after LLMSlim Core 0.8.0 at the stated budget, with lexical relevance (the default:
+  no model) or with the optional reranker (`relevance="semantic"`, `cross-encoder/ms-marco-MiniLM-L-6-v2`,
+  22M parameters, trained on MS MARCO only).
+- **truncate / recent**: the context cut, by the dataset's own rule, to the token count LLMSlim produced.
+- **LLMLingua-2, LongLLMLingua**: the two best-known open-source prompt compressors, run by us with their
+  published settings at the same token budget.
 
-The reported numbers come from questions that were never used to tune anything. Development checks used other
-questions (`proxy.py` for free answer-retention checks, `dev_code.py` for code). Confidence intervals are
-paired bootstrap 95% over the same questions. Weak results are reported with the strong ones.
+## How the numbers were kept honest
 
-Total API spend for everything below: about $17 (per-suite ledgers in `results/spend-*.json`).
+Questions are split three ways, fixed in `splits.json` (`splits.py`):
+
+- **test_a**: the questions reported since the first round.
+- **dev**: used for development only, through `devcheck.py`. It runs free offline checks with no model: did the
+  answer, the supporting sentences or the labelled evidence turns survive compression?
+- **test_b**: a fresh sample drawn after the code was frozen and run once.
+
+Nothing was tuned on test_a or test_b. Each change in 0.8.0 was kept only if it held up on dev, and the parameters
+were chosen there:
+
+- compound matching;
+- the optional reranker and its lexical share;
+- units of about 1/32 of the budget.
+
+Several ideas were dropped because dev did not support them:
+
+- neighbour smoothing;
+- entity bridging;
+- per-group diversity, which helped retrieval but cost chat memory 6 points;
+- passage titles in headers.
+
+After LongLLMLingua was measured, two more ideas were tested with the reader on 300 NQ dev questions. The
+reranker arm alone scored 83.0 (full context 88.7), and neither idea helped, so neither ships:
+
+| Idea | Dev accuracy | Change |
+|---|---:|---:|
+| Ordering documents by relevance | 80.3 | −2.7 |
+| Sharing a document's best reranker score with its other chunks | 83.3 | +0.3 |
+
+`verify_built.py` checks that the prompts sent come from the frozen source. Confidence intervals are paired
+bootstrap 95% over the same questions.
+
+Total API spend for everything here: about $30 (per-suite ledgers in `results/spend-*.json`).
 
 ## Results
 
 ### LongMemEval-S: memory over long chat histories
 
-90 questions (15 per type) over histories of about 50 sessions (115k tokens). Official judge prompts, judged by
-Haiku 5.5. Budget 8,000 tokens.
+Histories of about 50 sessions (115k tokens). Official judge prompts, judged by Haiku 5.5. Budget 8,000 tokens.
 
-| Configuration | Accuracy | Context tokens | $ per 1k questions |
-|---|---:|---:|---:|
-| Full history | 82.2 | 114,006 | 90.72 |
-| **LLMSlim Core 0.8.0**, `compress_documents` over sessions | **70.0** | 7,985 | 1.45 |
-| LLMSlim Core 0.8.0, `compress` over the whole history | 66.7 | 7,993 | 1.46 |
-| **LLMSlim Platform 0.9.1**, defaults | **63.3** | 7,600 | 1.36 |
-| LLMSlim Core 0.7.2, `compress_documents` | 25.6 | 10,482 | 1.86 |
-| LLMSlim Platform 0.9.0 (quality floor 0.5 so it compiles) | 18.9 | 7,287 | 1.30 |
-| Most recent sessions that fit | 14.4 | 6,693 | 1.23 |
-
-| Type (n=15 each) | Full | Core 0.8.0 | Platform 0.9.1 | Recent |
+| Configuration | test_a (90) | test_b (90, fresh) | Context tokens | $ per 1k questions |
 |---|---:|---:|---:|---:|
-| knowledge-update | 80.0 | 86.7 | 86.7 | 33.3 |
-| single-session-user | 100.0 | 86.7 | 93.3 | 13.3 |
-| single-session-assistant | 93.3 | 93.3 | 80.0 | 20.0 |
-| multi-session | 73.3 | 66.7 | 46.7 | 13.3 |
-| temporal-reasoning | 60.0 | 46.7 | 46.7 | 6.7 |
-| single-session-preference | 86.7 | 40.0 | 26.7 | 0.0 |
+| Full history | 82.2 | 72.2 | 114,006 | 90.72 |
+| **LLMSlim 0.8 + reranker** (`compress_documents`) | **76.7** | **76.7** | 7,984 | 1.45 |
+| LLMSlim 0.8, lexical | 68.9 | 67.8 | 7,985 | 1.45 |
+| LLMSlim Platform 0.9.1, defaults | 63.3 | | 7,600 | 1.36 |
+| LLMSlim 0.7.2 | 25.6 | | 10,482 | 1.86 |
+| Most recent sessions that fit | 14.4 | 14.4 | 6,693 | 1.23 |
 
-Core 0.8.0 vs full history: −12.2 points (95% CI −22.2 to −3.3) at 1/62 of the cost.
+With the reranker, the difference from full history is within noise on both samples, at 1/62 of the cost:
 
-### HotpotQA (distractor): multi-hop retrieval QA
+- **test_a:** −5.6 points (95% CI −15.6 to +4.4).
+- **test_b:** +4.4 points (95% CI −6.7 to +15.6).
 
-200 validation questions, official EM/F1, 10 paragraphs per question (about 2,200 tokens). LLMSlim budget: 40%.
-
-| Configuration | EM | F1 | Input tokens | $ per 1k |
+| Type (test_a, n=15 each) | Full | + reranker | Lexical | Recent |
 |---|---:|---:|---:|---:|
-| Full context | 57.0 | 74.9 | 2,179 | 0.245 |
-| **LLMSlim Core 0.8.0** | **54.0** | **68.0** | 935 | 0.134 |
-| LLMSlim Core 0.7.2 | 50.5 | 61.7 | 1,159 | 0.180 |
-| LLMSlim 0.7.2 `ContextRuntime` | 51.0 | 66.0 | 1,379 | 0.170 |
-| Truncate to the same budget | 38.0 | 49.5 | 1,147 | 0.194 |
-| No context | 34.5 | 43.8 | 84 | 0.120 |
+| knowledge-update | 80.0 | 86.7 | 80.0 | 33.3 |
+| single-session-user | 100.0 | 86.7 | 80.0 | 13.3 |
+| single-session-assistant | 93.3 | 100.0 | 100.0 | 20.0 |
+| multi-session | 73.3 | 80.0 | 66.7 | 13.3 |
+| temporal-reasoning | 60.0 | 66.7 | 26.7 | 6.7 |
+| single-session-preference | 86.7 | 40.0 | 60.0 | 0.0 |
 
-Core 0.8.0 F1: +6.3 vs 0.7.2 (95% CI +0.5 to +12.3), +18.5 vs truncation (+11.5 to +25.3), −6.9 vs full (−11.4 to −2.8).
+Preference questions are the weakest type. These ask for a recommendation that should use a taste the user stated
+earlier. On test_b the same type scored 73.3 with the reranker against 53.3 with full history, so 15 questions swing
+widely.
+
+On the dev split (320 questions, no model needed), the reranker keeps more of the labelled evidence turns:
+
+| Evidence kept (dev split) | Lexical | + reranker |
+|---|---:|---:|
+| All labelled evidence turns | 91.3% | 95.3% |
+| Every evidence session, multi-session questions | 71.4% | 84.7% |
 
 ### NaturalQuestions, 20 documents ("lost in the middle")
 
-The same 100 questions with the gold passage 1st, 10th and 20th (300 total). Metric: a gold answer appears in the
-response. LLMSlim budget: 25%.
+100 questions × 3 gold positions (1st, 10th, 20th). Metric: a gold answer appears in the response. Budget 25%.
 
-| Configuration | Accuracy | gold 1st | 10th | 20th | Tokens |
-|---|---:|---:|---:|---:|---:|
-| Full context | 86.3 | 88.0 | 87.0 | 84.0 | 2,889 |
-| **LLMSlim Core 0.8.0** (`compress`) | **66.7** | 65.0 | 66.0 | 69.0 | 659 |
-| LLMSlim Core 0.8.0 (`compress_documents`) | 64.0 | 62.0 | 64.0 | 66.0 | 655 |
-| LLMSlim Core 0.7.2 (`compress_documents`, overshoots to 34%) | 71.0 | 75.0 | 70.0 | 68.0 | 995 |
-| LLMSlim Core 0.7.2 (`compress`) | 62.3 | 63.0 | 58.0 | 66.0 | 727 |
-| Passages in retrieval order, same budget | 52.0 | 95.0 | 32.0 | 29.0 | 669 |
-| LLMLingua-2 (xlm-roberta-large, rate 0.25), 150 questions | pending | | | | |
+| Configuration | test_a (300) | gold 1st | 10th | 20th | test_b (300, fresh) | Tokens |
+|---|---:|---:|---:|---:|---:|---:|
+| Full context | 86.3 | 88.0 | 87.0 | 84.0 | 88.0 | 2,889 |
+| **LLMSlim 0.8 + reranker** | **75.0** | 74.0 | 75.0 | 76.0 | **75.7** | 668 |
+| LLMSlim 0.8, lexical | 65.7 | 67.0 | 65.0 | 65.0 | 67.3 | 659 |
+| LLMSlim 0.7.2 | 62.3 | 63.0 | 58.0 | 66.0 | | 727 |
+| Passages in retrieval order, same budget | 52.0 | 95.0 | 32.0 | 29.0 | 48.3 | 669 |
 
-LLMSlim's accuracy does not depend on where the answer sits. At equal tokens, Core 0.8.0 and 0.7.2's per-document
-mode are about level (proxy check: 70% vs 69% answer retention at ~850-900 tokens). This is the weakest suite:
-20 points below full context at 4.4x compression.
+**Head to head with other compressors.** These runs use every second question of each split (150 each), with the
+same reader and the same budget. test_b was run once, after the code was frozen:
+
+| Compressor | Model it runs | test_a (150) | test_b (150) | All 300 | Tokens | Time per question |
+|---|---|---:|---:|---:|---:|---|
+| Full context | | 87.3 | 90.7 | 89.0 | 2,889 | |
+| **LLMSlim 0.8 + reranker** | 22M cross-encoder | 74.0 | **83.3** | **78.7** | 668 | 0.1 s GPU (about 0.3 s CPU) |
+| LongLLMLingua (paper's NQ settings) | LLaMA-2-7B-chat, 4-bit | **80.0** | 76.0 | 78.0 | 630 | 9.5 s GPU |
+| LLMLingua-2, same token budget | XLM-RoBERTa-large | 64.7 | 73.3 | 69.0 | 680 | 2.9 s GPU (about 43 s CPU) |
+| LLMSlim 0.8, lexical | none | 63.3 | 74.0 | 68.7 | 658 | 23 ms CPU |
+| Passages in order | none | 49.3 | 47.3 | 48.3 | 627 | |
+
+Paired differences (bootstrap 95% intervals):
+
+| Comparison | test_a | test_b | All 300 |
+|---|---:|---:|---:|
+| LLMSlim + reranker vs LongLLMLingua | −6.0 (−14.7, +2.0) | +7.3 (+0.7, +14.7) | +0.7 (−4.7, +6.0) |
+| LLMSlim + reranker vs LLMLingua-2 | +9.3 (+0.7, +18.0) | +10.0 (+1.3, +19.3) | +9.7 (+3.7, +15.7) |
+| LLMSlim lexical vs LLMLingua-2 | −1.3 (−8.7, +6.0) | +0.7 (−9.3, +10.7) | −0.3 (−6.7, +6.0) |
+
+LongLLMLingua won test_a by 6 points and LLMSlim won test_b by 7.3. Over all 300 questions the two are level, and
+LongLLMLingua runs a 7B model, about 100 times the compute of LLMSlim's reranker. On test_a the gap came from reading
+rather than retention: LLMSlim's output still contained a gold answer more often (79.3% of questions against 75.3%),
+but when the answer was present the reader got it right 89.9% of the time with LLMSlim's fragments and 95.6% with
+LongLLMLingua's reordered, more complete passages. Two ideas aimed at that gap were tested on dev questions and
+dropped (see "How the numbers were kept honest"). LLMSlim with the reranker is ahead of LLMLingua-2 on both splits;
+without any model it is level with LLMLingua-2.
+
+Notes on the competitors:
+- **LLMLingua-2** was asked for `rate=0.25` first. It kept only 16% of the tokens (469) and scored 64.7. Held to the
+  same token count (`target_token`), it scored the same 64.7.
+- **LongLLMLingua** uses LLaMA-2-7B-chat quantised to 4-bit (NF4) so it fits a 6 GB GPU. The paper ran it in fp16.
+
+On these 150 questions, LLMSlim without the reranker scores 63.3 against 68.0 for the pre-release 0.8. On the 75
+questions where both builds sent an identical prompt, Haiku's answers still differed 5 times. Over all 300
+questions the two builds score 65.7 and 66.7.
+
+### HotpotQA (distractor): multi-hop retrieval QA
+
+Official EM/F1, 10 paragraphs per question. LLMSlim budget: 40%.
+
+| Configuration | test_a F1 (200) | test_a EM | test_b F1 (200, fresh) | test_b EM | Input tokens | $ per 1k |
+|---|---:|---:|---:|---:|---:|---:|
+| Full context | 74.9 | 57.0 | 77.5 | 59.0 | 2,179 | 0.245 |
+| **LLMSlim 0.8 + reranker** | **69.4** | **56.0** | **71.8** | **54.5** | 939 | 0.137 |
+| LLMSlim 0.8, lexical | 67.5 | 52.5 | 70.1 | 52.5 | 936 | 0.133 |
+| LLMSlim 0.7.2 | 61.7 | 50.5 | | | 1,159 | 0.180 |
+| Truncate to the same budget | 49.5 | 38.0 | 41.1 | 29.5 | 1,147 / 912 | 0.194 |
+| No context | 43.8 | 34.5 | | | 84 | 0.120 |
 
 ### LongBench v1: seven long-context tasks
 
-30 samples per task (210), official prompts and metrics. Budget 3,000 tokens. Code tasks are scored on the first code
-line inside the model's fenced block (the official first-line rule scores Haiku's prose preamble).
+30 samples per task and split, official prompts and metrics, budget 3,000 tokens. Code tasks are scored on the first
+code line inside the model's fenced block (`rescore_code.py`; the official rule scores Haiku's prose preamble).
 
-| Task | Full | Core 0.8.0 | Core 0.7.2 | Truncate |
-|---|---:|---:|---:|---:|
-| Qasper | 42.2 | 47.0 | 46.5 | 38.1 |
-| 2WikiMQA | 76.9 | 80.5 | 71.9 | 47.4 |
-| MuSiQue | 64.9 | 48.3 | 58.5 | 43.2 |
-| GovReport | 19.0 | 17.4 | 17.7 | 17.0 |
-| TriviaQA | 89.9 | 87.9 | 88.5 | 87.9 |
-| LCC | 47.2 | 37.2 | 47.4 | 45.2 |
-| RepoBench-P | 44.3 | 51.9 | 36.0 | 37.3 |
-| **Macro** | **54.9** | **52.9** | **52.4** | **45.2** |
-| Mean input tokens | 15,532 | 5,216 | 5,164 | 5,147 |
+| Task (test_a) | Full | LLMSlim 0.8 | + reranker | 0.7.2 | Truncate |
+|---|---:|---:|---:|---:|---:|
+| Qasper | 42.2 | 42.7 | 42.7 | 46.5 | 38.1 |
+| 2WikiMQA | 76.9 | 75.3 | 75.7 | 71.9 | 47.4 |
+| MuSiQue | 64.9 | 58.8 | 61.2 | 58.5 | 43.2 |
+| GovReport | 19.0 | 17.5 | 17.7 | 17.7 | 17.0 |
+| TriviaQA | 89.9 | 89.2 | 87.9 | 88.5 | 87.9 |
+| LCC | 47.2 | 44.0 | 44.4 | 47.4 | 45.2 |
+| RepoBench-P | 44.3 | 57.2 | 50.0 | 36.0 | 37.3 |
+| **Macro, test_a** | **54.9** | **54.9** | 54.2 | 52.4 | 45.2 |
+| **Macro, test_b (fresh)** | **55.1** | **55.0** | **55.4** | | 46.8 |
+| Mean input tokens | 15,532 | 5,232 | 5,229 | 5,164 | 5,147 |
 
-Core 0.8.0 macro: −2.0 vs full (95% CI −6.3 to +2.3), +7.7 vs truncation (+2.7 to +12.9).
+Lexical LLMSlim 0.8 against full context, on a third of the tokens:
 
-Sampling noise is large at n=30: on the 23 LCC files short enough to be sent unchanged (identical prompts in every
-arm), scores still ranged from 38.6 to 50.4. On the files that were compressed, RepoBench-P improved from 35.4
-(0.7.2) to 53.5 (full: 43.7). MuSiQue fell, and is a known weak spot: whole-passage selection can miss the bridging
-passage of a two-hop question.
+| Split | Difference | 95% CI | vs truncation |
+|---|---:|---|---:|
+| test_a | +0.0 | −4.5 to +4.6 | +9.8 |
+| test_b | −0.1 | −4.2 to +4.1 | |
+
+MuSiQue is still below full context. The 0.8 pre-release had dropped it to 48.3, and most of that is recovered.
 
 ### LongBench v2 (short split)
 
 180 multiple-choice questions over long documents, codebases and structured data (30k tokens on average), official
 prompt, middle truncation to 120k for every arm. LLMSlim budget: 25%.
 
-| Configuration | Accuracy | Tokens | $ per 1k |
-|---|---:|---:|---:|
-| Full context | 60.0 | 30,493 | 7.62 |
-| **LLMSlim Core 0.8.0** | **53.3** | 8,484 | 1.70 |
-| LLMSlim Core 0.7.2 | 51.1 | 8,566 | 1.90 |
-| Middle truncation, same budget | 48.3 | 8,566 | 1.94 |
+| Configuration | Accuracy | vs full (95% CI) | Tokens | $ per 1k |
+|---|---:|---|---:|---:|
+| Full context | 60.0 | | 30,493 | 7.62 |
+| **LLMSlim 0.8 + reranker** | **55.6** | −4.4 (−11.7 to +2.8) | 8,469 | 1.69 |
+| LLMSlim 0.8, lexical | 53.9 | −6.1 (−13.3 to +1.1) | 8,470 | 1.69 |
+| LLMSlim 0.7.2 | 51.1 | | 8,566 | 1.90 |
+| Middle truncation, same budget | 48.3 | −11.7 (−20.6 to −3.3) | 8,566 | 1.94 |
 
 ### SWE-bench Verified Mini: coding agent
 
-50 issues (25 Django, 25 Sphinx). A minimal bash-tool agent (`swe/agent.py`, mini-swe-agent style) on the official
-per-task images; graded by the official `swebench` harness. LLMSlim compresses a command's output before it enters
-the history (append-only, so prompt caching and replayed thinking stay valid).
+50 issues (25 Django, 25 Sphinx). A minimal bash-tool agent (`swe/agent.py`, mini-swe-agent style) runs on the
+official per-task images and is graded by the official `swebench` harness. LLMSlim compresses a command's output
+before it enters the history. The history is append-only, so prompt caching and replayed thinking stay valid.
 
 | Configuration | Resolved | Prompt tokens per task | $ per task |
 |---|---:|---:|---:|
 | No compression, run A | 36 / 50 | 58,117 | 0.0032 |
 | No compression, run B | 38 / 50 | 48,126 | 0.0027 |
 | LLMSlim 0.7.2, outputs over 800 tokens | 34 / 50 | 58,850 | 0.0031 |
-| LLMSlim 0.8.0 (pre-release build), outputs over 800 tokens | 35 / 50 | 69,466 | 0.0035 |
-| LLMSlim 0.8.0 (pre-release build), outputs over 300 tokens | 35 / 50 | 86,646 | 0.0038 |
-| **LLMSlim 0.8.0 (final), outputs over 800 tokens** | **38 / 50** | 51,332 | 0.0029 |
+| **LLMSlim 0.8.0, outputs over 800 tokens** | **38 / 50** | 51,332 | 0.0029 |
 
-The final 0.8.0 matches the best uncompressed run (38 of 50) at a cost per task between the two uncompressed runs:
-no harm, and little saving. Haiku keeps its context near 8k tokens with targeted commands, so there is not much to
-remove, and the pre-release builds made it re-read more (more steps, more tokens). Compress long contexts, not
-short coding loops. For comparison, LLMLingua-2 on tool output cost an agent 8 points in published work.
+There is no harm and little saving. Haiku keeps its context near 8k tokens with targeted commands, so there is not
+much to remove. Line-mode selection is unchanged since this run, and the only code changes since then are faster
+sentence splitting and guardrail screening, which produce identical output. For comparison, published work found
+LLMLingua-2 on tool output cost an agent 8 points.
 
-### InjecAgent: prompt injection through tool output
+### InjecAgent: prompt injection through tool output (Platform)
 
-1,054 cases, enhanced setting. Attack success: the next turn calls the attacker's tool.
+1,054 cases, enhanced setting. Attack success means the next turn calls the attacker's tool.
 
-| Configuration | Attack success | Redundant user-tool calls |
+| Configuration | Attack success | Repeated user-tool calls |
 |---|---:|---:|
 | Native tool-use history | 0 / 1,054 | 1 |
-| LLMSlim Platform 0.9.1 rendering | 0 / 1,054 | 50 |
+| Platform, tool events then `prepare(user_input=instruction)` | 0 / 1,054 | 50 |
+| Same, calls shown beside their results (`tool_calls`) | 0 / 1,054 | 43 |
+| **Platform agent turn: user message, call, result, `prepare(continue_turn=True)`** | **0 / 1,054** | **0** |
 
-Haiku 5.5 resisted every attack without help, so this benchmark shows no defence effect with this model.
+Haiku 5.5 resisted every attack without help, so this benchmark shows no defence effect with this model. It did show
+an agent-loop gap in the Platform:
+
+- **Before:** `prepare()` only took new user input, so the request always came after the tool results it had
+  produced, and the model repeated its call in 4.7% of cases.
+- **Fixed in Platform 0.9.1:** agent turns compile the next step in order, and no call was repeated.
 
 ## Published results from other systems
 
-Different reader models, so compare each system's gap to its own full-context baseline, not raw scores.
+These use different reader models, so compare each system's gap to its own full-context baseline, not raw scores.
 
 | System | Benchmark | Reader | Score | Full context | Source |
 |---|---|---|---:|---:|---|
@@ -157,24 +240,32 @@ Different reader models, so compare each system's gap to its own full-context ba
 
 ## Reproduce
 
-Data (not committed): LongBench v1 (`THUDM/LongBench`), LongBench v2 (`zai-org/LongBench-v2`), LongMemEval
-(`xiaowu0162/longmemeval-cleaned`, `longmemeval_s_cleaned.json`), NaturalQuestions 20-document files from
-`nelson-liu/lost-in-the-middle`, HotpotQA distractor validation, InjecAgent `data/` from `uiuc-kang-lab/InjecAgent`,
-SWE-bench Verified Mini (`MariusHobbhahn/swe-bench-verified-mini`). Put them under `data/` as the scripts expect.
+Data is not committed. Put each dataset under `data/` as the scripts expect:
+
+- LongBench v1: `THUDM/LongBench`
+- LongBench v2: `zai-org/LongBench-v2`
+- LongMemEval: `xiaowu0162/longmemeval-cleaned`, file `longmemeval_s_cleaned.json`
+- NaturalQuestions 20-document files: `nelson-liu/lost-in-the-middle`
+- HotpotQA distractor validation: rows 0 to 800
+- InjecAgent: the `data/` folder of `uiuc-kang-lab/InjecAgent`
+- SWE-bench Verified Mini: `MariusHobbhahn/swe-bench-verified-mini`
 
 ```bash
 export LLMSLIM_KEY_FILE=/path/to/file/with/CLAUDE_API_KEY   # never printed or written
-export HAIKU_CAP_USD=40                                      # hard spend cap across all suites
-python suite_rag.py --limit 200                              # HotpotQA
-python suite_longbench.py --per-task 30                      # LongBench v1
-python bench2.py build --suite nq --n 300 --arms full llmslim_global llmslim_docs truncate
-python bench2.py run   --suite nq --n 300 --arms full llmslim_global llmslim_docs truncate
-python score2.py nq --by gold_at                             # likewise lbv2 (180), lme (90)
-python swe/run.py --tag main --limit 50 --arms baseline llmslim   # in Linux with Docker
-python injecagent.py --arms raw platform --settings enhanced      # needs LLMSlim Platform
+export HAIKU_CAP_USD=60                                      # hard spend cap across all suites
+python splits.py                                             # writes splits.json (already committed)
+python devcheck.py --suites nq hotpot lb lme                 # development checks, dev split only, no API
+bash runs.sh                                                 # test_a and test_b, lexical and reranker arms
+bash competitors.sh                                          # LLMLingua-2 and LongLLMLingua on NQ
+python verify_built.py nq:core08f_global nq:core08s_global   # built prompts match the source
+python final_report.py                                       # every table above, with CIs
 ```
 
-Raw per-question results are in `results/*.jsonl.gz` (predictions truncated to 400-600 characters) and
-`swe/runs/*/`.
-In `swe/runs/v072/`, the arm recorded as `llmslim_eager` ran the baseline filter (a harness patch did not apply),
-so it is the second uncompressed run, "run B" above; its predictions are `preds_baseline_b.jsonl.gz`.
+- **GPU environments:** LLMLingua-2 and the reranker run in an environment with CUDA PyTorch and
+  `sentence-transformers` (`LINGUA_DEVICE=cuda`). LongLLMLingua needs `transformers==4.44.2`, `accelerate==0.34.2`
+  and `bitsandbytes`, because its key-value cache code predates transformers 5. See `competitors.sh`.
+- **Raw results:** per-question results are in `results/*.jsonl.gz`, with predictions truncated to 400-600
+  characters, and in `swe/runs/*/`.
+- **Mislabelled SWE arm:** in `swe/runs/v072/`, the arm recorded as `llmslim_eager` actually ran the baseline
+  filter because a harness patch did not apply. It is the second uncompressed run, "run B" above, and its
+  predictions are in `preds_baseline_b.jsonl.gz`.

@@ -20,12 +20,16 @@ const faqs: ReadonlyArray<readonly [string, string]> = [
 ]
 
 // Real-model results only (Claude Haiku 5.5, public benchmarks, paired against full context and truncation).
-// The full report, weak spots included, is on /benchmarks.
+// The full report is on /benchmarks.
 const stats: Stat[] = [
-  { value: "62", unit: "×", label: "lower cost per question over long chat histories", note: "LongMemEval · 70% vs 82% with full history" },
-  { value: "72", unit: "%", label: "fewer tokens on long documents and codebases", note: "LongBench v2 · 53% vs 60% accuracy" },
-  { value: "+7.7", label: "points over truncation at the same token budget", note: "LongBench v1 · 95% CI +2.7 to +12.9" },
-  { value: "45", unit: "%", label: "lower cost on multi-hop retrieval QA", note: "HotpotQA · F1 68.0 vs 74.9" },
+  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories", source: "LongMemEval, 76.7% vs 82.2% with the whole history",
+    meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "LLMSlim", value: 1.45, display: "$1.45" }, max: 90.72 } },
+  { topic: "Long documents", value: "3", unit: "×", label: "fewer tokens on long documents, for the same score", source: "LongBench v1, 54.9 vs 54.9 with full context",
+    meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
+  { topic: "Retrieval", value: "+23", label: "points over truncation at the same token budget", source: "NaturalQuestions, 20 passages, 25% budget",
+    meter: { before: { name: "Cut to fit", value: 52, display: "52.0" }, after: { name: "LLMSlim", value: 75, display: "75.0" }, max: 100 } },
+  { topic: "Agent turns", value: "0", label: "repeated tool calls across 1,054 agent turns", source: "InjecAgent, Platform agent turns",
+    meter: { before: { name: "Before", value: 50, display: "50" }, after: { name: "Agent turn", value: 0, display: "0" }, max: 50 } },
 ]
 
 export default function Home() {
@@ -46,18 +50,19 @@ export default function Home() {
     <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">
       <Reveal className="p-head"><p className="p-kicker">The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
       <StatsBand stats={stats} />
-      <Reveal className="p-foot"><span>Claude Haiku 5.5 · public benchmarks · weak spots published</span><Link className="text-link" href="/benchmarks">Read the benchmarks <ArrowUpRight size={14} /></Link></Reveal>
+      <Reveal className="p-foot"><span>Public benchmarks. One reader and one prompt for every run; only the context changes.*</span><Link className="text-link" href="/results">See the results, chapter by chapter <ArrowUpRight size={14} /></Link></Reveal>
+      <p className="p-fineprint">* Every context was read by Claude Haiku 5.5.</p>
     </section>
 
     <section className="p-section site-width" id="layers" aria-labelledby="layers-title">
       <Reveal className="p-head"><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
       <div className="duo">
         <div>
-          <Showcase tone="teal"><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval · Claude Haiku 5.5</span></>} /></Showcase>
+          <Showcase><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval, 115k-token histories</span></>} /></Showcase>
           <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
         <div>
-          <Showcase tone="violet"><TraceVisual /></Showcase>
+          <Showcase><TraceVisual /></Showcase>
           <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Platform · v{siteConfig.platformVersion} beta · private</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
       </div>
@@ -73,7 +78,7 @@ export default function Home() {
       </ol>
     </section>
 
-    <PhotoSection src="/media/india-night.webp" id="programs" labelledBy="programs-title" className="p-programs" position="60% 40%">
+    <PhotoSection src="/media/india-night.webp" lightSrc="/media/india-day.webp" lightPosition="50% 60%" id="programs" labelledBy="programs-title" className="p-programs" position="60% 40%">
       <div className="site-width">
         <Reveal className="p-head p-head-center"><p className="p-kicker">Supported by {startupProgramCount} startup programs</p><h2 id="programs-title">Built in India. <span>Fuelled by {startupProgramCount} startup programs.</span></h2></Reveal>
         <LogoCloud />
@@ -85,7 +90,7 @@ export default function Home() {
 
     <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
 
-    <PhotoSection src="/media/earth-limb.webp" className="p-final" labelledBy="final-title" position="30% 50%">
+    <PhotoSection src="/media/earth-limb.webp" lightSrc="/media/dusk-light.webp" lightPosition="50% 40%" className="p-final" labelledBy="final-title" position="30% 50%">
       <div className="site-width p-final-copy">
         <Reveal><h2 id="final-title">Ship agents that know <span>exactly enough.</span></h2></Reveal>
         <Reveal delay={0.1}><p className="p-hero-lede">One install. Your next model call gets sharper.</p></Reveal>

@@ -52,14 +52,23 @@ export function PremiumHero({ children }: { children: ReactNode }) {
     px.set((event.clientX - box.left) / box.width - 0.5)
     py.set((event.clientY - box.top) / box.height - 0.5)
   }
-  return <section ref={section} className="p-hero on-dark" aria-labelledby="hero-title" onPointerMove={move}>
+  return <section ref={section} className="p-hero on-photo" aria-labelledby="hero-title" onPointerMove={move}>
     <motion.div className="p-hero-sky" style={reduced ? undefined : { y: skyY }} aria-hidden="true">
-      <Image src="/media/hero-sky.webp" alt="" fill priority sizes="100vw" className="p-hero-sky-wide" />
-      <Image src="/media/hero-sky-portrait.webp" alt="" fill sizes="100vw" className="p-hero-sky-tall" />
+      <div className="p-hero-sky-set art-dark">
+        <Image src="/media/hero-sky.webp" alt="" fill priority sizes="100vw" className="p-hero-sky-wide" />
+        <Image src="/media/hero-sky-portrait.webp" alt="" fill sizes="100vw" className="p-hero-sky-tall" />
+      </div>
+      <div className="p-hero-sky-set art-light">
+        <Image src="/media/hero-sky-light.webp" alt="" fill priority sizes="100vw" className="p-hero-sky-wide" />
+        <Image src="/media/hero-sky-light-portrait.webp" alt="" fill sizes="100vw" className="p-hero-sky-tall" />
+      </div>
     </motion.div>
     <div className="p-hero-veil" aria-hidden="true" />
     <motion.div className="p-hero-ribbon" aria-hidden="true" style={reduced ? undefined : { y: ribbonY, x: shiftX, rotateX, rotateY }}>
-      <div className="p-hero-ribbon-float"><Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} sizes="(max-width: 800px) 120vw, 70vw" /></div>
+      <div className="p-hero-ribbon-float">
+        <Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} sizes="(max-width: 800px) 120vw, 70vw" className="art-dark" />
+        <Image src="/compression-ribbon-light.webp" alt="" width={1536} height={1024} sizes="(max-width: 800px) 120vw, 70vw" className="art-light" />
+      </div>
     </motion.div>
     <motion.div className="p-hero-copy" style={reduced ? undefined : { opacity: copyOpacity }}>{children}</motion.div>
   </section>
@@ -67,16 +76,17 @@ export function PremiumHero({ children }: { children: ReactNode }) {
 
 /* ------------------------------------------------------------------ Photo sections */
 
-/** A full-bleed band whose photo drifts against the scroll. Always dark, in either theme. */
-export function PhotoSection({ src, children, className = "", id, labelledBy, position = "center" }: { src: string; children: ReactNode; className?: string; id?: string; labelledBy?: string; position?: string }) {
+/** A full-bleed band whose photo drifts against the scroll; `lightSrc` is the photo for the light theme. */
+export function PhotoSection({ src, lightSrc, children, className = "", id, labelledBy, position = "center", lightPosition }: { src: string; lightSrc?: string; children: ReactNode; className?: string; id?: string; labelledBy?: string; position?: string; lightPosition?: string }) {
   const section = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: section, offset: ["start end", "end start"] })
   const y = useTransform(scrollYProgress, [0, 1], ["-12%", "12%"])
   const scale = useTransform(scrollYProgress, [0, 0.5, 1], [1.12, 1.04, 1.12])
-  return <section ref={section} id={id} aria-labelledby={labelledBy} className={`photo-section on-dark ${className}`}>
+  return <section ref={section} id={id} aria-labelledby={labelledBy} className={`photo-section on-photo ${className}`}>
     <motion.div className="photo-section-media" aria-hidden="true" style={reduced ? undefined : { y, scale }}>
-      <Image src={src} alt="" fill sizes="100vw" style={{ objectPosition: position }} />
+      <div className={lightSrc ? "photo-set art-dark" : "photo-set"}><Image src={src} alt="" fill sizes="100vw" style={{ objectPosition: position }} /></div>
+      {lightSrc && <div className="photo-set art-light"><Image src={lightSrc} alt="" fill sizes="100vw" style={{ objectPosition: lightPosition ?? position }} /></div>}
     </motion.div>
     <div className="photo-section-veil" aria-hidden="true" />
     <div className="photo-section-content">{children}</div>

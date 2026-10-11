@@ -8,7 +8,7 @@
 import { siteConfig } from "@/config/site"
 import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
-import { AGENT_FINDINGS, CORE_VERSION_TESTED, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
+import { AGENT_FINDINGS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
 import { homeFaqs } from "@/data/home"
@@ -174,9 +174,15 @@ function sectionIndex(section: Section): string {
       `## ${suite.name}`,
       `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
       table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], suite.arms.map((arm) => [arm.name, arm.score.toFixed(1), arm.tokens?.toLocaleString("en-US") ?? "", arm.cost !== undefined ? `$${arm.cost}` : ""])),
+      suite.fresh && `Fresh sample (${suite.fresh.n}, run once after development was frozen): ${suite.fresh.arms.map((arm) => `${arm.name} ${arm.score.toFixed(1)}`).join("; ")}.`,
       suite.takeaway,
-      suite.caveat && `Weak spot: ${suite.caveat}`,
+      suite.caveat && `Note: ${suite.caveat}`,
     ).trimEnd()),
+    join(
+      "## Head to head with other compressors",
+      table(["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Tokens kept", "Time per question"], HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreAll, row.tokens, row.time])),
+      HEAD_TO_HEAD.note,
+    ).trimEnd(),
     ...AGENT_FINDINGS.map((finding) => join(
       `## ${finding.name}`,
       finding.what,

@@ -11,6 +11,7 @@
 const EVENTS = {
   homepage_view: [],
   platform_page_view: [],
+  results_page_view: [],
   core_docs_clicked: ["location"],
   studio_clicked: ["location"],
   platform_beta_clicked: ["location"],

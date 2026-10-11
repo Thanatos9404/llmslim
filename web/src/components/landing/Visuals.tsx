@@ -1,7 +1,7 @@
 "use client"
 
 import { animate, motion, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion"
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useRef, type PointerEvent, type ReactNode } from "react"
 
 // Product visuals in place of text boxes: each one shows what LLMSlim actually does.
 // Transform and opacity only; reduced-motion users get the finished state.
@@ -12,21 +12,26 @@ const EASE = [0.16, 1, 0.3, 1] as const
 
 export function Window({ title, badge, children, className = "" }: { title: string; badge?: ReactNode; children: ReactNode; className?: string }) {
   return <div className={`win ${className}`}>
-    <div className="win-bar"><span className="win-dots" aria-hidden="true"><i /><i /><i /></span><span className="win-title">{title}</span>{badge ? <span className="win-badge">{badge}</span> : <span />}</div>
+    <div className="win-bar"><span className="win-title"><span className="win-pixel" aria-hidden="true" />{title}</span>{badge ? <span className="win-badge">{badge}</span> : <span />}</div>
     <div className="win-body">{children}</div>
   </div>
 }
 
-/** A gradient art panel with a window floating on it. The window settles as the panel scrolls into view. */
-export function Showcase({ tone, children, className = "" }: { tone: "teal" | "violet" | "amber" | "rose"; children: ReactNode; className?: string }) {
+/** A neutral plate with a fading dot grid. The product rises out of its bottom edge as the plate scrolls in,
+ *  and a soft light follows the cursor across it. */
+export function Showcase({ children, className = "" }: { children: ReactNode; className?: string }) {
   const panel = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: panel, offset: ["start end", "start 0.45"] })
-  const y = useTransform(scrollYProgress, [0, 1], [56, 0])
-  const rotateX = useTransform(scrollYProgress, [0, 1], [10, 0])
-  return <div ref={panel} className={`showcase showcase-${tone} ${className}`}>
-    <div className="showcase-art" aria-hidden="true" />
-    <motion.div className="showcase-stage" style={reduced ? undefined : { y, rotateX, transformPerspective: 1400 }}>{children}</motion.div>
+  const { scrollYProgress } = useScroll({ target: panel, offset: ["start end", "end start"] })
+  const y = useTransform(scrollYProgress, [0, 0.5, 1], [56, 0, -16])
+  const move = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.style.setProperty("--spot-x", `${event.clientX - box.left}px`)
+    event.currentTarget.style.setProperty("--spot-y", `${event.clientY - box.top}px`)
+  }
+  return <div ref={panel} className={`stage ${className}`} onPointerMove={move}>
+    <div className="stage-spot" aria-hidden="true" />
+    <motion.div className="stage-mock" style={reduced ? undefined : { y }}>{children}</motion.div>
   </div>
 }
 
@@ -121,9 +126,8 @@ export function PolicyVisual() {
   return <Window title="policy · support-agent" badge="rollback ready">
     <div className="pv-stages">{stages.map((stage, i) => <span key={stage} className={i === 2 ? "is-current" : i < 2 ? "is-done" : ""}>{stage}</span>)}</div>
     <svg className="pv-chart" viewBox="0 0 300 70" aria-hidden="true" preserveAspectRatio="none">
-      <defs><linearGradient id="pv-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="var(--viz-a)" stopOpacity=".35" /><stop offset="1" stopColor="var(--viz-a)" stopOpacity="0" /></linearGradient></defs>
-      <path d={`${path} L 300 70 L 0 70 Z`} fill="url(#pv-fill)" />
-      <motion.path d={path} fill="none" stroke="var(--viz-a)" strokeWidth="2" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6, ease: EASE }} />
+      <path d={`${path} L 300 70 L 0 70 Z`} fill="var(--brand)" fillOpacity=".08" />
+      <motion.path d={path} fill="none" stroke="var(--brand)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6, ease: EASE }} />
     </svg>
     <p className="win-note">Suggestions run in shadow until an offline evaluation passes.</p>
   </Window>
@@ -138,41 +142,57 @@ export function GuardVisual() {
   </Window>
 }
 
-/* ------------------------------------------------------------------ stats over converging rays */
+/* ------------------------------------------------------------------ receipts ledger */
 
-export type Stat = { value: string; unit?: string; label: string; note: string }
+type Bar = { name: string; value: number; display: string }
+export type Stat = { topic: string; value: string; unit?: string; label: string; source: string; meter: { before: Bar; after: Bar; max: number } }
 
-export function StatsBand({ stats }: { stats: Stat[] }) {
-  return <div className="stats-band">
-    <dl className="stats-row">{stats.map((stat, i) => <motion.div key={stat.label} className="stat" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.8, ease: EASE, delay: i * 0.08 }}>
-      <dt className="stat-label">{stat.label}</dt><dd><span className="stat-value">{stat.value}{stat.unit && <span className="stat-unit">{stat.unit}</span>}</span><span className="stat-note">{stat.note}</span></dd>
-    </motion.div>)}</dl>
-    <Rays />
+/** Counts up to a value like "62", "+23" or "63.3" the first time it is seen. */
+function Ticker({ value }: { value: string }) {
+  const node = useRef<HTMLSpanElement>(null)
+  const inView = useInView(node, { once: true, amount: 0.8 })
+  const reduced = useReducedMotion()
+  useEffect(() => {
+    if (!inView || reduced || !node.current) return
+    const sign = value.startsWith("+") ? "+" : ""
+    const target = parseFloat(value.replace("+", ""))
+    const digits = value.includes(".") ? value.split(".")[1].length : 0
+    const controls = animate(0, target, { duration: 1.4, ease: EASE, onUpdate: (v) => { if (node.current) node.current.textContent = `${sign}${v.toFixed(digits)}` } })
+    return () => controls.stop()
+  }, [inView, reduced, value])
+  return <span ref={node}>{value}</span>
+}
+
+function Meter({ bar, max, ours, delay }: { bar: Bar; max: number; ours?: boolean; delay: number }) {
+  const reduced = useReducedMotion()
+  return <div className={`ledger-bar${ours ? " is-ours" : ""}`}>
+    <span>{bar.name}</span><span className="ledger-bar-value">{bar.display}</span>
+    <span className="ledger-bar-track"><motion.span className="ledger-bar-fill" style={{ width: `${Math.max(0, Math.min(100, (bar.value / max) * 100))}%` }}
+      initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.8 }} transition={{ duration: 1.2, ease: EASE, delay }} /></span>
   </div>
 }
 
-function Rays() {
-  // Many lines in from the left converge into one beam: long context in, focused context out.
-  // The flow animation runs only while the band is on screen.
-  const band = useRef<HTMLDivElement>(null)
-  const live = useInView(band, { amount: 0.1 })
-  const lines = Array.from({ length: 34 }, (_, i) => {
-    const y0 = 8 + i * (224 / 33)
-    return `M 0 ${y0.toFixed(1)} C 360 ${y0.toFixed(1)}, 520 ${(120 + (y0 - 120) * 0.25).toFixed(1)}, 760 120`
-  })
-  return <div ref={band} className={`rays ${live ? "is-live" : ""}`} aria-hidden="true">
-    <svg viewBox="0 0 1200 240" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="ray-in" x1="0" x2="1"><stop offset="0" stopColor="var(--ink)" stopOpacity="0" /><stop offset=".55" stopColor="var(--ink)" stopOpacity=".22" /><stop offset="1" stopColor="var(--viz-a)" stopOpacity=".9" /></linearGradient>
-        <linearGradient id="ray-out" x1="0" x2="1"><stop offset="0" stopColor="var(--viz-a)" /><stop offset="1" stopColor="var(--viz-b)" stopOpacity="0" /></linearGradient>
-      </defs>
-      {lines.map((d, i) => <path key={i} d={d} className="ray" stroke="url(#ray-in)" style={{ animationDelay: `${(i % 7) * -0.6}s` }} />)}
-      <path d="M 760 120 L 1200 120" className="ray-beam" stroke="url(#ray-out)" />
-    </svg>
-    <span className="rays-label rays-label-in">Everything your agent has seen</span>
-    <span className="rays-label rays-label-out">What the model needs</span>
-  </div>
+/** Four results in one ledger. A light follows the cursor across the panel and its edge. */
+export function StatsBand({ stats }: { stats: Stat[] }) {
+  const reduced = useReducedMotion()
+  const move = (event: PointerEvent<HTMLDListElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.style.setProperty("--mx", `${event.clientX - box.left}px`)
+    event.currentTarget.style.setProperty("--my", `${event.clientY - box.top}px`)
+  }
+  return <dl className="ledger" onPointerMove={move}>
+    {stats.map((stat, i) => <motion.div key={stat.topic} className="ledger-cell" initial={reduced ? false : { opacity: 0, y: 18, filter: "blur(6px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.8, ease: EASE, delay: i * 0.08 }}>
+      <dt className="ledger-topic">{stat.topic}</dt>
+      <dd className="ledger-value"><Ticker value={stat.value} />{stat.unit && <span className="ledger-unit">{stat.unit}</span>}</dd>
+      <dd className="ledger-label">{stat.label}</dd>
+      <dd className="ledger-meter">
+        <Meter bar={stat.meter.before} max={stat.meter.max} delay={0.2 + i * 0.08} />
+        <Meter bar={stat.meter.after} max={stat.meter.max} ours delay={0.35 + i * 0.08} />
+      </dd>
+      <dd className="ledger-source">{stat.source}</dd>
+    </motion.div>)}
+  </dl>
 }
 
 /* ------------------------------------------------------------------ feature row */

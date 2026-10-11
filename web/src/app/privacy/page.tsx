@@ -27,13 +27,11 @@ export default function PrivacyPage() {
 
     <h2>Studio</h2>
     <ul>
-      <li>Text you submit is sent to the Studio API to run compression or planning and is returned to you. It is not stored, logged, or used for training.</li>
-      <li>Hosted Sarvam requests are forwarded to Sarvam. To enforce fair-use limits we set a 24-hour session cookie and keep usage counters keyed by pseudonymous, keyed hashes of your IP address and session. These counters expire within days and never contain your text.</li>
-      <li>With your own Sarvam key, the key is used for that single request and is never stored or logged.</li>
+      <li>Text you submit is sent to the Studio API, compressed with LLMSlim and returned to you. It is not stored, logged, or used for training. No model provider is called.</li>
     </ul>
 
     <h2>In your browser</h2>
-    <p>We store your light or dark theme preference in local storage. Nothing else.</p>
+    <p>We store your light or dark theme preference, and whether you have finished the Studio tour, in local storage. Nothing else.</p>
 
     <h2>Questions</h2>
     <p>Contact the maintainer through <a className="text-link" href={siteConfig.github + "/security/policy"} target="_blank" rel="noreferrer">the project’s security policy</a> for anything privacy-related.</p>

@@ -25,6 +25,15 @@ export type LiveSuite = {
   arms: Arm[]
   takeaway: string
   caveat?: string
+  /** The same configurations on a fresh held-out sample, run once after development was frozen. */
+  fresh?: { n: string; arms: Arm[] }
+}
+
+/** Competing compressors we ran ourselves: same reader, same questions, same token budget. */
+export type HeadToHead = {
+  columns: [string, string, string]
+  rows: { system: string; model: string; scoreA: string; scoreB: string; scoreAll: string; tokens: string; time: string; best?: boolean }[]
+  note: string
 }
 
 export const LIVE_MODEL = "Claude Haiku 5.5"
@@ -41,30 +50,20 @@ export const LIVE_SUITES: LiveSuite[] = [
     n: "90 questions, 15 per type",
     arms: [
       { name: "Full history", kind: "full", score: 82.2, tokens: 114006, cost: 90.72 },
-      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 70.0, tokens: 7985, cost: 1.45 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 76.7, tokens: 7984, cost: 1.45 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 68.9, tokens: 7985, cost: 1.45 },
       { name: "LLMSlim Platform 0.9.1", kind: "llmslim", score: 63.3, tokens: 7600, cost: 1.36 },
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 25.6, tokens: 10482, cost: 1.86 },
-      { name: "LLMSlim Platform 0.9.0", kind: "previous", score: 18.9, tokens: 7287, cost: 1.30 },
       { name: "Most recent sessions", kind: "baseline", score: 14.4, tokens: 6693, cost: 1.23 },
     ],
-    takeaway: "At 8k tokens, Core 0.8 keeps 85% of full-history accuracy for 1/62 of the cost. On knowledge-update questions it matches full history (86.7% vs 80.0%).",
-    caveat: "Multi-session aggregation and preference questions remain the weakest types.",
-  },
-  {
-    id: "hotpotqa",
-    name: "HotpotQA (distractor)",
-    what: "Multi-hop questions over 10 Wikipedia paragraphs, 2 of them relevant.",
-    metric: "answer F1",
-    n: "200 questions",
-    arms: [
-      { name: "Full context", kind: "full", score: 74.9, tokens: 2179, cost: 0.245 },
-      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 68.0, tokens: 935, cost: 0.134 },
-      { name: "LLMSlim Core 0.7.2", kind: "previous", score: 61.7, tokens: 1159, cost: 0.180 },
-      { name: "Truncate to the same budget", kind: "baseline", score: 49.5, tokens: 1147, cost: 0.194 },
-      { name: "No context", kind: "baseline", score: 43.8, tokens: 84, cost: 0.120 },
-    ],
-    takeaway: "57% fewer input tokens and 45% lower cost than full context, +18.5 F1 over truncation at the same budget.",
-    caveat: "Short contexts leave little to remove: full context still answers best when it is only 2k tokens.",
+    takeaway: "With the reranker, 8k tokens score within noise of the whole 115k-token history (95% CI −15.6 to +4.4) at 1/62 of the cost. Multi-session and time questions beat the full history.",
+    caveat: "Preference questions (a recommendation that should use a stated taste) are the weakest type: 40% against 87% on this sample.",
+    fresh: { n: "90 new questions", arms: [
+      { name: "Full history", kind: "full", score: 72.2 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 76.7 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 67.8 },
+      { name: "Most recent sessions", kind: "baseline", score: 14.4 },
+    ] },
   },
   {
     id: "nq",
@@ -74,12 +73,42 @@ export const LIVE_SUITES: LiveSuite[] = [
     n: "300 questions (100 per position)",
     arms: [
       { name: "Full context", kind: "full", score: 86.3, tokens: 2889, cost: 0.694 },
-      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 66.7, tokens: 659, cost: 0.328 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 75.0, tokens: 668, cost: 0.331 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 65.7, tokens: 659, cost: 0.327 },
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 62.3, tokens: 727, cost: 0.355 },
       { name: "Keep passages in order", kind: "baseline", score: 52.0, tokens: 669, cost: 0.343 },
     ],
-    takeaway: "Unlike truncation, accuracy does not depend on where the answer sits (65 to 69% at every position; truncation swings from 29 to 95%).",
-    caveat: "At 4.4x compression this is LLMSlim's weakest suite: 20 points below full context.",
+    takeaway: "With the reranker, 75% on a quarter of the tokens wherever the answer sits (74 to 76% at every position), against 95% to 29% for keeping passages in order. Ahead of LLMLingua-2 at the same budget; LongLLMLingua, which runs a 7B model, scores higher (below).",
+    caveat: "At 4.4x compression this is still 11 points below full context with the reranker, and 21 without it.",
+    fresh: { n: "300 new questions", arms: [
+      { name: "Full context", kind: "full", score: 88.0 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 75.7 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 67.3 },
+      { name: "Keep passages in order", kind: "baseline", score: 48.3 },
+    ] },
+  },
+  {
+    id: "hotpotqa",
+    name: "HotpotQA (distractor)",
+    what: "Multi-hop questions over 10 Wikipedia paragraphs, 2 of them relevant.",
+    metric: "answer F1",
+    n: "200 questions",
+    arms: [
+      { name: "Full context", kind: "full", score: 74.9, tokens: 2179, cost: 0.245 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 69.4, tokens: 939, cost: 0.137 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 67.5, tokens: 936, cost: 0.133 },
+      { name: "LLMSlim Core 0.7.2", kind: "previous", score: 61.7, tokens: 1159, cost: 0.180 },
+      { name: "Truncate to the same budget", kind: "baseline", score: 49.5, tokens: 1147, cost: 0.194 },
+      { name: "No context", kind: "baseline", score: 43.8, tokens: 84, cost: 0.120 },
+    ],
+    takeaway: "57% fewer input tokens and 44% lower cost than full context. Exact match with the reranker: 56.0 against 57.0 with every paragraph.",
+    caveat: "Short contexts leave little to remove: on a 2k-token context, full context still has the best F1.",
+    fresh: { n: "200 new questions", arms: [
+      { name: "Full context", kind: "full", score: 77.5 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 71.8 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 70.1 },
+      { name: "Truncate to the same budget", kind: "baseline", score: 41.1 },
+    ] },
   },
 ]
 
@@ -92,12 +121,19 @@ LIVE_SUITES.push(
     n: "210 samples, 30 per task",
     arms: [
       { name: "Full context", kind: "full", score: 54.9, tokens: 15532, cost: 1.812 },
-      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 52.9, tokens: 5216, cost: 0.777 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 54.9, tokens: 5232, cost: 0.778 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 54.2, tokens: 5229, cost: 0.778 },
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 52.4, tokens: 5164, cost: 0.779 },
       { name: "Middle truncation, same budget", kind: "baseline", score: 45.2, tokens: 5147, cost: 0.785 },
     ],
-    takeaway: "Within 2 points of full context (95% CI -6.3 to +2.3) on a third of the tokens, and +7.7 over truncation. On cross-file code (RepoBench-P) and 2WikiMQA it beats full context.",
-    caveat: "MuSiQue multi-hop QA fell from 58.5 (0.7.2) to 48.3: whole-passage selection can miss the bridging passage.",
+    takeaway: "The same macro score as full context (95% CI −4.5 to +4.6) on a third of the tokens, and +9.8 over truncation. RepoBench-P (cross-file code) beats full context: 57.2 against 44.3.",
+    caveat: "MuSiQue multi-hop QA is still below full context (58.8 against 64.9; 61.2 with the reranker), though most of the 0.8 pre-release drop (48.3) is recovered.",
+    fresh: { n: "210 new samples", arms: [
+      { name: "Full context", kind: "full", score: 55.1 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 55.4 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 55.0 },
+      { name: "Middle truncation, same budget", kind: "baseline", score: 46.8 },
+    ] },
   },
   {
     id: "longbench-v2",
@@ -107,12 +143,13 @@ LIVE_SUITES.push(
     n: "180 questions",
     arms: [
       { name: "Full context", kind: "full", score: 60.0, tokens: 30493, cost: 7.621 },
-      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 53.3, tokens: 8484, cost: 1.697 },
+      { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 55.6, tokens: 8469, cost: 1.688 },
+      { name: "LLMSlim Core 0.8", kind: "llmslim", score: 53.9, tokens: 8470, cost: 1.689 },
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 51.1, tokens: 8566, cost: 1.902 },
       { name: "Middle truncation, same budget", kind: "baseline", score: 48.3, tokens: 8566, cost: 1.942 },
     ],
-    takeaway: "72% fewer tokens and 78% lower cost than full context, the best of the compressed arms.",
-    caveat: "Questions that need the whole document lose accuracy: 6.7 points below full context.",
+    takeaway: "72% fewer tokens and 78% lower cost. With the reranker, 4.4 points below full context (95% CI −11.7 to +2.8), and the best compressed arm.",
+    caveat: "Questions that need the whole document lose accuracy: hard multiple choice over 30k tokens is where compression costs the most.",
   },
 )
 
@@ -133,10 +170,11 @@ export const AGENT_FINDINGS: AgentFinding[] = [
     name: "InjecAgent (enhanced attacks)",
     what: "1,054 cases where a tool result carries an attacker instruction; success means the agent calls the attacker's tool.",
     rows: [
-      { arm: "Native tool-use history", result: "0 of 1,054", detail: "attack success 0.0%" },
-      { arm: "LLMSlim Platform rendering", result: "0 of 1,054", detail: "attack success 0.0%; 50 redundant tool calls" },
+      { arm: "Native tool-use history", result: "0 of 1,054", detail: "attack success 0.0%; 1 repeated call" },
+      { arm: "Platform 0.9.0 flow (request after the tool results)", result: "0 of 1,054", detail: "attack success 0.0%; 50 repeated calls" },
+      { arm: "Platform 0.9.1 agent turn (continue_turn)", result: "0 of 1,054", detail: "attack success 0.0%; 0 repeated calls" },
     ],
-    takeaway: "Claude Haiku 5.5 resisted every attack on its own, so this benchmark shows no defence effect with this model. The Platform's text rendering of tool results caused 4.7% redundant calls, which is the next fix.",
+    takeaway: "The reader model resisted every attack on its own, so this benchmark shows no defence effect with this model. It did expose an agent-loop gap, now fixed: before agent turns, the Platform put the user's request after the tool results and the model repeated its call 50 times. With continue_turn, the turn is shown in the order it happened and no call is repeated.",
   },
 ]
 
@@ -166,5 +204,19 @@ export const METHOD_NOTES = [
   "Official prompts and metrics for each dataset. LongMemEval uses its official judge prompts, run with Haiku 5.5 as the judge.",
   "Truncation and recency baselines get exactly the token count LLMSlim produced, so comparisons are at equal budget.",
   "Confidence intervals are paired bootstrap 95% over the same questions.",
-  "Development checks used separate questions; reported numbers come from questions not used to tune anything.",
+  "Tuning used only separate development questions (free offline checks of what survives compression). After the code was frozen, every suite was also run once on a fresh sample nobody had looked at; those numbers are shown beside the originals.",
+  "The optional reranker is cross-encoder/ms-marco-MiniLM-L-6-v2 (22M parameters, trained on MS MARCO web search only). Without it, LLMSlim uses no model at all.",
+  "LLMLingua-2 and LongLLMLingua were run by us with their published settings, on the same questions, budget and reader.",
 ]
+
+export const HEAD_TO_HEAD: HeadToHead = {
+  columns: ["Original 150", "Fresh 150", "All 300"],
+  rows: [
+    { system: "LLMSlim Core 0.8 + reranker", model: "22M cross-encoder", scoreA: "74.0", scoreB: "83.3", scoreAll: "78.7", tokens: "666", time: "0.1 s on a GPU, about 0.3 s on CPU", best: true },
+    { system: "LongLLMLingua", model: "LLaMA-2-7B (4-bit)", scoreA: "80.0", scoreB: "76.0", scoreAll: "78.0", tokens: "631", time: "9.5 s on a GPU" },
+    { system: "LLMLingua-2", model: "XLM-RoBERTa-large", scoreA: "64.7", scoreB: "73.3", scoreAll: "69.0", tokens: "678", time: "2.9 s on a GPU, 43 s on CPU" },
+    { system: "LLMSlim Core 0.8", model: "none", scoreA: "63.3", scoreB: "74.0", scoreAll: "68.7", tokens: "658", time: "23 ms on CPU" },
+    { system: "Cut to the same size", model: "none", scoreA: "49.3", scoreB: "47.3", scoreAll: "48.3", tokens: "673", time: "instant" },
+  ],
+  note: "NaturalQuestions with 20 retrieved passages and a 25% budget; full context scores 87.3 and 90.7 on the two sets. Over all 300 questions LLMSlim with the reranker and LongLLMLingua are level (78.7 and 78.0, within noise), and LLMSlim is ahead of LLMLingua-2 by 9.7 points (95% interval 3.7 to 15.7). LongLLMLingua uses the paper's settings with LLaMA-2-7B-chat quantised to 4-bit to fit a 6 GB GPU. Times are to compress one question on our machine.",
+}

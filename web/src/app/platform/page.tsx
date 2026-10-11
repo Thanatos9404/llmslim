@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { TrackedLink } from "@/components/site/TrackedLink"
 import { BetaRequestForm } from "@/components/site/BetaRequestForm"
+import { PlatformHero } from "@/components/platform/PlatformHero"
 import { FeatureRow, GuardVisual, PolicyVisual, Showcase, StatsBand, TimelineVisual, TraceVisual, type Stat } from "@/components/landing/Visuals"
 import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
@@ -17,10 +16,14 @@ export const metadata = constructMetadata({
 
 // Claude Haiku 5.5 on LongMemEval-S (90 questions); see /benchmarks for every arm and the weak spots.
 const platformStats: Stat[] = [
-  { value: "63.3", unit: "%", label: "accuracy at an 8k-token budget, default settings", note: "Platform 0.9.1 · 0.9.0 scored 18.9%" },
-  { value: "86.7", unit: "%", label: "on knowledge-update questions", note: "Full 115k-token history: 80.0%" },
-  { value: "67", unit: "×", label: "lower cost per question than sending the whole history", note: "$1.36 vs $90.72 per 1,000 questions" },
-  { value: "0", label: "histories that fail to compile at default settings", note: "0.9.0 failed 28 of 90" },
+  { topic: "Long memory", value: "63.3", unit: "%", label: "accuracy at an 8k-token budget, on default settings", source: "LongMemEval, Platform 0.9.1",
+    meter: { before: { name: "0.9.0", value: 18.9, display: "18.9%" }, after: { name: "0.9.1", value: 63.3, display: "63.3%" }, max: 100 } },
+  { topic: "Agent turns", value: "0", label: "repeated tool calls in 1,054 agent turns with continue_turn", source: "InjecAgent",
+    meter: { before: { name: "Before", value: 50, display: "50" }, after: { name: "continue_turn", value: 0, display: "0" }, max: 50 } },
+  { topic: "Cost", value: "67", unit: "×", label: "lower cost per question than sending the whole history", source: "Per 1,000 questions",
+    meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "Platform", value: 1.36, display: "$1.36" }, max: 90.72 } },
+  { topic: "Reliability", value: "0", label: "histories that fail to compile at default settings", source: "LongMemEval, 90 histories",
+    meter: { before: { name: "0.9.0", value: 28, display: "28 of 90" }, after: { name: "0.9.1", value: 0, display: "0" }, max: 28 } },
 ]
 
 const comparison = [
@@ -31,38 +34,33 @@ const comparison = [
 ] as const
 
 export default function PlatformPage() {
-  return <div className="slim-site"><PageView event="platform_page_view" /><SiteHeader /><main id="main-content" className="platform-page">
-    <section className="platform-hero site-width" aria-labelledby="platform-title">
-      <span className="eyebrow">LLMSLIM PLATFORM · v{siteConfig.platformVersion} BETA · PRIVATE</span>
-      <h1 id="platform-title">Context intelligence<br /><span>for agents in production.</span></h1>
-      <p>LLMSlim Platform builds on the open-source Core. It records what your agents were told, works out what is still true, explains every context decision, and learns from outcomes which context helps, without handing safety decisions to a model.</p>
-      <div className="hero-actions"><TrackedLink className="button" href="#beta" event="platform_beta_clicked" properties={{ location: "platform_hero" }}>Request Platform Beta Access <ArrowRight size={16} /></TrackedLink><TrackedLink className="button button-outline" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "platform_hero" }}>Explore LLMSlim Core <ArrowUpRight size={16} /></TrackedLink></div>
-    </section>
+  return <div className="slim-site platform-site"><PageView event="platform_page_view" /><SiteHeader /><main id="main-content" className="platform-page">
+    <PlatformHero version={siteConfig.platformVersion} />
 
     <section className="site-width platform-features feature-rows" aria-label="Platform capabilities">
-      <FeatureRow kicker="Temporal state" title="Know what is still true." visual={<Showcase tone="teal"><TimelineVisual /></Showcase>}>
+      <FeatureRow kicker="Temporal state" title="Know what is still true." visual={<Showcase><TimelineVisual /></Showcase>}>
         <p>An append-only, tamper-evident timeline of conversation, retrieval, memory, and tool events. Corrections replace the facts they correct instead of sitting beside them.</p>
         <p>Long sessions resume from verified checkpoints.</p>
       </FeatureRow>
-      <FeatureRow flip kicker="Context traces" title="See why context was chosen." visual={<Showcase tone="violet"><TraceVisual /></Showcase>}>
+      <FeatureRow flip kicker="Context traces" title="See why context was chosen." visual={<Showcase><TraceVisual /></Showcase>}>
         <p>Every prepared request comes with a trace: what went in, what was left out and why, and where each token went.</p>
         <p>Traces replay deterministically, so a decision can be audited long after it was made.</p>
       </FeatureRow>
-      <FeatureRow kicker="Outcome learning" title="Learn which context wins." visual={<Showcase tone="amber"><PolicyVisual /></Showcase>}>
+      <FeatureRow kicker="Outcome learning" title="Learn which context wins." visual={<Showcase><PolicyVisual /></Showcase>}>
         <p>Record whether a task succeeded and link it to the context behind it. Offline training proposes context policies.</p>
         <p>They run in shadow until an evaluation passes and an administrator promotes them. Rollback is instant.</p>
       </FeatureRow>
-      <FeatureRow flip kicker="Guardrails" title="Keep the guardrails first." visual={<Showcase tone="rose"><GuardVisual /></Showcase>}>
+      <FeatureRow flip kicker="Guardrails" title="Keep the guardrails first." visual={<Showcase><GuardVisual /></Showcase>}>
         <p>Learned suggestions can only leave out optional context. Trust boundaries, mandatory instructions, tenant isolation, and dependencies always win.</p>
         <p>Tool output and retrieved text reach the model as data, never as instructions.</p>
       </FeatureRow>
     </section>
 
     <section className="site-width platform-evidence" aria-labelledby="evidence-title">
-      <p className="p-kicker">Measured on Claude Haiku 5.5</p>
-      <h2 id="evidence-title">Remembers what matters from 500 turns ago. <span>At 1/67 of the cost.</span></h2>
+      <p className="p-kicker">Measured on public benchmarks</p>
+      <h2 id="evidence-title">Remembers what matters from 500 turns ago. <span>At 1/67 of the cost.*</span></h2>
       <StatsBand stats={platformStats} />
-      <p className="platform-evidence-note">LongMemEval-S, 90 questions over histories of about 50 chat sessions (115k tokens), official judge prompts. Platform 0.9.1 at its default settings and an 8k-token budget. The 0.9.0 figures published earlier came from a synthetic offline suite with no model answering; these replace them. <Link href="/benchmarks#longmemeval">Full results and weak spots</Link></p>
+      <p className="platform-evidence-note">* LongMemEval-S, 90 questions over histories of about 50 chat sessions (115k tokens), official judge prompts. Platform 0.9.1 at its default settings and an 8k-token budget. Agent turns: InjecAgent, 1,054 cases, with the user message, the agent&apos;s call and its result ingested in order and the next step compiled with <code>prepare(continue_turn=True)</code>. The 0.9.0 figures published earlier came from a synthetic offline suite with no model answering; these replace them. Every context was read by Claude Haiku 5.5. <Link href="/benchmarks#longmemeval">Full results</Link></p>
     </section>
 
     <section className="site-width platform-compare" aria-labelledby="compare-title">

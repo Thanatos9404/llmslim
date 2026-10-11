@@ -3,28 +3,123 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { ArrowUpRight, Menu, Moon, Sun, X } from "lucide-react"
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
+import { ArrowRight, ArrowUpRight, Moon, Sun } from "lucide-react"
 import { siteConfig } from "@/config/site"
 import { TrackedLink } from "./TrackedLink"
 
-const links = [["Documentation", "/docs"], ["Platform", "/platform"], ["Benchmarks", "/benchmarks"], ["Integrations", "/integrations"], ["Changelog", "/changelog"]] as const
+const links = [["Docs", "/docs"], ["Platform", "/platform"], ["Results", "/results"], ["Integrations", "/integrations"], ["Changelog", "/changelog"]] as const
+const menu = [
+  ["Docs", "/docs", "Install, compress, integrate"],
+  ["Platform", "/platform", "Memory, traces and policies"],
+  ["Results", "/results", "Every benchmark, measured"],
+  ["Integrations", "/integrations", "Frameworks and providers"],
+  ["Studio", "/playground", "Try it in the browser"],
+  ["Changelog", "/changelog", "What shipped, and when"],
+] as const
+const SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.8 } as const
 
-export function Brand() {
-  return <span className="brand"><span className="brand-symbol" aria-hidden="true" /><span>LLM<span className="brand-slim">Slim</span><span className="brand-period">.</span></span></span>
+/** The mark: five lines of context folding into three. One colour, with the kept lines in the accent. */
+export function Mark({ size = 22 }: { size?: number }) {
+  return <svg className="mark" viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" fill="none" strokeLinecap="round" strokeWidth="2.6">
+    <g stroke="currentColor">
+      <path d="M4 7h8c5 0 5 6 10 6" /><path d="M4 11.5h8c5 0 5 1.5 10 1.5" /><path d="M4 16h18" />
+      <path d="M4 20.5h8c5 0 5-1.5 10-1.5" /><path d="M4 25h8c5 0 5-6 10-6" />
+    </g>
+    <g stroke="var(--brand)"><path d="M22 13h6" /><path d="M22 16h6" /><path d="M22 19h6" /></g>
+  </svg>
 }
 
+export function Brand() {
+  return <span className="brand"><Mark size={26} /><span className="brand-word">LLM<span className="brand-slim">Slim</span></span></span>
+}
+
+function GitHubMark() {
+  return <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
+}
+
+function isActive(pathname: string, href: string) {
+  if (href === "/results") return pathname.startsWith("/results") || pathname.startsWith("/benchmarks")
+  return pathname.startsWith(href)
+}
+
+/** A floating island. Full at the top of the page; folds into a small capsule while you read down, and opens
+ *  again when you scroll up or reach for it. The menu grows out of the capsule. */
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [folded, setFolded] = useState(false)
+  const [reaching, setReaching] = useState(false)
+  const [hover, setHover] = useState<string | null>(null)
   const pathname = usePathname()
+  const reduced = useReducedMotion()
+  const header = useRef<HTMLElement>(null)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const { scrollY } = useScroll()
+  useMotionValueEvent(scrollY, "change", (y) => {
+    const previous = scrollY.getPrevious() ?? 0
+    if (y < 120) setFolded(false)
+    else if (Math.abs(y - previous) > 6) setFolded(y > previous)
+  })
   useEffect(() => {
-    const close = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); menuButton.current?.focus() } }
-    document.addEventListener("keydown", close)
-    return () => document.removeEventListener("keydown", close)
-  }, [])
-  return <header className="site-header"><div className="site-header-inner">
-    <Link href="/" aria-label="LLMSlim home" onClick={() => setOpen(false)}><Brand /></Link>
-    <nav className="desktop-nav" aria-label="Primary navigation">{links.map(([label, href]) => <Link prefetch={false} key={href} href={href} aria-current={pathname.startsWith(href) ? "page" : undefined}>{label}</Link>)}</nav>
-    <div className="header-actions"><button className="theme-toggle" data-theme-toggle aria-label="Switch color theme" title="Switch color theme"><Sun className="theme-sun" size={18} /><Moon className="theme-moon" size={18} /></button><a className="github-link" href={siteConfig.github} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={15} /></a><TrackedLink prefetch={false} className="button button-small" href="/playground" event="studio_clicked" properties={{ location: "header" }}>Try Studio <ArrowUpRight size={15} /></TrackedLink><button ref={menuButton} className="mobile-menu-button" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen(!open)}>{open ? <X size={21} /> : <Menu size={21} />}</button></div>
-  </div><nav id="mobile-nav" className="mobile-nav" aria-label="Mobile navigation" hidden={!open}>{[...links, ["Engineering notes", "/articles"]].map(([label, href]) => <Link prefetch={false} key={href} href={href} onClick={() => setOpen(false)}>{label}<ArrowUpRight size={16} /></Link>)}</nav></header>
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && open) { setOpen(false); menuButton.current?.focus() } }
+    const away = (event: PointerEvent) => { if (open && header.current && !header.current.contains(event.target as Node)) setOpen(false) }
+    document.addEventListener("keydown", key)
+    document.addEventListener("pointerdown", away)
+    return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", away) }
+  }, [open])
+
+  const compact = folded && !reaching && !open
+  const current = links.find(([, href]) => isActive(pathname, href))?.[0]
+  const spring = reduced ? { duration: 0 } : SPRING
+  const fade = reduced ? { duration: 0 } : { duration: 0.22 }
+
+  return <header ref={header} className="site-header" data-compact={compact ? "" : undefined} data-where={current ? "" : undefined} data-open={open ? "" : undefined}
+    onPointerEnter={(event) => { if (event.pointerType === "mouse") setReaching(true) }} onPointerLeave={() => setReaching(false)}
+    onFocus={() => setReaching(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setReaching(false) }}>
+    <motion.div className="island" layout transition={spring} style={{ borderRadius: 16 }}>
+      <motion.div layout="position" transition={spring}>
+        <Link className="island-brand" href="/" aria-label="LLMSlim home" onClick={() => setOpen(false)}><Brand /></Link>
+      </motion.div>
+
+      <AnimatePresence initial={false} mode="popLayout">
+        {compact ? current && <motion.span key="where" className="island-where" layout="position" initial={{ opacity: 0, filter: "blur(4px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, filter: "blur(4px)" }} transition={fade}>
+          {current}
+        </motion.span> : <motion.nav key="links" className="island-links" aria-label="Primary navigation" onMouseLeave={() => setHover(null)}
+          initial={{ opacity: 0, filter: "blur(6px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, filter: "blur(6px)" }} transition={fade}>
+          {links.map(([label, href]) => {
+            const active = isActive(pathname, href)
+            return <Link prefetch={false} key={href} href={href} aria-current={active ? "page" : undefined} onMouseEnter={() => setHover(href)} onFocus={() => setHover(href)} onBlur={() => setHover(null)}>
+              {hover === href && <motion.span layoutId="island-hover" className="island-hover" transition={spring} />}
+              {active && <span className="island-active" aria-hidden="true" />}
+              <span className="island-label">{label}</span>
+            </Link>
+          })}
+        </motion.nav>}
+      </AnimatePresence>
+
+      <motion.div className="island-actions" layout="position" transition={spring}>
+        {!compact && <a className="island-icon island-github" href={siteConfig.github} target="_blank" rel="noreferrer" aria-label="LLMSlim on GitHub" title="GitHub"><GitHubMark /></a>}
+        <button className="island-icon" data-theme-toggle aria-label="Switch color theme" title="Switch color theme"><Sun className="theme-sun" size={15} /><Moon className="theme-moon" size={15} /></button>
+        <button ref={menuButton} className="island-menu" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
+          <span className="island-menu-lines" aria-hidden="true"><i /><i /></span>
+        </button>
+        <TrackedLink prefetch={false} className="island-cta" href="/playground" event="studio_clicked" properties={{ location: "header" }}><span>Try Studio</span><ArrowRight size={14} /></TrackedLink>
+      </motion.div>
+    </motion.div>
+
+    <AnimatePresence>{open && <motion.div id="site-menu" className="island-panel" role="dialog" aria-label="Site menu"
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.97, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98, filter: "blur(4px)" }} transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 460, damping: 34 }}>
+      <ul className="island-grid">{menu.map(([label, href, note], index) => <motion.li key={href} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduced ? 0 : 0.04 + index * 0.03, duration: 0.3 }}>
+        <Link prefetch={false} href={href} onClick={() => setOpen(false)} aria-current={isActive(pathname, href) ? "page" : undefined}>
+          <span className="island-grid-label">{label}<ArrowRight size={13} /></span><span className="island-grid-note">{note}</span>
+        </Link>
+      </motion.li>)}</ul>
+      <div className="island-panel-foot">
+        <a href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> GitHub <ArrowUpRight size={13} /></a>
+        <a href={siteConfig.pypi} target="_blank" rel="noreferrer">PyPI <ArrowUpRight size={13} /></a>
+        <Link prefetch={false} href="/articles" onClick={() => setOpen(false)}>Engineering notes <ArrowUpRight size={13} /></Link>
+      </div>
+    </motion.div>}</AnimatePresence>
+  </header>
 }

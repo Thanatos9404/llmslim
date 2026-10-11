@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.8.0",
+    date: "Oct 2026",
+    theme: "Keep what the question needs. Drop the rest.",
+    summary: "With a query, compress() now ranks whole documents, chat rounds and paragraphs against it and keeps the best ones intact, instead of trimming every chunk by the same ratio. An optional 22M-parameter reranker finds answers that share few words with the question. Code, logs and test output keep their lines, and selection is about six times faster. Measured on public benchmarks, with fresh questions run after the code was frozen.",
+    metrics: ["LongMemEval 25.6% to 76.7% at 8k tokens", "NaturalQuestions 62.3 to 75.0", "LongBench v1 level with full context"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.8.0",
+    items: [
+      { label: "Changed", icon: CheckCircle2, title: "Query-focused selection", body: "Structural units are ranked with BM25, light stemming, pseudo-relevance feedback and a document prior, kept whole in their original order, then topped up sentence by sentence. compress_documents() shares one budget across documents by relevance." },
+      { label: "Changed", icon: Wrench, title: "Code and logs keep their lines", body: "Failures and tracebacks come first, repeated lines collapse into a count, the tail is kept, and code keeps its skeleton plus the most relevant bodies. Compressing a 1.3k-token file dropped from about 3.5 s to 7 ms." },
+      { label: "Added", icon: CheckCircle2, title: "Optional reranker", body: "relevance=\"semantic\" rescores the strongest candidates with a 22M-parameter cross-encoder (the semantic extra), on CPU or GPU. Any scorer(query, texts) callable works too. Without it, LLMSlim still runs no model." },
+      { label: "Boundary", icon: ShieldCheck, title: "Guardrails still win", body: "Trusted instructions and preserve_patterns survive inside large units; untrusted retrieved, tool and assistant text still cannot reach the protected tier. Query-less prose behaves exactly as in 0.7." },
+    ],
+  },
+  {
     version: "v0.7.2",
     date: "11 Oct 2026",
     theme: "Keep the evidence that answers the question.",
@@ -66,7 +80,7 @@ export const releases: Release[] = [
     items: [
       { label: "Added", icon: CheckCircle2, title: "MCP catalog sources", body: "Streamable HTTP and literal-argv stdio support bounded pagination, scoped caching, contract fingerprints, and stale-plan detection." },
       { label: "Boundary", icon: ShieldCheck, title: "Execution belongs to the host", body: "The optional Agents SDK bridge requires a host callback. Full and measure-only plans retain every schema; selective exposure remains research-only." },
-      { label: "Website", icon: Wrench, title: "A new home for LLMSlim", body: "A redesigned website with light and dark themes, and official Sarvam co-branding marking acceptance into the Sarvam Startup Program." },
+      { label: "Website", icon: Wrench, title: "A new home for LLMSlim", body: "A redesigned website with light and dark themes, a Sarvam integration guide, and a note on LLMSlim's acceptance into the Sarvam Startup Program." },
     ],
   },
   {

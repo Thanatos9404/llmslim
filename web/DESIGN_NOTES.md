@@ -4,14 +4,14 @@ The landing page follows the user's Raycast reference: a cinematic composition, 
 
 ## Assets
 
-- `public/compression-ribbon-dark.webp` — custom 3D artwork, 1536 × 1024, 167,482 bytes.
-- `public/compression-ribbon-light.webp` — matching light treatment, 1536 × 1024, 95,156 bytes.
-- `public/llmslim_logo.png` — existing official LLMSlim logo, unchanged.
-- `public/sarvam-symbol.svg` — official Sarvam flower mark.
-- `public/sarvam-wordmark.svg` — official Sarvam wordmark.
-- `public/fonts/geist-latin.woff2` — self-hosted variable font; license in `public/fonts/OFL.txt`.
+- `public/compression-ribbon-dark.webp`: custom 3D artwork, 1536 × 1024, 167,482 bytes.
+- `public/compression-ribbon-light.webp`: matching light treatment, 1536 × 1024, 95,156 bytes.
+- `public/llmslim_logo.png`: existing official LLMSlim logo, unchanged.
+- `public/sarvam-symbol.svg`: official Sarvam flower mark.
+- `public/sarvam-wordmark.svg`: official Sarvam wordmark.
+- `public/fonts/geist-latin.woff2`: self-hosted variable font; license in `public/fonts/OFL.txt`.
 
-Sarvam assets came from its public brand website. The co-brand arrangement and acceptance wording follow the user's supplied `Untitled design (8).png` reference. Both brands remain independently identifiable.
+Sarvam assets came from its public brand website. The program-logo layout and acceptance wording follow the user's supplied `Untitled design (8).png` reference. Both brands remain independently identifiable. The relationship is Sarvam Startup Program acceptance only: not a partnership, collaboration, co-branding, or endorsement.
 
 Sources:
 - https://www.raycast.com/
@@ -57,3 +57,10 @@ Create the matching LIGHT MODE version of this exact premium 3D brand render. Pr
 - Browser console inspection found no runtime warnings or errors.
 
 The local production preview is started with `node node_modules/next/dist/bin/next start --port 3000` from `web/`. No public deployment was performed.
+
+## October 2026 design system
+
+- Palette: warm neutrals with one accent, vermilion (`#c2410c` light, `#ff7a3d` dark). No gradients on data.
+- Type: Geist for text, Instrument Serif italic for emphasis in headings, Geist Mono for code and numbers. All three are self-hosted under `public/fonts` (OFL).
+- Mark: the converging-lines logo drawn as one-colour SVG in the header (`Mark` in `SiteHeader.tsx`); the PNG stays for app icons.
+- Photos from Pexels (free to use, Pexels license): the light-theme hero, programme and closing bands (Pexels 11705368, 10975806, 614115) and the Platform hero (1654138 by night, 32231937 by day).

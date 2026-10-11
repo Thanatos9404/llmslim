@@ -13,9 +13,9 @@ export const siteConfig = {
   publisher: "LLMSlim Core Team",
   category: "Developer Tools & AI Infrastructure",
   /** Public, MIT-licensed `llmslim` package on PyPI. */
-  coreVersion: "0.7.2",
+  coreVersion: "0.8.0",
   /** Private LLMSlim Platform beta. Versioned independently of Core; never published to PyPI. */
-  platformVersion: "0.9.0",
+  platformVersion: "0.9.1",
   github: "https://github.com/Thanatos9404/llmslim",
   linkedin: "https://www.linkedin.com/in/yashvardhan-thanvi-2a3a661a8/",
   founderEmail: "founder@llmslim.app",

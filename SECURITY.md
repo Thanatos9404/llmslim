@@ -25,25 +25,12 @@ content by default. Integration constructors and live benchmarks require
 explicit configuration; credentials are redacted from repr and sanitized
 errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
 
-## Hosted Sarvam Studio
+## Studio
 
-The optional `/api/sarvam` route is server-only and defaults to disabled.
-Enabling it requires `SARVAM_API_KEY`, a durable MongoDB quota store,
-`LLMSLIM_RATE_LIMIT_HMAC_SECRET`, and the explicit kill switch
-`LLMSLIM_HOSTED_SARVAM_ENABLED=true`. No variable is prefixed with
-`NEXT_PUBLIC_`; credentials never enter browser bundles or responses.
-
-Paid requests are guarded by sliding burst/minute/hour/day limits for both
-HMAC-pseudonymized network and HttpOnly-session identities, repeated high-cost
-request detection, per-identity token allowance, atomic daily/monthly project
-spend reservations, per-request cost ceilings, strict payload limits, and
-expiring per-client/global concurrency slots. A missing or unavailable durable
-store fails closed. Provider-reported usage reconciles conservative estimates;
-where reconciliation is unavailable, conservative accounting remains charged.
-
-Only aggregate operational counters are stored. Prompt content, raw IP
-addresses, session cookies, keys, headers, and database URIs are excluded.
-Cross-origin wildcard access and public BYOK persistence are not supported.
+The website's `/api/studio` function runs extractive compression only. It calls
+no model provider, holds no credentials, and stores or logs nothing it is sent.
+Payloads, question length and token counts are bounded, and each instance
+applies a per-client rate limit; platform-level rate limiting remains advisable.
 
 ## Compression-induced instruction elevation
 

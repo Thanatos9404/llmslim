@@ -30,6 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/platform", 0.9, "monthly"),
     entry("/integrations", 0.9, "monthly"),
     entry("/benchmarks", 0.85, "monthly"),
+    entry("/results", 0.85, "monthly"),
     entry("/articles", 0.8, "monthly", lastArticle),
     entry("/changelog", 0.7, "monthly", lastRelease),
     entry("/privacy", 0.3, "yearly"),

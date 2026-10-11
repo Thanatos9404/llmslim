@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - Unreleased
+## [0.8.0] - 2026-10-12
 
 ### Changed
 - **Query-focused selection.** With a `query`, `compress()` no longer gives
@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LongBench v1 macro at 3,000 tokens: 52.4 → 54.9 → 54.2 (full: 54.9).
 - LongBench v2, 180 questions: 51.1 → 53.9 → 55.6 (full: 60.0).
 - Compressing a 1.3k-token Python file: about 3.5 s → 7 ms.
+- Head to head on NaturalQuestions, 300 questions at the same budget: 78.7 with the
+  reranker, against 78.0 for LongLLMLingua (a 7B model) and 69.0 for LLMLingua-2.
 - Full tables, fresh-sample reruns and head-to-head runs of LLMLingua-2 and
   LongLLMLingua: `benchmarks/live/README.md`.
 

@@ -40,6 +40,8 @@ export type HeadToHead = {
 
 export const LIVE_MODEL = "Claude Haiku 5.5"
 export const LIVE_DATE = "October 2026"
+/** When the /benchmarks and /results content last changed: their sitemap lastmod. Update it with the content. */
+export const RESULTS_LAST_UPDATED = "12 Oct 2026"
 export const CORE_VERSION_TESTED = "0.8.0"
 export const PLATFORM_VERSION_TESTED = "0.9.1"
 

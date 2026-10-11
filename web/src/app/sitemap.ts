@@ -4,6 +4,7 @@ import { BENCHMARK_SUITES } from "@/data/benchmarks";
 import { releases } from "@/data/changelog";
 import { DOCS_REGISTRY } from "@/data/docs";
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations";
+import { RESULTS_LAST_UPDATED } from "@/data/live-benchmarks";
 import { absoluteUrl, contentDate } from "@/lib/seo";
 
 type Entry = MetadataRoute.Sitemap[number];
@@ -22,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const lastRelease = latest(releases.map((release) => contentDate(release.date)));
   const lastDoc = latest(docs.map((doc) => contentDate(doc.lastUpdated)));
   const lastArticle = latest(articles.map((article) => contentDate(article.lastUpdated)));
+  const resultsUpdated = contentDate(RESULTS_LAST_UPDATED);
 
   return [
     entry("/", 1.0, "weekly", lastRelease),
@@ -29,8 +31,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/playground", 0.9, "monthly"),
     entry("/platform", 0.9, "monthly"),
     entry("/integrations", 0.9, "monthly"),
-    entry("/benchmarks", 0.85, "monthly"),
-    entry("/results", 0.85, "monthly"),
+    entry("/benchmarks", 0.85, "monthly", resultsUpdated),
+    entry("/results", 0.85, "monthly", resultsUpdated),
     entry("/articles", 0.8, "monthly", lastArticle),
     entry("/changelog", 0.7, "monthly", lastRelease),
     entry("/privacy", 0.3, "yearly"),

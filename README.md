@@ -295,6 +295,11 @@ pip install "llmslim[zoho]"
 # Explicit MongoDB context memory and Atlas retrieval
 pip install "llmslim[mongodb]"
 
+# LangChain, LlamaIndex (Python 3.10+) and Haystack adapters
+pip install "llmslim[langchain]"
+pip install "llmslim[llamaindex]"
+pip install "llmslim[haystack]"
+
 # All optional extensions
 pip install "llmslim[all]"
 ```
@@ -383,6 +388,10 @@ results = compress_documents(documents, query=question, target_ratio=0.25, relev
 ```
 
 `relevance` also accepts any callable `scorer(query, texts) -> scores`, such as a hosted reranking API.
+
+Retrieving with LangChain, LlamaIndex or Haystack? Use the
+[framework adapters](#use-with-langchain--llamaindex--haystack) instead of calling
+`compress_documents` yourself.
 
 > [!NOTE]
 > `compress_documents` treats documents as untrusted (`ContextRole.RAG`) by default,
@@ -479,6 +488,35 @@ print("Validation failures:", meta.failure_reasons)
 Every rewrite is validated for structure, instruction retention, entity retention,
 and similarity. If a hybrid rewrite fails validation, LLMSlim returns the extractive
 result instead and reports why in `rewrite_metadata.failure_reasons`.
+
+---
+
+## Use with LangChain / LlamaIndex / Haystack
+
+Each adapter runs `compress_documents` on the retrieved documents, with the same
+shared budget when there is a query. Kept documents keep their metadata, and
+documents that compress to nothing are dropped. They run locally with no model.
+
+| Framework | Install | Class | Use it where you'd use |
+| :--- | :--- | :--- | :--- |
+| LangChain | `llmslim[langchain]` | `llmslim.integrations.langchain.LLMSlimCompressor` | `LLMLinguaCompressor`, e.g. in `ContextualCompressionRetriever` |
+| LlamaIndex | `llmslim[llamaindex]` (Python 3.10+) | `llmslim.integrations.llama_index.LLMSlimPostprocessor` | `LongLLMLinguaPostprocessor`, in `node_postprocessors` |
+| Haystack | `llmslim[haystack]` | `llmslim.integrations.haystack.LLMSlimDocumentCompressor` | a component between the retriever and the prompt builder |
+
+```python
+from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
+from llmslim.integrations.langchain import LLMSlimCompressor
+
+retriever = ContextualCompressionRetriever(
+    base_compressor=LLMSlimCompressor(target_ratio=0.25),
+    base_retriever=your_retriever,
+)
+```
+
+Runnable examples with their output:
+[LangChain](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/LANGCHAIN.md),
+[LlamaIndex](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/LLAMAINDEX.md),
+[Haystack](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/HAYSTACK.md).
 
 ---
 
@@ -663,10 +701,13 @@ LLMSlim operates as an unopinionated context pre-processor. These integrations s
 | **Google Gemini** | `gemini_generate_request()`, `gemini_cached_content_request()` | Execution-free request builders |
 | **vLLM / self-hosted** | `vllm_chat_request()` | Execution-free request builder |
 | **OpenAI Agents SDK** | `llmslim[agents]`: `make_openai_agents_input_filter()`, `to_openai_agents_tools()` | Text-only model-input filter; the SDK keeps execution and tool ownership |
+| **LangChain** | `llmslim[langchain]`: `LLMSlimCompressor` | `BaseDocumentCompressor` for `ContextualCompressionRetriever` |
+| **LlamaIndex** | `llmslim[llamaindex]`: `LLMSlimPostprocessor` | `BaseNodePostprocessor` for query engines |
+| **Haystack** | `llmslim[haystack]`: `LLMSlimDocumentCompressor` | Pipeline component between retriever and prompt builder |
 
 </div>
 
-There is no dedicated adapter for other frameworks. LLMSlim works with any framework
+For other frameworks there is no dedicated adapter. LLMSlim works with any framework
 that can pass plain message lists (`{"role": ..., "content": ...}` dicts) or document
 strings; you write the few lines of glue that pass LLMSlim's output to your client.
 

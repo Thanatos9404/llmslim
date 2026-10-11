@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Framework adapters** that run `compress_documents` inside LangChain,
+  LlamaIndex and Haystack, with the same shared budget when there is a query.
+  Kept documents keep their order, id, score and metadata; documents that
+  compress to nothing are dropped; the original and kept token counts are
+  recorded in the metadata (`record_token_counts=False` turns this off).
+  - `llmslim.integrations.langchain.LLMSlimCompressor`, a
+    `BaseDocumentCompressor` for `ContextualCompressionRetriever`, where you'd
+    use `LLMLinguaCompressor`. Install `llmslim[langchain]`.
+  - `llmslim.integrations.llama_index.LLMSlimPostprocessor`, a
+    `BaseNodePostprocessor`, where you'd use `LongLLMLinguaPostprocessor`. The
+    token counts are kept out of the LLM and embedding text. Install
+    `llmslim[llamaindex]` (Python 3.10+).
+  - `llmslim.integrations.haystack.LLMSlimDocumentCompressor`, a Haystack
+    component with `run(documents, query)`. Install `llmslim[haystack]`.
+  - Options: `target_ratio` (default 0.25), `relevance`, `selection`,
+    `context_role` and `additional_compress_kwargs`. Tested with
+    langchain-core 0.3.0 and 1.6.9, llama-index-core 0.12.0 and 0.14.25, and
+    haystack-ai 2.0.0, 2.21.0 and 3.3.0. Guides with runnable examples are in
+    `docs/integrations/`.
+
+### Changed
+- PyPI metadata: the summary now says what LLMSlim does (context compression
+  and planning for RAG and agents), with keywords for prompt and context
+  compression and the supported frameworks, and the Python 3.13,
+  `Python :: 3 :: Only` and `Typing :: Typed` classifiers.
+- `llmslim[all]` includes the three framework extras.
+
 ## [0.8.0] - 2026-10-12
 
 ### Changed

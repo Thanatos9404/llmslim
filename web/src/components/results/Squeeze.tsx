@@ -16,7 +16,7 @@ const STEPS = [
   { kicker: "The history", title: "Fifty chat sessions. 114,006 tokens.", body: "A real long-memory history. The question needs a few lines of it." },
   { kicker: "The read", title: "Every round, scored against the question.", body: "Lexical ranking with no model at all, or a 22M-parameter reranker for a sharper read." },
   { kicker: "The cut", title: "Seven percent stays, in its original order.", body: "Kept rounds go to the model whole, with their session headers. Everything else is left out." },
-  { kicker: "The answer", title: "76.7% right. The whole history scored 82.2%.", body: "At 1/62 of the cost. On a fresh sample the compressed context did better than the whole history: 76.7% against 72.2%." },
+  { kicker: "The answer", title: "76.7% right. The whole history scored 82.2%.", body: "At 1/62 of the cost at Haiku 5.5 list prices, with 14× fewer tokens. On a fresh sample it scored 76.7% against 72.2% for the whole history, within noise." },
 ]
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))

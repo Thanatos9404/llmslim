@@ -34,6 +34,8 @@ export type HeadToHead = {
   columns: [string, string, string]
   rows: { system: string; model: string; scoreA: string; scoreB: string; scoreAll: string; tokens: string; time: string; best?: boolean }[]
   note: string
+  /** The competitors' papers and code, and our raw results and run script, so anyone can check or rerun it. */
+  sources: { label: string; url: string }[]
 }
 
 export const LIVE_MODEL = "Claude Haiku 5.5"
@@ -56,7 +58,7 @@ export const LIVE_SUITES: LiveSuite[] = [
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 25.6, tokens: 10482, cost: 1.86 },
       { name: "Most recent sessions", kind: "baseline", score: 14.4, tokens: 6693, cost: 1.23 },
     ],
-    takeaway: "With the reranker, 8k tokens score within noise of the whole 115k-token history (95% CI −15.6 to +4.4) at 1/62 of the cost. Multi-session and time questions beat the full history.",
+    takeaway: "With the reranker, 8k tokens score within noise of the whole 115k-token history (95% CI −15.6 to +4.4) at 1/62 of the cost at Haiku 5.5 list prices (14× fewer tokens; full-history prompts bill at the over-100k-token rate). On the original sample, multi-session and time questions score one question above the full history (15 per type); on the fresh sample multi-session falls below it (60.0 against 73.3).",
     caveat: "Preference questions (a recommendation that should use a stated taste) are the weakest type: 40% against 87% on this sample.",
     fresh: { n: "90 new questions", arms: [
       { name: "Full history", kind: "full", score: 72.2 },
@@ -70,7 +72,7 @@ export const LIVE_SUITES: LiveSuite[] = [
     name: "NaturalQuestions, 20 documents",
     what: "Open-domain questions with 20 retrieved passages; the answer sits in one, placed first, 10th or 20th.",
     metric: "accuracy (answer in response)",
-    n: "300 questions (100 per position)",
+    n: "300 cases (100 questions × 3 answer positions)",
     arms: [
       { name: "Full context", kind: "full", score: 86.3, tokens: 2889, cost: 0.694 },
       { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 75.0, tokens: 668, cost: 0.331 },
@@ -78,9 +80,9 @@ export const LIVE_SUITES: LiveSuite[] = [
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 62.3, tokens: 727, cost: 0.355 },
       { name: "Keep passages in order", kind: "baseline", score: 52.0, tokens: 669, cost: 0.343 },
     ],
-    takeaway: "With the reranker, 75% on a quarter of the tokens wherever the answer sits (74 to 76% at every position), against 95% to 29% for keeping passages in order. Ahead of LLMLingua-2 at the same budget; LongLLMLingua, which runs a 7B model, scores higher (below).",
+    takeaway: "With the reranker, 75% on a quarter of the tokens wherever the answer sits (74 to 76% at every position), against 95% to 29% for keeping passages in order. Ahead of LLMLingua-2 at the same budget. LongLLMLingua, which runs a 7B model, is level with it over 300 cases: ahead on the original set, behind on the fresh one (below).",
     caveat: "At 4.4x compression this is still 11 points below full context with the reranker, and 21 without it.",
-    fresh: { n: "300 new questions", arms: [
+    fresh: { n: "300 new cases (100 questions × 3 answer positions)", arms: [
       { name: "Full context", kind: "full", score: 88.0 },
       { name: "LLMSlim Core 0.8 + reranker", kind: "llmslim", score: 75.7 },
       { name: "LLMSlim Core 0.8", kind: "llmslim", score: 67.3 },
@@ -101,7 +103,7 @@ export const LIVE_SUITES: LiveSuite[] = [
       { name: "Truncate to the same budget", kind: "baseline", score: 49.5, tokens: 1147, cost: 0.194 },
       { name: "No context", kind: "baseline", score: 43.8, tokens: 84, cost: 0.120 },
     ],
-    takeaway: "57% fewer input tokens and 44% lower cost than full context. Exact match with the reranker: 56.0 against 57.0 with every paragraph.",
+    takeaway: "57% fewer input tokens and 44% lower cost than full context. Exact match with the reranker: 56.0 against 57.0 with every paragraph (54.5 against 59.0 on the fresh sample).",
     caveat: "Short contexts leave little to remove: on a 2k-token context, full context still has the best F1.",
     fresh: { n: "200 new questions", arms: [
       { name: "Full context", kind: "full", score: 77.5 },
@@ -126,7 +128,7 @@ LIVE_SUITES.push(
       { name: "LLMSlim Core 0.7.2", kind: "previous", score: 52.4, tokens: 5164, cost: 0.779 },
       { name: "Middle truncation, same budget", kind: "baseline", score: 45.2, tokens: 5147, cost: 0.785 },
     ],
-    takeaway: "The same macro score as full context (95% CI −4.5 to +4.6) on a third of the tokens, and +9.8 over truncation. RepoBench-P (cross-file code) beats full context: 57.2 against 44.3.",
+    takeaway: "The same macro score as full context (95% CI −4.5 to +4.6) on a third of the tokens, and +9.8 over truncation. On the original sample RepoBench-P (cross-file code, 30 samples) scored above full context, 57.2 against 44.3; it did not on the fresh sample.",
     caveat: "MuSiQue multi-hop QA is still below full context (58.8 against 64.9; 61.2 with the reranker), though most of the 0.8 pre-release drop (48.3) is recovered.",
     fresh: { n: "210 new samples", arms: [
       { name: "Full context", kind: "full", score: 55.1 },
@@ -203,20 +205,27 @@ export const METHOD_NOTES = [
   "Reader model: Claude Haiku 5.5 at effort low for every arm. Only the context changes between arms.",
   "Official prompts and metrics for each dataset. LongMemEval uses its official judge prompts, run with Haiku 5.5 as the judge.",
   "Truncation and recency baselines get exactly the token count LLMSlim produced, so comparisons are at equal budget.",
-  "Confidence intervals are paired bootstrap 95% over the same questions.",
+  "Confidence intervals are paired bootstrap 95% over the same questions. On NaturalQuestions each question appears three times (answer 1st, 10th and 20th) and the intervals resample those cases, so they are narrower than intervals that resample whole questions.",
   "Tuning used only separate development questions (free offline checks of what survives compression). After the code was frozen, every suite was also run once on a fresh sample nobody had looked at; those numbers are shown beside the originals.",
-  "The optional reranker is cross-encoder/ms-marco-MiniLM-L-6-v2 (22M parameters, trained on MS MARCO web search only). Without it, LLMSlim uses no model at all.",
+  "The optional reranker is cross-encoder/ms-marco-MiniLM-L-6-v2 (22M parameters, trained on MS MARCO web search only). Install it with pip install \"llmslim[semantic]\" and pass relevance=\"semantic\". Without it, LLMSlim uses no model at all.",
   "LLMLingua-2 and LongLLMLingua were run by us with their published settings, on the same questions, budget and reader.",
 ]
 
 export const HEAD_TO_HEAD: HeadToHead = {
-  columns: ["Original 150", "Fresh 150", "All 300"],
+  columns: ["Original (150 cases)", "Fresh (150 cases)", "All (300 cases)"],
   rows: [
-    { system: "LLMSlim Core 0.8 + reranker", model: "22M cross-encoder", scoreA: "74.0", scoreB: "83.3", scoreAll: "78.7", tokens: "666", time: "0.1 s on a GPU, about 0.3 s on CPU", best: true },
-    { system: "LongLLMLingua", model: "LLaMA-2-7B (4-bit)", scoreA: "80.0", scoreB: "76.0", scoreAll: "78.0", tokens: "631", time: "9.5 s on a GPU" },
-    { system: "LLMLingua-2", model: "XLM-RoBERTa-large", scoreA: "64.7", scoreB: "73.3", scoreAll: "69.0", tokens: "678", time: "2.9 s on a GPU, 43 s on CPU" },
-    { system: "LLMSlim Core 0.8", model: "none", scoreA: "63.3", scoreB: "74.0", scoreAll: "68.7", tokens: "658", time: "23 ms on CPU" },
-    { system: "Cut to the same size", model: "none", scoreA: "49.3", scoreB: "47.3", scoreAll: "48.3", tokens: "673", time: "instant" },
+    { system: "LLMSlim Core 0.8 + reranker", model: "22M cross-encoder", scoreA: "74.0", scoreB: "83.3", scoreAll: "78.7", tokens: "668", time: "0.1 s on a GPU", best: true },
+    { system: "LongLLMLingua", model: "LLaMA-2-7B (4-bit)", scoreA: "80.0", scoreB: "76.0", scoreAll: "78.0", tokens: "630", time: "9.3 s on a GPU" },
+    { system: "LLMLingua-2", model: "XLM-RoBERTa-large", scoreA: "64.7", scoreB: "73.3", scoreAll: "69.0", tokens: "680", time: "2.3 s on a GPU, about 43 s on CPU" },
+    { system: "LLMSlim Core 0.8", model: "none", scoreA: "63.3", scoreB: "74.0", scoreAll: "68.7", tokens: "658", time: "25 ms on CPU" },
+    { system: "Cut to the same size", model: "none", scoreA: "49.3", scoreB: "47.3", scoreAll: "48.3", tokens: "627", time: "instant" },
   ],
-  note: "NaturalQuestions with 20 retrieved passages and a 25% budget; full context scores 87.3 and 90.7 on the two sets. Over all 300 questions LLMSlim with the reranker and LongLLMLingua are level (78.7 and 78.0, within noise), and LLMSlim is ahead of LLMLingua-2 by 9.7 points (95% interval 3.7 to 15.7). LongLLMLingua uses the paper's settings with LLaMA-2-7B-chat quantised to 4-bit to fit a 6 GB GPU. Times are to compress one question on our machine.",
+  note: "NaturalQuestions with 20 retrieved passages and a 25% budget; full context scores 87.3 and 90.7 on the two sets. Each set is 50 questions × 3 answer positions (1st, 10th, 20th), so the 300 cases come from 100 questions. Over all 300 cases LLMSlim with the reranker and LongLLMLingua are level (78.7 and 78.0: +0.7 points, 95% interval −4.7 to +6.0), and LLMSlim is ahead of LLMLingua-2 by 9.7 points (95% interval 3.7 to 15.7). LongLLMLingua uses the paper's NQ settings with LLaMA-2-7B-chat; the paper does not state its precision, and we ran it in 4-bit NF4 to fit a 6 GB GPU. Tokens are means and times are medians over the 300 cases, to compress one question on our machine (LLMLingua-2's CPU time is the mean of a separate CPU run on the original set).",
+  sources: [
+    { label: "LLMLingua-2 paper (arXiv 2403.12968)", url: "https://arxiv.org/abs/2403.12968" },
+    { label: "LongLLMLingua paper (arXiv 2310.06839)", url: "https://arxiv.org/abs/2310.06839" },
+    { label: "LLMLingua code (microsoft/LLMLingua)", url: "https://github.com/microsoft/LLMLingua" },
+    { label: "Per-question results", url: "https://github.com/Thanatos9404/llmslim/tree/main/benchmarks/live/results" },
+    { label: "Script to rerun the competitors", url: "https://github.com/Thanatos9404/llmslim/blob/main/benchmarks/live/competitors.sh" },
+  ],
 }

@@ -22,7 +22,7 @@ const faqs: ReadonlyArray<readonly [string, string]> = [
 // Real-model results only (Claude Haiku 5.5, public benchmarks, paired against full context and truncation).
 // The full report is on /benchmarks.
 const stats: Stat[] = [
-  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories", source: "LongMemEval, 76.7% vs 82.2% with the whole history",
+  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories, at Haiku 5.5 list prices", source: "LongMemEval, 76.7% vs 82.2% with the whole history; 14× fewer tokens",
     meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "LLMSlim", value: 1.45, display: "$1.45" }, max: 90.72 } },
   { topic: "Long documents", value: "3", unit: "×", label: "fewer tokens on long documents, for the same score", source: "LongBench v1, 54.9 vs 54.9 with full context",
     meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
@@ -58,7 +58,7 @@ export default function Home() {
       <Reveal className="p-head"><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
       <div className="duo">
         <div>
-          <Showcase><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval, 115k-token histories</span></>} /></Showcase>
+          <Showcase><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices; 14× fewer tokens</span></>} /></Showcase>
           <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
         <div>

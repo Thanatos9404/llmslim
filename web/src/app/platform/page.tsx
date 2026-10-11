@@ -20,7 +20,7 @@ const platformStats: Stat[] = [
     meter: { before: { name: "0.9.0", value: 18.9, display: "18.9%" }, after: { name: "0.9.1", value: 63.3, display: "63.3%" }, max: 100 } },
   { topic: "Agent turns", value: "0", label: "repeated tool calls in 1,054 agent turns with continue_turn", source: "InjecAgent",
     meter: { before: { name: "Before", value: 50, display: "50" }, after: { name: "continue_turn", value: 0, display: "0" }, max: 50 } },
-  { topic: "Cost", value: "67", unit: "×", label: "lower cost per question than sending the whole history", source: "Per 1,000 questions",
+  { topic: "Cost", value: "67", unit: "×", label: "lower cost per question than sending the whole history, at Haiku 5.5 list prices", source: "Per 1,000 questions; 15× fewer tokens",
     meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "Platform", value: 1.36, display: "$1.36" }, max: 90.72 } },
   { topic: "Reliability", value: "0", label: "histories that fail to compile at default settings", source: "LongMemEval, 90 histories",
     meter: { before: { name: "0.9.0", value: 28, display: "28 of 90" }, after: { name: "0.9.1", value: 0, display: "0" }, max: 28 } },

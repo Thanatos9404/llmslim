@@ -590,8 +590,8 @@ the harness and raw per-question results: [benchmarks/live](benchmarks/live/READ
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | LongMemEval-S, 90 q (accuracy) | 82.2 | **76.7** | 68.9 | 14.4 | 114,006 → 7,985 |
 | … fresh 90 q | 72.2 | **76.7** | 67.8 | 14.4 | |
-| NaturalQuestions 20 docs, 300 q (accuracy) | 86.3 | **75.0** | 65.7 | 52.0 | 2,889 → 668 |
-| … fresh 300 q | 88.0 | **75.7** | 67.3 | 48.3 | |
+| NaturalQuestions 20 docs, 300 cases: 100 q × 3 answer positions (accuracy) | 86.3 | **75.0** | 65.7 | 52.0 | 2,889 → 668 |
+| … fresh 300 cases | 88.0 | **75.7** | 67.3 | 48.3 | |
 | HotpotQA, 200 q (F1) | 74.9 | **69.4** | 67.5 | 49.5 | 2,179 → 939 |
 | LongBench v1, 210 samples (macro) | 54.9 | 54.2 | **54.9** | 45.2 | 15,532 → 5,232 |
 | … fresh 210 samples | 55.1 | **55.4** | 55.0 | 46.8 | |

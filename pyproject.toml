@@ -89,7 +89,7 @@ all = [
     "llama-index-core>=0.12; python_version >= '3.10'",
     "haystack-ai>=2.0",
 ]
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21", "mypy>=1.8", "build>=1.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"

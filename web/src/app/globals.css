@@ -446,12 +446,16 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 .p-announce:hover { color:#fff; } .p-announce svg { transition:transform .3s; } .p-announce:hover svg { transform:translateX(3px); }
 .p-announce-dot { width:6px; height:6px; background:var(--brand); }
 .p-announce-sep { width:4px; height:4px; background:rgba(255,255,255,.35); }
+.p-announce-item { display:inline-flex; align-items:center; gap:12px; white-space:nowrap; }
 .p-hero h1 { margin:0 0 28px; font-size:clamp(46px,8.2vw,108px); line-height:.98; letter-spacing:-.058em; font-weight:620; color:#fff; text-wrap:balance; }
-.p-hero-dim { font-family:var(--serif); font-style:italic; font-weight:400; letter-spacing:-.03em; color:#bdbcb6; }
 /* Serif italic in an opaque ink, so the stars never show through the letters. */
-.p-hero-dim .word { padding:.08em .04em .14em 0; margin:-.08em -.04em -.14em 0; color:#bdbcb6; }
-.word-mask { display:inline-block; overflow:hidden; padding-bottom:.1em; margin-bottom:-.1em; vertical-align:bottom; }
-.word { display:inline-block; }
+.p-hero-dim { font-family:var(--serif); font-style:italic; font-weight:400; letter-spacing:-.03em; color:#bdbcb6; }
+/* The compression-first subhead, with the benchmark proof point linked to /benchmarks. */
+.p-hero-sub { max-width:700px; margin:0 auto 18px; font-size:clamp(17px,1.75vw,21px); line-height:1.5; font-weight:520; letter-spacing:-.012em; color:#f3f4f7; text-wrap:balance; }
+.p-hero-proof { color:inherit; text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--brand) 70%,transparent); text-decoration-thickness:1px; text-underline-offset:.22em; transition:text-decoration-color .25s; }
+.p-hero-proof:hover { text-decoration-color:var(--brand); }
+.p-hero-proof svg { display:inline-block; margin-left:6px; vertical-align:-.12em; transition:transform .25s; }
+.p-hero-proof:hover svg { transform:translateX(3px); }
 .p-hero-lede { max-width:620px; margin:0 auto 36px; font-size:clamp(16px,1.55vw,19px); line-height:1.65; color:var(--subtle); }
 .p-hero .p-hero-lede { color:rgba(232,235,243,.74); }
 .p-hero-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-bottom:28px; }
@@ -469,7 +473,8 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 .p-body { max-width:520px; margin-top:22px; font-size:17px; line-height:1.7; color:var(--subtle); }
 
 .p-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:26px; font-size:13px; color:var(--subtle); }
-.p-fineprint { margin-top:14px; font-size:12px; color:color-mix(in srgb,var(--subtle) 80%,transparent); }
+/* Full-strength --subtle: 6.0:1 on the dark surface, 5.2:1 on the light one (AA for 12px text). */
+.p-fineprint { margin-top:14px; font-size:12px; color:var(--subtle); }
 
 .sheet-eyebrow { font-size:13px; line-height:1.6; font-weight:500; color:var(--subtle); }
 
@@ -510,7 +515,8 @@ html:not(.dark) .p-hero { background:#e8edf4; }
 html:not(.dark) .p-hero-veil { background:radial-gradient(ellipse 70% 60% at 50% 44%, rgba(247,249,252,.62) 0%, rgba(247,249,252,.38) 58%, rgba(247,249,252,.55) 100%), linear-gradient(180deg, rgba(247,249,252,.4) 0%, transparent 24%, transparent 60%, var(--surface) 100%); }
 html:not(.dark) .p-hero-ribbon { mix-blend-mode:multiply; opacity:.42; }
 html:not(.dark) .p-hero h1 { color:var(--ink); }
-html:not(.dark) .p-hero-dim .word { color:#5c5b56; }
+html:not(.dark) .p-hero-dim { color:#5c5b56; }
+html:not(.dark) .p-hero-sub { color:var(--ink); }
 html:not(.dark) .p-hero .p-hero-lede, html:not(.dark) .p-final .p-hero-lede { color:rgba(22,24,29,.74); }
 html:not(.dark) .p-hero .install-command, html:not(.dark) .p-final .install-command { color:rgba(22,24,29,.78); }
 html:not(.dark) .p-announce { color:rgba(22,24,29,.74); }
@@ -534,6 +540,11 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
   .premium .code-status { padding:14px 18px; }
   .logo-cloud { gap:34px 40px; }
   .logo-cloud-item a { height:48px; transform:scale(.86); }
+}
+@media (max-width:480px) {
+  /* On phones the release line wraps between its two items instead of inside them. */
+  .p-announce { flex-wrap:wrap; justify-content:center; row-gap:6px; }
+  .p-announce-sep { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
   .p-hero-ribbon-float { animation:none; }

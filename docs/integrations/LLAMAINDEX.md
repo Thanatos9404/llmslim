@@ -6,7 +6,7 @@ would use `LongLLMLinguaPostprocessor`: in a query engine's
 with no model and no API call.
 
 ```bash
-pip install "llmslim[llamaindex]"   # llama-index-core; Python 3.10+; needs llmslim newer than 0.8.0
+pip install "llmslim[llamaindex]"   # llama-index-core; Python 3.10+; needs llmslim 0.8.1 or newer
 ```
 
 The extra needs Python 3.10 or newer: llama-index-core dropped Python 3.9 in

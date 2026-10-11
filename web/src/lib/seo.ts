@@ -18,7 +18,12 @@ export function constructMetadata({
   markdownPath,
   type = "website",
 }: {
-  title?: string; description?: string; image?: string; noIndex?: boolean;
+  title?: string; description?: string; noIndex?: boolean;
+  /**
+   * Share image URL. Pass null when the route segment has its own opengraph-image and twitter-image files:
+   * an `images` key here would take precedence over those files, so it is left out.
+   */
+  image?: string | null;
   /** Site path of this page. Sets the canonical URL and og:url; without it a page would claim to be the homepage. */
   path?: string;
   /** Full canonical URL; prefer `path`. */
@@ -30,6 +35,8 @@ export function constructMetadata({
   const url = canonicalUrl || absoluteUrl(path);
   // Titles that already name the brand are used as-is; the rest get the " | LLMSlim" suffix once.
   const pageTitle = title.includes(siteConfig.name) ? { absolute: title, template: TEMPLATE } : { default: title, template: TEMPLATE };
+  const ogImages = image === null ? {} : { images: [{ url: image, width: 1200, height: 630, alt: "LLMSlim, the context layer for production AI agents" }] };
+  const twitterImages = image === null ? {} : { images: [image] };
   return {
     metadataBase: new URL(siteConfig.url),
     title: pageTitle,
@@ -39,8 +46,8 @@ export function constructMetadata({
     alternates: { canonical: url, ...(markdownPath ? { types: { "text/markdown": absoluteUrl(markdownPath) } } : {}) },
     verification: { google: siteConfig.googleSiteVerification },
     // Icons come from the file conventions: src/app/favicon.ico, icon.png and apple-icon.png.
-    openGraph: { title, description, url, siteName: siteConfig.name, images: [{ url: image, width: 1200, height: 630, alt: "LLMSlim, the context layer for production AI agents" }], locale: "en_US", type },
-    twitter: { card: "summary_large_image", title, description, images: [image], creator: "@Thanatos9404", site: "@Thanatos9404" },
+    openGraph: { title, description, url, siteName: siteConfig.name, ...ogImages, locale: "en_US", type },
+    twitter: { card: "summary_large_image", title, description, ...twitterImages, creator: siteConfig.xHandle, site: siteConfig.xHandle },
     robots: { index: !noIndex, follow: !noIndex, googleBot: { index: !noIndex, follow: !noIndex, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 } },
   };
 }

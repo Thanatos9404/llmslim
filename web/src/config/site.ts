@@ -18,6 +18,8 @@ export const siteConfig = {
   platformVersion: "0.9.1",
   github: "https://github.com/Thanatos9404/llmslim",
   linkedin: "https://www.linkedin.com/in/yashvardhan-thanvi-2a3a661a8/",
+  /** The founder's X account, used for twitter:site and twitter:creator. */
+  xHandle: "@yashvt9404",
   founderEmail: "founder@llmslim.app",
   supportEmail: "support@llmslim.app",
   pypi: "https://pypi.org/project/llmslim/",

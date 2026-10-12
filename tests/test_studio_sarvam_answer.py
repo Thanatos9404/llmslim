@@ -22,6 +22,7 @@ from typing import Any, Callable, Optional
 
 import pytest
 
+import llmslim.hosted as hosted_module
 from llmslim.hosted import (
     ConcurrencyLease,
     HostedQuotaStoreError,
@@ -34,6 +35,16 @@ from llmslim.hosted import (
 from llmslim.tokens import count_tokens
 
 ROOT = Path(__file__).resolve().parents[1]
+# Production runs PyPI llmslim 0.8.1; CI imports the repository's Core. The endpoint must be safe
+# under both, so tests that depend on llmslim.hosted's own accounting branch on what it can do:
+# - EXACT_BOUND: hosted reserves an exact UTF-8 byte bound of the messages it sends and refuses
+#   (413) anything above max_input_tokens. 0.8.1 reserves min(max_input_tokens, planned x multiplier),
+#   which the endpoint pins to its own (larger) byte bound.
+# - RELEASES_UNBILLED: hosted releases the reservation for errors Sarvam returns without billing.
+EXACT_BOUND = hasattr(hosted_module, "sarvam_prompt_token_bound")
+RELEASES_UNBILLED = hasattr(hosted_module, "is_unbilled")
+# Template tokens a chat model may add per message on top of the content's bytes.
+PER_MESSAGE_TOKENS = 16
 API_PATH = ROOT / "web" / "api" / "sarvam_answer.py"
 SPEC = importlib.util.spec_from_file_location("studio_sarvam_answer_api", API_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -533,14 +544,22 @@ def test_the_ledger_reserves_the_byte_bound_which_covers_any_bill(
     status, _, payload, _ = call("POST", answer_body(context=context))
     assert status == 200, payload
     (reservation,) = harness.store.reservations()
+    reserved = reservation["estimated_input_tokens"]
     bound = api.prompt_bound_tokens(context, QUESTION)
-    assert reservation["estimated_input_tokens"] == bound
     assert bound >= len(context.encode("utf-8")) > count_tokens(context)
-    # Whatever was actually sent is inside the reservation.
     (sent,) = harness.sdk.calls
+    sent_bytes = sum(len(message["content"].encode("utf-8")) for message in sent["messages"])
+    # Never below any possible bill: each token covers at least one byte, plus template tokens.
+    assert reserved >= sent_bytes + PER_MESSAGE_TOKENS * len(sent["messages"])
+    # Never above the bound the endpoint checked against the budget and the cost cap before spend.
+    assert reserved <= bound
+    if EXACT_BOUND:
+        assert reserved == hosted_module.sarvam_prompt_token_bound(sent["messages"])
+    else:
+        assert reserved == bound
     assert api.messages_bound_tokens(sent["messages"]) <= bound
     assert reservation["estimated_cost_micros"] == estimate_sarvam_cost_micros(
-        "sarvam-105b", bound, api.ANSWER_MAX_OUTPUT_TOKENS
+        "sarvam-105b", reserved, api.ANSWER_MAX_OUTPUT_TOKENS
     )
     # Settlement refunds down to what Sarvam reported.
     assert harness.store.settled[0][1] == 180
@@ -607,12 +626,27 @@ def test_a_prompt_larger_than_the_reservation_is_never_sent(
     # Pretend the framing estimate were wrong: the last check before the SDK still holds.
     monkeypatch.setattr(api, "prompt_bound_tokens", lambda context, question: 10)
     status, _, payload, _ = call("POST", answer_body(context="word " * 400))
-    assert status == 502
-    assert payload["error"]["code"] == "provider_unavailable"
     assert harness.sdk.calls == []
-    assert any(isinstance(error, api.PromptBoundExceeded) for _, error, _ in reports)
-    # The conservative reservation stays charged; nothing was billed.
-    assert harness.store.settled[0][1:] == (None, None)
+    if EXACT_BOUND:
+        # The repository's Core measures the exact messages and refuses before reserving.
+        assert (status, payload["error"]["code"]) == (413, "input_too_large")
+        assert harness.store.reservations() == []
+    else:
+        # 0.8.1 would send it; the endpoint's last check refuses instead, and the conservative
+        # reservation stays charged although nothing was billed.
+        assert (status, payload["error"]["code"]) == (502, "provider_unavailable")
+        assert any(isinstance(error, api.PromptBoundExceeded) for _, error, _ in reports)
+        assert harness.store.settled[0][1:] == (None, None)
+
+
+def test_the_last_check_refuses_a_prompt_above_its_limit() -> None:
+    sdk = FakeSdk()
+    chat = api._GuardedClient(sdk, prompt_limit=100).chat
+    with pytest.raises(api.PromptBoundExceeded):
+        chat.completions(messages=[{"role": "user", "content": "x" * 100}])
+    assert sdk.calls == []
+    chat.completions(messages=[{"role": "user", "content": "x" * (100 - api.TEMPLATE_TOKENS)}])
+    assert len(sdk.calls) == 1
 
 
 # ------------------------------------------------------------------ identity and cookies
@@ -633,8 +667,11 @@ def counting_env(env: pytest.MonkeyPatch, tokens_per_day: int = 100_000) -> None
 def test_dropping_the_cookie_does_not_reset_the_daily_token_quota(
     ready_env: pytest.MonkeyPatch, harness: Harness, call, keeps_cookie: bool
 ) -> None:
-    # Room for exactly three reservations a day on this network.
-    counting_env(ready_env, 3 * api.prompt_bound_tokens(CONTEXT, f"{QUESTION} (0)") + 10)
+    # Measure one request's reservation (it depends on the installed Core), then allow exactly
+    # three a day on this network. Every question below has the same length.
+    assert call("POST", answer_body(question=f"{QUESTION} (9)"))[0] == 200
+    reserved = harness.store.reservations()[0]["estimated_input_tokens"]
+    counting_env(ready_env, 3 * reserved + 10)
     harness.store = FakeQuotaStore(counting=True)
     cookie: Optional[str] = None
     statuses = []
@@ -886,10 +923,10 @@ class ApiError(Exception):
         # May have been billed: the conservative reservation stays charged.
         (RuntimeError(SECRET_KEY), (None, None)),
         (TimeoutError(MONGODB_URI), (None, None)),
-        # Sarvam refused without doing any work: the repository's llmslim.hosted
-        # releases the reservation. (PyPI 0.8.1 keeps it charged in every case.)
-        (ApiError(f"bad key {SECRET_KEY}", 403), (0, 0)),
-        (ApiError("insufficient credit", 402), (0, 0)),
+        # Sarvam refused without doing any work: a Core that knows this releases the
+        # reservation; PyPI 0.8.1 keeps it charged in every case.
+        (ApiError(f"bad key {SECRET_KEY}", 403), (0, 0) if RELEASES_UNBILLED else (None, None)),
+        (ApiError("insufficient credit", 402), (0, 0) if RELEASES_UNBILLED else (None, None)),
     ],
 )
 def test_provider_errors_are_sanitized_and_reported_without_content(

@@ -20,8 +20,10 @@ strict enough for a public endpoint:
 - **Spend is bounded by bytes, not estimates.** 0.8.1 counts tokens as characters / 4 without
   tiktoken, which undercounts dense scripts and emoji by up to ~10x. Every token covers at least one
   UTF-8 byte, so the byte length of the whole prompt is a hard upper bound on the tokens Sarvam can
-  bill. The request is refused unless that bound fits the input budget and the per-request cost cap,
-  and the ledger reserves exactly that bound (refunded to provider-reported usage at settlement).
+  bill. The request is refused unless that bound fits the input budget and the per-request cost cap.
+  On 0.8.1 the ledger reserves exactly that bound; later Core releases reserve their own exact byte
+  bound of the messages sent, which is never larger (see :func:`request_service`). Settlement
+  refunds to provider-reported usage either way.
 - **Identity keys on the network.** Quotas, the repeat limiter and concurrency key on the HMAC of
   the client address (IPv6 truncated to /64), so dropping the session cookie resets nothing.
 - **No retries, no redirects.** The Sarvam SDK retries billable POSTs and follows redirects by
@@ -463,11 +465,18 @@ def make_service(config: HostedSarvamConfig) -> HostedSarvamService:
 
 
 def request_service(base: HostedSarvamService, reserved: int) -> HostedSarvamService:
-    """A service for one request whose ledger reservation is exactly ``reserved`` tokens.
+    """A service for one request whose ledger reservation can never be below the possible bill
+    or above ``reserved``, the bound already checked against the budget and the cost cap.
 
-    0.8.1 reserves ``min(max_input_tokens, ceil(planned_tokens * estimate_multiplier))``. Setting
-    ``max_input_tokens`` to the byte bound and the multiplier to that bound makes the reservation
-    equal the bound for any non-empty plan, so the reservation is never below the possible bill.
+    It works with both ``llmslim.hosted`` behaviours:
+
+    - 0.8.1 (production today) reserves ``min(max_input_tokens, ceil(planned_tokens *
+      estimate_multiplier))``. Setting both to ``reserved`` makes it reserve exactly ``reserved``
+      for any non-empty plan, and the guarded client refuses to send a prompt above it.
+    - Later Core releases reserve an exact UTF-8 byte bound of the messages they send (smaller
+      than ``reserved``, which allows for more framing), ignore the multiplier, refuse anything
+      above ``max_input_tokens`` with 413, and release the reservation for errors Sarvam returns
+      without billing. The same settings keep every one of those checks within ``reserved``.
     """
 
     config = dataclasses.replace(

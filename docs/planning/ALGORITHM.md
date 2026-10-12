@@ -73,8 +73,9 @@ says that the relevance guard applied.
 ## Candidates and fallback
 
 - `RAW`: exact caller content in a provenance boundary.
-- `EXTRACTIVE_COMPRESSED`: deterministic existing LLMSlim compression,
-  validated before selection.
+- `EXTRACTIVE_COMPRESSED`: deterministic sentence-level LLMSlim compression
+  (`selection="proportional"`), validated before selection. Prose keeps whole
+  sentences only, so a one-sentence item is kept raw or dropped, never cut.
 - `REWRITE_COMPRESSED` and `HYBRID_COMPRESSED`: generated only when a provider
   is explicitly supplied and retained only after rewrite validation.
 - `DROP`: generated only for non-required content allowed by policy. Tool

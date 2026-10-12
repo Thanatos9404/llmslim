@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Dict, FrozenSet, Optional, Set
 
 from ..analysis import analyze
 from ..core import ContextRole
+from ..tokenization import words
 from .models import CandidateMethod, ContextItem, ContextKind
 from .policy import PlannerPolicy
-
-_TERM_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 _PROVENANCE_SIGNAL: Dict[ContextRole, float] = {
     ContextRole.SYSTEM: 1.00,
@@ -68,9 +66,13 @@ _METHOD_RISK: Dict[CandidateMethod, float] = {
 
 
 def lexical_terms(text: str) -> Set[str]:
-    return {
-        match.group(0).casefold() for match in _TERM_RE.finditer(text) if len(match.group(0)) > 1
-    }
+    """Case-folded words of two or more characters, in any script.
+
+    Words come from :func:`llmslim.tokenization.words`: Indic words keep their
+    vowel signs and viramas (a bare ``\\w+`` would cut them into single
+    letters and drop them), and digits of every script compare as ASCII.
+    """
+    return {word.casefold() for word in words(text) if len(word) > 1}
 
 
 def lexical_relevance(query: str, content: str) -> float:

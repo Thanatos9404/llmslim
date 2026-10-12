@@ -214,6 +214,13 @@ def generate_candidates(
             min_entity_retention=policy.minimum_entity_retention,
         )
         for ratio in policy.compression_ratios:
+            # EXTRACTIVE_COMPRESSED means whole sentences of the item; a single
+            # sentence has no extractive form (it is kept raw or dropped). Since
+            # 0.8.0, compress() with a query defaults to query-focused selection,
+            # whose last resort when nothing fits is a word-boundary prefix: a
+            # one-sentence document cut mid-sentence (a date without its month
+            # and year), which entity validation does not catch. Sentence-level
+            # ("proportional") selection never cuts a sentence.
             result = compress(
                 item.content,
                 target_ratio=ratio,
@@ -221,6 +228,7 @@ def generate_candidates(
                 strategy="extractive",
                 context_role=item.role,
                 min_tokens_for_compression=0,
+                selection="proportional",
             )
             transformed = result.compressed_text
             if transformed in seen or not transformed.strip():

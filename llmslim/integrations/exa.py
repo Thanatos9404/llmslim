@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 import os
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from ..planning.models import ContextItem
@@ -94,6 +94,12 @@ _UNSENT_TRANSPORT_ERRORS = frozenset({"ConnectError", "ConnectTimeout", "PoolTim
 # 5xx statuses that state the request was not processed. Other 5xx keep the estimate.
 _UNPROCESSED_SERVER_STATUSES = frozenset({503})
 _TAG_RE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+# Exa documents ``endPublishedDate`` as "only links with a published date before
+# this" (https://exa.ai/docs/reference/search, read 2026-10-12) without saying
+# whether the bound itself is included. A date-only end bound is therefore sent
+# as the last millisecond of that UTC day: the whole day is included whether Exa
+# compares with ``<`` or ``<=``, and nothing from the next day is.
+_END_OF_DAY = timedelta(days=1) - timedelta(milliseconds=1)
 
 
 def estimate_exa_cost_usd(search_type: str, num_results: int) -> float:
@@ -121,7 +127,14 @@ def _search_type(value: Any) -> str:
     return str(value)
 
 
-def _filter_date(value: Any, name: str) -> Optional[datetime]:
+def _filter_date(value: Any, name: str, *, end_of_day: bool = False) -> Optional[datetime]:
+    """Resolve a published-date filter to an aware UTC datetime.
+
+    A ``date`` means the start of that UTC day, or with ``end_of_day`` its last
+    millisecond (see :data:`_END_OF_DAY`), so a date-only end bound includes
+    the whole day. Datetimes must be timezone-aware and are used as given.
+    """
+
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -129,12 +142,17 @@ def _filter_date(value: Any, name: str) -> Optional[datetime]:
             raise ValueError(f"{name} must be timezone-aware")
         return _as_utc(value)
     if isinstance(value, date):
-        return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+        midnight = datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+        return midnight + _END_OF_DAY if end_of_day else midnight
     raise TypeError(f"{name} must be a date, an aware datetime or None")
 
 
 def _exa_date(value: datetime) -> str:
-    return value.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    """ISO 8601 in UTC with a ``Z`` suffix, to whole milliseconds."""
+
+    text = value.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    millis = value.microsecond // 1000
+    return f"{text[:-1]}.{millis:03d}Z" if millis else text
 
 
 def _validated_key(api_key: Any) -> str:
@@ -181,6 +199,23 @@ def _reported_cost(payload: Mapping[str, Any]) -> Optional[float]:
     if not math.isfinite(number) or number < 0:
         return None
     return number
+
+
+def _cut_by_exa(text: Any, max_characters: int) -> bool:
+    """Whether Exa probably cut ``text`` at the requested ``maxCharacters``.
+
+    Exa truncates page text server-side and returns no truncation flag, so a
+    text whose length reaches the cap is treated as cut. Length is checked both
+    in code points and in UTF-16 code units, in case Exa counts the latter. A
+    page that is exactly ``max_characters`` long is a false positive; a cut
+    after which Exa trims trailing whitespace can be missed.
+    """
+
+    if not isinstance(text, str):
+        return False
+    if len(text) >= max_characters:
+        return True
+    return len(text.encode("utf-16-le")) // 2 >= max_characters
 
 
 class ExaSearchSource:
@@ -344,7 +379,7 @@ class ExaSearchSource:
             if start_published_date is None
             else _filter_date(start_published_date, "start_published_date")
         )
-        end = _filter_date(end_published_date, "end_published_date")
+        end = _filter_date(end_published_date, "end_published_date", end_of_day=True)
         if start is not None and end is not None and start > end:
             raise ValueError("start_published_date must not be after end_published_date")
         body: Dict[str, Any] = {
@@ -485,7 +520,9 @@ class ExaSearchSource:
             if url is None:
                 continue
             title = _sanitize(entry.get("title"), MAX_TITLE_CHARACTERS, single_line=True)[0]
-            text, truncated = _sanitize(entry.get("text"), self.max_characters)
+            raw_text = entry.get("text")
+            text, cut_locally = _sanitize(raw_text, self.max_characters)
+            truncated = cut_locally or (bool(text) and _cut_by_exa(raw_text, self.max_characters))
             if not title and not text:
                 continue
             parsed.append(

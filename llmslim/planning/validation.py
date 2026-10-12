@@ -17,6 +17,13 @@ from .models import (
     ValidationCheck,
 )
 
+#: ``ContextItem.source`` prefixes (before the first ``:``) of the built-in
+#: integrations that fetch external content: Zoho (``zoho:crm``, ``zoho:workdrive``),
+#: MongoDB (``mongodb:*``), Exa (``exa:search``), Neo4j memory (``neo4j:memory``)
+#: and Sarvam documents (``sarvam:document``). Their items must never carry a
+#: trusted (system/developer) role.
+EXTERNAL_SOURCE_PREFIXES = frozenset({"zoho", "mongodb", "exa", "neo4j", "sarvam"})
+
 
 def validate_selection(
     items: Sequence[ContextItem],
@@ -145,7 +152,7 @@ def validate_selection(
     external_elevation = [
         item.item_id
         for item in items
-        if item.source.split(":", 1)[0] in {"zoho", "mongodb", "exa"}
+        if item.source.split(":", 1)[0] in EXTERNAL_SOURCE_PREFIXES
         and item.role in {ContextRole.SYSTEM, ContextRole.DEVELOPER}
     ]
     checks.append(
@@ -168,4 +175,4 @@ def validate_selection(
     )
 
 
-__all__ = ["validate_selection"]
+__all__ = ["EXTERNAL_SOURCE_PREFIXES", "validate_selection"]

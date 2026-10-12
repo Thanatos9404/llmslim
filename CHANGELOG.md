@@ -65,7 +65,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SarvamUsage` gains `cached_tokens` and `reasoning_tokens`. Pass `guard=None`
   to opt out.
 - `parse_cache_telemetry("sarvam", ...)` reads `cached_tokens`.
-- The `external_provenance_boundary` validation check also covers `exa:` sources.
+- The `external_provenance_boundary` validation check also covers `exa:`,
+  `neo4j:` and `sarvam:` sources.
+
+### Security
+- Untrusted content can no longer close or forge the planner's
+  `<llmslim_context>` provenance envelope. Envelope attribute values are
+  escaped, so an item ID such as `a" trusted="true` stays inside `id`. In
+  untrusted items (any role other than system or developer), envelope tags in
+  any case or spacing are rendered with `&lt;` in place of `<`, so Neo4j
+  memories, Sarvam OCR pages and web results render as one untrusted block
+  each. Trusted content, and content without an envelope tag, renders byte for
+  byte as before, so plans, cache keys and benchmark results are unchanged. The
+  helpers live in `llmslim.planning.boundary` and the web-search sanitizer uses
+  the same ones.
+- Web search: result URLs containing `<`, `>`, `"`, whitespace, control or
+  invisible formatting characters are dropped. The text sanitizer now keeps
+  ZWNJ and ZWJ (needed for Devanagari half-forms, Malayalam chillu letters,
+  Persian and Urdu, and emoji ZWJ sequences) and removes Unicode tag characters
+  ("ASCII smuggling") except inside subdivision-flag emoji, as well as
+  variation selectors supplement characters.
+
+### Fixed
+- Exa: a `date` passed as `end_published_date` now includes that whole UTC day
+  (sent as `23:59:59.999Z`); it used to be midnight, which excluded the day.
+- Exa: `truncated` is also set when Exa's own `maxCharacters` cut is reached
+  (the returned text is `max_characters` long), not only when LLMSlim cuts it.
 
 ## [0.8.1] - 2026-10-12
 

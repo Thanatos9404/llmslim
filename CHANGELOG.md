@@ -91,6 +91,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (sent as `23:59:59.999Z`); it used to be midnight, which excluded the day.
 - Exa: `truncated` is also set when Exa's own `maxCharacters` cut is reached
   (the returned text is `max_characters` long), not only when LLMSlim cuts it.
+- **Planner: a relevant Indic document was cut mid-sentence** (regression in
+  0.8.0). The planner's extractive candidates came from `compress()`, which
+  with a query now uses query-focused selection; when nothing fits, its last
+  resort is a word-boundary prefix. A one-sentence Bengali or Odia document
+  was cut before its date or reference number, entity validation did not
+  notice, and the plan kept that fragment plus an irrelevant document instead
+  of the whole relevant one (v0.6 suite: fact retention 0.667 on
+  `indic-bengali` and `indic-odia`). Extractive candidates now use
+  sentence-level selection, as before 0.8.0: whole sentences only, and a
+  single sentence is kept raw or dropped. The adaptive planner's results are
+  again identical to 0.6.0 on the 28-case v0.6 suite and to 0.7.x on the
+  112-case v0.7 suite. `compress()` itself is unchanged.
+- Planner relevance is script-aware: Indic words keep their vowel signs and
+  viramas (Python's `\w` dropped them, so an Odia or Telugu query had no terms
+  and every document scored 0.5), words are NFC-normalised without zero-width
+  joiners, and digits of every script compare as ASCII (`২০২৬` matches
+  `2026`). New helper: `llmslim.tokenization.words()`. The agent context
+  runtime now fits `indic-telugu` and `indic-odia` of the v0.7 suite within
+  their budgets.
 
 ## [0.8.1] - 2026-10-12
 

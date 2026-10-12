@@ -64,14 +64,17 @@ class _FakeText:
         self.error = error
         self.malformed = malformed
         self.calls: List[Tuple[str, str, dict]] = []
+        # request_options of every call, kept apart so ``calls`` shows the API arguments.
+        self.request_options: List[Any] = []
 
     def _record(self, name: str, text: str, kwargs: dict) -> None:
+        self.request_options.append(kwargs.pop("request_options", "missing"))
         self.calls.append((name, text, kwargs))
         if self.error is not None:
             raise self.error
 
-    def identify_language(self, *, input: str) -> Any:
-        self._record("identify_language", input, {})
+    def identify_language(self, *, input: str, **kwargs: Any) -> Any:
+        self._record("identify_language", input, kwargs)
         if self.malformed:
             return SimpleNamespace(language_code=7, script_code=None)
         language, script = self.detector(input)
@@ -91,8 +94,8 @@ class _FakeText:
 
 
 class _AsyncFakeText(_FakeText):
-    async def identify_language(self, *, input: str) -> Any:  # type: ignore[override]
-        return _FakeText.identify_language(self, input=input)
+    async def identify_language(self, *, input: str, **kwargs: Any) -> Any:  # type: ignore[override]
+        return _FakeText.identify_language(self, input=input, **kwargs)
 
     async def transliterate(self, *, input: str, **kwargs: Any) -> Any:  # type: ignore[override]
         return _FakeText.transliterate(self, input=input, **kwargs)
@@ -356,11 +359,20 @@ def test_guard_refuses_before_any_call() -> None:
     with pytest.raises(UsageCapExceeded, match="usage cap"):
         budget.translate(long_text, "hi-IN", "en-IN")
     assert budget_fake.calls == []
+    # More parts than the per-minute rate allows can never succeed: a cap, not a rate limit.
     slow, slow_fake = _tools(guard=_guard(requests_per_minute=2))
-    with pytest.raises(RateLimitExceeded) as info:
+    with pytest.raises(UsageCapExceeded, match="can never be admitted") as never:
         slow.transliterate(long_text, "en-IN", "hi-IN")
-    assert info.value.retry_after_seconds == 60.0
+    assert not isinstance(never.value, RateLimitExceeded)
     assert slow_fake.calls == []
+    # An operation that fits the rate but not the current window is a real (waitable) rate limit.
+    parts = _tools()[0].estimate("transliterate", long_text).requests
+    busy, busy_fake = _tools(guard=_guard(requests_per_minute=parts))
+    busy.guard.acquire()
+    with pytest.raises(RateLimitExceeded) as info:
+        busy.transliterate(long_text, "en-IN", "hi-IN")
+    assert info.value.retry_after_seconds == 60.0
+    assert busy_fake.calls == []
 
 
 def test_errors_are_typed_sanitized_and_accounted() -> None:
@@ -390,7 +402,7 @@ def test_errors_are_typed_sanitized_and_accounted() -> None:
     unknown = empty.identify_language("???")
     assert unknown.language_code is None and unknown.script_code is None
     none_client = SarvamLanguageTools(
-        client=SimpleNamespace(text=SimpleNamespace(identify_language=lambda input: None))
+        client=SimpleNamespace(text=SimpleNamespace(identify_language=lambda input, **_: None))
     )
     with pytest.raises(SarvamMalformedResponseError):
         none_client.identify_language("text")
@@ -565,3 +577,74 @@ def test_async_tools_and_helpers_match_sync_results() -> None:
     assert refused_fake.calls == []
     with pytest.raises(TypeError):
         asyncio.run(anormalize_scripts([], sync_tools))  # type: ignore[arg-type]
+
+
+# --------------------------------------------------------------------------- normalization scope
+
+
+def _roman(item_id: str, kind: ContextKind, role: ContextRole, **kwargs: Any) -> ContextItem:
+    return ContextItem(
+        item_id=item_id,
+        content="mera naam Rahul hai",
+        kind=kind,
+        role=role,
+        metadata={"language_code": "hi-IN", "script_code": "Latn", "language_mixed": False},
+        **kwargs,
+    )
+
+
+def test_normalize_scripts_never_rewrites_instructions_or_schemas_by_default() -> None:
+    tools, fake = _tools()
+    protected = [
+        _roman("system", ContextKind.SYSTEM, ContextRole.SYSTEM),
+        _roman("developer", ContextKind.DEVELOPER, ContextRole.DEVELOPER),
+        _roman("schema", ContextKind.TOOL_SCHEMA, ContextRole.TOOL),
+        _roman("assistant", ContextKind.ASSISTANT, ContextRole.ASSISTANT),
+        _roman("general", ContextKind.GENERAL, ContextRole.GENERAL),
+        # An allowed kind with a trusted role is still not rewritten.
+        _roman("user-as-system", ContextKind.USER, ContextRole.SYSTEM),
+    ]
+    allowed = [
+        _roman("user", ContextKind.USER, ContextRole.USER),
+        _roman("rag", ContextKind.RAG_DOCUMENT, ContextRole.RAG),
+        _roman("memory", ContextKind.MEMORY, ContextRole.RAG),
+        _roman("tool-result", ContextKind.TOOL_RESULT, ContextRole.TOOL),
+    ]
+    result = normalize_scripts(protected + allowed, tools)
+    assert result[: len(protected)] == tuple(protected)
+    assert all(item is original for item, original in zip(result, protected))
+    assert all(
+        item.metadata.get("transliterated_from") == "Latn" for item in result[len(protected) :]
+    )
+    assert len(fake.calls) == len(allowed)
+
+
+def test_normalize_scripts_kinds_and_roles_are_explicit_and_validated() -> None:
+    tools, fake = _tools()
+    system = _roman("system", ContextKind.SYSTEM, ContextRole.SYSTEM)
+    opted_in = normalize_scripts([system], tools, kinds=["system"], roles=[ContextRole.SYSTEM])
+    assert opted_in[0].metadata["transliterated_from"] == "Latn"
+    rag = _roman("rag", ContextKind.RAG_DOCUMENT, ContextRole.RAG)
+    assert normalize_scripts([rag], tools, kinds=[ContextKind.USER])[0] is rag
+    assert len(fake.calls) == 1
+    with pytest.raises(ValueError, match="unknown kind"):
+        normalize_scripts([rag], tools, kinds=["prompt"])
+    with pytest.raises(ValueError, match="unknown role"):
+        normalize_scripts([rag], tools, roles=["admin"])
+    with pytest.raises(TypeError, match="collection"):
+        normalize_scripts([rag], tools, kinds="user")
+    async_tools, async_fake = _async_tools()
+    converted = asyncio.run(anormalize_scripts([system, rag], async_tools))
+    assert converted[0] is system and converted[1].metadata["transliterated_from"] == "Latn"
+    assert len(async_fake.calls) == 1
+
+
+def test_every_text_call_is_sent_without_sdk_retries() -> None:
+    tools, fake = _tools(guard=_guard(max_units=10.0))
+    tools.identify_language("नमस्ते")
+    tools.transliterate("namaste", "en-IN", "hi-IN")
+    tools.translate("नमस्ते", "hi-IN", "en-IN")
+    assert fake.request_options == [{"max_retries": 0}] * 3
+    async_tools, async_fake = _async_tools(guard=_guard(max_units=10.0))
+    asyncio.run(async_tools.translate("नमस्ते", "hi-IN", "en-IN"))
+    assert async_fake.request_options == [{"max_retries": 0}]

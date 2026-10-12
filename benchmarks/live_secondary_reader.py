@@ -22,8 +22,13 @@ Answers are scored by ``benchmarks/v06_answer_scorer.py`` against the suite's kn
 
 Every paid call goes through :class:`~llmslim.integrations._guard.UsageGuard`: a conservative cost
 is reserved before the call (one token per UTF-8 byte of the prompt plus overhead, and the full
-output limit) and settled with the provider-reported usage. When the guard refuses, the run stops
-cleanly and writes partial results marked incomplete. Results are checkpointed after every case.
+output limit) and settled with the provider-reported usage. Each call is sent exactly once: the
+Sarvam reader passes ``request_options={"max_retries": 0}`` through ``SarvamProvider`` (the SDK
+would otherwise retry 408/409/429/5xx up to twice, which would bill a call the reservation covered
+only once) and its SDK client never follows redirects; the Nebius reader posts once with ``httpx``.
+When the guard refuses, the run stops cleanly and writes partial results marked incomplete. Results
+are checkpointed after every case, and a case cut short (refusal, rate-limit stop, Ctrl-C) is still
+recorded with the calls it already billed.
 
 Live calls need an explicit opt-in:
 
@@ -31,8 +36,11 @@ Live calls need an explicit opt-in:
 - Nebius Token Factory (off by default; the account has a payment card attached, so run it only
   while promotional credit covers it): ``LLMSLIM_NEBIUS_ALLOW_LIVE=1`` (no other flag unlocks it),
   ``NEBIUS_API_KEY``, ``NEBIUS_MODEL`` (or ``--model``) and the model's per-million prices on the
-  command line. Requests use at most 64 output tokens and the default guard allows ten requests
-  and USD 0.10 per process.
+  command line. Requests use at most 64 output tokens and the guard allows ten requests and USD 0.10
+  per process; ``LLMSLIM_NEBIUS_BENCH_*`` may only lower those limits. Every reservation is also
+  booked in ``benchmarks/results/.nebius-spend.json`` (gitignored), and a call is refused when the
+  UTC day's recorded total plus its worst-case reservation would exceed USD 0.10, so repeated runs
+  cannot each spend the cap.
 
 Credentials are read from the environment only and never printed or written.
 """
@@ -47,10 +55,11 @@ import os
 import re
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from benchmarks._tracing import BenchmarkTracer, dataset_sha256, is_public_dataset
 from benchmarks.v06_answer_scorer import SCORER_ID, expected_items, score_text
@@ -58,6 +67,7 @@ from benchmarks.v06_planner import DATASET, _truncate_to_tokens, expand_case, lo
 from llmslim import __version__, plan_context
 from llmslim.integrations._guard import (
     RateLimitExceeded,
+    UsageCapExceeded,
     UsageGuard,
     UsageLimitExceeded,
     UsageLimits,
@@ -101,10 +111,17 @@ NEBIUS_MAX_OUTPUT_TOKENS = 64
 SARVAM_GUARD_DEFAULTS = UsageLimits(
     requests_per_minute=30, max_requests=200, max_units=3000.0, unit="inr"
 )
-#: Ten requests and ten US cents per process unless LLMSLIM_NEBIUS_BENCH_* says otherwise.
+#: Ten requests and ten US cents per process. These are ceilings: the Nebius account has a payment
+#: card attached, so LLMSLIM_NEBIUS_BENCH_* may lower them but never raise or disable them.
 NEBIUS_GUARD_DEFAULTS = UsageLimits(
     requests_per_minute=10, max_requests=10, max_units=0.10, unit="usd"
 )
+#: What every Nebius run on this machine together may reserve in one UTC day.
+NEBIUS_DAILY_CAP_USD = 0.10
+#: Persistent per-day Nebius spend (gitignored). Not configurable: a per-run file would reset it.
+NEBIUS_SPEND_FILE = RESULTS_DIR / ".nebius-spend.json"
+NEBIUS_ENV_STEM = "LLMSLIM_NEBIUS_BENCH_"
+_DISABLE_WORDS = frozenset({"none", "off", "unlimited"})
 
 SARVAM_LABELS = {
     "sarvam-105b": "Sarvam 105B",
@@ -297,6 +314,9 @@ class SarvamReader:
         from llmslim.integrations.sarvam import SarvamProvider
 
         self._tap = _UsageTap(sdk_client)
+        self._owned_http: Any = None
+        # Every chat call passes request_options={"max_retries": 0} (inside SarvamProvider.chat),
+        # so even an injected SDK client never retries a billable request.
         self._provider = SarvamProvider(
             model=model,
             client=self._tap,
@@ -321,20 +341,25 @@ class SarvamReader:
         model: str = "sarvam-105b",
         reasoning_effort: Optional[str] = "low",
         timeout_seconds: float = 60.0,
+        transport: Optional[Any] = None,
     ) -> "SarvamReader":
         api_key = env.get(SARVAM_KEY_ENV)
         if not api_key:
             raise RuntimeError(f"{SARVAM_KEY_ENV} is required for the Sarvam reader")
+        from llmslim.integrations._sarvam_common import sync_client
+
         try:
-            from sarvamai import SarvamAI
+            # An httpx client with follow_redirects=False: the key never leaves Sarvam's origin.
+            client, http = sync_client(api_key, timeout_seconds, cls.__name__, transport=transport)
         except ImportError as exc:
             raise RuntimeError(
                 'install the live dependency: pip install "llmslim[sarvam]"'
             ) from exc
-        client = SarvamAI(api_subscription_key=api_key, timeout=timeout_seconds)
-        return cls(
+        reader = cls(
             client, model=model, reasoning_effort=reasoning_effort, timeout_seconds=timeout_seconds
         )
+        reader._owned_http = http
+        return reader
 
     @property
     def reader_id(self) -> str:
@@ -396,7 +421,11 @@ class SarvamReader:
         )
 
     def close(self) -> None:
-        return None
+        """Close the HTTP client built by :meth:`from_env`; an injected SDK client stays open."""
+
+        http, self._owned_http = self._owned_http, None
+        if http is not None:
+            http.close()
 
     def __repr__(self) -> str:
         return f"SarvamReader(model={self.model!r}, credentials=<redacted>)"
@@ -434,6 +463,210 @@ def validate_nebius_pricing(pricing: Optional[Pricing]) -> Pricing:
     if not math.isfinite(cached) or cached < 0:
         raise ValueError("the Nebius cached-input price must be a non-negative number")
     return pricing
+
+
+def nebius_limits(env: Mapping[str, str]) -> UsageLimits:
+    """The Nebius guard limits: :data:`NEBIUS_GUARD_DEFAULTS`, lowered (never raised) by the env.
+
+    ``LLMSLIM_NEBIUS_BENCH_REQUESTS_PER_MINUTE``, ``_MAX_REQUESTS`` and ``_MAX_UNITS`` (USD) may
+    each be set below the default. A value above it, or ``none``/``off``/``unlimited``, is refused
+    before any request, because the account has a payment card attached.
+    """
+
+    for suffix in ("REQUESTS_PER_MINUTE", "MAX_REQUESTS", "MAX_UNITS"):
+        raw = env.get(NEBIUS_ENV_STEM + suffix)
+        if raw is not None and raw.strip().lower() in _DISABLE_WORDS:
+            raise ValueError(
+                f"{NEBIUS_ENV_STEM}{suffix}={raw.strip()} would disable a Nebius limit; the Nebius "
+                "limits cannot be disabled, only lowered"
+            )
+    limits = UsageGuard.from_env("nebius_bench", NEBIUS_GUARD_DEFAULTS, env=env).limits
+    for name in ("requests_per_minute", "max_requests", "max_units"):
+        value = getattr(limits, name)
+        ceiling = getattr(NEBIUS_GUARD_DEFAULTS, name)
+        if value is None or value > ceiling:
+            raise ValueError(
+                f"{NEBIUS_ENV_STEM}{name.upper()}={value} would raise the Nebius limit above "
+                f"{ceiling:g}; it may only lower it"
+            )
+    return limits
+
+
+def _utc_day() -> str:
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+class DailySpendLedger:
+    """Spend per UTC day in a small JSON file, shared by every run on this machine.
+
+    A reservation is written to the file before the call leaves the process and replaced by the
+    reported cost afterwards, so a crash or Ctrl-C mid-call leaves the worst case booked. An
+    unreadable file refuses the run rather than starting from zero.
+    """
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        daily_cap: float,
+        unit: str = "usd",
+        name: str = "nebius_bench",
+        today: Callable[[], str] = _utc_day,
+        lock_wait_seconds: float = 5.0,
+    ) -> None:
+        if not math.isfinite(daily_cap) or daily_cap <= 0:
+            raise ValueError("daily_cap must be a positive number")
+        self.path = Path(path)
+        self.daily_cap = float(daily_cap)
+        self.unit = unit
+        self.name = name
+        self._today = today
+        self._lock_wait_seconds = lock_wait_seconds
+
+    def _empty(self) -> Dict[str, Any]:
+        return {"schema_version": "1.0", "unit": self.unit, "days": {}}
+
+    def _load(self) -> Dict[str, Any]:
+        if not self.path.exists():
+            return self._empty()
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = None
+        days = data.get("days") if isinstance(data, dict) else None
+        valid = (
+            isinstance(days, dict)
+            and data.get("unit") == self.unit
+            and all(
+                isinstance(day, str)
+                and isinstance(amount, (int, float))
+                and not isinstance(amount, bool)
+                and math.isfinite(amount)
+                and amount >= 0
+                for day, amount in days.items()
+            )
+        )
+        if not valid:
+            raise UsageCapExceeded(
+                f"{self.name}: the spend ledger {self.path} is unreadable; refusing to spend until "
+                "it is checked (delete it only if you know no Nebius spend was recorded today)"
+            )
+        assert isinstance(data, dict)
+        return data
+
+    def _save(self, data: Dict[str, Any]) -> None:
+        _atomic_write(self.path, json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+    @contextmanager
+    def _locked(self) -> Iterator[None]:
+        lock = self.path.with_name(self.path.name + ".lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self._lock_wait_seconds
+        while True:
+            try:
+                handle = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise UsageCapExceeded(
+                        f"{self.name}: the spend ledger lock {lock} is held; if no other Nebius "
+                        "run is active, delete the lock file"
+                    ) from None
+                time.sleep(0.05)
+        os.close(handle)
+        try:
+            yield
+        finally:
+            try:
+                os.unlink(str(lock))
+            except OSError:  # pragma: no cover - lock already gone
+                pass
+
+    def recorded(self, day: Optional[str] = None) -> float:
+        """The total booked for ``day`` (default: today, UTC)."""
+
+        return float(self._load()["days"].get(day or self._today(), 0.0))
+
+    def _refusal(self, day: str, recorded: float, amount: float) -> UsageCapExceeded:
+        return UsageCapExceeded(
+            f"{self.name}: daily usage cap of {self.daily_cap:g} {self.unit} for {day} would be "
+            f"exceeded ({recorded:g} already recorded in {self.path.name}, {amount:g} requested)"
+        )
+
+    def check(self, amount: float) -> None:
+        """Refuse, without writing, when today's total plus ``amount`` would pass the cap."""
+
+        day = self._today()
+        recorded = self.recorded(day)
+        if recorded + amount > self.daily_cap + 1e-12:
+            raise self._refusal(day, recorded, amount)
+
+    def reserve(self, amount: float) -> str:
+        """Book ``amount`` for today (re-checked under the lock) and return the day."""
+
+        with self._locked():
+            data = self._load()
+            day = self._today()
+            recorded = float(data["days"].get(day, 0.0))
+            if recorded + amount > self.daily_cap + 1e-12:
+                raise self._refusal(day, recorded, amount)
+            data["days"][day] = round(recorded + amount, 12)
+            self._save(data)
+        return day
+
+    def adjust(self, day: str, delta: float) -> None:
+        """Replace part of a booked reservation: ``delta`` is actual minus reserved."""
+
+        with self._locked():
+            data = self._load()
+            data["days"][day] = max(0.0, round(float(data["days"].get(day, 0.0)) + delta, 12))
+            self._save(data)
+
+
+class DailyCappedGuard(UsageGuard):
+    """A :class:`UsageGuard` that also books every reservation in a :class:`DailySpendLedger`."""
+
+    def __init__(
+        self,
+        limits: UsageLimits,
+        *,
+        ledger: DailySpendLedger,
+        name: str = "nebius_bench",
+        clock: Optional[Callable[[], float]] = None,
+    ) -> None:
+        super().__init__(limits, name=name, clock=clock)
+        self.ledger = ledger
+        self._booked: Dict[int, Tuple[UsageReservation, str]] = {}
+
+    def acquire(self, units: float = 0.0) -> UsageReservation:
+        self.ledger.check(float(units))
+        reservation = super().acquire(units)
+        try:
+            day = self.ledger.reserve(reservation.units)
+        except BaseException:
+            super().release(reservation)
+            raise
+        self._booked[id(reservation)] = (reservation, day)
+        return reservation
+
+    def settle(self, reservation: UsageReservation, actual_units: float) -> None:
+        super().settle(reservation, actual_units)
+        booked = self._booked.pop(id(reservation), None)
+        if booked is not None:
+            self.ledger.adjust(booked[1], float(actual_units) - reservation.units)
+
+    def snapshot(self) -> Dict[str, Any]:
+        snapshot = super().snapshot()
+        try:
+            recorded: Any = round(self.ledger.recorded(), 9)
+        except UsageCapExceeded:
+            recorded = "unreadable"
+        snapshot["daily_ledger"] = {
+            "file": self.ledger.path.name,
+            "daily_cap": self.ledger.daily_cap,
+            "recorded_today": recorded,
+        }
+        return snapshot
 
 
 class NebiusReader:
@@ -851,6 +1084,8 @@ def run_suite(
     try:
         for case in selected:
             prepared = prepare_case(case)
+            # _run_case puts its record into result["cases"] before the first call, so a case cut
+            # short by a refusal, an exception or Ctrl-C still shows the arms it already billed.
             record = _run_case(
                 prepared,
                 reader,
@@ -862,7 +1097,6 @@ def run_suite(
                 log=log,
                 result=result,
             )
-            result["cases"].append(record)
             checkpoint()
             if record.get("stop_reason"):
                 raise _Stop(str(record["stop_reason"]))
@@ -893,10 +1127,11 @@ def _run_case(
     tracer: BenchmarkTracer,
     sleep: Callable[[float], None],
     log: Callable[[str], None],
-    result: Mapping[str, Any],
+    result: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """Run one case and return its record, which is appended to ``result["cases"]`` up front."""
+
     case = prepared.case
-    pricing: Pricing = reader.pricing
     record: Dict[str, Any] = {
         "id": case["id"],
         "category": case["category"],
@@ -909,6 +1144,65 @@ def _run_case(
         "complete": False,
         "arms": {},
     }
+    result["cases"].append(record)
+    try:
+        _run_arms(
+            prepared,
+            record,
+            reader,
+            guard,
+            arms,
+            max_output_tokens=max_output_tokens,
+            tracer=tracer,
+            sleep=sleep,
+            log=log,
+            result=result,
+        )
+    except BaseException:
+        _close_unfinished_arms(record)
+        raise
+    return record
+
+
+_INTERRUPTED_CALL = "interrupted before the reader returned; usage unknown, so the worst-case reservation is counted"
+
+
+def _close_unfinished_arms(record: Dict[str, Any]) -> None:
+    """Give every arm left without a status one, keeping billed calls visible in the totals."""
+
+    for entry in record["arms"].values():
+        if "status" in entry:
+            continue
+        if entry.get("billed"):
+            entry.update(
+                {
+                    "status": "error",
+                    "score": None,
+                    "answer": "",
+                    "error": _INTERRUPTED_CALL,
+                    "cost": None,
+                    "usage_reported": False,
+                }
+            )
+        else:
+            entry.update({"status": "not_run", "score": None, "answer": ""})
+
+
+def _run_arms(
+    prepared: PreparedCase,
+    record: Dict[str, Any],
+    reader: Any,
+    guard: UsageGuard,
+    arms: Sequence[str],
+    *,
+    max_output_tokens: int,
+    tracer: BenchmarkTracer,
+    sleep: Callable[[float], None],
+    log: Callable[[str], None],
+    result: Mapping[str, Any],
+) -> None:
+    case = prepared.case
+    pricing: Pricing = reader.pricing
     sent_prompts: Dict[str, str] = {}
     for arm in arms:
         context = prepared.contexts[arm]
@@ -963,7 +1257,11 @@ def _run_case(
         except UsageLimitExceeded as exc:
             entry.update({"status": "not_run", "score": None, "answer": ""})
             record["stop_reason"] = f"usage guard refused the call: {exc}"
-            return record
+            return
+        except _Stop as stop:
+            entry.update({"status": "not_run", "score": None, "answer": ""})
+            record["stop_reason"] = stop.reason
+            return
         entry["reserved"] = round(estimate, 6)
         entry["billed"] = True
         outcome: Optional[ReaderResult] = None
@@ -977,7 +1275,7 @@ def _run_case(
                 {"status": "error", "score": None, "answer": "", "error": str(exc), "billed": False}
             )
             record["stop_reason"] = f"reader authentication failed: {exc}"
-            return record
+            return
         except ReaderEmptyAnswer as exc:
             outcome = exc.result
             status = "empty_answer"
@@ -1044,14 +1342,13 @@ def _run_case(
                 f"reported cost {cost:.6f} {pricing.currency} exceeded the worst-case "
                 f"reservation {estimate:.6f}; stopped so the cap cannot be overshot"
             )
-            return record
+            return
     record["complete"] = True
     scores = " ".join(
         f"{arm}={'-' if entry.get('score') is None else format(entry['score'], '.2f')}"
         for arm, entry in record["arms"].items()
     )
     log(f"  {case['id']:<40} {scores}")
-    return record
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1073,9 +1370,12 @@ def require_opt_in(kind: str, env: Mapping[str, str]) -> None:
 
 
 def build_guard(kind: str, env: Mapping[str, str]) -> UsageGuard:
+    """The run's guard. Nebius limits may only be lowered, and spend is also capped per UTC day."""
+
     if kind == "sarvam":
         return UsageGuard.from_env("sarvam_bench", SARVAM_GUARD_DEFAULTS, env=env)
-    return UsageGuard.from_env("nebius_bench", NEBIUS_GUARD_DEFAULTS, env=env)
+    ledger = DailySpendLedger(NEBIUS_SPEND_FILE, daily_cap=NEBIUS_DAILY_CAP_USD)
+    return DailyCappedGuard(nebius_limits(env), ledger=ledger, name="nebius_bench")
 
 
 def nebius_pricing(

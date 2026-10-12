@@ -265,7 +265,12 @@ def test_completed_job_becomes_one_item_per_page() -> None:
     assert clock.sleeps == [3.0, 3.0]
     kind, request = fake.calls[0]
     assert kind == "digitise"
-    assert request == {"file": [("report.pdf", data, "application/pdf")], "language": "hi-IN"}
+    assert request == {
+        "file": [("report.pdf", data, "application/pdf")],
+        "language": "hi-IN",
+        # Creating the job is billable: the SDK must not retry it.
+        "request_options": {"max_retries": 0},
+    }
     assert fake.calls[-1] == ("get_results", "job-1", "md")
     assert fake.names().count("digitise") == 1
 
@@ -637,3 +642,37 @@ def test_async_source_parity(tmp_path: Path) -> None:
                 data, file_name="a.pdf", language="hi-IN"
             )
         )
+
+
+# --------------------------------------------------------------------------- pages without numbers
+
+
+def test_pages_without_a_page_number_keep_their_text_by_position() -> None:
+    # The SDK marks page_number optional. The job is billed by then, so the text is kept.
+    doc_guard = guard(max_units=10.0)
+    fake = FakeDocAi(
+        [status("completed", usage(3, 3, 3, 0))],
+        results([(None, "first"), (None, "second"), (3, "third")]),
+    )
+    result = source(fake, guard=doc_guard).digitize_bytes(PNG, file_name="a.png", language="hi-IN")
+    assert [item.content for item in result.items] == ["first", "second", "third"]
+    assert [item.metadata["page_number"] for item in result.items] == [1, 2, 3]
+    assert [item.metadata.get("page_number_inferred", False) for item in result.items] == [
+        True,
+        True,
+        False,
+    ]
+    assert result.missing_pages == ()
+    assert doc_guard.snapshot()["units"] == pytest.approx(1.5)  # settled from reported pages
+
+
+def test_an_inferred_page_number_never_collides_with_a_reported_one() -> None:
+    fake = FakeDocAi(
+        [status("completed", usage(2, 2, 2, 0))], results([(None, "unnumbered"), (1, "one")])
+    )
+    result = source(fake).digitize_bytes(PNG, file_name="a.png", language="hi-IN")
+    numbers = {item.content: item.metadata["page_number"] for item in result.items}
+    assert numbers == {"one": 1, "unnumbered": 2}
+    assert len({item.item_id for item in result.items}) == 2
+    inferred = [item for item in result.items if item.metadata.get("page_number_inferred")]
+    assert [item.content for item in inferred] == ["unnumbered"]

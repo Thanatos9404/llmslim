@@ -564,22 +564,24 @@ def test_budget_and_quota_exhaustion_fail_closed_with_clean_json(
 
 
 @pytest.mark.parametrize(
-    "error",
+    ("error", "settlement"),
     [
-        RuntimeError(SECRET_KEY),
-        SarvamAuthenticationError(f"bad key {SECRET_KEY}"),
-        TimeoutError(MONGODB_URI),
+        # May have been billed: the conservative reservation stays charged.
+        (RuntimeError(SECRET_KEY), (None, None)),
+        (TimeoutError(MONGODB_URI), (None, None)),
+        # Sarvam refused without doing any work: the reservation is released.
+        (SarvamAuthenticationError(f"bad key {SECRET_KEY}"), (0, 0)),
     ],
 )
 def test_provider_errors_are_sanitized(
-    ready_env: pytest.MonkeyPatch, harness: Harness, call, error: Exception
+    ready_env: pytest.MonkeyPatch, harness: Harness, call, error: Exception, settlement: Any
 ) -> None:
     harness.provider = FakeProvider(error=error)
     status, _, payload, raw = call("POST", answer_body())
     assert status == 502
     assert payload["error"]["code"] == "provider_unavailable"
     assert SECRET_KEY not in raw.decode() and "ledger-password" not in raw.decode()
-    assert harness.store.settled[0][1:] == (None, None)
+    assert harness.store.settled[0][1:] == settlement
     assert harness.store.released
 
 

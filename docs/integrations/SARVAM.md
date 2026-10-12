@@ -21,6 +21,25 @@ Environment lookup happens only in `from_env()`, which reads `SARVAM_API_KEY`
 by default plus the guard limits below. Keys never appear in `repr`, errors or
 plan data.
 
+Two `sarvamai` defaults are overridden:
+
+* **No SDK retries on billable calls.** `sarvamai` retries HTTP 408, 409, 429
+  and 5xx up to twice by default, sleeping up to 60 s, which would bill a call
+  again. Every chat, text, document-creation and speech call passes
+  `request_options={"max_retries": 0}`, per call, so this holds for injected
+  clients too. Only the read-only document polls (`get_status`, `get_results`)
+  keep the SDK's retries; they cannot bill anything.
+* **No redirects.** The SDK's default `httpx` client follows redirects, and
+  `httpx` strips only `Authorization` across origins, so the
+  `api-subscription-key` header and the request body would reach the redirect
+  target. Clients built from `api_key` use an `httpx` client with
+  `follow_redirects=False`; a redirect raises `SarvamProviderError` with
+  `status_code` 3xx.
+
+Providers, language tools and document sources that built their own client
+close it with `close()` (sync) or `await aclose()` (async), or in a `with` /
+`async with` block. Injected clients are never closed for you.
+
 ## Chat providers
 
 ```python
@@ -51,10 +70,10 @@ Guarding:
   priced at the cached-input rate. Without reported usage the reservation
   stays charged. Pass `guard=None` to opt out or your own `UsageGuard`.
 * Direct construction (`SarvamProvider(api_key=...)`) has no guard unless you
-  pass one. This keeps `llmslim.hosted`, which enforces its own MongoDB spend
-  ledger, unchanged. Its per-request provider does get the `from_env()` guard,
-  but with the default limits a single hosted request (at most ~₹2.2) can never
-  be refused by it.
+  pass one. `llmslim.hosted` builds its per-request provider with
+  `from_env(guard=None)`: its MongoDB spend ledger is the authority, so
+  `LLMSLIM_SARVAM_CHAT_*` never applies there (a malformed value cannot break
+  hosted requests, and a local cap cannot refuse after the ledger reserved).
 
 `last_usage` is `PROVIDER_REPORTED` and includes `cached_tokens` (`None` when
 Sarvam omits `prompt_tokens_details`, which it does on a cache miss) and
@@ -104,6 +123,12 @@ Context helpers return new `ContextItem`s and never mutate their input:
   dedupe compares one script. Converted items keep their ID and record
   `transliterated_from: "Latn"` and `original_content_sha256` (a hash, never the
   original text). Filter with `languages=["hi-IN", ...]`.
+* It only rewrites user, retrieved, memory and tool-result text: items whose
+  `kind` is in `kinds` (default `NORMALIZABLE_KINDS`: `user`, `rag_document`,
+  `memory`, `tool_result`) and whose `role` is in `roles` (default
+  `NORMALIZABLE_ROLES`: `user`, `rag`, `tool`, `general`). System, developer,
+  assistant and tool-schema items are never replaced with vendor output unless
+  you list their kind and role explicitly.
 
 Translation only ever happens when you call `translate()`.
 
@@ -118,9 +143,10 @@ items = result.items          # one RAG_DOCUMENT / RAG item per page
 ```
 
 The source uses the SDK's Doc AI job API: `doc_ai.digitise` (creates and starts
-the job; billable, never retried), `doc_ai.get_status` polled every
-`poll_interval_seconds` (5) until a terminal state or `poll_timeout_seconds`
-(300), then `doc_ai.get_results(format="md")`. `digitize_bytes(data,
+the job; billable, sent once with SDK retries off), `doc_ai.get_status` polled
+every `poll_interval_seconds` (5) until a terminal state or
+`poll_timeout_seconds` (300), then `doc_ai.get_results(format="md")` (both
+read-only GETs, which keep the SDK's retries). `digitize_bytes(data,
 file_name=..., language=...)` takes bytes; `AsyncSarvamDocumentSource` is the
 asyncio twin.
 
@@ -138,7 +164,10 @@ Checked locally before anything is sent:
 Item IDs are `sarvam-document:<sha256[:16]>:<document>:<page>`, deterministic
 for the same file. Metadata: `page_number`, `document_index`, `file_name`
 (base name only), `file_sha256`, `language_code`, `job_id`, `job_status`,
-`output_format`, `pages_total`.
+`output_format`, `pages_total`. The SDK marks `page_number` optional; a page
+that arrives without one keeps its text (the job is already billed), takes its
+position in the list (or the next free number if a reported page already uses
+that one) and carries `page_number_inferred: true`.
 
 `partially_completed` jobs return the pages that have text and list the rest in
 `missing_pages` (`allow_partial=False` raises `SarvamJobError` instead).
@@ -174,7 +203,10 @@ or `_MAX_UNITS`; `none` disables one limit. A refused call raises
 `RateLimitExceeded` or `UsageCapExceeded` before the network. Multi-request
 operations (long texts, batches of items) are checked as a whole first, so
 they are not cut off half-way after some parts were billed; the voice example
-checks a long reply against its caps the same way.
+checks a long reply against its caps the same way. An operation that needs
+more requests than the per-minute rate allows can never be admitted, so it
+raises `UsageCapExceeded` (split the input or raise the rate) rather than a
+`RateLimitExceeded` that waiting would not fix.
 
 | Guard prefix | Used by | Defaults (per minute / requests / INR) |
 | --- | --- | --- |
@@ -207,9 +239,9 @@ or response body. Mapping uses the exception class name and HTTP status:
 | `SarvamMalformedResponseError` | response not in the documented shape | settled or kept |
 | `SarvamJobError`, `SarvamJobTimeoutError` | document job failed / rejected / timed out | settled from reported pages, else kept |
 
-LLMSlim performs no automatic retry because Sarvam calls are billable;
-applications may add a bounded retry based on their idempotency and spend
-controls.
+LLMSlim sends each billable call once and turns the SDK's own retries off for
+it (see above), because Sarvam calls are billable; applications may add a
+bounded retry based on their idempotency and spend controls.
 
 ## Voice example
 
@@ -231,6 +263,18 @@ plan before any call, a conservative cost reservation, and MongoDB-backed slidin
 per-identity token allowances, daily and monthly spend limits and concurrency
 leases (`MongoDBHostedQuotaStore`). Keep the provider key and database URI
 server-side, and make paid inference opt-in with an explicit switch.
+
+The reservation is a hard upper bound: the UTF-8 bytes of the exact system and
+user messages sent plus a per-message allowance
+(`sarvam_prompt_token_bound`), never the planner's token count (which is
+`len/4` without `tiktoken` and undercounts emoji and Indic text several times).
+A request whose bound exceeds `max_input_tokens` is refused with 413
+`input_too_large`, and one whose bound plus `max_output_tokens` costs more than
+`max_request_cost_inr` with 429 `request_cost_limit`; neither is clamped. When
+the call fails, errors Sarvam returns without doing any work (401/403, 402,
+400/404/409/413/422, 429) and refusals before the network release the
+reservation in the spend ledger and the identity's token allowance; timeouts,
+5xx and malformed responses may be billed, so their reservation stays charged.
 
 ## Evaluation
 

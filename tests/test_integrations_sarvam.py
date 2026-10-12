@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
+import gc
 import typing
 from types import SimpleNamespace
 from typing import Any, List, Optional
@@ -13,13 +15,19 @@ from llmslim.cache import PROVIDER_CAPABILITIES
 from llmslim.cache_adapters import parse_cache_telemetry
 from llmslim.hosted import HostedSarvamService
 from llmslim.integrations import _sarvam_common as common
+from llmslim.integrations import sarvam as sarvam_module
 from llmslim.integrations.sarvam import (
     CHAT_GUARD_PREFIX,
     DEFAULT_CHAT_LIMITS,
     SARVAM_PRICES,
+    AsyncSarvamDocumentSource,
+    AsyncSarvamLanguageTools,
     AsyncSarvamProvider,
+    RateLimitExceeded,
     SarvamAuthenticationError,
+    SarvamDocumentSource,
     SarvamInvalidRequestError,
+    SarvamLanguageTools,
     SarvamMalformedResponseError,
     SarvamPaymentRequiredError,
     SarvamPriceTable,
@@ -403,24 +411,40 @@ def test_live_clients_are_built_only_from_an_explicit_key() -> None:
         assert built._client is not None
 
 
-def test_hosted_default_factory_still_admits_a_maximal_request(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    "env",
+    [
+        {},
+        {"LLMSLIM_SARVAM_CHAT_MAX_UNITS": "abc"},
+        {"LLMSLIM_SARVAM_CHAT_MAX_REQUESTS": "0"},
+        {"LLMSLIM_SARVAM_CHAT_MAX_UNITS": "0.000001", "LLMSLIM_SARVAM_CHAT_MAX_REQUESTS": "1"},
+    ],
+)
+def test_hosted_default_factory_has_no_local_guard_whatever_the_chat_env(
+    monkeypatch: pytest.MonkeyPatch, env: typing.Dict[str, str]
 ) -> None:
     pytest.importorskip("sarvamai")
     _clear_chat_env(monkeypatch)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
     monkeypatch.setenv("SARVAM_API_KEY", "test-only-key")
-    # hosted.py builds one provider per request through SarvamProvider.from_env.
-    provider = HostedSarvamService._default_provider_factory(
+    # hosted.py builds one provider per request; its MongoDB ledger is the spend authority, so
+    # the provider carries no guard and LLMSLIM_SARVAM_CHAT_* (even malformed) never applies.
+    with HostedSarvamService._default_provider_factory(
         None,  # type: ignore[arg-type]
         "sarvam-105b",
         4096,
         25.0,
-    )
-    assert provider.guard is not None and provider.guard.limits == DEFAULT_CHAT_LIMITS
-    completions = _Completions(_response(prompt=131_072, completion=4096))
-    provider._client = _client(completions)
-    assert provider.chat([{"role": "user", "content": "क" * 200_000}], max_tokens=4096) == "ok"
-    assert len(completions.calls) == 1
+    ) as provider:
+        assert provider.guard is None
+        completions = _Completions(_response(prompt=131_072, completion=4096))
+        provider._client = _client(completions)
+        for _ in range(2):
+            assert provider.chat([{"role": "user", "content": "क" * 200_000}], max_tokens=4096)
+        assert len(completions.calls) == 2
+    if env.get("LLMSLIM_SARVAM_CHAT_MAX_UNITS") == "abc" or "0" in env.values():
+        with pytest.raises(ValueError):  # the env is malformed where a guard is built
+            SarvamProvider.from_env(client=object())
 
 
 # --------------------------------------------------------------------------- async provider
@@ -474,6 +498,98 @@ def test_async_last_usage_is_isolated_per_task() -> None:
         return await asyncio.gather(one("a" * 3), one("b" * 7))
 
     assert asyncio.run(both()) == [3, 7]
+
+
+def test_last_usage_uses_one_context_variable_for_any_number_of_providers() -> None:
+    def make_and_call() -> int:
+        before = len(contextvars.copy_context())
+        providers = [SarvamProvider(client=_client(_Completions())) for _ in range(1000)]
+        for provider in providers:
+            provider.chat([{"role": "user", "content": "hello"}])
+            assert provider.last_usage is not None
+        grown = len(contextvars.copy_context()) - before
+        del providers, provider
+        return grown
+
+    context = contextvars.copy_context()
+    assert context.run(make_and_call) <= 1  # was one ContextVar per provider: 1,000
+    gc.collect()
+    table = context.run(sarvam_module._LAST_USAGE.get)
+    assert table is not None and len(table) == 0  # dead providers do not stay pinned
+
+
+def test_last_usage_stays_per_provider_and_per_task() -> None:
+    class Echo:
+        async def __call__(self, **kwargs: Any) -> Any:
+            await asyncio.sleep(0)
+            return _response(prompt=len(kwargs["messages"][0]["content"]), completion=1)
+
+    first = AsyncSarvamProvider(client=_client(Echo()))
+    second = AsyncSarvamProvider(client=_client(Echo()))
+
+    async def child() -> Optional[int]:
+        await first.chat([{"role": "user", "content": "c" * 9}])
+        usage = first.last_usage
+        return usage.prompt_tokens if usage else None
+
+    async def run() -> Any:
+        await first.chat([{"role": "user", "content": "p" * 2}])
+        await second.chat([{"role": "user", "content": "s" * 5}])
+        in_child = await asyncio.create_task(child())
+        parent_first, parent_second = first.last_usage, second.last_usage
+        return in_child, parent_first, parent_second
+
+    in_child, parent_first, parent_second = asyncio.run(run())
+    assert in_child == 9
+    assert parent_first is not None and parent_first.prompt_tokens == 2  # child did not leak
+    assert parent_second is not None and parent_second.prompt_tokens == 5
+    assert first.last_usage is None  # outside the run's context nothing was recorded
+
+
+def test_preflight_reports_an_impossible_operation_as_a_cap() -> None:
+    guard = _guard(requests_per_minute=3)
+    with pytest.raises(UsageCapExceeded, match="never be admitted") as never:
+        common.preflight(guard, 4, 0.0)
+    assert not isinstance(never.value, RateLimitExceeded)
+    common.preflight(guard, 3, 0.0)  # fits an empty window
+    guard.acquire()
+    with pytest.raises(RateLimitExceeded):  # fits the rate, not the current window: wait
+        common.preflight(guard, 3, 0.0)
+    common.preflight(guard, 1, 0.0)  # single requests are left to acquire()
+
+
+def test_owned_clients_are_closed_and_injected_ones_are_not() -> None:
+    pytest.importorskip("sarvamai")
+
+    class Injected:
+        closed = 0
+
+        def close(self) -> None:
+            Injected.closed += 1
+
+    for cls in (SarvamProvider, SarvamLanguageTools, SarvamDocumentSource):
+        with cls(SECRET) as owner:  # type: ignore[attr-defined]
+            http = owner._owned_http
+            assert http is not None and not http.is_closed
+        assert http.is_closed and owner._owned_http is None
+        owner.close()  # idempotent
+        injected = Injected()
+        with cls(client=injected) as borrowed:  # type: ignore[attr-defined]
+            assert borrowed._owned_http is None
+        assert Injected.closed == 0
+
+    async def run_async() -> None:
+        for cls in (AsyncSarvamProvider, AsyncSarvamLanguageTools, AsyncSarvamDocumentSource):
+            async with cls(SECRET) as owner:  # type: ignore[attr-defined]
+                http = owner._owned_http
+                assert http is not None and not http.is_closed
+            assert http.is_closed and owner._owned_http is None
+            await owner.aclose()
+            async with cls(client=Injected()) as borrowed:  # type: ignore[attr-defined]
+                assert borrowed._owned_http is None
+
+    asyncio.run(run_async())
+    assert Injected.closed == 0
 
 
 # --------------------------------------------------------------------------- cache telemetry

@@ -3,9 +3,12 @@
     Saaras speech-to-text -> LLMSlim plans the context -> sarvam-105b answers
     -> Bulbul text-to-speech writes a WAV file.
 
-Every paid call goes through a UsageGuard before it reaches Sarvam and nothing
-is retried. Speech limits come from LLMSLIM_SARVAM_SPEECH_REQUESTS_PER_MINUTE,
-_MAX_REQUESTS and _MAX_UNITS (INR); chat limits from LLMSLIM_SARVAM_CHAT_*.
+Every paid call goes through a UsageGuard before it reaches Sarvam and is sent
+exactly once: each SDK call passes request_options={"max_retries": 0}, because
+the sarvamai SDK otherwise retries 408/409/429/5xx up to twice. The SDK client
+never follows redirects, so the subscription key stays on Sarvam's origin.
+Speech limits come from LLMSLIM_SARVAM_SPEECH_REQUESTS_PER_MINUTE, _MAX_REQUESTS
+and _MAX_UNITS (INR); chat limits from LLMSLIM_SARVAM_CHAT_*.
 
 Run (makes paid Sarvam calls):
 
@@ -139,7 +142,8 @@ def tts_cost_inr(characters: int) -> float:
 def _guarded_call(guard: UsageGuard, cost: float, call: Any, **kwargs: Any) -> Any:
     reservation = guard.acquire(cost)
     try:
-        response = call(**kwargs)
+        # One attempt only: a retry would bill the call again beyond its reservation.
+        response = call(**kwargs, request_options={"max_retries": 0})
     except Exception as exc:
         error = map_sarvam_error(exc)
         if isinstance(error, _UNBILLED):
@@ -311,19 +315,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print('Install the extra first: pip install "llmslim[sarvam]"', file=sys.stderr)
         return 2
 
-    client = SarvamAI(api_subscription_key=api_key, timeout=60.0)
+    # follow_redirects=False: httpx strips only Authorization on a cross-origin redirect, so the
+    # api-subscription-key header and the audio would otherwise reach the redirect target.
+    client = SarvamAI(api_subscription_key=api_key, timeout=60.0, follow_redirects=False)
     speech_guard = UsageGuard.from_env(SPEECH_GUARD_PREFIX, DEFAULT_SPEECH_LIMITS)
-    provider = SarvamProvider.from_env(model=CHAT_MODEL, max_tokens=512)
 
-    transcript, detected = transcribe(client, speech_guard, args.audio, language_code=args.language)
-    print("Heard:", transcript)
-    answer = provider.chat(plan_voice_turn([], transcript))
-    print("Answer:", answer)
-    language = reply_language(args.reply_language, detected)
-    written = synthesize(client, speech_guard, answer, language, args.out, speaker=args.speaker)
-    print(f"Wrote {written} bytes of {language} speech to {args.out}")
-    print("Speech spend so far (ESTIMATED INR):", round(speech_guard.snapshot()["units"], 4))
-    print("Chat usage (PROVIDER_REPORTED):", provider.last_usage)
+    with SarvamProvider.from_env(model=CHAT_MODEL, max_tokens=512) as provider:
+        transcript, detected = transcribe(
+            client, speech_guard, args.audio, language_code=args.language
+        )
+        print("Heard:", transcript)
+        answer = provider.chat(plan_voice_turn([], transcript))
+        print("Answer:", answer)
+        language = reply_language(args.reply_language, detected)
+        written = synthesize(client, speech_guard, answer, language, args.out, speaker=args.speaker)
+        print(f"Wrote {written} bytes of {language} speech to {args.out}")
+        print("Speech spend so far (ESTIMATED INR):", round(speech_guard.snapshot()["units"], 4))
+        print("Chat usage (PROVIDER_REPORTED):", provider.last_usage)
     return 0
 
 

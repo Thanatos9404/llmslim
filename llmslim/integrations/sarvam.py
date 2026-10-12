@@ -10,12 +10,17 @@
 
 The module imports without the optional dependency. Constructing a live client
 requires ``llmslim[sarvam]`` and an explicitly supplied key, or an explicit
-``from_env()`` call. Paid calls go through a :class:`UsageGuard`; failed calls
-are never retried automatically.
+``from_env()`` call. Paid calls go through a :class:`UsageGuard` and are sent
+exactly once: every billable SDK call passes ``request_options={"max_retries": 0}``
+(the SDK would otherwise retry 408/409/429/5xx up to twice), including on
+injected clients. Clients built from a key never follow redirects, so the
+subscription key cannot leave Sarvam's origin. Close a provider, tool or source
+that built its own client with ``close()`` / ``aclose()`` or a ``with`` block.
 """
 
 from __future__ import annotations
 
+import weakref
 from collections.abc import Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -34,6 +39,7 @@ from ._guard import (
 )
 from ._sarvam_common import (
     SARVAM_PRICES,
+    AsyncClientOwner,
     SarvamAuthenticationError,
     SarvamInvalidRequestError,
     SarvamJobError,
@@ -46,10 +52,12 @@ from ._sarvam_common import (
     SarvamServerError,
     SarvamServiceUsage,
     SarvamTimeoutError,
+    SyncClientOwner,
     async_client,
     env_key,
     fail_call,
     map_sarvam_error,
+    no_retries,
     read_field,
     sync_client,
 )
@@ -92,6 +100,34 @@ class _EnvGuard:
 
 _ENV_GUARD = _EnvGuard()
 _ProviderT = TypeVar("_ProviderT", bound="_SarvamChatCore")
+
+# One context variable for every provider: a weak mapping from provider to the usage of its last
+# call in this context. A ContextVar per provider would pin one variable in the context for each
+# provider ever used (hosted builds one per request); weak keys drop providers that are gone.
+# The mapping is copied on every write, so a task's update never leaks into another task.
+_LAST_USAGE: ContextVar[Optional["weakref.WeakKeyDictionary[Any, SarvamUsage]"]] = ContextVar(
+    "llmslim_sarvam_last_usage", default=None
+)
+
+
+def _usage_of(owner: Any) -> Optional["SarvamUsage"]:
+    table = _LAST_USAGE.get()
+    return None if table is None else table.get(owner)
+
+
+def _set_usage(owner: Any, usage: Optional["SarvamUsage"]) -> None:
+    table = _LAST_USAGE.get()
+    if table is None:
+        if usage is None:
+            return
+        updated: "weakref.WeakKeyDictionary[Any, SarvamUsage]" = weakref.WeakKeyDictionary()
+    else:
+        updated = table.copy()
+    if usage is None:
+        updated.pop(owner, None)
+    else:
+        updated[owner] = usage
+    _LAST_USAGE.set(updated)
 
 
 @dataclass(frozen=True)
@@ -162,6 +198,21 @@ def _normalize_messages(messages: Sequence[Mapping[str, str]]) -> List[Dict[str,
     return normalized
 
 
+def sarvam_prompt_token_bound(messages: Sequence[Mapping[str, Any]]) -> int:
+    """A hard upper bound on the prompt tokens ``messages`` can cost.
+
+    Every token of a byte-level tokenizer covers at least one UTF-8 byte, so the byte count
+    of each message plus a per-message allowance for role markers cannot be exceeded.
+    :func:`llmslim.count_tokens` is not a bound: without ``tiktoken`` it estimates
+    ``len(text) / 4``, which undercounts emoji and Indic scripts several times over.
+    """
+
+    return sum(
+        len(str(message["content"]).encode("utf-8")) + _MESSAGE_OVERHEAD_TOKENS
+        for message in messages
+    )
+
+
 def sarvam_chat_cost_inr(
     model: str,
     prompt_tokens: int,
@@ -206,8 +257,9 @@ class _SarvamChatCore:
             raise ValueError("timeout_seconds and max_tokens must be positive")
         if guard is not None and not isinstance(guard, UsageGuard):
             raise TypeError("guard must be a UsageGuard or None")
+        self._owned_http: Any = None
         if client is None:
-            client = self._make_client(api_key, timeout_seconds)
+            client, self._owned_http = self._make_client(api_key, timeout_seconds)
         self._client = client
         self.model = model
         self.timeout_seconds = timeout_seconds
@@ -215,9 +267,6 @@ class _SarvamChatCore:
         self.reasoning_effort = reasoning_effort
         self.guard = guard
         self._profile = BUILTIN_MODEL_PROFILES[model]
-        self._usage: ContextVar[Optional[SarvamUsage]] = ContextVar(
-            "llmslim_sarvam_usage", default=None
-        )
 
     def _make_client(self, api_key: Optional[str], timeout_seconds: float) -> Any:
         return sync_client(api_key, timeout_seconds, type(self).__name__)
@@ -248,7 +297,7 @@ class _SarvamChatCore:
     def last_usage(self) -> Optional[SarvamUsage]:
         """Provider-reported usage for the current execution context, if returned."""
 
-        return self._usage.get()
+        return _usage_of(self)
 
     def is_available(self) -> bool:
         return self._client is not None
@@ -272,11 +321,9 @@ class _SarvamChatCore:
         if self.guard is None:
             return None
         # UTF-8 bytes bound any byte-level tokenizer; the context window bounds the prompt.
-        prompt_bound = sum(
-            len(message["content"].encode("utf-8")) + _MESSAGE_OVERHEAD_TOKENS
-            for message in request["messages"]
+        prompt_bound = min(
+            sarvam_prompt_token_bound(request["messages"]), self._profile.context_window
         )
-        prompt_bound = min(prompt_bound, self._profile.context_window)
         return self.guard.acquire(
             sarvam_chat_cost_inr(
                 self.model, prompt_bound, request["max_tokens"], profile=self._profile
@@ -284,12 +331,12 @@ class _SarvamChatCore:
         )
 
     def _fail(self, reservation: Optional[UsageReservation], exc: BaseException) -> NoReturn:
-        self._usage.set(None)
+        _set_usage(self, None)
         fail_call(self.guard, reservation, exc)
 
     def _finish(self, response: Any, reservation: Optional[UsageReservation]) -> str:
         usage = _parse_usage(response)
-        self._usage.set(usage)
+        _set_usage(self, usage)
         if (
             self.guard is not None
             and reservation is not None
@@ -325,12 +372,13 @@ class _SarvamChatCore:
         )
 
 
-class SarvamProvider(_SarvamChatCore, BaseRewriteProvider):
+class SarvamProvider(_SarvamChatCore, SyncClientOwner, BaseRewriteProvider):
     """Synchronous rewrite provider backed by the official ``sarvamai`` SDK.
 
-    ``guard=None`` (the default for direct construction) applies no local limit,
-    which keeps callers that enforce their own spend ledger, such as
-    :mod:`llmslim.hosted`, unchanged. :meth:`from_env` attaches a guard.
+    ``guard=None`` (the default for direct construction) applies no local limit.
+    :meth:`from_env` attaches a ``sarvam_chat`` guard unless it is given
+    ``guard=None``, which is what :mod:`llmslim.hosted` passes: its MongoDB spend
+    ledger is the authority there, so ``LLMSLIM_SARVAM_CHAT_*`` never affects it.
     """
 
     def rewrite(self, request: RewriteRequest) -> str:
@@ -347,17 +395,18 @@ class SarvamProvider(_SarvamChatCore, BaseRewriteProvider):
         request = self._request(messages, max_tokens)
         reservation = self._reserve(request)
         try:
-            response = self._client.chat.completions(**request)
+            response = self._client.chat.completions(**request, request_options=no_retries())
         except Exception as exc:
             self._fail(reservation, exc)
         return self._finish(response, reservation)
 
 
-class AsyncSarvamProvider(_SarvamChatCore):
+class AsyncSarvamProvider(_SarvamChatCore, AsyncClientOwner):
     """Asyncio chat provider backed by ``AsyncSarvamAI`` with the sync provider's semantics.
 
     ``last_usage`` lives in a :class:`~contextvars.ContextVar`, so concurrent
-    tasks each see the usage of their own most recent call.
+    tasks each see the usage of their own most recent call. Close a provider
+    built from ``api_key`` with ``await provider.aclose()`` or ``async with``.
     """
 
     def _make_client(self, api_key: Optional[str], timeout_seconds: float) -> Any:
@@ -375,7 +424,7 @@ class AsyncSarvamProvider(_SarvamChatCore):
         request = self._request(messages, max_tokens)
         reservation = self._reserve(request)
         try:
-            response = await self._client.chat.completions(**request)
+            response = await self._client.chat.completions(**request, request_options=no_retries())
         except Exception as exc:
             self._fail(reservation, exc)
         return self._finish(response, reservation)
@@ -422,5 +471,6 @@ __all__ = [
     "map_sarvam_error",
     "normalize_scripts",
     "sarvam_chat_cost_inr",
+    "sarvam_prompt_token_bound",
     "split_for_sarvam",
 ]

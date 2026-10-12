@@ -63,6 +63,8 @@ def _answer(client: Any, prompt: str, model: str) -> Dict[str, Any]:
         ],
         max_tokens=128,
         stream=False,
+        # Billable: send once. The SDK would otherwise retry 408/409/429/5xx up to twice.
+        request_options={"max_retries": 0},
     )
     text = response.choices[0].message.content
     usage = getattr(response, "usage", None)
@@ -87,7 +89,8 @@ def run_live(model: str = "sarvam-105b") -> Dict[str, Any]:
         raise RuntimeError(
             'install the live dependency with: pip install "llmslim[sarvam]"'
         ) from exc
-    client = SarvamAI(api_subscription_key=api_key, timeout=30.0)
+    # Never follow redirects: httpx would forward the api-subscription-key to another origin.
+    client = SarvamAI(api_subscription_key=api_key, timeout=30.0, follow_redirects=False)
     profile = ModelProfileRegistry().require(model)
     records = []
     for task in TASKS:

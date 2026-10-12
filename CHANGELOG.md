@@ -66,6 +66,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to opt out.
 - `parse_cache_telemetry("sarvam", ...)` reads `cached_tokens`.
 - The `external_provenance_boundary` validation check also covers `exa:` sources.
+- `normalize_scripts()` / `anormalize_scripts()` only rewrite user, retrieved,
+  memory and tool-result text by default (`kinds=`, `roles=`); system,
+  developer, assistant and tool-schema items are never replaced with vendor
+  output unless listed explicitly.
+- Hosted Sarvam reservations are a UTF-8 byte upper bound of the exact messages
+  sent (`sarvam_prompt_token_bound`), not the planner's token count, which is
+  `len/4` without `tiktoken`. A request whose bound exceeds `max_input_tokens`
+  or the per-request cost cap is refused instead of clamped.
+  `estimate_multiplier` is no longer used.
+
+### Fixed
+- Sarvam calls that can be billed (chat, language tools, document-job creation,
+  the benchmark reader and the voice example) are sent once:
+  `request_options={"max_retries": 0}` on every call, also with injected
+  clients. `sarvamai` otherwise retried 408/409/429/5xx up to twice.
+- Sarvam SDK clients built by LLMSlim never follow redirects. `httpx` strips
+  only `Authorization` on a cross-origin redirect, so the
+  `api-subscription-key` header and the body could reach another host.
+- `llmslim.hosted` builds its provider with `guard=None` again, so
+  `LLMSLIM_SARVAM_CHAT_*` cannot break or refuse hosted requests; a refusal
+  before the network, or an error Sarvam returns unbilled (401/403, 402, 4xx
+  validation, 429), releases the hosted reservation instead of keeping it. The
+  per-request provider's HTTP pool is closed after each request.
+- A multi-request Sarvam operation that needs more requests than the
+  per-minute rate allows raises `UsageCapExceeded`, not a `RateLimitExceeded`
+  that waiting could never fix.
+- `last_usage` uses one module-level `ContextVar` instead of one per provider,
+  which pinned a variable per provider ever used (hosted makes one per request).
+- Sarvam document pages without a `page_number` keep their text, numbered by
+  position and marked `page_number_inferred`, instead of failing a billed job.
+- Sarvam providers, language tools and document sources have `close()` /
+  `aclose()` and `with` / `async with` support for clients they built.
+- Secondary-reader benchmark: the Nebius limits may only be lowered by
+  `LLMSLIM_NEBIUS_BENCH_*` (a higher value or `none` is refused), and a
+  persistent per-day ledger (`benchmarks/results/.nebius-spend.json`) caps all
+  Nebius runs on a machine at US$0.10 per UTC day. A case stopped mid-way (guard
+  refusal, rate-limit stop, Ctrl-C) keeps its billed arms in the results and
+  totals.
 
 ## [0.8.1] - 2026-10-12
 

@@ -118,13 +118,13 @@ def test_from_env_overrides_and_disables() -> None:
 
 def test_from_env_keeps_defaults_and_rejects_garbage() -> None:
     defaults = UsageLimits(requests_per_minute=7, max_requests=8)
-    assert UsageGuard.from_env("tavily", defaults, env={}).limits == defaults
-    with pytest.raises(ValueError, match="LLMSLIM_TAVILY_MAX_REQUESTS"):
-        UsageGuard.from_env("tavily", defaults, env={"LLMSLIM_TAVILY_MAX_REQUESTS": "lots"})
+    assert UsageGuard.from_env("example", defaults, env={}).limits == defaults
+    with pytest.raises(ValueError, match="LLMSLIM_EXAMPLE_MAX_REQUESTS"):
+        UsageGuard.from_env("example", defaults, env={"LLMSLIM_EXAMPLE_MAX_REQUESTS": "lots"})
     with pytest.raises(ValueError):
         UsageGuard.from_env("bad-prefix", defaults, env={})
     with pytest.raises(ValueError):
-        UsageGuard.from_env("tavily", defaults, env={"LLMSLIM_TAVILY_MAX_REQUESTS": "0"})
+        UsageGuard.from_env("example", defaults, env={"LLMSLIM_EXAMPLE_MAX_REQUESTS": "0"})
 
 
 def test_concurrent_acquire_never_exceeds_the_cap() -> None:

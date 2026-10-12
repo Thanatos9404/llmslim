@@ -1,4 +1,4 @@
 # The Studio functions run the released LLMSlim Core from PyPI, at the version the site documents.
 numpy>=1.21
 scikit-learn>=1.0
-llmslim==0.8.0
+llmslim==0.8.1

@@ -47,6 +47,14 @@ allowlists remain with the existing source classes. See the existing
 [MongoDB](../integrations/MONGODB.md) and
 [Zoho](../integrations/ZOHO.md) guides.
 
+## Neo4j memory
+
+`Neo4jContextStore` is a `ContextSource`, so it can go in
+`context_sources=(store,)`. It returns only the memories that are valid now, as
+untrusted `MEMORY` items. Writes happen only when you call them explicitly:
+`remember`, `supersede` and `forget`. Use `conflicts()` to surface facts that
+disagree before planning. See the [Neo4j guide](../integrations/NEO4J.md).
+
 ## CLI and Studio
 
 `llmslim context inspect|plan|trace|graph context.json --json` gives local

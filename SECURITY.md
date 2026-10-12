@@ -41,7 +41,13 @@ identity secret of at least 32 characters and an exact origin allow-list
 refused; bodies, context tokens and question length are bounded; and
 `llmslim.hosted` applies pseudonymous network and session rate limits, a
 per-request cost cap, daily and monthly INR budgets and concurrency leases in
-MongoDB before any provider call. The key never reaches the browser, provider
+MongoDB before any provider call. Spend is reserved from a hard upper bound on
+the prompt's tokens (its UTF-8 byte length plus framing), not from an estimate,
+and a request whose bound exceeds the input budget or the per-request cost cap
+is refused. Quotas, the repeat limiter and concurrency key on the client network
+(IPv6 truncated to /64), so dropping the session cookie resets nothing. Each
+provider call is made once, without SDK retries or redirects, inside a
+concurrency lease that outlives it. The key never reaches the browser, provider
 errors are returned as fixed messages, and nothing it is sent is stored or
 logged.
 

@@ -11,12 +11,19 @@ extra data and frame variables. It redacts quoted text, URLs and long token-like
 messages, because exception messages can echo submitted text, and replaces the value of every
 secret-looking environment variable (``*_KEY``, ``*_SECRET``, ``*_TOKEN``, ``*_PASSWORD``, ``*_URI``,
 ``*_DSN``) wherever it appears in the event.
+
+Reports are throttled per process (at most five per minute for each function and error type) and
+flushed with a half-second limit, so a burst of failing requests neither floods Sentry nor holds
+responses open.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import threading
+import time
+from collections import deque
 from collections.abc import Mapping, MutableMapping
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -32,6 +39,13 @@ _SECRET_NAME = re.compile(r"(KEY|SECRET|TOKEN|PASSWORD|URI|DSN)$", re.I)
 _MAX_MESSAGE = 200
 
 _state: dict[str, Any] = {"sdk": None, "initialized": False}
+# Throttling: per process, at most this many reports per (function, error type) per window.
+MAX_EVENTS_PER_WINDOW = 5
+THROTTLE_WINDOW_SECONDS = 60.0
+MAX_THROTTLE_KEYS = 256
+FLUSH_TIMEOUT_SECONDS = 0.5
+_sent: dict[str, deque[float]] = {}
+_lock = threading.Lock()
 
 
 def scrub_text(value: Any) -> Any:
@@ -175,20 +189,63 @@ def init(environ: Mapping[str, str] | None = None) -> bool:
     return True
 
 
-def capture(error: BaseException, *, function: str) -> None:
-    """Report one unexpected error, tagged with the function name, and flush before the instance
-    can be frozen. A no-op when Sentry is not configured. Never raises."""
+def _allowed(key: str, now: float) -> bool:
+    """At most ``MAX_EVENTS_PER_WINDOW`` reports per key per window, per process."""
+
+    with _lock:
+        window = _sent.setdefault(key, deque())
+        while window and window[0] <= now - THROTTLE_WINDOW_SECONDS:
+            window.popleft()
+        if len(window) >= MAX_EVENTS_PER_WINDOW:
+            return False
+        window.append(now)
+        if len(_sent) > MAX_THROTTLE_KEYS:
+            for stale in [name for name, times in _sent.items() if not times]:
+                del _sent[stale]
+        return True
+
+
+def capture(error: BaseException, *, function: str, now: float | None = None) -> bool:
+    """Report one unexpected error, tagged with the function name. A no-op when Sentry is not
+    configured. Never raises.
+
+    Reports are throttled per process and per (function, error type), so a flood of bad requests
+    cannot flood Sentry or slow every response. The flush is short: a report that cannot leave
+    within it is dropped rather than holding the request open.
+    """
 
     sdk = _state["sdk"]
     if sdk is None:
-        return
+        return False
+    moment = time.monotonic() if now is None else now
+    if not _allowed(f"{function}:{type(error).__name__}", moment):
+        return False
     try:
         sdk.capture_exception(error, tags={"function": function})
-        sdk.flush(timeout=2.0)
+        sdk.flush(timeout=FLUSH_TIMEOUT_SECONDS)
     except Exception:
-        pass
+        return False
+    return True
+
+
+class ProviderCallFailed(RuntimeError):
+    """A content-free stand-in for a failed provider call: the SDK error's class and HTTP status."""
+
+
+def capture_provider_failure(
+    error: BaseException, *, function: str, now: float | None = None
+) -> bool:
+    """Report that a provider call failed (a revoked key or exhausted credit shows up here) without
+    the SDK's message or response body, which can echo the request."""
+
+    status = getattr(error, "status_code", None)
+    status_text = str(status) if isinstance(status, int) else "none"
+    summary = ProviderCallFailed(f"{type(error).__name__} (HTTP status {status_text})")
+    return capture(summary, function=function, now=now)
 
 
 def reset_for_tests() -> None:
     _state["sdk"] = None
     _state["initialized"] = False
+    with _lock:
+        _sent.clear()

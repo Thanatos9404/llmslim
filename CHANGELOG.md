@@ -9,6 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Usage guard for paid integrations** (`llmslim.integrations._guard`).
+  `UsageGuard` admits or refuses each call before it leaves the process. It
+  enforces a sliding per-minute rate, a lifetime request cap and an optional
+  unit cap (INR, USD, credits or queries). Callers reserve before the call,
+  then settle with the vendor-reported amount, or release when nothing was
+  billed. Limits come from `LLMSLIM_<PREFIX>_REQUESTS_PER_MINUTE`, `_MAX_REQUESTS`
+  and `_MAX_UNITS`; `none` disables one limit.
+- **Sarvam, beyond chat** (`llmslim[sarvam]`):
+  - `AsyncSarvamProvider`.
+  - `SarvamLanguageTools` and `AsyncSarvamLanguageTools`: language
+    identification, transliteration and translation, chunked to Sarvam's
+    per-request limits without splitting graphemes.
+  - Opt-in `annotate_languages()` and `normalize_scripts()` context helpers.
+  - `SarvamDocumentSource`: a PDF or image becomes one RAG item per page, with
+    file type, size and 10-page checks, a poll timeout and partial-job handling.
+  - Typed, sanitized errors for 402, other 4xx, 5xx, failed jobs and timeouts.
+  - Every call is guarded with dated INR prices.
+  - `examples/sarvam_voice_agent.py` now runs Saaras speech-to-text → plan →
+    `sarvam-105b` → Bulbul text-to-speech end to end.
+- **Exa web search** (`llmslim[exa]`): `ExaSearchSource` returns untrusted RAG
+  context items. Each item carries its URL, published date, rank and a recency
+  score, and is capped in USD and settled with Exa's reported cost. Requests are
+  never retried automatically and never follow redirects. The vendor-neutral
+  `llmslim.integrations.web_search` module has `WebSearchSource`,
+  `WebSearchResult`, validation and sanitization helpers, and typed errors.
+- **Neo4j temporal agent memory** (`llmslim[neo4j]`): `Neo4jContextStore` keeps
+  tenant-scoped facts with validity intervals.
+  - `supersede()` closes a fact and links `(new)-[:SUPERSEDES]->(old)` in one
+    transaction. It refuses cycles and cross-tenant IDs.
+  - `recall(as_of=...)`, `history()` and `conflicts()` make stale and
+    conflicting memory auditable.
+- **Secondary-reader benchmarks.** `benchmarks/live_secondary_reader.py` runs
+  the frozen v0.6 suite with Sarvam as reader, in three arms: full, LLMSlim, and
+  truncated to the same budget. It reports paired bootstrap CIs and a weak-spots
+  section, labels the run as secondary to the Claude Haiku 5.5 headline, and
+  caps spend in INR. Nebius is off unless `LLMSLIM_NEBIUS_ALLOW_LIVE=1`, with a
+  US$0.10 cap and a required verified price. LangSmith tracing of public
+  datasets only is available in `benchmarks/_tracing.py`.
+- **Studio "Answer with Sarvam" step** (`web/api/sarvam_answer.py`): sends the
+  compressed context and question to `sarvam-105b` through `llmslim.hosted`,
+  with its spend ledger, HMAC identity, exact-origin check and kill switch.
+  Off unless configured.
+- **Server-side Sentry for the Studio functions**: errors only. Bodies,
+  cookies, query strings, headers and secret-looking values are scrubbed.
+- `.env.example` lists every variable by name.
+
+### Changed
+- Sarvam model profiles repriced to ₹15 input, ₹5 cached input and ₹60 output
+  per 1M tokens (Sarvam pricing page, 12 October 2026). Hosted cost
+  reservations were about 2× too high.
+- `SarvamProvider.from_env()` attaches a `sarvam_chat` guard and settles on
+  provider-reported usage, pricing cached input at the cached rate.
+  `SarvamUsage` gains `cached_tokens` and `reasoning_tokens`. Pass `guard=None`
+  to opt out.
+- `parse_cache_telemetry("sarvam", ...)` reads `cached_tokens`.
+- The `external_provenance_boundary` validation check also covers `exa:` sources.
+
 ## [0.8.1] - 2026-10-12
 
 ### Added

@@ -58,6 +58,12 @@ filter. Unknown filters raise `TypeError` before anything is spent. Queries
 are whitespace-collapsed and limited to 2,000 characters (Exa documents no
 maximum; this bound is LLMSlim's).
 
+Date bounds are sent in UTC. A `date` start bound is midnight UTC of that day.
+A `date` end bound includes the whole day: it is sent as `23:59:59.999Z` of
+that day, because Exa documents `endPublishedDate` as "only links with a
+published date before this" without saying whether the bound itself is
+included. A timezone-aware `datetime` is sent as given, to the millisecond.
+
 `search_results()` returns typed `WebSearchResult` records (URL, title, text,
 `published_at`, `score`, vendor, rank) if you want to post-process before
 planning.
@@ -132,15 +138,28 @@ trusted role.
 Before planning, each result is cleaned:
 
 - only `http`/`https` URLs without credentials are kept; `javascript:`,
-  `data:`, `ftp:` and malformed URLs are dropped, fragments are removed and
-  duplicate URLs are merged, keeping the best-ranked one;
-- control characters (except newlines and tabs), zero-width and
-  bidirectional formatting characters are removed, whitespace runs are
-  collapsed, and `<llmslim_context` tags in page text are escaped so a page
-  cannot close or forge the planner's provenance boundary;
-- text is capped at `max_characters` (ending in an ellipsis and
-  `metadata["truncated"] = True` when cut); titles are one line, at most 300
-  characters.
+  `data:`, `ftp:` and malformed URLs are dropped, as are URLs containing
+  whitespace, control characters, `<`, `>`, `"` or invisible formatting
+  characters. Fragments are removed and duplicate URLs are merged, keeping the
+  best-ranked one;
+- control characters (except newlines and tabs) are removed, and so are
+  zero-width spaces, LRM/RLM, bidirectional embeddings, overrides and
+  isolates, word joiners, the byte-order mark, variation selectors supplement
+  characters (U+E0100-U+E01EF) and Unicode tag characters (U+E0000-U+E007F,
+  used for invisible "ASCII smuggling"). Tag characters are kept only inside a
+  subdivision-flag emoji such as England's flag. ZWNJ and ZWJ are kept because
+  Indic half-forms, Malayalam chillu letters, Persian and Urdu words and emoji
+  ZWJ sequences need them. Whitespace runs are collapsed, and
+  `<llmslim_context` tags in the title, URL and page text are escaped (`<`
+  becomes `&lt;`) so a page cannot close or forge the planner's provenance
+  boundary. The planner applies the same escaping to every untrusted item when
+  it renders the context;
+- text is capped at `max_characters` (ending in an ellipsis when LLMSlim cuts
+  it); titles are one line, at most 300 characters. Exa cuts page text to
+  `maxCharacters` itself and does not say when it did, so
+  `metadata["truncated"]` is `True` when LLMSlim cut the text or when the text
+  Exa returned is `max_characters` long (counted in code points or UTF-16
+  code units). A page that is exactly that long is reported as truncated.
 
 Item metadata uses fixed keys only: `url`, `title`, `published_at`,
 `retrieved_at`, `rank`, `vendor`, `trust` and `truncated`. Item IDs are

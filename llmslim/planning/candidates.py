@@ -11,6 +11,7 @@ from ..core import ContextRole, compress
 from ..rewrite import BaseRewriteProvider
 from ..rewrite.validation import RewriteValidator
 from ..tokens import count_tokens
+from .boundary import BOUNDARY_TAG, escape_boundary_attribute, neutralize_boundary_tags
 from .models import CandidateMethod, ContextCandidate, ContextItem, ContextKind
 from .policy import PlannerPolicy
 from .scoring import (
@@ -35,14 +36,23 @@ def trusted_role(role: ContextRole) -> bool:
 
 
 def render_context_item(item: ContextItem, content: str) -> str:
-    """Render one item with an explicit provenance boundary."""
+    """Render one item with an explicit provenance boundary.
 
-    trusted = "true" if trusted_role(item.role) else "false"
+    Attribute values are escaped, and untrusted content has any envelope tag
+    neutralized (see :mod:`llmslim.planning.boundary`), so neither an item ID
+    nor untrusted text can close the block or forge a trusted one. Trusted
+    content, and untrusted content without an envelope tag, render as given.
+    """
+
+    is_trusted = trusted_role(item.role)
+    trusted = "true" if is_trusted else "false"
+    body = content if is_trusted else neutralize_boundary_tags(content)
     header = (
-        f'<llmslim_context id="{item.item_id}" kind="{item.kind.value}" '
-        f'role="{item.role.value}" trusted="{trusted}">'
+        f'<{BOUNDARY_TAG} id="{escape_boundary_attribute(item.item_id)}" '
+        f'kind="{escape_boundary_attribute(item.kind.value)}" '
+        f'role="{escape_boundary_attribute(item.role.value)}" trusted="{trusted}">'
     )
-    return f"{header}\n{content}\n</llmslim_context>\n\n"
+    return f"{header}\n{body}\n</{BOUNDARY_TAG}>\n\n"
 
 
 def rendered_token_count(item: ContextItem, content: str) -> int:

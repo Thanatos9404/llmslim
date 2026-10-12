@@ -35,6 +35,7 @@ from typing import (
 from urllib.parse import urlsplit, urlunsplit
 
 from ..core import ContextRole
+from ..planning.boundary import neutralize_boundary_tags
 from ..planning.models import ContextItem, ContextKind
 
 __all__ = [
@@ -192,7 +193,8 @@ class WebSearchResult:
     ``published_at`` is an aware UTC datetime (naive values are read as UTC).
     ``score`` is the vendor score clamped to ``[0, 1]``, or ``None`` when the
     vendor gave none. ``rank`` is the 1-based position in the vendor's list.
-    ``truncated`` records that ``text`` was cut to the per-result cap.
+    ``truncated`` records that ``text`` was cut to the per-result cap, by the
+    vendor or locally (vendor adapters document how they detect a vendor cut).
     """
 
     url: str
@@ -264,10 +266,15 @@ def validate_url(value: Any) -> Optional[str]:
     """Return a normalized ``http``/``https`` URL, or ``None`` when it must be dropped.
 
     Drops non-strings, other schemes (``javascript:``, ``data:``, ``ftp:`` ...),
-    URLs with user info (``user:pass@host``), whitespace or control characters,
-    an invalid port, a missing host, or more than :data:`MAX_URL_CHARACTERS`
-    characters. Normalization lowercases the scheme and host, removes the
-    fragment and turns an empty path into ``/``.
+    URLs with user info (``user:pass@host``), whitespace, control characters,
+    ``<``, ``>`` or ``"`` (a URL is placed inside the planner's provenance
+    envelope, so it must not carry markup), invisible formatting characters
+    (zero-width, bidirectional, Unicode tag and variation-selector-supplement
+    characters; ZWNJ and ZWJ are allowed), an invalid port, a missing host, or
+    more than :data:`MAX_URL_CHARACTERS` characters. Characters that are not
+    allowed are rejected rather than percent-encoded, because a vendor URL that
+    contains them is malformed. Normalization lowercases the scheme and host,
+    removes the fragment and turns an empty path into ``/``.
     """
 
     if not isinstance(value, str):
@@ -275,7 +282,7 @@ def validate_url(value: Any) -> Optional[str]:
     raw = value.strip()
     if not raw or len(raw) > MAX_URL_CHARACTERS:
         return None
-    if any(char.isspace() or ord(char) < 0x20 or 0x7F <= ord(char) <= 0x9F for char in raw):
+    if any(char.isspace() for char in raw) or _URL_FORBIDDEN_RE.search(raw):
         return None
     try:
         parts = urlsplit(raw)
@@ -374,13 +381,43 @@ def validate_query(query: Any, *, max_characters: int) -> str:
 _NEWLINE_RE = re.compile("\r\n?|[  ]")
 _OTHER_WHITESPACE_RE = re.compile(r"[^\S\n\t]")
 _CONTROL_RE = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f]")
-# Zero-width and bidirectional formatting characters can hide or reorder text.
-_INVISIBLE_RE = re.compile("[​-‏‪-‮⁠-⁤⁦-⁩﻿]")
-# Untrusted text must not open or close the planner's provenance boundary tag.
-_BOUNDARY_RE = re.compile(r"<(\s*/?\s*)(llmslim_context)", re.IGNORECASE)
+# Invisible characters that can hide or reorder text: zero width space, LRM/RLM,
+# bidirectional embeddings, overrides and isolates, word joiner and invisible
+# operators, the byte-order mark, and the variation selectors supplement
+# (U+E0100-U+E01EF, which can carry hidden bytes). ZWNJ (U+200C) and ZWJ (U+200D)
+# are kept: Devanagari half-forms, Malayalam chillu letters, Persian and Urdu
+# words and emoji ZWJ sequences need them.
+_INVISIBLE_CLASS = (
+    "\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\U000e0100-\U000e01ef"
+)
+_INVISIBLE_RE = re.compile(f"[{_INVISIBLE_CLASS}]")
+# Unicode tag characters (U+E0000-U+E007F) mirror ASCII invisibly ("ASCII
+# smuggling"). They are removed except inside an emoji tag sequence for a
+# subdivision flag: U+1F3F4, a CLDR subdivision ID in tag letters and digits
+# (two letters or three digits, then one to four letters or digits) and the
+# cancel tag U+E007F, for example England's flag (gbeng).
+_TAG_CLASS = "\U000e0000-\U000e007f"
+_TAG_CHARACTER_RE = re.compile(f"[{_TAG_CLASS}]")
+_TAG_ALNUM = "[\U000e0030-\U000e0039\U000e0061-\U000e007a]"
+_EMOJI_TAG_SEQUENCE = (
+    f"\U0001f3f4(?:[\U000e0061-\U000e007a]{{2}}|[\U000e0030-\U000e0039]{{3}})"
+    f"{_TAG_ALNUM}{{1,4}}\U000e007f"
+)
+_TAG_OR_FLAG_RE = re.compile(f"({_EMOJI_TAG_SEQUENCE})|[{_TAG_CLASS}]")
+# A result URL is shown inside the provenance envelope: no markup, quotes,
+# control characters or invisible formatting characters.
+_URL_FORBIDDEN_RE = re.compile(f'[<>"\x00-\x1f\x7f-\x9f{_INVISIBLE_CLASS}{_TAG_CLASS}]')
 _SPACE_RUN_RE = re.compile(r"[ \t]{2,}")
 _LINE_EDGE_RE = re.compile(r"[ \t]*\n[ \t]*")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
+
+
+def _strip_tag_characters(text: str) -> str:
+    """Remove Unicode tag characters that are not part of a subdivision-flag sequence."""
+
+    if not _TAG_CHARACTER_RE.search(text):
+        return text
+    return _TAG_OR_FLAG_RE.sub(lambda match: match.group(1) or "", text)
 
 
 def _sanitize(value: Any, max_characters: int, *, single_line: bool = False) -> Tuple[str, bool]:
@@ -390,7 +427,8 @@ def _sanitize(value: Any, max_characters: int, *, single_line: bool = False) -> 
     text = _OTHER_WHITESPACE_RE.sub(" ", text)
     text = _CONTROL_RE.sub("", text)
     text = _INVISIBLE_RE.sub("", text)
-    text = _BOUNDARY_RE.sub(r"&lt;\1\2", text)
+    text = _strip_tag_characters(text)
+    text = neutralize_boundary_tags(text)
     if single_line:
         text = text.replace("\n", " ").replace("\t", " ")
     text = _SPACE_RUN_RE.sub(" ", text)
@@ -399,22 +437,26 @@ def _sanitize(value: Any, max_characters: int, *, single_line: bool = False) -> 
     if len(text) <= max_characters:
         return text, False
     if max_characters == 1:
-        return text[:1], True
+        return _strip_tag_characters(text[:1]), True
     cut = text[: max_characters - 1]
     boundary = max(cut.rfind(" "), cut.rfind("\n"))
     if boundary >= (max_characters * 4) // 5:
         cut = cut[:boundary]
-    return cut.rstrip() + "…", True
+    # A cut inside a flag's tag sequence leaves unterminated tag characters; drop them.
+    return _strip_tag_characters(cut).rstrip() + "…", True
 
 
 def sanitize_text(value: Any, max_characters: int = DEFAULT_MAX_CHARACTERS) -> str:
     """Make untrusted page text safe to plan.
 
     Normalizes line breaks, removes control characters (newlines and tabs are
-    kept), zero-width and bidirectional formatting characters, escapes any
-    ``<llmslim_context`` boundary tag, collapses runs of spaces and blank lines,
-    and caps the result at ``max_characters`` (ending in an ellipsis when cut).
-    Non-string values become ``""``.
+    kept), zero-width, bidirectional and other invisible formatting characters
+    (ZWNJ and ZWJ are kept for Indic, Persian, Urdu and emoji text), Unicode tag
+    characters outside a subdivision-flag emoji sequence and variation selectors
+    supplement characters, escapes any ``<llmslim_context`` boundary tag with
+    :func:`llmslim.planning.boundary.neutralize_boundary_tags`, collapses runs of
+    spaces and blank lines, and caps the result at ``max_characters`` (ending in
+    an ellipsis when cut). Non-string values become ``""``.
     """
 
     limit = _bounded_int(max_characters, "max_characters", 1, MAX_CHARACTERS_LIMIT)
@@ -596,7 +638,9 @@ def result_to_context_item(
 
     title = _sanitize(result.title, MAX_TITLE_CHARACTERS, single_line=True)[0]
     text = _sanitize(result.text, MAX_CHARACTERS_LIMIT)[0]
-    header = [title, result.url] if title else [result.url]
+    # validate_url already rejects markup; escaping here keeps the rule in one helper.
+    url = neutralize_boundary_tags(result.url)
+    header = [title, url] if title else [url]
     content = "\n".join(header) + ("\n\n" + text if text else "")
     reference = retrieved_at if now is None else now
     metadata: Dict[str, Any] = {

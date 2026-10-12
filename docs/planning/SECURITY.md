@@ -6,7 +6,14 @@
 - System/developer instructions and required content cannot be dropped.
 - Raw authoritative tool contracts remain unchanged and fingerprint-checked.
 - External data cannot self-declare trusted provenance through text or
-  metadata. Zoho and MongoDB sources emit untrusted RAG/memory items.
+  metadata. Zoho, MongoDB, Exa, Neo4j and Sarvam document sources emit
+  untrusted RAG/memory items, and the `external_provenance_boundary` check
+  fails if one of them is given a system or developer role.
+- Untrusted text cannot close or forge a provenance envelope. Envelope
+  attribute values are escaped, and in untrusted content every
+  `<llmslim_context` / `</llmslim_context` tag (any case, with whitespace or
+  invisible characters around the `/`) is rendered with `&lt;` in place of
+  `<`. Trusted content and content without such a tag render unchanged.
 - Credentials are excluded from plans, cache keys, metrics, exceptions,
   benchmark artifacts and `repr()` output.
 - Source collection is fail-closed by default. Explicit fail-open records only

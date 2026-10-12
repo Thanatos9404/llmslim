@@ -9,8 +9,12 @@ returns Markdown per page) and return one untrusted RAG
 
 Limits are checked locally before anything is sent: file type (extension and
 magic bytes), file size, and page count against Sarvam's 10-page job limit.
-Job creation is billable, so it is never retried; a job that outlives the poll
-deadline raises :class:`SarvamJobTimeoutError` carrying its ``job_id``.
+Job creation (``doc_ai.digitise``, a POST) is billable, so it is sent once with
+``request_options={"max_retries": 0}``, also on injected clients. The read-only
+GETs (``get_status``, ``get_results``) keep the SDK's own retries, which cannot
+bill anything. A job that outlives the poll deadline raises
+:class:`SarvamJobTimeoutError` carrying its ``job_id``. Clients built from a key
+never follow redirects; close them with ``close()`` / ``aclose()`` or ``with``.
 """
 
 from __future__ import annotations
@@ -43,16 +47,19 @@ from ._guard import UsageGuard, UsageLimits, UsageReservation
 from ._sarvam_common import (
     DOCUMENT_LANGUAGES,
     SARVAM_PRICES,
+    AsyncClientOwner,
     SarvamJobError,
     SarvamJobTimeoutError,
     SarvamMalformedResponseError,
     SarvamPriceTable,
     SarvamServiceUsage,
+    SyncClientOwner,
     async_client,
     check_choice,
     env_key,
     fail_call,
     map_sarvam_error,
+    no_retries,
     read_field,
     sync_client,
 )
@@ -281,6 +288,50 @@ def _billed_pages(usage: Any) -> Optional[int]:
     return None
 
 
+def _numbered_pages(
+    document_index: int, entry_pages: Sequence[Any], job_id: str
+) -> List[Tuple[int, int, Optional[str], bool]]:
+    """Validate one document's pages and give every page a number.
+
+    A page without ``page_number`` takes its 1-based position in the list, or, if
+    another page already carries that number, the next number after the highest
+    one in use. Such pages are flagged as inferred.
+    """
+
+    explicit = set()
+    parsed: List[Tuple[Optional[int], Optional[str]]] = []
+    for page in entry_pages:
+        number = read_field(page, "page_number")
+        content = read_field(page, "content")
+        if number is not None and (
+            isinstance(number, bool) or not isinstance(number, int) or number < 1
+        ):
+            raise SarvamMalformedResponseError(
+                "Sarvam returned a page with an invalid page_number", job_id=job_id
+            )
+        if content is not None and not isinstance(content, str):
+            raise SarvamMalformedResponseError(
+                "Sarvam returned non-text page content", job_id=job_id
+            )
+        if number is not None:
+            if number in explicit:
+                raise SarvamMalformedResponseError(
+                    "Sarvam returned the same page twice", job_id=job_id
+                )
+            explicit.add(number)
+        parsed.append((number, content))
+    used = set(explicit)
+    numbered = []
+    for position, (number, content) in enumerate(parsed, start=1):
+        if number is not None:
+            numbered.append((document_index, number, content, False))
+            continue
+        inferred = position if position not in used else max(used) + 1
+        used.add(inferred)
+        numbered.append((document_index, inferred, content, True))
+    return numbered
+
+
 # --------------------------------------------------------------------------- sources
 
 
@@ -324,8 +375,9 @@ class _DocumentSourceBase:
             raise ValueError(f"max_pages_per_job must be between 1 and {SARVAM_MAX_PAGES_PER_JOB}")
         if not isinstance(prices, SarvamPriceTable):
             raise TypeError("prices must be a SarvamPriceTable")
+        self._owned_http: Any = None
         if client is None:
-            client = self._make_client(api_key, timeout_seconds)
+            client, self._owned_http = self._make_client(api_key, timeout_seconds)
         self._client = client
         self.guard = (
             guard
@@ -556,8 +608,8 @@ class _DocumentSourceBase:
             raise SarvamMalformedResponseError(
                 "Sarvam document results have no documents", job_id=job_id
             )
-        pages: List[Tuple[int, int, Optional[str]]] = []
-        seen = set()
+        # (document index, page number, content, whether the number was inferred)
+        pages: List[Tuple[int, int, Optional[str], bool]] = []
         for document_index, entry in enumerate(documents):
             entry_pages = read_field(entry, "pages")
             if entry_pages is None:
@@ -566,31 +618,30 @@ class _DocumentSourceBase:
                 raise SarvamMalformedResponseError(
                     "Sarvam document pages are malformed", job_id=job_id
                 )
-            for page in entry_pages:
-                number = read_field(page, "page_number")
-                content = read_field(page, "content")
-                if isinstance(number, bool) or not isinstance(number, int) or number < 1:
-                    raise SarvamMalformedResponseError(
-                        "Sarvam returned a page without a valid page_number", job_id=job_id
-                    )
-                if content is not None and not isinstance(content, str):
-                    raise SarvamMalformedResponseError(
-                        "Sarvam returned non-text page content", job_id=job_id
-                    )
-                if (document_index, number) in seen:
-                    raise SarvamMalformedResponseError(
-                        "Sarvam returned the same page twice", job_id=job_id
-                    )
-                seen.add((document_index, number))
-                pages.append((document_index, number, content))
+            pages.extend(_numbered_pages(document_index, entry_pages, job_id))
         pages.sort(key=lambda page: (page[0], page[1]))
         items = []
         with_text = set()
-        for order, (document_index, number, content) in enumerate(
+        for order, (document_index, number, content, inferred) in enumerate(
             page for page in pages if page[2] and page[2].strip()
         ):
             assert content is not None
             with_text.add(number)
+            metadata: Dict[str, Any] = {
+                "page_number": number,
+                "document_index": document_index,
+                "file_name": document.file_name,
+                "file_sha256": document.sha256,
+                "language_code": document.language_code,
+                "job_id": job_id,
+                "job_status": state,
+                "output_format": OUTPUT_FORMAT,
+                "pages_total": pages_total,
+            }
+            if inferred:
+                # Sarvam sent the page without a page_number (the SDK marks it optional); the job
+                # was billed, so keep the text and say the number came from the page's position.
+                metadata["page_number_inferred"] = True
             items.append(
                 ContextItem(
                     item_id=f"sarvam-document:{document.sha256[:16]}:{document_index}:{number}",
@@ -599,23 +650,13 @@ class _DocumentSourceBase:
                     role=ContextRole.RAG,
                     original_order=order,
                     source=self.source_id,
-                    metadata={
-                        "page_number": number,
-                        "document_index": document_index,
-                        "file_name": document.file_name,
-                        "file_sha256": document.sha256,
-                        "language_code": document.language_code,
-                        "job_id": job_id,
-                        "job_status": state,
-                        "output_format": OUTPUT_FORMAT,
-                        "pages_total": pages_total,
-                    },
+                    metadata=metadata,
                 )
             )
         if pages_total is not None:
             missing = tuple(n for n in range(1, pages_total + 1) if n not in with_text)
         else:
-            missing = tuple(sorted({n for _, n, _ in pages} - with_text))
+            missing = tuple(sorted({page[1] for page in pages} - with_text))
         return tuple(items), missing
 
     def __repr__(self) -> str:
@@ -625,7 +666,7 @@ class _DocumentSourceBase:
         )
 
 
-class SarvamDocumentSource(_DocumentSourceBase):
+class SarvamDocumentSource(_DocumentSourceBase, SyncClientOwner):
     """Synchronous Sarvam document digitisation into per-page context items."""
 
     def digitize(
@@ -649,7 +690,8 @@ class SarvamDocumentSource(_DocumentSourceBase):
         document = self._prepare(data, file_name, language, content_type)
         reservation = self.guard.acquire(self._page_price(document.reserved_pages))
         try:
-            started = self._client.doc_ai.digitise(**document.request)
+            # Creating the job is billable: one attempt only.
+            started = self._client.doc_ai.digitise(**document.request, request_options=no_retries())
         except Exception as exc:
             fail_call(self.guard, reservation, exc)
         job_id = self._job_id(started)
@@ -657,6 +699,7 @@ class SarvamDocumentSource(_DocumentSourceBase):
         state = self._state(status, job_id)
         self._check_terminal(document, job_id, state, status, reservation)
         try:
+            # A read-only GET of a finished job: the SDK's own retries cannot bill anything.
             results = self._client.doc_ai.get_results(job_id, format=OUTPUT_FORMAT)
         except Exception as exc:
             self._settle(reservation, [read_field(status, "usage")])
@@ -667,6 +710,7 @@ class SarvamDocumentSource(_DocumentSourceBase):
         deadline = self._clock() + self.poll_timeout_seconds
         while True:
             try:
+                # Read-only status poll (GET): SDK retries are harmless here and stay on.
                 status = self._client.doc_ai.get_status(job_id)
             except Exception as exc:
                 raise map_sarvam_error(exc, job_id=job_id) from None
@@ -675,7 +719,7 @@ class SarvamDocumentSource(_DocumentSourceBase):
             self._sleep(self._next_wait(job_id, deadline))
 
 
-class AsyncSarvamDocumentSource(_DocumentSourceBase):
+class AsyncSarvamDocumentSource(_DocumentSourceBase, AsyncClientOwner):
     """Asyncio twin of :class:`SarvamDocumentSource` backed by ``AsyncSarvamAI``."""
 
     def _make_client(self, api_key: Optional[str], timeout_seconds: float) -> Any:
@@ -703,7 +747,10 @@ class AsyncSarvamDocumentSource(_DocumentSourceBase):
         document = await asyncio.to_thread(self._prepare, data, file_name, language, content_type)
         reservation = self.guard.acquire(self._page_price(document.reserved_pages))
         try:
-            started = await self._client.doc_ai.digitise(**document.request)
+            # Creating the job is billable: one attempt only.
+            started = await self._client.doc_ai.digitise(
+                **document.request, request_options=no_retries()
+            )
         except Exception as exc:
             fail_call(self.guard, reservation, exc)
         job_id = self._job_id(started)
@@ -711,6 +758,7 @@ class AsyncSarvamDocumentSource(_DocumentSourceBase):
         state = self._state(status, job_id)
         self._check_terminal(document, job_id, state, status, reservation)
         try:
+            # A read-only GET of a finished job: the SDK's own retries cannot bill anything.
             results = await self._client.doc_ai.get_results(job_id, format=OUTPUT_FORMAT)
         except Exception as exc:
             self._settle(reservation, [read_field(status, "usage")])
@@ -721,6 +769,7 @@ class AsyncSarvamDocumentSource(_DocumentSourceBase):
         deadline = self._clock() + self.poll_timeout_seconds
         while True:
             try:
+                # Read-only status poll (GET): SDK retries are harmless here and stay on.
                 status = await self._client.doc_ai.get_status(job_id)
             except Exception as exc:
                 raise map_sarvam_error(exc, job_id=job_id) from None

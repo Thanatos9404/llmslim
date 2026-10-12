@@ -19,7 +19,7 @@ Do not quote a secondary-reader number as an LLMSlim headline result.
 | --- | --- | --- | --- |
 | `benchmarks/live/` | Claude Haiku 5.5 (headline) | `LLMSLIM_KEY_FILE` | `HAIKU_CAP_USD` |
 | `benchmarks.live_secondary_reader --reader sarvam` | Sarvam 105B (secondary) | `LLMSLIM_RUN_LIVE_SARVAM=1` + `SARVAM_API_KEY` | 30/min, 200 requests, ₹3,000 |
-| `benchmarks.live_secondary_reader --reader nebius` | a Nebius Token Factory model (secondary) | `LLMSLIM_NEBIUS_ALLOW_LIVE=1` + `NEBIUS_API_KEY` + prices | 10/min, 10 requests, USD 0.10 |
+| `benchmarks.live_secondary_reader --reader nebius` | a Nebius Token Factory model (secondary) | `LLMSLIM_NEBIUS_ALLOW_LIVE=1` + `NEBIUS_API_KEY` + prices | 10/min, 10 requests, USD 0.10 per run and per UTC day |
 | `benchmarks.live_sarvam_v06` | Sarvam 105B, 3 legacy tasks | `LLMSLIM_RUN_LIVE_SARVAM=1` + `SARVAM_API_KEY` | none (3 calls x 2) |
 | `benchmarks.live_runtime_v07` | Sarvam or OpenAI, 3 runtime tasks | `LLMSLIM_RUN_LIVE_V07=1` + the key | none (3 calls) |
 
@@ -54,8 +54,12 @@ python -m benchmarks.live_secondary_report benchmarks/results/live-sarvam-105b-v
   patterns are gitignored; commit a reviewed report deliberately. Results are written after every case.
 - **Caps:** every paid call goes through `UsageGuard`. A worst-case cost is reserved first (one token per
   UTF-8 byte of the prompt plus overhead, and the full output limit) and replaced by the provider-reported
-  cost afterwards. When the guard refuses, or a billed cost ever exceeds its reservation, the run stops and
-  the partial results are marked **INCOMPLETE**. Override the Sarvam limits with
+  cost afterwards. The reservation covers exactly one request: the Sarvam reader turns the SDK's own
+  retries off for every call (`request_options={"max_retries": 0}`; by default `sarvamai` retries
+  408/409/429/5xx up to twice) and its SDK client never follows redirects, and the Nebius reader posts
+  once. When the guard refuses, or a billed cost ever exceeds its reservation, the run stops and the
+  partial results are marked **INCOMPLETE**. A case cut short (refusal, rate-limit stop, Ctrl-C) is still
+  written with the arms it already billed, so they count in the totals. Override the Sarvam limits with
   `LLMSLIM_SARVAM_BENCH_REQUESTS_PER_MINUTE`, `LLMSLIM_SARVAM_BENCH_MAX_REQUESTS` and
   `LLMSLIM_SARVAM_BENCH_MAX_UNITS` (rupees).
 - **Sarvam prices** come from `llmslim/planning/profiles.py` (₹15 input, ₹5 cached input and ₹60 output per
@@ -74,9 +78,15 @@ and no other live flag turns it on. It also refuses to start, before any request
 - the model's price, `--price-input` and `--price-output` in USD per million tokens (`--price-cached` is
   optional and defaults to the input price). No default price is assumed.
 
-Every request asks for at most 64 output tokens, and the default guard (`nebius_bench`) allows 10 requests,
-10 per minute and USD 0.10 per process. Ten requests cover only the first few cases, so a Nebius run is a
-labelled partial check. Use a non-reasoning instruct model: a reasoning model spends 64 tokens thinking.
+Every request asks for at most 64 output tokens, and the guard (`nebius_bench`) allows 10 requests,
+10 per minute and USD 0.10 per process. These are ceilings: `LLMSLIM_NEBIUS_BENCH_REQUESTS_PER_MINUTE`,
+`_MAX_REQUESTS` and `_MAX_UNITS` may lower them, but a higher value or `none` is refused before any request.
+Every reservation is also booked in `benchmarks/results/.nebius-spend.json` (gitignored) before the call
+and settled to the reported cost after it, and a call is refused when the UTC day's recorded total plus its
+worst-case reservation would exceed USD 0.10, so repeated runs cannot each spend the cap. An unreadable
+ledger refuses the run instead of starting again from zero. Ten requests cover only the first few cases,
+so a Nebius run is a labelled partial check. Use a non-reasoning instruct model: a reasoning model spends
+64 tokens thinking.
 
 ```bash
 LLMSLIM_NEBIUS_ALLOW_LIVE=1 NEBIUS_API_KEY=... NEBIUS_MODEL=<model id> \

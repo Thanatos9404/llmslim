@@ -5,11 +5,17 @@ endpoints. Texts longer than Sarvam's per-request character limit are split on
 sentence or word boundaries (never inside a grapheme cluster), sent in order,
 and reassembled with the original whitespace between parts.
 
+Every request is billable, so each is sent once (``request_options`` with
+``max_retries=0``, also on injected clients) and clients built from a key never
+follow redirects.
+
 The context helpers operate on :class:`~llmslim.planning.models.ContextItem`
 and always return new items. Nothing here rewrites content silently:
 :func:`annotate_languages` only adds metadata, :func:`normalize_scripts` is an
-explicit opt-in that records a hash of the text it replaced, and translation
-happens only when the caller invokes :meth:`SarvamLanguageTools.translate`.
+explicit opt-in that records a hash of the text it replaced and touches only
+user, retrieved, memory and tool-result text (never system, developer or tool
+schema items), and translation happens only when the caller invokes
+:meth:`SarvamLanguageTools.translate`.
 """
 
 from __future__ import annotations
@@ -32,7 +38,8 @@ from typing import (
     TypeVar,
 )
 
-from ..planning.models import ContextItem
+from ..core import ContextRole
+from ..planning.models import ContextItem, ContextKind
 from ._guard import UsageGuard, UsageLimits
 from ._sarvam_common import (
     MAYURA_LANGUAGES,
@@ -48,13 +55,16 @@ from ._sarvam_common import (
     TRANSLATE_TARGET_LANGUAGES,
     TRANSLITERATE_SOURCE_LANGUAGES,
     TRANSLITERATE_TARGET_LANGUAGES,
+    AsyncClientOwner,
     SarvamMalformedResponseError,
     SarvamPriceTable,
     SarvamServiceUsage,
+    SyncClientOwner,
     async_client,
     check_choice,
     env_key,
     fail_call,
+    no_retries,
     per_10k_chars,
     preflight,
     read_field,
@@ -71,6 +81,16 @@ IDENTIFY_LANGUAGE_MAX_CHARS = 1000
 TRANSLITERATE_MAX_CHARS = 1000
 TRANSLATE_MAX_CHARS: Dict[str, int] = {"mayura:v1": 1000, "sarvam-translate:v1": 2000}
 DEFAULT_TRANSLATE_MODEL = "sarvam-translate:v1"
+
+#: Item kinds and roles :func:`normalize_scripts` may rewrite by default: the user's own text,
+#: retrieved documents, memories and tool results. System, developer and assistant text and tool
+#: schemas are never replaced with vendor output unless the caller lists them explicitly.
+NORMALIZABLE_KINDS: FrozenSet[ContextKind] = frozenset(
+    {ContextKind.USER, ContextKind.RAG_DOCUMENT, ContextKind.MEMORY, ContextKind.TOOL_RESULT}
+)
+NORMALIZABLE_ROLES: FrozenSet[ContextRole] = frozenset(
+    {ContextRole.USER, ContextRole.RAG, ContextRole.TOOL, ContextRole.GENERAL}
+)
 
 _ToolsT = TypeVar("_ToolsT", bound="_LanguageToolsBase")
 
@@ -292,8 +312,9 @@ class _LanguageToolsBase:
             raise ValueError("timeout_seconds must be positive")
         if not isinstance(prices, SarvamPriceTable):
             raise TypeError("prices must be a SarvamPriceTable")
+        self._owned_http: Any = None
         if client is None:
-            client = self._make_client(api_key, timeout_seconds)
+            client, self._owned_http = self._make_client(api_key, timeout_seconds)
         self._client = client
         self.guard = (
             guard if guard is not None else UsageGuard(DEFAULT_TEXT_LIMITS, name=TEXT_GUARD_PREFIX)
@@ -498,7 +519,7 @@ class _LanguageToolsBase:
         return f"{type(self).__name__}(guard={self.guard.name!r}, credentials=<redacted>)"
 
 
-class SarvamLanguageTools(_LanguageToolsBase):
+class SarvamLanguageTools(_LanguageToolsBase, SyncClientOwner):
     """Synchronous Sarvam language identification, transliteration and translation."""
 
     def _call(self, units: float, call: Callable[[], Any]) -> Any:
@@ -522,7 +543,11 @@ class SarvamLanguageTools(_LanguageToolsBase):
         responses = [
             self._call(
                 plan.piece_cost(index),
-                partial(self._client.text.identify_language, input=plan.pieces[index].core),
+                partial(
+                    self._client.text.identify_language,
+                    input=plan.pieces[index].core,
+                    request_options=no_retries(),
+                ),
             )
             for index in plan.sent
         ]
@@ -554,7 +579,12 @@ class SarvamLanguageTools(_LanguageToolsBase):
         for index in plan.sent:
             response = self._call(
                 plan.piece_cost(index),
-                partial(self._client.text.transliterate, input=plan.pieces[index].core, **kwargs),
+                partial(
+                    self._client.text.transliterate,
+                    input=plan.pieces[index].core,
+                    request_options=no_retries(),
+                    **kwargs,
+                ),
             )
             outputs[index] = _text_of(response, "transliterated_text")
             sources.append(read_field(response, "source_language_code"))
@@ -590,14 +620,19 @@ class SarvamLanguageTools(_LanguageToolsBase):
         for index in plan.sent:
             response = self._call(
                 plan.piece_cost(index),
-                partial(self._client.text.translate, input=plan.pieces[index].core, **kwargs),
+                partial(
+                    self._client.text.translate,
+                    input=plan.pieces[index].core,
+                    request_options=no_retries(),
+                    **kwargs,
+                ),
             )
             outputs[index] = _text_of(response, "translated_text")
             sources.append(read_field(response, "source_language_code"))
         return self._text_result(plan, outputs, sources, kwargs)
 
 
-class AsyncSarvamLanguageTools(_LanguageToolsBase):
+class AsyncSarvamLanguageTools(_LanguageToolsBase, AsyncClientOwner):
     """Asyncio twin of :class:`SarvamLanguageTools` backed by ``AsyncSarvamAI``."""
 
     def _make_client(self, api_key: Optional[str], timeout_seconds: float) -> Any:
@@ -622,7 +657,11 @@ class AsyncSarvamLanguageTools(_LanguageToolsBase):
             responses.append(
                 await self._call(
                     plan.piece_cost(index),
-                    partial(self._client.text.identify_language, input=plan.pieces[index].core),
+                    partial(
+                        self._client.text.identify_language,
+                        input=plan.pieces[index].core,
+                        request_options=no_retries(),
+                    ),
                 )
             )
         return self._identification(text, plan, responses)
@@ -651,7 +690,12 @@ class AsyncSarvamLanguageTools(_LanguageToolsBase):
         for index in plan.sent:
             response = await self._call(
                 plan.piece_cost(index),
-                partial(self._client.text.transliterate, input=plan.pieces[index].core, **kwargs),
+                partial(
+                    self._client.text.transliterate,
+                    input=plan.pieces[index].core,
+                    request_options=no_retries(),
+                    **kwargs,
+                ),
             )
             outputs[index] = _text_of(response, "transliterated_text")
             sources.append(read_field(response, "source_language_code"))
@@ -685,7 +729,12 @@ class AsyncSarvamLanguageTools(_LanguageToolsBase):
         for index in plan.sent:
             response = await self._call(
                 plan.piece_cost(index),
-                partial(self._client.text.translate, input=plan.pieces[index].core, **kwargs),
+                partial(
+                    self._client.text.translate,
+                    input=plan.pieces[index].core,
+                    request_options=no_retries(),
+                    **kwargs,
+                ),
             )
             outputs[index] = _text_of(response, "translated_text")
             sources.append(read_field(response, "source_language_code"))
@@ -790,13 +839,31 @@ async def aannotate_languages(
     return tuple(result)
 
 
+def _members(values: Iterable[Any], enum: Any, label: str) -> FrozenSet[Any]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"{label} must be a collection, not a single string")
+    members = set()
+    for value in values:
+        try:
+            members.add(enum(value))
+        except ValueError:
+            raise ValueError(f"unknown {label[:-1]}: {value!r}") from None
+    return frozenset(members)
+
+
 def _normalization_targets(
-    items: Iterable[ContextItem], languages: Optional[Iterable[str]], skip_required: bool
+    items: Iterable[ContextItem],
+    languages: Optional[Iterable[str]],
+    skip_required: bool,
+    kinds: Iterable[Any],
+    roles: Iterable[Any],
 ) -> Tuple[Any, List[int]]:
     allowed = set(NATIVE_SCRIPTS) if languages is None else set(languages)
     unsupported = sorted(allowed - set(NATIVE_SCRIPTS))
     if unsupported:
         raise ValueError("cannot transliterate into a native script for: " + ", ".join(unsupported))
+    allowed_kinds = _members(kinds, ContextKind, "kinds")
+    allowed_roles = _members(roles, ContextRole, "roles")
     collected = tuple(items)
     targets = []
     for index, item in enumerate(collected):
@@ -804,7 +871,9 @@ def _normalization_targets(
             raise TypeError("items must be ContextItem instances")
         metadata = item.metadata
         if (
-            item.content.strip()
+            item.kind in allowed_kinds
+            and item.role in allowed_roles
+            and item.content.strip()
             and not (skip_required and item.required)
             and "transliterated_from" not in metadata
             and metadata.get("script_code") == "Latn"
@@ -832,6 +901,8 @@ def normalize_scripts(
     *,
     languages: Optional[Iterable[str]] = None,
     skip_required: bool = True,
+    kinds: Iterable[Any] = NORMALIZABLE_KINDS,
+    roles: Iterable[Any] = NORMALIZABLE_ROLES,
 ) -> Tuple[ContextItem, ...]:
     """Opt-in: transliterate romanised Indic items into their native script.
 
@@ -841,10 +912,16 @@ def normalize_scripts(
     dedupe compares one script. Converted items keep their ID and record
     ``transliterated_from`` and ``original_content_sha256`` (a hash, never the
     original text). ``required`` items are skipped unless ``skip_required=False``.
+
+    Only items whose ``kind`` is in ``kinds`` and whose ``role`` is in ``roles``
+    are considered. The defaults (:data:`NORMALIZABLE_KINDS`,
+    :data:`NORMALIZABLE_ROLES`) cover user, retrieved, memory and tool-result
+    text; system, developer, assistant and tool-schema items are returned
+    unchanged unless you list them explicitly.
     """
 
     _check_tools(tools, SarvamLanguageTools, "normalize_scripts")
-    collected, targets = _normalization_targets(items, languages, skip_required)
+    collected, targets = _normalization_targets(items, languages, skip_required, kinds, roles)
     _preflight_all(
         tools, [tools.estimate("transliterate", collected[index].content) for index in targets]
     )
@@ -862,11 +939,13 @@ async def anormalize_scripts(
     *,
     languages: Optional[Iterable[str]] = None,
     skip_required: bool = True,
+    kinds: Iterable[Any] = NORMALIZABLE_KINDS,
+    roles: Iterable[Any] = NORMALIZABLE_ROLES,
 ) -> Tuple[ContextItem, ...]:
-    """Async :func:`normalize_scripts`."""
+    """Async :func:`normalize_scripts`, with the same ``kinds`` and ``roles`` filter."""
 
     _check_tools(tools, AsyncSarvamLanguageTools, "anormalize_scripts")
-    collected, targets = _normalization_targets(items, languages, skip_required)
+    collected, targets = _normalization_targets(items, languages, skip_required, kinds, roles)
     _preflight_all(
         tools, [tools.estimate("transliterate", collected[index].content) for index in targets]
     )
@@ -882,6 +961,8 @@ __all__ = [
     "DEFAULT_TEXT_LIMITS",
     "DEFAULT_TRANSLATE_MODEL",
     "IDENTIFY_LANGUAGE_MAX_CHARS",
+    "NORMALIZABLE_KINDS",
+    "NORMALIZABLE_ROLES",
     "TEXT_GUARD_PREFIX",
     "TRANSLATE_MAX_CHARS",
     "TRANSLITERATE_MAX_CHARS",

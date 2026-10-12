@@ -28,7 +28,7 @@ from benchmarks.v06_answer_scorer import (
     score_text,
 )
 from benchmarks.v06_planner import load_cases
-from llmslim.integrations._guard import UsageGuard, UsageLimits
+from llmslim.integrations._guard import UsageCapExceeded, UsageGuard, UsageLimits
 from llmslim.planning.models import ModelProfile
 from llmslim.planning.profiles import ModelProfileRegistry
 from llmslim.tokens import count_tokens
@@ -80,6 +80,15 @@ def _write_dataset(path: Path, cases: List[Dict[str, Any]], **extra: Any) -> Pat
 @pytest.fixture
 def tiny_dataset(tmp_path: Path) -> Path:
     return _write_dataset(tmp_path / "tiny.json", TINY_CASES)
+
+
+@pytest.fixture(autouse=True)
+def spend_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Every test books Nebius spend in its own file, never in benchmarks/results/."""
+
+    path = tmp_path / "ledger" / ".nebius-spend.json"
+    monkeypatch.setattr(live, "NEBIUS_SPEND_FILE", path)
+    return path
 
 
 def _echo_context(messages: List[Dict[str, str]]) -> str:
@@ -1055,3 +1064,258 @@ def test_a_subset_of_the_frozen_suite_is_labelled_subset(tmp_path: Path) -> None
     assert result["full_suite"] is False and result["complete"] is True
     report = render_markdown(result)
     assert "SUBSET RUN" in report and "NOT THE v0.6 SUITE" not in report
+
+
+# --------------------------------------------------------------------------- Nebius ceilings
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("MAX_UNITS", "none"),
+        ("MAX_UNITS", "off"),
+        ("MAX_REQUESTS", "unlimited"),
+        ("REQUESTS_PER_MINUTE", "None"),
+    ],
+)
+def test_nebius_limits_cannot_be_disabled(name: str, value: str) -> None:
+    with pytest.raises(ValueError, match="cannot be disabled"):
+        live.build_guard("nebius", {f"LLMSLIM_NEBIUS_BENCH_{name}": value})
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("MAX_UNITS", "50"),
+        ("MAX_UNITS", "0.1000001"),
+        ("MAX_REQUESTS", "11"),
+        ("REQUESTS_PER_MINUTE", "60"),
+    ],
+)
+def test_nebius_limits_cannot_be_raised(name: str, value: str) -> None:
+    with pytest.raises(ValueError, match="may only lower"):
+        live.build_guard("nebius", {f"LLMSLIM_NEBIUS_BENCH_{name}": value})
+
+
+def test_nebius_limits_may_be_lowered_and_a_raise_refuses_the_run_before_any_reader() -> None:
+    lowered = live.build_guard(
+        "nebius",
+        {
+            "LLMSLIM_NEBIUS_BENCH_MAX_UNITS": "0.05",
+            "LLMSLIM_NEBIUS_BENCH_MAX_REQUESTS": "3",
+            "LLMSLIM_NEBIUS_BENCH_REQUESTS_PER_MINUTE": "2",
+        },
+    )
+    assert lowered.limits == UsageLimits(
+        requests_per_minute=2, max_requests=3, max_units=0.05, unit="usd"
+    )
+    env = {
+        "LLMSLIM_NEBIUS_ALLOW_LIVE": "1",
+        "NEBIUS_API_KEY": NEBIUS_KEY,
+        "LLMSLIM_NEBIUS_BENCH_MAX_UNITS": "50",
+    }
+    with pytest.raises(ValueError, match="may only lower"):
+        live.main(
+            ["--reader", "nebius", "--model", "m", *NEBIUS_PRICE_ARGS],
+            env=env,
+            reader_factory=lambda *_: _refuse(),
+        )
+
+
+def test_nebius_daily_ledger_caps_spend_across_processes(spend_file: Path) -> None:
+    first = live.build_guard("nebius", {})
+    reservation = first.acquire(0.06)
+    first.settle(reservation, 0.06)
+    assert json.loads(spend_file.read_text(encoding="utf-8"))["unit"] == "usd"
+
+    second = live.build_guard("nebius", {})  # a new run: its in-process guard starts at zero
+    assert second.snapshot()["daily_ledger"]["recorded_today"] == pytest.approx(0.06)
+    with pytest.raises(UsageCapExceeded, match="daily usage cap of 0.1 usd"):
+        second.acquire(0.05)
+    assert second.snapshot()["requests"] == 0  # refused before anything was recorded
+    fits = second.acquire(0.04)
+    assert second.ledger.recorded() == pytest.approx(0.10)
+    second.release(fits)  # unbilled (e.g. authentication failure): returned to the day
+    assert second.ledger.recorded() == pytest.approx(0.06)
+
+    crashed = live.build_guard("nebius", {})
+    crashed.acquire(0.03)  # the process dies mid-call: the worst case stays booked
+    with pytest.raises(UsageCapExceeded, match="daily usage cap"):
+        live.build_guard("nebius", {}).acquire(0.02)
+
+
+def test_nebius_daily_ledger_resets_per_utc_day_and_fails_closed(tmp_path: Path) -> None:
+    day = ["2026-10-12"]
+    path = tmp_path / "spend.json"
+    ledger = live.DailySpendLedger(path, daily_cap=0.10, today=lambda: day[0])
+    ledger.reserve(0.09)
+    with pytest.raises(UsageCapExceeded):
+        ledger.reserve(0.02)
+    day[0] = "2026-10-13"
+    ledger.reserve(0.09)
+    assert json.loads(path.read_text(encoding="utf-8"))["days"] == {
+        "2026-10-12": 0.09,
+        "2026-10-13": 0.09,
+    }
+
+    for broken in (
+        "not json",
+        json.dumps({"unit": "inr", "days": {}}),
+        json.dumps({"unit": "usd", "days": {"2026-10-13": -1}}),
+        json.dumps({"unit": "usd", "days": []}),
+    ):
+        path.write_text(broken, encoding="utf-8")
+        with pytest.raises(UsageCapExceeded, match="unreadable"):
+            ledger.check(0.001)
+        with pytest.raises(UsageCapExceeded, match="unreadable"):
+            ledger.reserve(0.001)
+        assert path.read_text(encoding="utf-8") == broken  # never silently reset
+    guard = live.DailyCappedGuard(live.NEBIUS_GUARD_DEFAULTS, ledger=ledger)
+    assert guard.snapshot()["daily_ledger"]["recorded_today"] == "unreadable"
+
+    path.unlink()
+    lock = path.with_name(path.name + ".lock")
+    lock.write_text("", encoding="utf-8")
+    held = live.DailySpendLedger(path, daily_cap=0.10, lock_wait_seconds=0.01)
+    with pytest.raises(UsageCapExceeded, match="lock"):
+        held.reserve(0.01)
+    with pytest.raises(ValueError):
+        live.DailySpendLedger(path, daily_cap=0.0)
+
+
+def _nebius_one_case_run(tmp_path: Path, seen: List[Any]) -> int:
+    httpx = pytest.importorskip("httpx")
+
+    def handler(request: Any) -> Any:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "REL-600"}}],
+                "usage": {"prompt_tokens": 80, "completion_tokens": 3},
+            },
+        )
+
+    dataset = _write_dataset(
+        tmp_path / "one.json",
+        [
+            {
+                "id": "rel",
+                "category": "rag",
+                "language": "English",
+                "budget": 180,
+                "query": "release identifier",
+                "documents": ["Release identifier REL-600 is approved."],
+                "expected_facts": ["REL-600"],
+            }
+        ],
+    )
+    env = {"LLMSLIM_NEBIUS_ALLOW_LIVE": "1", "NEBIUS_API_KEY": NEBIUS_KEY, "NEBIUS_MODEL": "m-1"}
+
+    def factory(args: Any, source: Any) -> live.NebiusReader:
+        pricing = live.nebius_pricing(args.price_input, args.price_output, args.price_cached)
+        return live.NebiusReader.from_env(
+            source, model=args.model, pricing=pricing, transport=httpx.MockTransport(handler)
+        )
+
+    return live.main(
+        [
+            "--reader",
+            "nebius",
+            *NEBIUS_PRICE_ARGS,
+            "--dataset",
+            str(dataset),
+            "--output",
+            str(tmp_path / "live-nebius.json"),
+        ],
+        env=env,
+        reader_factory=factory,
+    )
+
+
+def test_repeated_nebius_runs_share_one_daily_cap(tmp_path: Path, spend_file: Path) -> None:
+    seen: List[Any] = []
+    assert _nebius_one_case_run(tmp_path, seen) == 0
+    assert len(seen) == 1
+    first = json.loads((tmp_path / "live-nebius.json").read_text(encoding="utf-8"))
+    recorded = sum(json.loads(spend_file.read_text(encoding="utf-8"))["days"].values())
+    assert recorded == pytest.approx(first["cases"][0]["arms"]["full"]["cost"], abs=1e-9)
+    assert first["guard"]["daily_ledger"]["daily_cap"] == 0.10
+
+    # Today's file now says the cap is all but spent: the next run sends nothing.
+    ledger = json.loads(spend_file.read_text(encoding="utf-8"))
+    day = next(iter(ledger["days"]))
+    ledger["days"][day] = 0.09995
+    spend_file.write_text(json.dumps(ledger), encoding="utf-8")
+    seen.clear()
+    assert _nebius_one_case_run(tmp_path, seen) == 2
+    assert seen == []
+    second = json.loads((tmp_path / "live-nebius.json").read_text(encoding="utf-8"))
+    assert second["complete"] is False and "daily usage cap" in second["stop_reason"]
+
+
+def test_spend_ledger_is_gitignored() -> None:
+    ignore = (Path(__file__).parents[1] / ".gitignore").read_text(encoding="utf-8")
+    assert "benchmarks/results/.nebius-spend.json" in ignore
+    assert live.NEBIUS_SPEND_FILE.name == ".nebius-spend.json"
+
+
+# --------------------------------------------------------------------------- partial cases
+
+
+def test_a_rate_limit_stop_mid_case_keeps_the_billed_arm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(live, "MAX_RATE_LIMIT_WAITS", 1)
+    frozen = UsageGuard(  # one request per minute and a clock that never moves
+        UsageLimits(requests_per_minute=1, max_requests=50, max_units=3000.0, unit="inr"),
+        name="sarvam_bench",
+        clock=lambda: 100.0,
+    )
+    dataset = _write_dataset(tmp_path / "bind.json", [TINY_CASES[1]])
+    sdk = FakeSarvamSDK()
+    result, output = _run(_sarvam_reader(sdk), frozen, dataset, tmp_path, sleep=lambda _: None)
+    assert len(sdk.requests) == 1
+    assert "rate limit still reached" in result["stop_reason"]
+    saved = json.loads(output.read_text(encoding="utf-8"))
+    arms = saved["cases"][0]["arms"]
+    assert arms["full"]["billed"] is True and arms["full"]["cost"] is not None
+    assert arms["llmslim"]["status"] == "not_run" and arms["llmslim"]["billed"] is False
+    assert saved["totals"]["billed_calls"] == 1
+    assert saved["totals"]["cost_reported"] == pytest.approx(arms["full"]["cost"])
+
+
+class _InterruptingSDK(FakeSarvamSDK):
+    """Answers the first call, then Ctrl-C arrives while the second call is in flight."""
+
+    def completions(self, **kwargs: Any) -> Any:
+        if self.requests:
+            self.requests.append(kwargs)
+            raise KeyboardInterrupt
+        return super().completions(**kwargs)
+
+
+def test_an_interrupt_mid_case_keeps_every_billed_arm_in_cases_and_totals(
+    tmp_path: Path,
+) -> None:
+    dataset = _write_dataset(tmp_path / "bind.json", [TINY_CASES[1]])
+    sdk = _InterruptingSDK()
+    guard = _sarvam_guard()
+    result, output = _run(_sarvam_reader(sdk), guard, dataset, tmp_path)
+    assert len(sdk.requests) == 2
+    assert result["stop_reason"] == "interrupted" and result["complete"] is False
+    saved = json.loads(output.read_text(encoding="utf-8"))
+    case = saved["cases"][0]
+    assert case["complete"] is False
+    full, planned = case["arms"]["full"], case["arms"]["llmslim"]
+    assert full["status"] == "answered" and full["cost"] is not None
+    assert planned["billed"] is True and planned["status"] == "error"
+    assert "interrupted" in planned["error"] and planned["cost"] is None
+    assert "truncate" not in case["arms"]  # never attempted, as after a guard refusal
+    totals = saved["totals"]
+    assert totals["billed_calls"] == 2
+    assert totals["cost_reserved_without_usage"] == pytest.approx(planned["reserved"])
+    # The interrupted call's worst case stays charged on the guard.
+    assert guard.snapshot()["units"] == pytest.approx(full["cost"] + planned["reserved"], rel=1e-4)
+    report = (tmp_path / "live-test.md").read_text(encoding="utf-8")
+    assert "INCOMPLETE RUN" in report

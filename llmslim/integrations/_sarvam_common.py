@@ -3,13 +3,24 @@
 Nothing here imports the ``sarvamai`` SDK at module import time; the client
 loaders import it lazily so the core library stays importable without the
 ``llmslim[sarvam]`` extra.
+
+Two SDK defaults are overridden for every paid call:
+
+* ``sarvamai`` retries HTTP 408/409/429/5xx up to twice, sleeping up to 60 s
+  between attempts, which would send a billable request two more times. Every
+  call that can be billed passes :func:`no_retries` as its ``request_options``,
+  per call, so the setting also holds for clients that callers inject.
+* The SDK's default ``httpx`` client follows redirects, and ``httpx`` strips only
+  ``Authorization`` on a cross-origin redirect, so the ``api-subscription-key``
+  header and the request body would reach the redirect target. Clients built
+  here use an ``httpx`` client with ``follow_redirects=False``.
 """
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, FrozenSet, Mapping, NoReturn, Optional
+from typing import Any, Dict, FrozenSet, Mapping, NoReturn, Optional, Tuple, TypeVar
 
 from ._guard import RateLimitExceeded, UsageCapExceeded, UsageGuard, UsageReservation
 
@@ -318,6 +329,13 @@ def preflight(guard: UsageGuard, requests: int, units: float) -> None:
             f"{limits.max_units:g} {limits.unit} has {max(0.0, limits.max_units - snapshot['units']):g} left"
         )
     rpm = limits.requests_per_minute
+    if rpm is not None and requests > rpm:
+        # Waiting cannot help: even an empty one-minute window admits fewer requests.
+        raise UsageCapExceeded(
+            f"{guard.name}: this operation needs {requests} requests but the rate limit allows "
+            f"at most {rpm} per minute, so it can never be admitted as a whole; split the input "
+            "or raise the per-minute limit"
+        )
     if rpm is not None and snapshot["requests_last_minute"] + requests > rpm:
         raise RateLimitExceeded(
             f"{guard.name}: this operation needs {requests} requests but the rate limit of "
@@ -329,28 +347,104 @@ def preflight(guard: UsageGuard, requests: int, units: float) -> None:
 # --------------------------------------------------------------------------- clients
 
 
-def sync_client(api_key: Optional[str], timeout_seconds: float, owner: str) -> Any:
+def no_retries() -> Dict[str, Any]:
+    """``request_options`` for a billable SDK call: send it once, never retry it.
+
+    ``sarvamai`` 0.1.37 reads ``max_retries`` from the per-call ``RequestOptions``
+    (default 2). A fresh dict is returned so no caller can mutate a shared one.
+    """
+
+    return {"max_retries": 0}
+
+
+def _http_client(httpx: Any, kind: str, timeout_seconds: float, transport: Any) -> Any:
+    # follow_redirects=False keeps the subscription key and body on Sarvam's origin.
+    timeout = httpx.Timeout(timeout_seconds, connect=min(10.0, float(timeout_seconds)))
+    factory = httpx.Client if kind == "sync" else httpx.AsyncClient
+    return factory(timeout=timeout, follow_redirects=False, transport=transport)
+
+
+def sync_client(
+    api_key: Optional[str], timeout_seconds: float, owner: str, *, transport: Any = None
+) -> Tuple[Any, Any]:
+    """Build ``SarvamAI`` on an ``httpx.Client`` that never follows redirects.
+
+    Returns ``(sdk_client, http_client)``; the caller owns ``http_client`` and closes it.
+    ``transport`` is for tests (``httpx.MockTransport``).
+    """
+
     if not api_key:
         raise ValueError(
             f"{owner} requires api_key; use from_env() for explicit environment lookup"
         )
     try:
+        import httpx
         from sarvamai import SarvamAI
     except ImportError as exc:  # pragma: no cover - clean-extra test exercises this.
         raise ImportError(INSTALL_HINT) from exc
-    return SarvamAI(api_subscription_key=api_key, timeout=timeout_seconds)
+    http = _http_client(httpx, "sync", timeout_seconds, transport)
+    return SarvamAI(api_subscription_key=api_key, timeout=timeout_seconds, httpx_client=http), http
 
 
-def async_client(api_key: Optional[str], timeout_seconds: float, owner: str) -> Any:
+def async_client(
+    api_key: Optional[str], timeout_seconds: float, owner: str, *, transport: Any = None
+) -> Tuple[Any, Any]:
+    """Build ``AsyncSarvamAI`` on an ``httpx.AsyncClient`` that never follows redirects."""
+
     if not api_key:
         raise ValueError(
             f"{owner} requires api_key; use from_env() for explicit environment lookup"
         )
     try:
+        import httpx
         from sarvamai import AsyncSarvamAI
     except ImportError as exc:  # pragma: no cover - clean-extra test exercises this.
         raise ImportError(INSTALL_HINT) from exc
-    return AsyncSarvamAI(api_subscription_key=api_key, timeout=timeout_seconds)
+    http = _http_client(httpx, "async", timeout_seconds, transport)
+    client = AsyncSarvamAI(api_subscription_key=api_key, timeout=timeout_seconds, httpx_client=http)
+    return client, http
+
+
+_SyncOwnerT = TypeVar("_SyncOwnerT", bound="SyncClientOwner")
+_AsyncOwnerT = TypeVar("_AsyncOwnerT", bound="AsyncClientOwner")
+
+
+class SyncClientOwner:
+    """``close()`` and ``with`` support; only an HTTP client this object built is closed."""
+
+    _owned_http: Any = None
+
+    def close(self) -> None:
+        """Close the connection pool of a client built from ``api_key``; injected clients stay open."""
+
+        http, self._owned_http = self._owned_http, None
+        if http is not None:
+            http.close()
+
+    def __enter__(self: _SyncOwnerT) -> _SyncOwnerT:
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self.close()
+
+
+class AsyncClientOwner:
+    """``aclose()`` and ``async with`` support; only an HTTP client this object built is closed."""
+
+    _owned_http: Any = None
+
+    async def aclose(self) -> None:
+        """Close the connection pool of a client built from ``api_key``; injected clients stay open."""
+
+        http, self._owned_http = self._owned_http, None
+        if http is not None:
+            await http.aclose()
+
+    async def __aenter__(self: _AsyncOwnerT) -> _AsyncOwnerT:
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        await self.aclose()
 
 
 def env_key(env_var: str) -> str:

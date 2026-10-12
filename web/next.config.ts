@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
       { source: "/:section(docs|articles|integrations|benchmarks)/:slug([a-z0-9-]+)\\.md", destination: "/md/:section/:slug" },
     ];
     // Local development only: forward the Studio's Python functions to a local server.
-    const studio = localStudioApiOrigin ? ["studio", "compress", "plan", "context"].map((name) => ({ source: `/api/${name}`, destination: `${localStudioApiOrigin}/api/${name}` })) : [];
+    const studio = localStudioApiOrigin ? ["studio", "compress", "plan", "context", "sarvam_answer"].map((name) => ({ source: `/api/${name}`, destination: `${localStudioApiOrigin}/api/${name}` })) : [];
     return { beforeFiles: [], afterFiles: [...markdown, ...studio], fallback: [] };
   },
 };

@@ -149,6 +149,9 @@ line-length = 100
 target-version = "py39"
 src = ["llmslim", "tests", "benchmarks"]
 exclude = ["notebooks", "venv", ".venv", "dist"]
+# ruff 0.16 also formats Python blocks inside Markdown; README and docs examples are
+# formatted by hand for readability, so keep Markdown out of ruff.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [

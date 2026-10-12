@@ -216,7 +216,42 @@ def test_init_once_and_capture_tags_and_flushes(monkeypatch: pytest.MonkeyPatch)
     error = RuntimeError("boom")
     sentry.capture(error, function="sarvam_answer")
     assert calls.captured == [(error, {"tags": {"function": "sarvam_answer"}})]
-    assert calls.flushed == [2.0]
+    # A short flush: a report that cannot leave quickly is dropped, not waited for.
+    assert calls.flushed == [sentry.FLUSH_TIMEOUT_SECONDS] and sentry.FLUSH_TIMEOUT_SECONDS <= 0.5
+
+
+def test_reports_are_throttled_per_function_and_error_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = install_fake_sdk(monkeypatch)
+    assert sentry.init({"SENTRY_DSN": "https://public@o1.ingest.sentry.io/1"}) is True
+    limit = sentry.MAX_EVENTS_PER_WINDOW
+    sent = [sentry.capture(ValueError("x"), function="studio", now=10.0) for _ in range(limit + 20)]
+    assert sent.count(True) == limit
+    assert len(calls.captured) == limit and len(calls.flushed) == limit
+    # Another error type or function has its own allowance.
+    assert sentry.capture(KeyError("x"), function="studio", now=10.0) is True
+    assert sentry.capture(ValueError("x"), function="plan", now=10.0) is True
+    # The allowance comes back once the window has passed.
+    later = 10.0 + sentry.THROTTLE_WINDOW_SECONDS + 0.1
+    assert sentry.capture(ValueError("x"), function="studio", now=later) is True
+
+
+def test_provider_failures_are_reported_without_their_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = install_fake_sdk(monkeypatch)
+    assert sentry.init({"SENTRY_DSN": "https://public@o1.ingest.sentry.io/1"}) is True
+
+    class ApiError(Exception):
+        status_code = 403
+
+    leaked = ApiError(f"{SECRET} rejected; body: Ship to Koregaon Park")
+    assert sentry.capture_provider_failure(leaked, function="sarvam_answer") is True
+    reported, tags = calls.captured[0]
+    assert isinstance(reported, sentry.ProviderCallFailed)
+    assert str(reported) == "ApiError (HTTP status 403)"
+    assert tags == {"tags": {"function": "sarvam_answer"}}
+    assert sentry.capture_provider_failure(TimeoutError("slow"), function="sarvam_answer")
+    assert str(calls.captured[1][0]) == "TimeoutError (HTTP status none)"
 
 
 def test_reporting_failures_never_break_a_function(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -249,7 +284,12 @@ def test_every_function_initialises_and_reports_through_the_shared_helper() -> N
         source = path.read_text(encoding="utf-8")
         assert "import _sentry" in source, path.name
         assert "_sentry.init()" in source, path.name
-        assert re.search(rf'_sentry\.capture\(error, function="{path.stem}"\)', source), path.name
+        reported = re.search(rf'_sentry\.capture\(error, function="{path.stem}"\)', source)
+        constant = (
+            f'FUNCTION = "{path.stem}"' in source
+            and "_sentry.capture(error, function=FUNCTION)" in source
+        )
+        assert reported or constant, path.name
 
 
 def test_the_helper_is_not_a_route() -> None:

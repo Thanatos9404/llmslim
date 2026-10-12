@@ -17,7 +17,9 @@ import { track } from "@/lib/analytics"
 const ENDPOINT = "/api/sarvam_answer"
 const EASE = [0.16, 1, 0.3, 1] as const
 
-export type SarvamReadiness = { model: string; maxContextTokens: number; maxQuestionChars: number }
+/** The installed Core's dated price table, which every cost estimate on this step uses. */
+export type SarvamPricing = { core_version: string; as_of: string | null; currency: string; input_per_million: number; output_per_million: number }
+export type SarvamReadiness = { model: string; maxPromptBytes: number; maxQuestionChars: number; pricing: SarvamPricing | null }
 
 type Usage = {
   estimated?: { input_tokens?: number; max_output_tokens?: number; max_cost_inr?: number } | null
@@ -30,12 +32,20 @@ type Answer = {
   model: string
   context: { submitted_tokens: number; sent_tokens: number | null; further_compressed: boolean }
   usage: Usage | null
+  pricing?: SarvamPricing | null
 }
 type Outcome = { key: string; data?: Answer; error?: string }
 
 const count = (n: number) => n.toLocaleString("en-US")
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 4 : 2 })}`
 const isCount = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0
+const encoder = typeof TextEncoder === "undefined" ? null : new TextEncoder()
+/** UTF-8 bytes, which bound the tokens Sarvam can bill. The server applies the same rule. */
+const bytes = (text: string) => (encoder ? encoder.encode(text).length : text.length * 4)
+const asPricing = (value: unknown): SarvamPricing | null => {
+  const p = value as Partial<SarvamPricing> | null
+  return p && typeof p.core_version === "string" && isCount(p.input_per_million) && isCount(p.output_per_million) ? p as SarvamPricing : null
+}
 
 /** Asks the server once whether the Sarvam step is configured. Null until it says it is. */
 export function useSarvamReadiness(): SarvamReadiness | null {
@@ -45,8 +55,8 @@ export function useSarvamReadiness(): SarvamReadiness | null {
     fetch(ENDPOINT, { signal: controller.signal, cache: "no-store" })
       .then(response => (response.ok ? response.json() : null))
       .then(body => {
-        if (body?.ready !== true || typeof body.model !== "string" || !isCount(body.max_context_tokens)) return
-        setReadiness({ model: body.model, maxContextTokens: body.max_context_tokens, maxQuestionChars: isCount(body.max_question_chars) ? body.max_question_chars : 500 })
+        if (body?.ready !== true || typeof body.model !== "string" || !isCount(body.max_prompt_bytes)) return
+        setReadiness({ model: body.model, maxPromptBytes: body.max_prompt_bytes, maxQuestionChars: isCount(body.max_question_chars) ? body.max_question_chars : 500, pricing: asPricing(body.pricing) })
       })
       .catch(() => undefined)
     return () => controller.abort()
@@ -54,13 +64,12 @@ export function useSarvamReadiness(): SarvamReadiness | null {
   return readiness
 }
 
-export function SarvamAnswer({ readiness, context, question, originalTokens, keptTokens, waiting }: {
+export function SarvamAnswer({ readiness, context, question, originalTokens, waiting }: {
   readiness: SarvamReadiness
   /** The compressed text the Studio produced, or null before the first result. */
   context: string | null
   question: string
   originalTokens: number | null
-  keptTokens: number | null
   /** True while the Studio is compressing or its inputs changed since the last run. */
   waiting: boolean
 }) {
@@ -78,8 +87,8 @@ export function SarvamAnswer({ readiness, context, question, originalTokens, kep
         ? "Ask a question in step 2 first."
         : question.length > readiness.maxQuestionChars
           ? `Keep the question under ${count(readiness.maxQuestionChars)} characters.`
-          : keptTokens !== null && keptTokens > readiness.maxContextTokens
-            ? `Sarvam answers here use at most ${count(readiness.maxContextTokens)} context tokens. Keep less and run again.`
+          : bytes(context) + 2 * bytes(question.trim()) > readiness.maxPromptBytes
+            ? "This compressed context is too long to send to Sarvam here. Keep less and run again."
             : ""
 
   const ask = async () => {
@@ -108,6 +117,7 @@ export function SarvamAnswer({ readiness, context, question, originalTokens, kep
   // The Studio's own count of the compressed context, unless the planner had to trim it further.
   const sent = (data?.context.further_compressed ? data.context.sent_tokens : null) ?? data?.context.submitted_tokens ?? null
   const latency = data?.usage?.latency_ms
+  const prices = asPricing(data?.pricing) ?? readiness.pricing
 
   return <section className="lab-answer" data-tour="answer" aria-labelledby="lab-answer-title">
     <div className="lab-answer-ask">
@@ -132,8 +142,9 @@ export function SarvamAnswer({ readiness, context, question, originalTokens, kep
             <div><dt>Time</dt><dd>{isCount(latency) ? count(Math.round(latency)) : "–"}<small>ms</small></dd></div>
           </dl>
           <p className="lab-small lab-answer-fine">
-            {reported && reported.prompt_tokens !== null && reported.completion_tokens !== null ? `Sarvam reported ${count(reported.prompt_tokens)} input and ${count(reported.completion_tokens)} output tokens, including the question and instructions. ` : "Sarvam did not report usage, so the cost is the server’s upper estimate. "}
-            The cost is an estimate at Sarvam’s list price.{data.context.further_compressed ? " The context was trimmed further to fit the model budget." : ""}
+            {reported && reported.prompt_tokens !== null && reported.completion_tokens !== null ? `Sarvam reported ${count(reported.prompt_tokens)} input and ${count(reported.completion_tokens)} output tokens, including the question and instructions. ` : "Sarvam did not report usage, so the cost shown is the reserved upper bound. "}
+            {prices ? `Cost is an estimate from LLMSlim ${prices.core_version}’s price table for ${data.model}${prices.as_of ? ` (as of ${prices.as_of})` : ""}: ₹${prices.input_per_million.toFixed(2)} and ₹${prices.output_per_million.toFixed(2)} per million input and output tokens. Sarvam’s bill may differ.` : "Cost is an estimate from LLMSlim’s price table; Sarvam’s bill may differ."}
+            {data.context.further_compressed ? " The context was trimmed further to fit the model budget." : ""}
           </p>
         </motion.div>}
         {!shown && <motion.p key="empty" className="lab-answer-empty" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>The answer, the tokens Sarvam counted and the cost appear here.</motion.p>}

@@ -189,7 +189,7 @@ export function StudioLab() {
         </motion.div>}
       </div>
 
-      {sarvam && <SarvamAnswer readiness={sarvam} context={result?.compressed_text ?? null} question={question} originalTokens={result?.original_tokens ?? null} keptTokens={result?.kept_tokens ?? null} waiting={busy || stale} />}
+      {sarvam && <SarvamAnswer readiness={sarvam} context={result?.compressed_text ?? null} question={question} originalTokens={result?.original_tokens ?? null} waiting={busy || stale} />}
     </section>
 
     <Tour steps={steps} state={tour} />

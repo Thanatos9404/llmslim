@@ -47,6 +47,7 @@ if _API_DIR not in sys.path:
     sys.path.append(_API_DIR)
 
 import _sentry  # noqa: E402
+import _shared  # noqa: E402
 
 _sentry.init()
 
@@ -87,12 +88,11 @@ def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]
             HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type", "Send JSON."
         )
     try:
-        payload = json.loads(raw_body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise _bad("invalid_json", "The request body is not valid JSON.") from error
-    if not isinstance(payload, dict):
-        raise _bad("invalid_json", "The request body must be a JSON object.")
-    return payload
+        return _shared.decode_json_object(raw_body)
+    except _shared.BodyError as error:
+        # This function has always answered a non-object body with invalid_json.
+        code = "invalid_json" if error.code == "object_required" else error.code
+        raise RequestProblem(error.status, code, error.message) from None
 
 
 def _normal(text: str) -> str:
@@ -175,6 +175,7 @@ def allow_request(client_key: str, now: float | None = None) -> bool:
     """Best-effort per-instance abuse guard; platform rate limiting remains advisable."""
 
     moment = time.monotonic() if now is None else now
+    _shared.bound_windows(_request_windows, moment - RATE_LIMIT_WINDOW_SECONDS)
     window = _request_windows[client_key]
     while window and window[0] <= moment - RATE_LIMIT_WINDOW_SECONDS:
         window.popleft()

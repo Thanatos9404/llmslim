@@ -21,6 +21,22 @@ Sources:
 - https://assets.sarvam.ai/tr:dpr-auto/assets/brand/logos/sarvam-wordmark-black.svg
 - https://docs.sarvam.ai/api-reference/chat/chat-completions
 
+### Startup program logos added on 12 October 2026
+
+Downloaded with curl from each company's own site, checked as untrusted SVG (no scripts, event handlers,
+`foreignObject`, external references or CSS imports) and copied byte for byte into `public/startups/`.
+
+- Honeycomb: `honeycomb-light.svg` and `honeycomb-dark.svg` are the light and dark logos of Honeycomb's
+  documentation site (https://mintcdn.com/honeycomb/TYbxiKcJ1fL3Sm5n/_assets/logos/light.svg and
+  `.../dark.svg`, referenced from https://docs.honeycomb.io/). They match the organisation logo on
+  https://www.honeycomb.io/news (https://www.honeycomb.io/api/assets/honeycomb-logo.svg), which has no dark variant.
+- Exa: `exa-blue.svg` and `exa-white.svg` are `Logo/SVGs/Logo/Exa Logo Blue.svg` and `Exa Logo White.svg`
+  from the brand kit on https://exa.ai/brand (https://exa.ai/assets/Exa%20Brand%20Assets.zip).
+- Neo4j: `neo4j-full-color.svg` is the organisation logo used across neo4j.com, including the newsroom
+  (https://dist.neo4j.com/wp-content/uploads/20230926084108/Logo_FullColor_RGB_TransBG.svg); `neo4j-white.png`
+  is `Logo/png/logo-white-RGB-transBG.png` from the newsroom's logo kit (https://media.neo4j.com/Neo4j-Logo.zip,
+  linked from https://neo4j.com/newsroom/), which has no white SVG of the same logo.
+
 ## Generation prompts
 
 Both artwork variants were generated using the built-in image-generation tool, then encoded as WebP using Sharp. No image-generation API key or runtime image generation is required by the website.

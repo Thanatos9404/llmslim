@@ -27,7 +27,7 @@ bounded source retrieval before calling the same planner.
 ## Optional hosted inference boundary
 
 `llmslim.hosted` is an application-control layer, not part of offline planning.
-A hosted route built on it (the Studio used one until October 2026) validates and rate-checks a request, creates a
+A hosted route built on it (the Studio's optional Answer with Sarvam step is one) validates and rate-checks a request, creates a
 normal `ContextPlan`, reserves conservative token/spend quota, acquires an
 expiring concurrency lease, and only then calls `SarvamProvider.chat()`.
 

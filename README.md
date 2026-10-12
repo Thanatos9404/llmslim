@@ -142,7 +142,7 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of 11 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 14 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -158,6 +158,9 @@ none of them is an investor, and membership does not imply endorsement.
 | [Sentry for Startups](https://sentry.io/for/startups/) | Sentry |
 | [Descope Hello World Startup Program](https://www.descope.com/for-startups) | Descope |
 | [Pulumi for Startups](https://www.pulumi.com/pulumi-for-startups/) | Pulumi |
+| [Honeycomb for Builders](https://www.honeycomb.io/honeycomb-for-builders) | Honeycomb |
+| [Exa Startup Grants](https://exa.ai/pricing) | Exa |
+| [Neo4j Startup Program](https://neo4j.com/startup-program/) | Neo4j |
 
 Logos are trademarks of their owners and identify each program.
 

@@ -224,10 +224,10 @@ with `bulbul:v3` in parts of at most 2,500 characters merged into one WAV.
 
 ## Hosting your own route
 
-The llmslim.app Studio no longer calls Sarvam; it runs extractive compression
-only. If you host a paid Sarvam route yourself, `llmslim.hosted` provides the
-controls the earlier Studio route used: a local plan before any call, a
-conservative cost reservation, and MongoDB-backed sliding rate windows,
+The llmslim.app Studio compresses without calling Sarvam. Its optional Answer with
+Sarvam step (`web/api/sarvam_answer.py`, off by default) is built on `llmslim.hosted`,
+which you can also use for a paid Sarvam route of your own. It provides a local
+plan before any call, a conservative cost reservation, and MongoDB-backed sliding rate windows,
 per-identity token allowances, daily and monthly spend limits and concurrency
 leases (`MongoDBHostedQuotaStore`). Keep the provider key and database URI
 server-side, and make paid inference opt-in with an explicit switch.

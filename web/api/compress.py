@@ -48,6 +48,15 @@ _add_repository_package_to_path()
 from llmslim import ContextRole, compress  # noqa: E402  (path is established above)
 from llmslim.tokens import count_tokens  # noqa: E402
 
+# api/_sentry.py is shared code: Vercel does not route files whose names start with an underscore.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.append(_API_DIR)
+
+import _sentry  # noqa: E402
+
+_sentry.init()
+
 MAX_BODY_BYTES = 80_000
 MAX_INPUT_CHARS = 48_000
 MAX_INPUT_TOKENS = 12_000
@@ -328,7 +337,8 @@ class handler(BaseHTTPRequestHandler):
             self._respond(HTTPStatus.OK, {"data": execute_compression(payload)})
         except RequestProblem as error:
             self._respond(error.status, {"error": {"code": error.code, "message": error.message}})
-        except Exception:
+        except Exception as error:
+            _sentry.capture(error, function="compress")
             self._respond(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {

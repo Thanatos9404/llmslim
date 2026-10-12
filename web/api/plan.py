@@ -30,6 +30,15 @@ _add_repository_package_to_path()
 
 from llmslim import plan_context  # noqa: E402
 
+# api/_sentry.py is shared code: Vercel does not route files whose names start with an underscore.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.append(_API_DIR)
+
+import _sentry  # noqa: E402
+
+_sentry.init()
+
 MAX_BODY_BYTES = 160_000
 MAX_TOTAL_CHARS = 96_000
 MAX_ITEMS_PER_KIND = 100
@@ -270,7 +279,8 @@ class handler(BaseHTTPRequestHandler):
             self._respond(HTTPStatus.OK, {"data": execute_plan(request)})
         except RequestProblem as exc:
             self._respond(exc.status, {"error": {"code": exc.code, "message": exc.message}})
-        except Exception:
+        except Exception as error:
+            _sentry.capture(error, function="plan")
             self._respond(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {

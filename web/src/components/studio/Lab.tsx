@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react"
 import { ArrowRight, Check, CircleHelp, LoaderCircle, RotateCcw, X } from "lucide-react"
 import { PRESETS, type Preset } from "@/data/studio-presets"
 import { PixelField } from "@/components/results/PixelField"
+import { SarvamAnswer, useSarvamReadiness } from "./SarvamAnswer"
 import { Tour, useTour } from "./Tour"
 
 type Result = {
@@ -30,6 +31,8 @@ const TOUR = [
   { target: "keep", title: "Choose how much to keep", body: "Drag to set the budget. A quarter of the text is a good start for long histories." },
   { target: "result", title: "See what stayed", body: "Kept lines are highlighted in place. The check shows whether the answer survived, next to plain truncation to the same size." },
 ]
+// Shown only when the server has the optional Sarvam step configured.
+const ANSWER_STEP = { target: "answer", title: "Ask a model", body: "When you press the button, only the compressed context and your question go to Sarvam. You see its answer, the tokens Sarvam counted and the cost." }
 
 /** Numbers that roll to their new value. */
 function Rolling({ value, digits = 0 }: { value: number; digits?: number }) {
@@ -61,7 +64,9 @@ export function StudioLab() {
   const request = useRef(0)
   const hero = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
-  const tour = useTour("llmslim-studio-tour", TOUR.length)
+  const sarvam = useSarvamReadiness()
+  const steps = useMemo(() => (sarvam ? [...TOUR, ANSWER_STEP] : TOUR), [sarvam])
+  const tour = useTour("llmslim-studio-tour", steps.length)
   const { scrollYProgress } = useScroll({ target: hero, offset: ["start start", "end start"] })
   const fieldY = useTransform(scrollYProgress, [0, 1], [0, 120])
   const copyY = useTransform(scrollYProgress, [0, 1], [0, -50])
@@ -183,8 +188,10 @@ export function StudioLab() {
           </div>
         </motion.div>}
       </div>
+
+      {sarvam && <SarvamAnswer readiness={sarvam} context={result?.compressed_text ?? null} question={question} originalTokens={result?.original_tokens ?? null} keptTokens={result?.kept_tokens ?? null} waiting={busy || stale} />}
     </section>
 
-    <Tour steps={TOUR} state={tour} />
+    <Tour steps={steps} state={tour} />
   </div>
 }

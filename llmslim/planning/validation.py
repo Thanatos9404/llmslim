@@ -145,7 +145,7 @@ def validate_selection(
     external_elevation = [
         item.item_id
         for item in items
-        if item.source.split(":", 1)[0] in {"zoho", "mongodb"}
+        if item.source.split(":", 1)[0] in {"zoho", "mongodb", "exa"}
         and item.role in {ContextRole.SYSTEM, ContextRole.DEVELOPER}
     ]
     checks.append(

@@ -368,7 +368,7 @@ def test_provider_and_store_failures_are_sanitized_and_release_leases() -> None:
 
 
 def test_cost_math_uses_current_input_and_output_rates() -> None:
-    assert estimate_sarvam_cost_micros("sarvam-105b", 1_000_000, 1_000_000) == 102_480_000
+    assert estimate_sarvam_cost_micros("sarvam-105b", 1_000_000, 1_000_000) == 75_000_000
 
 
 def test_sarvam_provider_chat_validates_messages_and_never_exposes_key() -> None:

@@ -59,3 +59,9 @@ LLMSLIM_RUN_LIVE_SARVAM=1 SARVAM_API_KEY=... \
 
 It is never part of unit tests. No live result is claimed unless the sanitized
 artifact says `MEASURED_LIVE_SARVAM`.
+
+The full 28-case suite runs with Sarvam 105B as a secondary reader through
+`python -m benchmarks.live_secondary_reader --reader sarvam` (same opt-in, a
+₹3,000 usage cap by default). It compares full context, LLMSlim and truncation
+at an equal token budget and labels every result "Secondary reader: Sarvam 105B
+— headline results use Claude Haiku 5.5". See `benchmarks/README.md`.

@@ -6,7 +6,7 @@ through from_env(), for example from the credentials file of an Aura instance.
 
 import asyncio
 
-from llmslim import AdaptiveContextPlanner
+from llmslim import AdaptiveContextPlanner, ContextItem
 from llmslim.integrations.neo4j import MemoryDraft, Neo4jContextStore
 
 
@@ -27,13 +27,34 @@ async def main() -> None:
             reason="contract upgrade signed",
         )
 
-        # Facts on one subject that are valid at the same time are surfaced, not resolved.
+        # Facts on one explicit subject that are valid at the same time are surfaced, not
+        # resolved. Memories saved without a subject never conflict with each other.
         for conflict in await store.conflicts():
             print("unresolved:", conflict.subject, conflict.first.content, conflict.second.content)
 
         history = await store.history(new.memory_id)
         for link in history.links:
             print(f"{link.new_id} superseded {link.old_id}: {link.reason}")
+
+        # The ContextStore API upserts like MongoDBContextStore: saving new content under
+        # the same ID supersedes the stored version, which stays in history().
+        note = ContextItem(
+            "acme-renewal-note",
+            "Acme renewal is in negotiation.",
+            metadata={"subject": "customer:acme/renewal", "owner": "support"},
+        )
+        await store.save(note)
+        await store.save(ContextItem(note.item_id, "Acme renewal signed.", metadata=note.metadata))
+        saved = await store.get(note.item_id)
+        assert saved is not None
+        # Planner item IDs are namespaced; metadata["memory_id"] is the ID you saved under.
+        print(saved.item_id, "->", saved.metadata["memory_id"], ":", saved.content)
+        print("versions:", len((await store.history(note.item_id)).records))
+
+        # Recall works on whole words in any script, including Indic matras and viramas.
+        await store.remember("customer:acme/language", "Acme की टीम हिंदी में जवाब चाहती है")
+        for item in await store.recall(query="हिंदी में जवाब"):
+            print("recalled:", item.metadata["memory_id"], item.content)
 
         # The store is a ContextSource: the planner sees only facts valid now.
         plan = await AdaptiveContextPlanner().aplan(

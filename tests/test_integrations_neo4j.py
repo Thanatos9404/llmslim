@@ -4,25 +4,30 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
+import re
 import sys
-from dataclasses import dataclass, field
+import unicodedata
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import pytest
 
 import llmslim.integrations.neo4j as store_module
 from llmslim import AdaptiveContextPlanner, ContextItem, ContextKind, ContextRole
-from llmslim.context import ContextSource, ContextStore
+from llmslim.context import ContextSource, ContextStore, InMemoryContextSource
 from llmslim.integrations._guard import (
     RateLimitExceeded,
     UsageCapExceeded,
     UsageGuard,
     UsageLimits,
 )
+from llmslim.integrations.mongodb import MongoDBContextStore
 from llmslim.integrations.neo4j import (
     DEFAULT_USAGE_LIMITS,
+    ITEM_ID_PREFIX,
     MEMORY_LABEL,
     SUPERSEDES_RELATIONSHIP,
     MemoryDraft,
@@ -31,6 +36,7 @@ from llmslim.integrations.neo4j import (
     Neo4jConstraintError,
     Neo4jContextStore,
     Neo4jIntegrationError,
+    Neo4jIntervalError,
     Neo4jMemoryNotFoundError,
     Neo4jSupersessionError,
     Neo4jTransientError,
@@ -50,6 +56,7 @@ DATA_STATEMENTS = {
     store_module._GET,
     store_module._FIND_CURRENT_DUPLICATE,
     store_module._CREATE,
+    store_module._ARCHIVE,
     store_module._RECALL,
     store_module._RECALL_SUBJECT,
     store_module._CYCLE_CHECK,
@@ -174,7 +181,7 @@ def node(
     memory_id: str,
     content: str = "The user prefers Hindi.",
     *,
-    subject: str = SUBJECT,
+    subject: Optional[str] = SUBJECT,
     tenant: str = TENANT,
     namespace: str = "default",
     valid_from: Any = T0,
@@ -217,6 +224,225 @@ def make_store(driver: FakeDriver, **kwargs: Any) -> Neo4jContextStore:
 
 def run(coro: Any) -> Any:
     return asyncio.run(coro)
+
+
+def mid(item: ContextItem) -> str:
+    """The bare memory ID behind a planner item ID."""
+
+    return str(item.metadata["memory_id"])
+
+
+def scope_hash(tenant: str = TENANT, namespace: str = "default") -> str:
+    return hashlib.sha256(f"{tenant}\x00{namespace}".encode("utf-8")).hexdigest()[:12]
+
+
+def item_id(memory_id: str, tenant: str = TENANT, namespace: str = "default") -> str:
+    return f"{ITEM_ID_PREFIX}:{scope_hash(tenant, namespace)}:{memory_id}"
+
+
+class Clock:
+    """A settable clock for the store."""
+
+    def __init__(self, now: datetime = NOW) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, **delta: float) -> None:
+        self.now = self.now + timedelta(**delta)
+
+
+class ConstraintError(Exception):
+    """Named like the driver's error so the store maps it to Neo4jConstraintError."""
+
+
+class FakeGraph:
+    """In-memory emulation of the store's Cypher statements, for behavioural tests.
+
+    It mirrors each statement's semantics in Python (scope, half-open validity, term
+    scoring, renaming, links), so tests can check what the store does end to end.
+    """
+
+    def __init__(self) -> None:
+        self.nodes: Dict[int, Dict[str, Any]] = {}
+        self.links: Dict[Tuple[int, int], Dict[str, Any]] = {}  # (newer, older) -> {at, reason}
+        self._next = 0
+
+    def driver(self) -> FakeDriver:
+        return FakeDriver(responder=self.respond)
+
+    def ids(self) -> List[str]:
+        return sorted(props["memory_id"] for props in self.nodes.values())
+
+    def _scoped(self, params: Mapping[str, Any]) -> List[Tuple[int, Dict[str, Any]]]:
+        scope = (params["tenant_id"], params["namespace"])
+        return [
+            (nid, props)
+            for nid, props in self.nodes.items()
+            if (props["tenant_id"], props["namespace"]) == scope
+        ]
+
+    def _find(self, params: Mapping[str, Any], memory_id: str) -> Optional[int]:
+        for nid, props in self._scoped(params):
+            if props["memory_id"] == memory_id:
+                return nid
+        return None
+
+    def _row(self, nid: int) -> Dict[str, Any]:
+        older = [self.nodes[o]["memory_id"] for (n, o) in self.links if n == nid]
+        newer = [self.nodes[n]["memory_id"] for (n, o) in self.links if o == nid]
+        return row(dict(self.nodes[nid]), older, newer)
+
+    @staticmethod
+    def _valid(props: Mapping[str, Any], instant: datetime) -> bool:
+        end = props.get("valid_until")
+        return bool(props["valid_from"] <= instant and (end is None or end > instant))
+
+    def _paths(self, start: int, direction: str, max_links: int) -> List[Dict[str, Any]]:
+        found: List[Dict[str, Any]] = []
+
+        def walk(path: List[int], links: List[Dict[str, Any]]) -> None:
+            for (newer, older), props in self.links.items():
+                if direction == "older" and newer == path[-1]:
+                    step = older
+                elif direction == "newer" and older == path[-1]:
+                    step = newer
+                else:
+                    continue
+                if step in path:
+                    continue
+                link = {
+                    "old_id": self.nodes[older]["memory_id"],
+                    "new_id": self.nodes[newer]["memory_id"],
+                    **props,
+                }
+                found.append(
+                    {
+                        "direction": direction,
+                        "nodes": [dict(self.nodes[n]) for n in path + [step]],
+                        "links": links + [link],
+                    }
+                )
+                if len(links) + 1 < max_links:
+                    walk(path + [step], links + [link])
+
+        walk([start], [])
+        return found
+
+    def respond(self, query: str, params: Dict[str, Any]) -> Response:
+        scoped = self._scoped(params)
+        if query == store_module._GET:
+            nid = self._find(params, params["memory_id"])
+            return [] if nid is None else [self._row(nid)]
+        if query == store_module._CREATE:
+            if self._find(params, params["memory_id"]) is not None:
+                return ConstraintError("duplicate memory_id")
+            self._next += 1
+            self.nodes[self._next] = {k: v for k, v in params.items() if v is not None}
+            return [self._row(self._next)]
+        if query == store_module._ARCHIVE:
+            nid = self._find(params, params["memory_id"])
+            if nid is None or self.nodes[nid]["content_sha256"] != params["content_sha256"]:
+                return [{"archived": 0}]
+            self.nodes[nid].update(
+                memory_id=params["archived_id"], archived_from=params["memory_id"]
+            )
+            return [{"archived": 1}]
+        if query == store_module._LINK:
+            old = self._find(params, params["old_id"])
+            new = self._find(params, params["new_id"])
+            if old is None or new is None:
+                return []
+            prior = self.nodes[old]
+            if prior.get("valid_until") is None or prior["valid_until"] > params["at"]:
+                prior["valid_until"] = params["at"]
+            self.links.setdefault((new, old), {"at": params["at"], "reason": params["reason"]})
+            return [{"linked": 1}]
+        if query == store_module._CYCLE_CHECK:
+            old = self._find(params, params["old_id"])
+            assert old is not None
+            reachable = {path["nodes"][-1]["memory_id"] for path in self._paths(old, "older", 99)}
+            return [{"cycle": params["new_id"] in reachable}]
+        if query == store_module._FIND_CURRENT_DUPLICATE:
+            matches = sorted(
+                (-props["valid_from"].timestamp(), props["memory_id"], nid)
+                for nid, props in scoped
+                if props.get("subject") == params["subject"]
+                and props["content_sha256"] == params["content_sha256"]
+                and self._valid(props, params["valid_from"])
+            )
+            return [self._row(matches[0][2])] if matches else []
+        if query == store_module._FORGET_SOFT:
+            nid = self._find(params, params["memory_id"])
+            if nid is None:
+                return []
+            props = self.nodes[nid]
+            started = props["valid_from"] <= params["at"]
+            end = props.get("valid_until")
+            changed = started and (end is None or end > params["at"])
+            if changed:
+                props.update(valid_until=params["at"], forgotten_at=params["at"])
+            return [{"changed": changed, "started": started}]
+        if query == store_module._FORGET_HARD:
+            doomed = {
+                nid
+                for nid, props in scoped
+                if params["memory_id"] in (props["memory_id"], props.get("archived_from"))
+            }
+            for nid in doomed:
+                del self.nodes[nid]
+            self.links = {
+                pair: props for pair, props in self.links.items() if not set(pair) & doomed
+            }
+            return [{"deleted": len(doomed)}]
+        if query in (store_module._RECALL, store_module._RECALL_SUBJECT):
+            ranked = []
+            for nid, props in scoped:
+                if query == store_module._RECALL_SUBJECT and (
+                    props.get("subject") != params["subject"]
+                ):
+                    continue
+                if not self._valid(props, params["as_of"]):
+                    continue
+                haystack = props["content"].lower() + " " + (props.get("subject") or "").lower()
+                score = sum(t["weight"] for t in params["terms"] if t["text"] in haystack)
+                if params["terms"] and score <= 0:
+                    continue
+                ranked.append((-score, -props["valid_from"].timestamp(), props["memory_id"], nid))
+            ranked.sort()
+            return [self._row(entry[3]) for entry in ranked[: params["candidate_limit"]]]
+        if query in (store_module._CONFLICTS, store_module._CONFLICTS_SUBJECT):
+            anchors = sorted(
+                (props["subject"], props["memory_id"], nid)
+                for nid, props in scoped
+                if props.get("subject") is not None
+                and (query == store_module._CONFLICTS or props["subject"] == params["subject"])
+                and self._valid(props, params["as_of"])
+            )[: params["candidate_limit"]]
+            groups: Dict[str, List[int]] = {}
+            for subject, _, nid in anchors:
+                groups.setdefault(subject, []).append(nid)
+            pairs = []
+            for subject, members in groups.items():
+                for index, a in enumerate(members):
+                    for b in members[index + 1 :]:
+                        if self.nodes[a]["content_sha256"] == self.nodes[b]["content_sha256"]:
+                            continue
+                        if (a, b) in self.links or (b, a) in self.links:
+                            continue
+                        first, second = self.nodes[a]["memory_id"], self.nodes[b]["memory_id"]
+                        pairs.append((subject, first, second, a, b))
+            pairs.sort()
+            return [
+                {"first": dict(self.nodes[a]), "second": dict(self.nodes[b])}
+                for *_, a, b in pairs[: params["limit"]]
+            ]
+        if query in (store_module._HISTORY_OLDER, store_module._HISTORY_NEWER):
+            nid = self._find(params, params["memory_id"])
+            assert nid is not None
+            return self._paths(nid, params["direction"], params["max_depth"] + 1)
+        raise AssertionError(f"FakeGraph does not emulate: {query[:60]}")
 
 
 # --- construction, credentials and lifecycle ----------------------------------------------
@@ -377,7 +603,7 @@ def test_default_guard_uses_neo4j_limits_and_env_overrides(monkeypatch: Any) -> 
     assert store.guard.limits == DEFAULT_USAGE_LIMITS
     assert (DEFAULT_USAGE_LIMITS.requests_per_minute, DEFAULT_USAGE_LIMITS.max_requests) == (
         600,
-        100_000,
+        None,
     )
     monkeypatch.setenv("LLMSLIM_NEO4J_MAX_REQUESTS", "7")
     assert Neo4jContextStore(FakeDriver(), tenant_id=TENANT).guard.limits.max_requests == 7
@@ -392,7 +618,7 @@ def test_ensure_schema_is_idempotent_and_parameter_free() -> None:
     run(store.ensure_schema())
     run(store.ensure_schema())
     queries = driver.queries()
-    assert queries[:4] == queries[4:] == list(store_module._SCHEMA_STATEMENTS)
+    assert queries[:5] == queries[5:] == list(store_module._SCHEMA_STATEMENTS)
     assert all("IF NOT EXISTS" in query for query in queries)
     assert all(call.parameters == {} for call in driver.calls)
     assert all(
@@ -405,7 +631,8 @@ def test_ensure_schema_is_idempotent_and_parameter_free() -> None:
     assert any("m.subject" in query for query in queries)
     assert any("m.valid_from" in query for query in queries)
     assert any("m.valid_until" in query for query in queries)
-    assert driver.commits == 8 and len(driver.sessions) == 8  # one transaction per statement
+    assert any("m.archived_from" in query for query in queries)
+    assert driver.commits == 10 and len(driver.sessions) == 10  # one transaction per statement
 
 
 # --- remember -----------------------------------------------------------------------------
@@ -551,7 +778,7 @@ def test_bounds_are_validated_with_clear_errors() -> None:
         (store.supersede("a", "b", reason=5), "reason must be a string"),  # type: ignore[arg-type]
         (store.supersede("", "b", reason="r"), "old_id"),
         (store.forget("x\ny"), "memory_id"),
-        (store.get(""), "memory_id"),
+        (store.get(""), "item_id"),
         (store.recall(namespace=""), "namespace"),
     ]
     circular: Dict[str, Any] = {}
@@ -810,7 +1037,7 @@ def test_recall_as_of_boundaries_are_half_open() -> None:
     store = make_store(driver)
     local = as_of.astimezone(timezone(timedelta(hours=5, minutes=30)))
     items = run(store.recall(as_of=local))
-    assert [item.item_id for item in items] == ["starts-at", "spans"]
+    assert [mid(item) for item in items] == ["starts-at", "spans"]
     call = driver.calls[0]
     assert call.query == store_module._RECALL
     assert call.parameters["as_of"] == as_of and call.parameters["as_of"].tzinfo == UTC
@@ -851,8 +1078,8 @@ def test_recall_defaults_to_now_and_reports_supersession_and_conflicts() -> None
     driver = FakeDriver(script=[rows])
     items = run(make_store(driver, recency_half_life_days=30).recall())
     assert driver.calls[0].parameters["as_of"] == NOW
-    by_id = {item.item_id: item for item in items}
-    assert [item.item_id for item in items] == ["lang-new", "lang-other", "tz"]
+    by_id = {mid(item): item for item in items}
+    assert [mid(item) for item in items] == ["lang-new", "lang-other", "tz"]
     assert [item.original_order for item in items] == [0, 1, 2]
     assert by_id["lang-new"].metadata["supersedes"] == ["lang-old"]
     assert by_id["lang-new"].metadata["conflicts_with"] == ["lang-other"]
@@ -874,13 +1101,16 @@ def test_recall_with_subject_and_query_ranks_lexically() -> None:
     call = driver.calls[0]
     assert call.query == store_module._RECALL_SUBJECT
     assert call.parameters["subject"] == SUBJECT
-    assert call.parameters["terms"] == ["language", "preferred"]
+    assert call.parameters["terms"] == [
+        {"text": "preferred", "weight": 9},
+        {"text": "language", "weight": 8},
+    ]
     assert call.parameters["candidate_limit"] == 4
-    assert [item.item_id for item in items] == ["b"]
+    assert [mid(item) for item in items] == ["b"]
 
     single = FakeDriver()
     run(make_store(single).recall(query="a"))
-    assert single.calls[0].parameters["terms"] == ["a"]
+    assert single.calls[0].parameters["terms"] == [{"text": "a", "weight": 1}]
     many = FakeDriver()
     run(make_store(many).recall(query=" ".join(f"term{i}" for i in range(40))))
     assert len(many.calls[0].parameters["terms"]) == store_module.MAX_QUERY_TERMS
@@ -915,7 +1145,7 @@ def test_store_satisfies_context_protocols_and_plans_end_to_end() -> None:
 
 def test_save_get_and_delete_follow_the_context_store_protocol() -> None:
     saved = node("item-1", "Saved fact.", subject="account:9", namespace="agent-1")
-    driver = FakeDriver(script=[[], [], [row(saved)]])
+    driver = FakeDriver(script=[[], [row(saved)]])
     store = make_store(driver)
     item = ContextItem(
         "item-1",
@@ -925,15 +1155,20 @@ def test_save_get_and_delete_follow_the_context_store_protocol() -> None:
         metadata={"subject": "account:9", "owner": "u7"},
     )
     assert run(store.save(item, "agent-1")) is None
+    assert driver.queries() == [store_module._GET, store_module._CREATE]
     create = driver.calls[-1]
     assert create.parameters["subject"] == "account:9"
     assert create.parameters["namespace"] == "agent-1"
     assert create.parameters["memory_id"] == "item-1"
     assert create.parameters["metadata_json"] == '{"owner":"u7"}'
+    assert create.parameters["valid_from"] == NOW and create.parameters["valid_until"] is None
 
-    general = FakeDriver(script=[[], [], [row(node("i2", "x", subject="general"))]])
-    run(make_store(general).save(ContextItem("i2", "x")))
-    assert general.calls[-1].parameters["subject"] == "general"
+    # Without metadata["subject"] the memory is subject-less, never filed under a catch-all.
+    subjectless = FakeDriver(script=[[], [row(node("i2", "x", subject=None))]])
+    run(make_store(subjectless).save(ContextItem("i2", "x", metadata={"subject": "  "})))
+    assert subjectless.calls[-1].parameters["subject"] is None
+    with pytest.raises(TypeError, match="ContextItem"):
+        run(make_store(FakeDriver()).save({"id": "x"}))  # type: ignore[arg-type]
 
     getter = FakeDriver(
         script=[
@@ -951,6 +1186,7 @@ def test_save_get_and_delete_follow_the_context_store_protocol() -> None:
     )
     fetched = run(make_store(getter).get("item-1"))
     assert fetched is not None and fetched.metadata["forgotten_at"] is not None
+    assert fetched.item_id == item_id("item-1") and mid(fetched) == "item-1"
     assert run(make_store(getter).get("missing")) is None
 
     deleter = FakeDriver(script=[[{"deleted": 1}], [{"deleted": 0}]])
@@ -1056,8 +1292,10 @@ def test_conflicts_surface_overlapping_facts_on_a_subject() -> None:
         "namespace": "default",
         "as_of": NOW,
         "limit": 5,
+        "candidate_limit": 1_000,
         "subject": SUBJECT,
     }
+    assert "LIMIT $candidate_limit" in call.query
     assert "a.content_sha256 <> b.content_sha256" in call.query
     assert "NOT EXISTS { MATCH (a)-[:SUPERSEDES]-(b) }" in call.query
     assert len(found) == 1
@@ -1091,7 +1329,8 @@ def test_forget_soft_and_hard() -> None:
     assert "m.forgotten_at" in soft.query
     assert driver.calls[1].parameters["at"] == NOW + timedelta(hours=1)
     assert driver.calls[3].query == store_module._FORGET_HARD
-    assert "DETACH DELETE m" in driver.calls[3].query
+    assert "DETACH DELETE n" in driver.calls[3].query
+    assert "archived_from: $memory_id" in driver.calls[3].query
 
 
 # --- isolation, injection, guard and errors -----------------------------------------------
@@ -1122,6 +1361,10 @@ def test_every_statement_is_static_scoped_and_free_of_caller_text() -> None:
             )
             graph[params["memory_id"]] = created
             return [row(created)]
+        if query == store_module._ARCHIVE:
+            archived = {**graph.pop(params["memory_id"]), "memory_id": params["archived_id"]}
+            graph[params["archived_id"]] = archived
+            return [{"archived": 1}]
         if query == store_module._LINK:
             return [{"linked": 1}]
         if query == store_module._CYCLE_CHECK:
@@ -1159,6 +1402,7 @@ def test_every_statement_is_static_scoped_and_free_of_caller_text() -> None:
         await store.get(f"{sentinel}-id")
         await store.search(f"{sentinel}")
         await store.save(ContextItem(f"{sentinel}-item", f"{sentinel} item"))
+        await store.save(ContextItem(f"{sentinel}-item", f"{sentinel} item v2"))
         await store.delete(f"{sentinel}-item")
 
     run(exercise())
@@ -1331,3 +1575,659 @@ def test_mapping_type_alias_is_respected_for_metadata() -> None:
     encoded = store_module._metadata_json(proxy)
     assert "sk-123" not in encoded and '"x":[1,2]' in encoded
     assert store_module._metadata_json(None) == "{}"
+
+
+# --- Indic and mixed-script recall --------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        # Matras and viramas stay inside the word. "की" (consonant + vowel sign) has two
+        # letters, like Hinglish "ki", so it is a term.
+        ("किताब की कीमत", [("किताब", 5), ("की", 2), ("कीमत", 4)]),
+        ("नमस्ते दुनिया", [("नमस्ते", 5), ("दुनिया", 6)]),
+        ("தமிழ் நாடு", [("தமிழ்", 4), ("நாடு", 4)]),
+        ("আমার সোনার বাংলা", [("আমার", 4), ("সোনার", 5), ("বাংলা", 5)]),
+        ("ଓଡ଼ିଆ ଭାଷା", [("ଓଡ଼ିଆ", 4), ("ଭାଷା", 4)]),
+        (
+            "Kitaab KI keemat 2 din mein",
+            [("kitaab", 6), ("ki", 2), ("keemat", 6), ("din", 3), ("mein", 4)],
+        ),
+        ("मेरा phone नंबर 98765", [("मेरा", 4), ("phone", 5), ("नंबर", 4), ("98765", 5)]),
+        ("5G plan ₹499 का", [("5g", 2), ("plan", 4), ("499", 3), ("का", 2)]),
+        ("COVID-19 टीका २०२४", [("covid", 5), ("19", 2), ("टीका", 4), ("२०२४", 4)]),
+        ("Preferred LANGUAGE?", [("preferred", 9), ("language", 8)]),
+        ("user_name a", [("user", 4), ("name", 4)]),
+        # One-letter words are dropped unless nothing else is left; then the whole query is
+        # the term.
+        ("a", [("a", 1)]),
+        ("क", [("क", 1)]),
+        ("C++", [("c++", 1)]),
+    ],
+)
+def test_query_terms_keep_whole_words_in_every_script(
+    query: str, expected: List[Tuple[str, int]]
+) -> None:
+    assert list(store_module._query_terms(query)) == expected
+
+
+def test_query_terms_never_split_inside_a_syllable() -> None:
+    # The fragments the old [^\W_]+ tokenizer produced for these queries.
+    for query, fragment in (
+        ("किताब की कीमत", "मत"),
+        ("नमस्ते दुनिया", "नमस"),
+        ("தமிழ் நாடு", "தம"),
+    ):
+        terms = [term for term, _ in store_module._query_terms(query)]
+        assert fragment not in terms
+        assert all(unicodedata.category(term[0])[0] != "M" for term in terms)
+    # ZWJ/ZWNJ inside a word are part of its spelling; at the edges they are dropped.
+    assert store_module._words("क्‍ष ‌नाम‌") == ["क्‍ष", "नाम"]
+    assert store_module._letter_count("क्") == 1 and store_module._letter_count("की") == 2
+
+
+def test_query_terms_keep_the_longest_terms_when_capped() -> None:
+    query = " ".join(["ab"] + [f"word{index:02d}" for index in range(20)] + ["xy"])
+    terms = store_module._query_terms(query)
+    assert len(terms) == store_module.MAX_QUERY_TERMS
+    assert "ab" not in dict(terms) and "xy" not in dict(terms)
+    assert [term for term, _ in terms] == [f"word{index:02d}" for index in range(16)]
+
+
+def test_indic_recall_finds_relevant_memories_and_skips_fragment_matches() -> None:
+    graph = FakeGraph()
+    clock = Clock(T0)
+    driver = graph.driver()
+    store = make_store(driver, clock=clock)
+
+    def remember(memory_id: str, content: str) -> None:
+        clock.advance(hours=1)
+        run(store.remember("notes", content, memory_id=memory_id))
+
+    remember("price", "इस किताब की कीमत 500 रुपये है")
+    remember("cost", "किताब का दाम कम हुआ")
+    remember("vote", "आज मतदान हुआ")  # shares only the old fragment "मत"
+    remember("greet", "नमस्ते दुनिया, आज छुट्टी है")
+    remember("namaskar", "नमस्कार मित्र")  # shares only the old fragment "नमस"
+    remember("tn", "தமிழ் நாடு அரசு அறிவிப்பு")
+    remember("tamanna", "தமன்னா புதிய படம்")  # shares only the old fragment "தம"
+    remember("bn", "আমার সোনার বাংলা গান")
+    remember("or", "ଓଡ଼ିଆ ଭାଷା ଦିବସ ପାଳନ")
+    remember("hinglish", "Kitaab ki keemat 500 rupaye hai")
+    remember("plan5g", "5G plan ₹499 का है")
+    remember("plan4g", "4G plan ₹299 का है")
+    for index in range(10):  # newer memories that share only the function word "की"
+        remember(f"filler-{index}", f"रमेश की कार नंबर {index}")
+
+    def ids(query: str, limit: int = 20) -> List[str]:
+        return [mid(item) for item in run(store.recall(query=query, limit=limit))]
+
+    hindi = ids("किताब की कीमत")
+    assert hindi[:2] == ["price", "cost"] and "vote" not in hindi
+    assert set(hindi[2:]) == {f"filler-{index}" for index in range(10)}
+    sent = driver.calls[-1].parameters["terms"]
+    assert [term["text"] for term in sent] == ["किताब", "की", "कीमत"]
+    # Candidates are ranked by matched letters before the cap, so ten newer memories that
+    # match only "की" cannot crowd out the two relevant ones.
+    assert ids("किताब की कीमत", limit=2) == ["price", "cost"]
+    assert driver.calls[-1].parameters["candidate_limit"] == 8
+    assert ids("नमस्ते दुनिया") == ["greet"]
+    assert ids("தமிழ் நாடு") == ["tn"]
+    assert ids("সোনার বাংলা") == ["bn"]
+    assert ids("ଓଡ଼ିଆ ଭାଷା") == ["or"]
+    assert ids("kitaab KI keemat") == ["hinglish"]
+    assert ids("₹499 वाला 5G plan") == ["plan5g", "plan4g"]
+
+
+def test_stored_text_and_queries_are_nfc_normalized_consistently() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver())
+    # U+0958 (qa) and U+0B5C (rra) are composition exclusions: NFC spells them base + nukta.
+    precomposed_hindi = "क़ीमत"
+    decomposed_hindi = "क़ीमत"
+    precomposed_odia = "ଓଡ଼ିଆ"
+    decomposed_odia = "ଓଡ଼ିଆ"
+    hindi = run(store.remember("shop:tea", f"चाय की {precomposed_hindi} 20 रुपये"))
+    odia = run(store.remember("states:odisha", f"{precomposed_odia} ଭାଷା ଦିବସ"))
+    assert hindi.content == f"चाय की {decomposed_hindi} 20 रुपये"
+    assert odia.content == f"{decomposed_odia} ଭାଷା ଦିବସ"
+    assert [mid(i) for i in run(store.recall(query=decomposed_hindi))] == [hindi.memory_id]
+    assert [mid(i) for i in run(store.recall(query=precomposed_hindi))] == [hindi.memory_id]
+    assert [mid(i) for i in run(store.recall(query=decomposed_odia))] == [odia.memory_id]
+    # Subjects are normalized too, so an NFD subject is found by its NFC spelling.
+    cafe = run(store.remember("café:menu", "Serves filter coffee."))
+    assert cafe.subject == "café:menu"
+    assert [mid(i) for i in run(store.recall("café:menu"))] == [cafe.memory_id]
+
+
+# --- item IDs -----------------------------------------------------------------------------
+
+
+def test_item_ids_are_namespaced_and_accepted_in_both_forms() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver())
+    run(store.remember(SUBJECT, "The user prefers Hindi.", memory_id="lang"))
+    run(store.remember(SUBJECT, "The user prefers Tamil.", memory_id="lang", namespace="agent-2"))
+    default_item = run(store.get("lang"))
+    other_item = run(store.get("lang", "agent-2"))
+    assert default_item.item_id == item_id("lang")
+    assert other_item.item_id == item_id("lang", namespace="agent-2")
+    assert default_item.item_id != other_item.item_id
+    assert re.fullmatch(r"neo4j-memory:[0-9a-f]{12}:lang", default_item.item_id)
+    assert TENANT not in default_item.item_id  # the tenant is hashed, never shown
+    assert mid(default_item) == "lang"
+    # The item ID and the bare ID name the same memory everywhere.
+    assert run(store.get(default_item.item_id)).content == "The user prefers Hindi."
+    assert run(store.history(default_item.item_id)).memory_id == "lang"
+    assert run(store.recall())[0].item_id == default_item.item_id
+    # The namespace argument picks the partition; the hash only keeps planner IDs unique.
+    assert run(store.get(default_item.item_id, "agent-2")).content == "The user prefers Tamil."
+    assert run(store.forget(default_item.item_id)) is True
+    assert run(store.delete(other_item.item_id, "agent-2")) is True
+    for bad in (
+        "neo4j-memory:xyz:lang",
+        "neo4j-memory:0123456789AB:lang",
+        "neo4j-memory:0123456789ab:",
+        "neo4j-memory:0123456789ab:neo4j-memory:0123456789ab:lang",
+    ):
+        with pytest.raises(ValueError, match="item_id"):
+            run(store.get(bad))
+
+
+def test_memory_ids_are_validated_strictly_so_rendering_cannot_break() -> None:
+    driver = FakeDriver()
+    store = make_store(driver)
+    for bad in (
+        'a"b',
+        "a'b",
+        "a<b",
+        "a>b",
+        "a&b",
+        "a b",
+        "a\tb",
+        "a b",
+        "a​b",
+        "a‮b",
+        "a`b",
+        "a\\b",
+        "a~b",
+        "a~0123456789abcdef",
+        "x" * 201,
+    ):
+        with pytest.raises(ValueError, match="memory_id"):
+            run(store.remember(SUBJECT, "Fact", memory_id=bad))
+        if "~0" not in bad:  # an archived version's ID is a valid lookup / save key
+            with pytest.raises(ValueError, match="item_id"):
+                run(store.save(ContextItem(bad, "Fact")))
+            with pytest.raises(ValueError, match="item_id"):
+                run(store.delete(bad))
+    with pytest.raises(ValueError, match="'~'"):
+        run(store.supersede("a", MemoryDraft("x", memory_id="b~0123456789abcdef"), reason="r"))
+    assert driver.calls == []
+    for good in (
+        "mem-1",
+        "user:42/lang",
+        "doc_7.v2",
+        "a@b+c#d=e",
+        "किताब-१",
+        "தமிழ்_1",
+        "(x)[y]{z}",
+    ):
+        assert store_module._memory_ref(good, "memory_id", mode="new") == good
+    # Archived versions can be looked up; save() maps them to the ID they were saved under.
+    assert store_module._memory_ref("doc~0123456789abcdef", "memory_id") == "doc~0123456789abcdef"
+    assert store_module._memory_ref("doc~0123456789abcdef", "item_id", mode="item") == "doc"
+
+
+def test_rendered_memory_ids_keep_the_provenance_header_intact() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver())
+    run(store.remember(SUBJECT, "The user prefers concise answers.", memory_id="pref:{style}/v1"))
+    plan = run(
+        AdaptiveContextPlanner().aplan(
+            context_sources=[store],
+            query="concise answers",
+            model="generic-128k",
+            max_input_tokens=1024,
+        )
+    )
+    headers = re.findall(r'<llmslim_context id="([^"]*)" kind="memory"', plan.final_context)
+    assert headers == [item_id("pref:{style}/v1")]
+
+
+def test_planning_mixes_neo4j_items_with_sources_that_share_raw_ids() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver())
+    second = make_store(graph.driver(), namespace="agent-2")
+    local = ContextItem("release", "Local note: the release ships on Friday.")
+    # save() reuses the other source's ID; two namespaces hold the same raw ID too.
+    run(store.save(local))
+    run(second.save(replace(local, content="Agent two: the release ships on Friday after QA.")))
+    plan = run(
+        AdaptiveContextPlanner().aplan(
+            context_sources=[InMemoryContextSource([local]), store, second],
+            query="When does the release ship?",
+            model="generic-128k",
+            max_input_tokens=2048,
+        )
+    )
+    ids = [decision.item.item_id for decision in plan.decisions]
+    assert {"release", item_id("release"), item_id("release", namespace="agent-2")} <= set(ids)
+    assert len(ids) == len(set(ids))
+    assert "Agent two: the release ships" in plan.final_context
+    assert "Local note: the release ships" in plan.final_context
+
+
+# --- ContextStore compatibility -----------------------------------------------------------
+
+
+class _MongoCursor:
+    def __init__(self, documents: List[Dict[str, Any]]) -> None:
+        self.documents = documents
+
+    def limit(self, count: int) -> "_MongoCursor":
+        self.documents = self.documents[:count]
+        return self
+
+    async def to_list(self, length: int) -> List[Dict[str, Any]]:
+        return self.documents[:length]
+
+
+class _MongoCollection:
+    def __init__(self) -> None:
+        self.documents: Dict[str, Dict[str, Any]] = {}
+
+    async def replace_one(
+        self, query: Mapping[str, Any], document: Mapping[str, Any], upsert: bool
+    ) -> None:
+        assert upsert and query["_id"] == document["_id"]
+        self.documents[str(document["_id"])] = dict(document)
+
+    async def find_one(self, query: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+        return self.documents.get(str(query["_id"]))
+
+    def find(self, query: Mapping[str, Any], **_: Any) -> _MongoCursor:
+        pattern = re.compile(query["content"]["$regex"], re.IGNORECASE)
+        return _MongoCursor(
+            [
+                document
+                for document in self.documents.values()
+                if document["namespace"] == query["namespace"]
+                and pattern.search(document["content"])
+            ]
+        )
+
+    async def delete_one(self, query: Mapping[str, Any]) -> Any:
+        existed = self.documents.pop(str(query["_id"]), None) is not None
+        return SimpleNamespace(deleted_count=int(existed))
+
+
+def test_save_matches_mongodb_upsert_semantics() -> None:
+    first = ContextItem("doc-1", "Acme renewal is in negotiation.", metadata={"owner": "u7"})
+    second = replace(first, content="Acme renewal signed for two years.")
+    clock = Clock(T0)
+
+    async def scenario(store: Any) -> List[Any]:
+        seen: List[Any] = []
+        await store.save(first)
+        seen.append((await store.get("doc-1")).content)
+        await store.save(first)
+        seen.append((await store.get("doc-1")).content)
+        clock.advance(days=1)
+        await store.save(second)
+        seen.append((await store.get("doc-1")).content)
+        found = await store.search("Acme renewal")
+        seen.append([item.metadata.get("memory_id", item.item_id) for item in found])
+        seen.append([item.content for item in found])
+        seen.append(await store.delete("doc-1"))
+        seen.append(await store.get("doc-1"))
+        seen.append(await store.delete("doc-1"))
+        return seen
+
+    # client[database][collection] is all MongoDBContextStore needs from a client.
+    mongo = MongoDBContextStore(client={"llmslim": {"context_items": _MongoCollection()}})
+    graph = FakeGraph()
+    neo4j = make_store(graph.driver(), clock=clock)
+    assert run(scenario(neo4j)) == run(scenario(mongo))
+    assert graph.nodes == {}  # delete() erased the archived version too
+
+
+def test_save_supersedes_changed_content_and_keeps_every_version_auditable() -> None:
+    graph = FakeGraph()
+    clock = Clock(T0)
+    driver = graph.driver()
+    store = make_store(driver, clock=clock)
+    first = ContextItem(
+        "doc-1",
+        "Acme renewal is in negotiation.",
+        source="crm-sync",
+        metadata={"subject": "customer:acme/renewal", "owner": "u7"},
+    )
+    run(store.save(first))
+    saved = run(store.get("doc-1"))
+    assert saved.item_id == item_id("doc-1") and saved.content == first.content
+    assert saved.metadata["subject"] == "customer:acme/renewal"
+    assert saved.metadata["attributes"] == {"owner": "u7"}
+    assert saved.metadata["memory_source"] == "crm-sync"
+    # Saving the same item again, or the item get() returned, writes nothing.
+    before = len(driver.calls)
+    run(store.save(first))
+    run(store.save(saved))
+    assert driver.queries()[before:] == [store_module._GET, store_module._GET]
+
+    clock.advance(days=1)
+    signed = "Acme renewal signed for two years."
+    run(store.save(replace(first, content=signed)))
+    assert driver.queries()[-4:] == [
+        store_module._GET,
+        store_module._ARCHIVE,
+        store_module._CREATE,
+        store_module._LINK,
+    ]
+    current = run(store.get("doc-1"))
+    assert current.content == signed
+    (archived_id,) = current.metadata["supersedes"]
+    assert re.fullmatch(r"doc-1~[0-9a-f]{16}", archived_id)
+    old = run(store.get(archived_id))
+    assert old.content == first.content and old.metadata["replaced_by"] == ["doc-1"]
+    assert old.metadata["valid_from"] == T0.isoformat()
+    assert old.metadata["valid_until"] == (T0 + timedelta(days=1)).isoformat()
+    assert [mid(item) for item in run(store.search("Acme renewal"))] == ["doc-1"]
+    earlier = run(store.recall(query="Acme", as_of=T0 + timedelta(hours=1)))
+    assert [mid(item) for item in earlier] == [archived_id]
+    history = run(store.history("doc-1"))
+    assert [record.content for record in history.records] == [first.content, signed]
+    assert [(link.old_id, link.new_id, link.reason) for link in history.links] == [
+        (archived_id, "doc-1", "replaced by ContextStore.save()")
+    ]
+
+    # Attribute-only changes are versioned too.
+    clock.advance(days=1)
+    run(store.save(replace(first, content=signed, metadata={**first.metadata, "owner": "u8"})))
+    assert run(store.get("doc-1")).metadata["attributes"] == {"owner": "u8"}
+    assert len(run(store.history("doc-1")).records) == 3
+    # An archived version's item saves to the ID it was archived from.
+    clock.advance(days=1)
+    run(store.save(replace(old, content="Acme renewal reopened.")))
+    reopened = run(store.get("doc-1"))
+    assert reopened.content == "Acme renewal reopened."
+    assert reopened.metadata["attributes"] == {"owner": "u7"}
+    assert reopened.metadata["memory_source"] == "crm-sync"
+
+    # delete() erases the item and every version archived under it.
+    assert run(store.delete(current.item_id)) is True
+    assert graph.nodes == {} and graph.links == {}
+    assert run(store.get("doc-1")) is None and run(store.delete("doc-1")) is False
+
+
+def test_save_stores_content_verbatim_apart_from_nfc() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver(), max_content_chars=60)
+    page = "  Page one\fPage two\n\tindented  "
+    run(store.save(ContextItem("page", page)))
+    assert run(store.get("page")).content == page  # not trimmed; form feed kept
+    run(store.save(ContextItem("menu", "café menu")))
+    assert run(store.get("menu")).content == "café menu"
+    for content, message in (
+        ("   ", "must not be empty"),
+        ("x" * 61, "max_content_chars"),
+        ("a\x00b", "control characters"),
+        ("a\x1bb", "control characters"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            run(store.save(ContextItem("bad", content)))
+    # remember() still trims, and accepts form feeds as well.
+    assert run(store.remember(SUBJECT, "  Line one\fLine two  ")).content == "Line one\fLine two"
+
+
+def test_save_revives_an_ended_memory_as_a_new_version() -> None:
+    graph = FakeGraph()
+    clock = Clock(T0)
+    store = make_store(graph.driver(), clock=clock)
+    item = ContextItem("pref", "Prefers email.", metadata={"subject": "user:7/channel"})
+    run(store.save(item))
+    clock.advance(days=1)
+    assert run(store.forget("pref")) is True
+    assert run(store.recall()) == ()
+    clock.advance(days=1)
+    run(store.save(item))  # same content, but no longer current: stored as a new version
+    current = run(store.get("pref"))
+    assert current.metadata["valid_until"] is None and "forgotten_at" not in current.metadata
+    (archived,) = current.metadata["supersedes"]
+    forgotten = run(store.get(archived))
+    assert forgotten.metadata["forgotten_at"] == (T0 + timedelta(days=1)).isoformat()
+    assert [mid(entry) for entry in run(store.recall())] == ["pref"]
+
+
+def test_save_refuses_a_future_memory_and_detects_concurrent_writers() -> None:
+    graph = FakeGraph()
+    driver = graph.driver()
+    store = make_store(driver)
+    later = NOW + timedelta(days=7)
+    run(store.remember(SUBJECT, "Starts next week.", memory_id="later", valid_from=later))
+    with pytest.raises(Neo4jIntervalError, match="supersede"):
+        run(store.save(ContextItem("later", "Changed.", metadata={"subject": SUBJECT})))
+    assert graph.ids() == ["later"] and driver.rollbacks == 1
+
+    # Another writer replaced the version between this transaction's read and its rename.
+    raced = FakeDriver(script=[[row(node("doc", "v1", subject=None))], [{"archived": 0}]])
+    with pytest.raises(Neo4jConstraintError, match="retry"):
+        run(make_store(raced).save(ContextItem("doc", "v2")))
+    assert raced.queries() == [store_module._GET, store_module._ARCHIVE]
+    assert raced.commits == 0 and raced.rollbacks == 1
+    vanished = FakeDriver(
+        script=[
+            [row(node("doc", "v1", subject=None))],
+            [{"archived": 1}],
+            [row(node("doc", "v2", subject=None))],
+            [],
+        ]
+    )
+    with pytest.raises(Neo4jMemoryNotFoundError, match="changed"):
+        run(make_store(vanished).save(ContextItem("doc", "v2")))
+    assert vanished.commits == 0
+    # Two writers creating one ID at once: the identity constraint refuses the second.
+    run(store.save(ContextItem("dup", "x")))
+
+    def stale_read(query: str, params: Dict[str, Any]) -> Response:
+        return [] if query == store_module._GET else graph.respond(query, params)
+
+    with pytest.raises(Neo4jConstraintError, match="constraint"):
+        run(make_store(FakeDriver(responder=stale_read)).save(ContextItem("dup", "y")))
+
+
+def test_subjectless_items_never_conflict_and_conflicts_need_a_subject() -> None:
+    graph = FakeGraph()
+    store = make_store(graph.driver())
+    for index, text in enumerate(
+        ("Acme renewal is due in May.", "Globex prefers email.", "Initech uses SAP.")
+    ):
+        run(store.save(ContextItem(f"note-{index}", text)))
+    items = run(store.recall())
+    assert len(items) == 3
+    assert all(item.metadata["subject"] is None for item in items)
+    assert all("conflicts_with" not in item.metadata for item in items)
+    assert run(store.conflicts()) == ()
+
+    run(store.remember(SUBJECT, "The user prefers Hindi.", memory_id="hi"))
+    run(store.remember(SUBJECT, "The user prefers Tamil.", memory_id="ta"))
+    found = run(store.conflicts())
+    assert [(c.first.memory_id, c.second.memory_id, c.subject) for c in found] == [
+        ("hi", "ta", SUBJECT)
+    ]
+    recalled = {mid(item): item for item in run(store.recall())}
+    assert recalled["hi"].metadata["conflicts_with"] == ["ta"]
+    assert all("conflicts_with" not in recalled[f"note-{index}"].metadata for index in range(3))
+    # Superseding one side resolves the pair.
+    run(store.supersede("ta", "hi", reason="user confirmed Hindi"))
+    assert run(store.conflicts(SUBJECT)) == ()
+
+    # Rows the client cannot use are skipped; pairs are reported in ID order.
+    rows = [
+        {"first": node("A", "x", subject=None), "second": node("B", "y", subject=None)},
+        {"first": node("D", "x"), "second": node("C", "y")},
+    ]
+    reordered = run(make_store(FakeDriver(script=[rows])).conflicts())
+    assert [(c.first.memory_id, c.second.memory_id) for c in reordered] == [("C", "D")]
+
+
+def test_conflict_query_is_bounded_and_index_friendly(monkeypatch: Any) -> None:
+    for statement in (store_module._CONFLICTS, store_module._CONFLICTS_SUBJECT):
+        assert "LIMIT $candidate_limit" in statement and "LIMIT $limit" in statement
+        assert "collect(a) AS anchors" in statement  # pairs form only among the anchors
+    assert "a.subject IS NOT NULL" in store_module._CONFLICTS
+    assert "subject: $subject" in store_module._CONFLICTS_SUBJECT  # subject index seek
+
+    monkeypatch.setattr(store_module, "_MAX_CONFLICT_CANDIDATES", 2)
+    graph = FakeGraph()
+    driver = graph.driver()
+    store = make_store(driver)
+    for memory_id, text in (("a", "x"), ("b", "y"), ("c", "z")):
+        run(store.remember(SUBJECT, text, memory_id=memory_id))
+    found = run(store.conflicts())
+    assert driver.calls[-1].parameters["candidate_limit"] == 2
+    assert [(c.first.memory_id, c.second.memory_id) for c in found] == [("a", "b")]
+
+
+# --- metadata, forget and the guard -------------------------------------------------------
+
+
+def test_metadata_scrub_redacts_secret_keys_and_secret_looking_values() -> None:
+    redacted_keys = (
+        "Token",
+        "id-token",
+        "PRIVATE_KEY",
+        "privateKey",
+        "Set-Cookie",
+        "session_id",
+        "Authorization",
+        "credentials",
+        "client_secret",
+        "Password",
+        "API-Key",
+        "aws_access_key_id",
+        "bearer",
+        "x_auth",
+        "db_pwd",
+        "NEO4J_URI",
+    )
+    secret_values = {
+        "header": "Bearer abcdefghijklmnopqrstuvwxyz012345",
+        "basic": "Basic dXNlcjpwYXNzd29yZA==",
+        "pem": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA",
+        "openssh": "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "dsn": "postgres://admin:hunter2@db.example.test/app",
+        "anthropic": "sk-ant-api03-abcdefghijklmnopqrstuvwx",
+        "github": "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4",
+        "slack": "xoxb-1234567890-abcdefghij",
+        "aws": "AKIAIOSFODNN7EXAMPLE",
+        "google": "AIza" + "Sy" + "A1b2C3d4" * 4 + "x",
+        "jwt": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N",
+        "random": "aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z",
+        "sentence": "note: use Bearer abcdefghijklmnop for the sandbox",
+    }
+    kept = {
+        "token_count": 120,
+        "max_tokens": 512,
+        "prompt_tokens": 40,
+        "tokenizer": "cl100k",
+        "author": "Asha",
+        "topic": "billing",
+        "sha256": hashlib.sha256(b"x").hexdigest(),
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "slug": "quarterly-report-2024-final-version-approved",
+        "url": "https://example.com/docs/page?id=7",
+        "identifier": "ThisIsAVeryLongIdentifierName123",
+        "count": 3,
+        "flag": True,
+        "nothing": None,
+    }
+    metadata: Dict[str, Any] = dict.fromkeys(redacted_keys, "value")
+    metadata.update(secret_values)
+    metadata.update(kept)
+    metadata["nested"] = [{"refresh_token": "r", "note": "ok", "auth": ["Bearer abcdefghijkl"]}]
+    metadata["values"] = ["fine", "Bearer abcdefghijklmnop", 7]
+    scrubbed = json.loads(store_module._metadata_json(metadata))
+    for key in redacted_keys + tuple(secret_values):
+        assert scrubbed[key] == "<redacted>", key
+    for key, value in kept.items():
+        assert scrubbed[key] == value, key
+    assert scrubbed["nested"] == [
+        {"refresh_token": "<redacted>", "note": "ok", "auth": "<redacted>"}
+    ]
+    assert scrubbed["values"] == ["fine", "<redacted>", 7]
+    # Non-JSON values are stringified before they are scanned.
+    assert json.loads(store_module._metadata_json({"when": T0}))["when"] == str(T0)
+
+    driver = FakeDriver(script=[[], [row(node("m"))]])
+    secret_item = ContextItem("m", "Fact", metadata={"cookie": "c", "k": "sk-" + "a" * 20})
+    run(make_store(driver).save(secret_item))
+    stored = driver.calls[-1].parameters["metadata_json"]
+    assert "sk-aaaa" not in stored and '"cookie":"<redacted>"' in stored
+
+
+def test_forget_refuses_an_instant_before_valid_from() -> None:
+    graph = FakeGraph()
+    driver = graph.driver()
+    store = make_store(driver)
+    start = T0 + timedelta(days=10)
+    run(store.remember(SUBJECT, "Fact", memory_id="m", valid_from=start))
+    with pytest.raises(Neo4jIntervalError, match="precedes") as captured:
+        run(store.forget("m", at=T0))
+    assert isinstance(captured.value, ValueError)
+    (props,) = graph.nodes.values()
+    assert "valid_until" not in props and "forgotten_at" not in props
+    assert driver.commits == 1 and driver.rollbacks == 1
+    assert "m.valid_from <= $at AS started" in store_module._FORGET_SOFT
+    # At valid_from itself the fact is retracted: an empty interval, never an inverted one.
+    assert run(store.forget("m", at=start)) is True
+    assert props["valid_until"] == props["valid_from"] == start
+    assert run(store.forget("m", hard=True, at=T0)) is True and graph.nodes == {}
+
+
+def test_default_guard_never_locks_a_long_running_process_out(monkeypatch: Any) -> None:
+    for suffix in ("REQUESTS_PER_MINUTE", "MAX_REQUESTS", "MAX_UNITS"):
+        monkeypatch.delenv("LLMSLIM_NEO4J_" + suffix, raising=False)
+    store = Neo4jContextStore(FakeDriver(), tenant_id=TENANT, clock=lambda: NOW)
+    assert store.guard.limits.max_requests is None
+    seconds = iter(range(10**6))
+    guard = UsageGuard(DEFAULT_USAGE_LIMITS, name="neo4j", clock=lambda: float(next(seconds)))
+    for _ in range(100_001):  # the old lifetime cap was 100,000 requests
+        guard.acquire(1.0)
+    run(make_store(FakeDriver(), guard=guard).recall())
+    assert guard.snapshot()["requests"] == 100_002
+    # The per-minute rate still stops a runaway loop.
+    burst = UsageGuard(DEFAULT_USAGE_LIMITS, name="neo4j", clock=lambda: 0.0)
+    for _ in range(600):
+        burst.acquire()
+    with pytest.raises(RateLimitExceeded):
+        burst.acquire()
+    # An explicit cap from the environment still applies.
+    monkeypatch.setenv("LLMSLIM_NEO4J_MAX_REQUESTS", "2")
+    capped = Neo4jContextStore(FakeDriver(), tenant_id=TENANT, clock=lambda: NOW)
+    run(capped.recall())
+    run(capped.recall())
+    with pytest.raises(UsageCapExceeded):
+        run(capped.recall())
+
+
+def test_subjectless_supersession_and_client_side_term_filter() -> None:
+    graph = FakeGraph()
+    driver = graph.driver()
+    store = make_store(driver)
+    run(store.save(ContextItem("office", "Office is in Pune.")))
+    before = len(driver.calls)
+    record = run(store.supersede("office", MemoryDraft("Office is in Bengaluru."), reason="moved"))
+    assert record.subject is None and record.supersedes == ("office",)
+    # Subject-less drafts are never deduplicated against other subject-less memories.
+    assert driver.queries()[before:] == [
+        store_module._GET,
+        store_module._CREATE,
+        store_module._LINK,
+    ]
+    # A row that matches none of the query terms is dropped on the client as well.
+    stray = FakeDriver(script=[[row(node("x", "Unrelated text"))]])
+    assert run(make_store(stray).recall(query="Bengaluru")) == ()
+    with pytest.raises(ValueError, match="must be a string"):
+        run(store.get(7))  # type: ignore[arg-type]

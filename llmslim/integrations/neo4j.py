@@ -6,8 +6,14 @@ Replacing a fact never edits it in place: :meth:`Neo4jContextStore.supersede`
 closes the old memory's interval and links ``(new)-[:SUPERSEDES]->(old)`` in one
 transaction, so an agent can recall what is true now, what was true at any
 earlier instant, and why a fact changed. :meth:`Neo4jContextStore.conflicts`
-surfaces facts on the same subject that are valid at the same time with
+surfaces facts on the same explicit subject that are valid at the same time with
 different content, so the planner (or a human) can resolve them explicitly.
+
+The :class:`llmslim.context.ContextStore` methods keep MongoDB's upsert semantics
+on top of that model. :meth:`Neo4jContextStore.save` with changed content for an
+existing ID supersedes the stored version: the old node keeps its content, interval
+and links, and is renamed ``<id>~<suffix>`` so the ID always names the current
+version.
 
 Uses the official async driver (``neo4j.AsyncGraphDatabase``). Construction
 never connects and never reads ``NEO4J_*`` credentials; only
@@ -25,6 +31,7 @@ import json
 import math
 import os
 import re
+import unicodedata
 import uuid
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -38,6 +45,7 @@ from typing import (
     Mapping,
     NoReturn,
     Optional,
+    Pattern,
     Sequence,
     Tuple,
     TypeVar,
@@ -46,11 +54,11 @@ from typing import (
 
 from ..core import ContextRole
 from ..planning.models import ContextItem, ContextKind
-from ..planning.scoring import lexical_relevance
 from ._guard import UsageGuard, UsageLimits
 
 __all__ = [
     "DEFAULT_USAGE_LIMITS",
+    "ITEM_ID_PREFIX",
     "MEMORY_LABEL",
     "SUPERSEDES_RELATIONSHIP",
     "MemoryConflict",
@@ -61,6 +69,7 @@ __all__ = [
     "Neo4jConstraintError",
     "Neo4jContextStore",
     "Neo4jIntegrationError",
+    "Neo4jIntervalError",
     "Neo4jMemoryNotFoundError",
     "Neo4jSupersessionError",
     "Neo4jTransientError",
@@ -73,9 +82,14 @@ __all__ = [
 MEMORY_LABEL = "LLMSlimMemory"
 #: ``(newer)-[:SUPERSEDES {at, reason}]->(older)``.
 SUPERSEDES_RELATIONSHIP = "SUPERSEDES"
+#: Planner item IDs are ``neo4j-memory:<scope hash>:<memory_id>``. The 12-hex-digit
+#: hash of tenant and namespace keeps IDs unique across stores, namespaces and other
+#: context sources; ``metadata["memory_id"]`` holds the bare memory ID.
+ITEM_ID_PREFIX = "neo4j-memory"
 
-#: Aura bills per instance, not per query; the guard only stops runaway loops.
-DEFAULT_USAGE_LIMITS = UsageLimits(requests_per_minute=600, max_requests=100_000, unit="queries")
+#: Aura bills per instance, not per query, so there is no lifetime request cap that
+#: would lock a long-running agent out. The per-minute rate stops runaway loops.
+DEFAULT_USAGE_LIMITS = UsageLimits(requests_per_minute=600, max_requests=None, unit="queries")
 
 DEFAULT_MAX_CONTENT_CHARS = 8_000
 MAX_CONTENT_CHARS_CEILING = 100_000
@@ -85,30 +99,99 @@ DEFAULT_HISTORY_DEPTH = 10
 MAX_HISTORY_DEPTH = 50
 MAX_QUERY_CHARS = 500
 MAX_QUERY_TERMS = 16
+#: A query word becomes a search term when it has at least this many letters, counted
+#: by :func:`_letter_count` (``"की"`` and ``"ki"`` have two; ``"a"`` and ``"5"`` have one).
+MIN_TERM_LETTERS = 2
 MAX_SUBJECT_CHARS = 200
 MAX_IDENTIFIER_CHARS = 200
 MAX_SOURCE_CHARS = 200
 MAX_REASON_CHARS = 500
 MAX_METADATA_BYTES = 8_192
 MAX_METADATA_DEPTH = 16
+REDACTED = "<redacted>"
 # Upper bound on paths read per history direction; reaching it marks the history truncated.
 _MAX_HISTORY_PATHS = 1_000
-# Candidate rows read for a text query before lexical ranking trims them to ``limit``.
+# Candidate rows read for a text query before ranking trims them to ``limit``.
 _MAX_QUERY_CANDIDATES = 400
+# Current memories examined per conflicts() call; pairs are formed only among them.
+_MAX_CONFLICT_CANDIDATES = 1_000
+_SCOPE_HASH_CHARS = 12
+_VERSION_SUFFIX_CHARS = 16
+_SAVE_REASON = "replaced by ContextStore.save()"
+_SOURCE_ID = "neo4j:memory"
 
 _READ = "READ"
 _WRITE = "WRITE"
 _URI_SCHEMES = frozenset({"neo4j", "neo4j+s", "neo4j+ssc", "bolt", "bolt+s", "bolt+ssc"})
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
-_CONTENT_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+# Content may hold tab, line feed, vertical tab, form feed and carriage return.
+_CONTENT_CONTROL_RE = re.compile(r"[\x00-\x08\x0e-\x1f\x7f]")
 _KIND_RE = re.compile(r"^[a-z][a-z0-9_-]{0,39}$")
 _DATABASE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._-]{0,62}$")
-_TERM_RE = re.compile(r"[^\W_]+", re.UNICODE)
-_SENSITIVE_KEY_RE = re.compile(
-    r"(?:authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret"
-    r"|credential|neo4j[_-]?uri|mongodb[_-]?uri)",
-    re.IGNORECASE,
+_ITEM_PREFIX = ITEM_ID_PREFIX + ":"
+_ITEM_ID_RE = re.compile(
+    re.escape(_ITEM_PREFIX) + "[0-9a-f]{%d}:(.*)" % _SCOPE_HASH_CHARS, re.DOTALL
 )
+_VERSION_SUFFIX_RE = re.compile("[0-9a-f]{%d}" % _VERSION_SUFFIX_CHARS)
+# Besides letters, combining marks and digits, memory IDs may use only this punctuation, so
+# an ID can never close a quoted attribute or a tag when it is rendered. "~" is reserved for
+# the versions that save() archives.
+_MEMORY_ID_PUNCTUATION = frozenset("-_.:/@+#=!$%*,;?^|()[]{}")
+# Zero-width (non-)joiners are part of the spelling of many Indic words.
+_JOINERS = frozenset("‌‍")
+
+_KEY_SEPARATOR_RE = re.compile(r"[\W_]+")
+_SENSITIVE_KEY_PARTS = (
+    "password",
+    "passwd",
+    "passphrase",
+    "secret",
+    "credential",
+    "authorization",
+    "privatekey",
+    "apikey",
+    "accesskey",
+    "signingkey",
+    "encryptionkey",
+    "cookie",
+    "session",
+    "bearer",
+    "neo4juri",
+    "mongodburi",
+    "connectionstring",
+)
+_SENSITIVE_KEY_SUFFIXES = ("auth", "pwd")
+# A key containing "token" is sensitive unless it names a token counter or tokenizer.
+_TOKEN_COUNTER_WORDS = (
+    "count",
+    "budget",
+    "limit",
+    "usage",
+    "used",
+    "total",
+    "estimate",
+    "max",
+    "min",
+    "input",
+    "output",
+    "prompt",
+    "completion",
+    "tokeniz",
+)
+_SECRET_VALUE_RES: Tuple[Pattern[str], ...] = (
+    re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----"),
+    re.compile(r"(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}"),
+    re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{16,}"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),
+)
+_TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_-]{32,}")
+_MIN_TOKEN_CLASS_SWITCH_RATIO = 0.4
 
 T = TypeVar("T")
 
@@ -141,6 +224,10 @@ class Neo4jSupersessionError(Neo4jIntegrationError):
     """A supersession was refused (cycle, already superseded, or invalid timing)."""
 
 
+class Neo4jIntervalError(Neo4jIntegrationError, ValueError):
+    """A write would end a memory before it began (an inverted validity interval)."""
+
+
 def _frozen(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any]:
     return MappingProxyType(copy.deepcopy(dict(value or {})))
 
@@ -151,10 +238,14 @@ def _iso(value: Optional[datetime]) -> Optional[str]:
 
 @dataclass(frozen=True)
 class MemoryRecord:
-    """One stored memory. ``metadata`` holds the caller's (scrubbed) attributes."""
+    """One stored memory. ``metadata`` holds the caller's (scrubbed) attributes.
+
+    ``subject`` is ``None`` only for items stored through :meth:`Neo4jContextStore.save`
+    without ``metadata["subject"]``; such memories never conflict with each other.
+    """
 
     memory_id: str
-    subject: str
+    subject: Optional[str]
     content: str
     content_sha256: str
     kind: str
@@ -288,6 +379,8 @@ _SCHEMA_STATEMENTS: Tuple[str, ...] = tuple(
         "ON (m.tenant_id, m.namespace, m.valid_from)",
         "CREATE INDEX llmslim_memory_valid_until IF NOT EXISTS FOR (m:__MEMORY__) "
         "ON (m.tenant_id, m.namespace, m.valid_until)",
+        "CREATE INDEX llmslim_memory_archived_from IF NOT EXISTS FOR (m:__MEMORY__) "
+        "ON (m.tenant_id, m.namespace, m.archived_from)",
     )
 )
 
@@ -319,23 +412,33 @@ RETURN m {.*} AS memory, [] AS supersedes, [] AS superseded_by
 """
 )
 
-_VALID_AT = "m.valid_from <= $as_of AND (m.valid_until IS NULL OR m.valid_until > $as_of)"
-_TERMS_MATCH = (
-    "(size($terms) = 0 OR any(term IN $terms WHERE toLower(m.content) CONTAINS term "
-    "OR toLower(m.subject) CONTAINS term))"
+# save() renames the version it replaces so the caller's ID names the new version. The
+# content guard refuses the rename when another writer replaced the version in between.
+_ARCHIVE = _cypher(
+    """
+MATCH (m:__MEMORY__ {__SCOPE__, memory_id: $memory_id})
+WHERE m.content_sha256 = $content_sha256
+SET m.memory_id = $archived_id, m.archived_from = $memory_id
+RETURN count(m) AS archived
+"""
 )
+
+_VALID_AT = "m.valid_from <= $as_of AND (m.valid_until IS NULL OR m.valid_until > $as_of)"
+# Candidates are ranked by the letters of the query terms they contain, so a memory that
+# matches only a short function word cannot crowd out one that matches the content words.
 _RECALL_TAIL = """
-WITH m ORDER BY m.valid_from DESC, m.memory_id ASC LIMIT $candidate_limit
+WITH m, toLower(m.content) + ' ' + toLower(coalesce(m.subject, '')) AS haystack
+WITH m, reduce(score = 0, term IN $terms |
+  score + CASE WHEN haystack CONTAINS term.text THEN term.weight ELSE 0 END) AS score
+WHERE size($terms) = 0 OR score > 0
+WITH m ORDER BY score DESC, m.valid_from DESC, m.memory_id ASC LIMIT $candidate_limit
 __LINKS__
 """
 
-_RECALL = _cypher(
-    f"MATCH (m:__MEMORY__ {{__SCOPE__}})\nWHERE {_VALID_AT}\n  AND {_TERMS_MATCH}" + _RECALL_TAIL
-)
+_RECALL = _cypher(f"MATCH (m:__MEMORY__ {{__SCOPE__}})\nWHERE {_VALID_AT}" + _RECALL_TAIL)
 
 _RECALL_SUBJECT = _cypher(
-    "MATCH (m:__MEMORY__ {__SCOPE__, subject: $subject})\n"
-    f"WHERE {_VALID_AT}\n  AND {_TERMS_MATCH}" + _RECALL_TAIL
+    f"MATCH (m:__MEMORY__ {{__SCOPE__, subject: $subject}})\nWHERE {_VALID_AT}" + _RECALL_TAIL
 )
 
 _CYCLE_CHECK = _cypher(
@@ -361,21 +464,28 @@ RETURN count(link) AS linked
 """
 )
 
+# ``started`` is false when ``$at`` precedes ``valid_from``; nothing changes and the caller
+# refuses the request rather than store an inverted interval.
 _FORGET_SOFT = _cypher(
     """
 MATCH (m:__MEMORY__ {__SCOPE__, memory_id: $memory_id})
-WITH m, (m.valid_until IS NULL OR m.valid_until > $at) AS still_open
-SET m.valid_until = CASE WHEN still_open THEN $at ELSE m.valid_until END,
-    m.forgotten_at = CASE WHEN still_open THEN $at ELSE m.forgotten_at END
-RETURN still_open AS changed
+WITH m, m.valid_from <= $at AS started,
+     (m.valid_until IS NULL OR m.valid_until > $at) AS still_open
+WITH m, started, started AND still_open AS changed
+SET m.valid_until = CASE WHEN changed THEN $at ELSE m.valid_until END,
+    m.forgotten_at = CASE WHEN changed THEN $at ELSE m.forgotten_at END
+RETURN changed, started
 """
 )
 
+# Erases the memory and every earlier version that save() archived under its ID.
 _FORGET_HARD = _cypher(
     """
-MATCH (m:__MEMORY__ {__SCOPE__, memory_id: $memory_id})
-DETACH DELETE m
-RETURN count(*) AS deleted
+OPTIONAL MATCH (m:__MEMORY__ {__SCOPE__, memory_id: $memory_id})
+OPTIONAL MATCH (v:__MEMORY__ {__SCOPE__, archived_from: $memory_id})
+WITH collect(DISTINCT m) + collect(DISTINCT v) AS doomed
+FOREACH (n IN doomed | DETACH DELETE n)
+RETURN size(doomed) AS deleted
 """
 )
 
@@ -408,21 +518,31 @@ MATCH path = (m)<-[:__SUPERSEDES__*1..__MAX_DEPTH__]-(:__MEMORY__)"""
     + _HISTORY_RETURN
 )
 
+# At most $candidate_limit current memories with an explicit subject are read (in subject
+# order, through the subject index); pairs are then formed only inside each subject group,
+# so the work is bounded no matter how many memories the namespace holds.
+_CONFLICT_VALID = "a.valid_from <= $as_of AND (a.valid_until IS NULL OR a.valid_until > $as_of)"
 _CONFLICTS_TAIL = """
-WHERE a.valid_from <= $as_of AND (a.valid_until IS NULL OR a.valid_until > $as_of)
-MATCH (b:__MEMORY__ {__SCOPE__, subject: a.subject})
-WHERE a.memory_id < b.memory_id
-  AND b.valid_from <= $as_of AND (b.valid_until IS NULL OR b.valid_until > $as_of)
-  AND a.content_sha256 <> b.content_sha256
+WITH a ORDER BY a.subject ASC, a.memory_id ASC LIMIT $candidate_limit
+WITH a.subject AS subject, collect(a) AS anchors
+WHERE size(anchors) > 1
+UNWIND range(0, size(anchors) - 2) AS i
+UNWIND range(i + 1, size(anchors) - 1) AS j
+WITH anchors[i] AS a, anchors[j] AS b
+WHERE a.content_sha256 <> b.content_sha256
   AND NOT EXISTS { MATCH (a)-[:__SUPERSEDES__]-(b) }
 RETURN a {.*} AS first, b {.*} AS second
 ORDER BY a.subject ASC, a.memory_id ASC, b.memory_id ASC
 LIMIT $limit
 """
 
-_CONFLICTS = _cypher("MATCH (a:__MEMORY__ {__SCOPE__})" + _CONFLICTS_TAIL)
+_CONFLICTS = _cypher(
+    "MATCH (a:__MEMORY__ {__SCOPE__})\n"
+    f"WHERE a.subject IS NOT NULL AND {_CONFLICT_VALID}" + _CONFLICTS_TAIL
+)
 _CONFLICTS_SUBJECT = _cypher(
-    "MATCH (a:__MEMORY__ {__SCOPE__, subject: $subject})" + _CONFLICTS_TAIL
+    f"MATCH (a:__MEMORY__ {{__SCOPE__, subject: $subject}})\nWHERE {_CONFLICT_VALID}"
+    + _CONFLICTS_TAIL
 )
 
 
@@ -443,7 +563,7 @@ class _Runner:
 @dataclass(frozen=True)
 class _NewMemory:
     memory_id: str
-    subject: str
+    subject: Optional[str]
     content: str
     content_sha256: str
     kind: str
@@ -460,11 +580,13 @@ class Neo4jContextStore:
     partition inside that tenant and every method accepts an override.
 
     The store also satisfies :class:`llmslim.context.ContextSource` (``search``)
-    and :class:`llmslim.context.ContextStore` (``save``/``get``/``search``/``delete``),
-    so it can replace :class:`~llmslim.integrations.mongodb.MongoDBContextStore`.
+    and :class:`llmslim.context.ContextStore` (``save``/``get``/``search``/``delete``)
+    with MongoDB-style upserts, so it can stand in for
+    :class:`~llmslim.integrations.mongodb.MongoDBContextStore`; the documented
+    differences are listed under "Swapping from MongoDB" in ``docs/integrations/NEO4J.md``.
     """
 
-    source_id = "neo4j:memory"
+    source_id = _SOURCE_ID
 
     def __init__(
         self,
@@ -579,7 +701,7 @@ class Neo4jContextStore:
     # --- schema --------------------------------------------------------------------------
 
     async def ensure_schema(self) -> None:
-        """Create the identity constraint and the subject/validity indexes if missing.
+        """Create the identity constraint and the subject/validity/version indexes if missing.
 
         Idempotent (``IF NOT EXISTS``). Each schema statement runs in its own transaction,
         as Neo4j requires; each counts as one guarded request.
@@ -609,14 +731,15 @@ class Neo4jContextStore:
     ) -> MemoryRecord:
         """Store one fact about ``subject``, idempotently.
 
-        If a memory with identical content on the same subject is already valid at
-        ``valid_from`` (default: now), that record is returned unchanged and nothing is
-        written. Reusing an existing ``memory_id`` for different content raises
-        :class:`Neo4jConstraintError`; replace facts with :meth:`supersede` instead.
-        Datetimes must be timezone-aware.
+        Subject and content are NFC-normalized and trimmed. If a memory with identical
+        content on the same subject is already valid at ``valid_from`` (default: now),
+        that record is returned unchanged and nothing is written. Reusing an existing
+        ``memory_id`` for different content raises :class:`Neo4jConstraintError`;
+        replace facts with :meth:`supersede` instead. Datetimes must be timezone-aware.
         """
 
         scope = self._scope(namespace)
+        subject_key = _subject(subject)
         now = self._now()
         start = _aware(valid_from, "valid_from") if valid_from is not None else now
         end = _aware(valid_until, "valid_until") if valid_until is not None else None
@@ -624,7 +747,7 @@ class Neo4jContextStore:
             raise ValueError("valid_until must be later than valid_from")
         explicit_id = memory_id is not None
         new = self._new_memory(
-            subject=subject,
+            subject=subject_key,
             content=content,
             memory_id=memory_id,
             kind=kind,
@@ -686,7 +809,7 @@ class Neo4jContextStore:
         """
 
         scope = self._scope(namespace)
-        old_key = _identifier(old_id, "old_id")
+        old_key = _memory_ref(old_id, "old_id")
         why = _bounded_text(reason, "reason", MAX_REASON_CHARS)
         now = self._now()
         instant = _aware(at, "at") if at is not None else now
@@ -696,7 +819,7 @@ class Neo4jContextStore:
         if isinstance(new_memory, MemoryDraft):
             draft_subject = _subject(new_memory.subject) if new_memory.subject is not None else None
             draft = self._new_memory(
-                subject=draft_subject or "pending",
+                subject=draft_subject,
                 content=new_memory.content,
                 memory_id=new_memory.memory_id,
                 kind=new_memory.kind,
@@ -704,7 +827,7 @@ class Neo4jContextStore:
                 metadata=new_memory.metadata,
             )
         elif isinstance(new_memory, str):
-            target_id = _identifier(new_memory, "new memory ID")
+            target_id = _memory_ref(new_memory, "new memory ID")
             if target_id == old_key:
                 raise Neo4jSupersessionError("a memory cannot supersede itself")
         else:
@@ -726,23 +849,26 @@ class Neo4jContextStore:
             replacement: Optional[MemoryRecord] = None
             pending: Optional[_NewMemory] = None
             if draft is not None:
-                pending = replace(draft, subject=draft_subject or old.subject)
+                pending = replace(
+                    draft, subject=draft_subject if draft_subject is not None else old.subject
+                )
                 if (pending.subject, pending.content_sha256) == (old.subject, old.content_sha256):
                     raise Neo4jSupersessionError(
                         "the replacement content is identical to the superseded memory"
                     )
-                duplicate = await tx.run(
-                    _FIND_CURRENT_DUPLICATE,
-                    {
-                        **scope,
-                        "subject": pending.subject,
-                        "content_sha256": pending.content_sha256,
-                        "valid_from": instant,
-                    },
-                )
-                if duplicate:
-                    # The fact is already current: link it rather than store a copy.
-                    replacement = self._record(duplicate[0], scope)
+                if pending.subject is not None:
+                    duplicate = await tx.run(
+                        _FIND_CURRENT_DUPLICATE,
+                        {
+                            **scope,
+                            "subject": pending.subject,
+                            "content_sha256": pending.content_sha256,
+                            "valid_from": instant,
+                        },
+                    )
+                    if duplicate:
+                        # The fact is already current: link it rather than store a copy.
+                        replacement = self._record(duplicate[0], scope)
             else:
                 assert target_id is not None
                 replacement = await self._fetch(tx, scope, target_id)
@@ -797,28 +923,34 @@ class Neo4jContextStore:
     ) -> Tuple[ContextItem, ...]:
         """Return the memories valid at ``as_of`` (default: now) as planner items.
 
-        Filters by exact ``subject`` and/or any term of ``query`` (case-insensitive
-        substring of content or subject). With a query, items are ranked by lexical
-        relevance, then newest first; otherwise newest first. Items are untrusted
-        ``ContextRole.RAG`` / ``ContextKind.MEMORY`` with ``source="neo4j:memory"``;
-        recency decays from ``valid_from`` with ``recency_half_life_days``. Items on the
-        same subject with different content list each other in ``conflicts_with``.
+        Filters by exact ``subject`` and/or ``query``. The query is NFC-normalized,
+        lower-cased and split into words of letters, combining marks and digits (so
+        matras and viramas stay inside Indic words); words with fewer than
+        :data:`MIN_TERM_LETTERS` letters are dropped unless nothing else is left. A
+        memory matches when its content or subject contains any term; matches are
+        ranked by the share of query letters they contain, then newest first. Without a
+        query, newest first. Items are untrusted ``ContextRole.RAG`` /
+        ``ContextKind.MEMORY`` with ``source="neo4j:memory"`` and IDs
+        ``neo4j-memory:<scope hash>:<memory_id>``; recency decays from ``valid_from``
+        with ``recency_half_life_days``. Items on the same explicit subject with
+        different content list each other's memory IDs in ``conflicts_with``.
         """
 
         scope = self._scope(namespace)
         subject_key = _subject(subject) if subject is not None else None
-        query_text: Optional[str] = None
-        terms: Tuple[str, ...] = ()
+        terms: Tuple[Tuple[str, int], ...] = ()
+        phrase = ""
         if query is not None:
             query_text = _bounded_text(query, "query", MAX_QUERY_CHARS)
             terms = _query_terms(query_text)
+            phrase = " ".join(_fold(query_text).split())
         bounded = _bounded_limit(limit, MAX_RECALL_LIMIT, "recall limit")
         instant = _aware(as_of, "as_of") if as_of is not None else self._now()
         candidate_limit = min(bounded * 4, _MAX_QUERY_CANDIDATES) if terms else bounded
         parameters: Dict[str, Any] = {
             **scope,
             "as_of": instant,
-            "terms": list(terms),
+            "terms": [{"text": text, "weight": weight} for text, weight in terms],
             "candidate_limit": candidate_limit,
         }
         statement = _RECALL
@@ -830,22 +962,30 @@ class Neo4jContextStore:
             return await tx.run(statement, parameters)
 
         rows = await self._transact("recall", _READ, work, statements=1)
-        # Defense in depth: re-check validity and subject on the client too.
+        # Defense in depth: re-check validity, subject and the term filter on the client.
         records = [
             record
             for record in (self._record(row, scope) for row in rows)
             if record.is_valid_at(instant)
             and (subject_key is None or record.subject == subject_key)
         ]
-        if query_text is not None:
-            text = query_text
-            records.sort(
-                key=lambda record: (
-                    -lexical_relevance(text, record.subject + "\n" + record.content),
-                    -record.valid_from.timestamp(),
-                    record.memory_id,
+        if terms:
+            total = float(sum(weight for _, weight in terms))
+            ranked: List[Tuple[float, int, MemoryRecord]] = []
+            for record in records:
+                haystack = _haystack(record)
+                matched = sum(weight for text, weight in terms if text in haystack)
+                if matched:
+                    ranked.append((matched / total, int(phrase in haystack), record))
+            ranked.sort(
+                key=lambda entry: (
+                    -entry[0],
+                    -entry[1],
+                    -entry[2].valid_from.timestamp(),
+                    entry[2].memory_id,
                 )
             )
+            records = [record for _, _, record in ranked]
         else:
             records.sort(key=lambda record: (-record.valid_from.timestamp(), record.memory_id))
         selected = records[:bounded]
@@ -853,6 +993,7 @@ class Neo4jContextStore:
         return tuple(
             _to_item(
                 record,
+                item_id=self._item_id(scope, record.memory_id),
                 order=index,
                 recency=_recency(record.valid_from, instant, self.recency_half_life_days),
                 conflicts_with=conflicts.get(record.memory_id, ()),
@@ -874,7 +1015,7 @@ class Neo4jContextStore:
         """
 
         scope = self._scope(namespace)
-        key = _identifier(memory_id, "memory_id")
+        key = _memory_ref(memory_id, "memory_id")
         depth = _bounded_limit(max_depth, MAX_HISTORY_DEPTH, "max_depth")
 
         async def work(tx: _Runner) -> Tuple[Optional[MemoryRecord], List[Dict[str, Any]]]:
@@ -944,18 +1085,26 @@ class Neo4jContextStore:
         limit: int = 20,
         namespace: Optional[str] = None,
     ) -> Tuple[MemoryConflict, ...]:
-        """Pairs of memories on one subject, both valid at ``as_of`` (default: now), with
-        different content and no ``SUPERSEDES`` link between them.
+        """Pairs of memories on one explicit subject, both valid at ``as_of`` (default:
+        now), with different content and no ``SUPERSEDES`` link between them.
 
-        Nothing is resolved automatically: resolve a pair with :meth:`supersede` or
-        :meth:`forget`, or let the planner see both (``recall`` marks ``conflicts_with``).
+        Memories without a subject never conflict. Each call examines at most 1,000
+        current memories, in subject then memory-ID order, and pairs them only within a
+        subject; pass ``subject`` to focus on one. Nothing is resolved automatically:
+        resolve a pair with :meth:`supersede` or :meth:`forget`, or let the planner see
+        both (``recall`` marks ``conflicts_with``).
         """
 
         scope = self._scope(namespace)
         subject_key = _subject(subject) if subject is not None else None
         bounded = _bounded_limit(limit, MAX_CONFLICT_LIMIT, "conflict limit")
         instant = _aware(as_of, "as_of") if as_of is not None else self._now()
-        parameters: Dict[str, Any] = {**scope, "as_of": instant, "limit": bounded}
+        parameters: Dict[str, Any] = {
+            **scope,
+            "as_of": instant,
+            "limit": bounded,
+            "candidate_limit": _MAX_CONFLICT_CANDIDATES,
+        }
         statement = _CONFLICTS
         if subject_key is not None:
             statement = _CONFLICTS_SUBJECT
@@ -969,8 +1118,12 @@ class Neo4jContextStore:
         for row in rows:
             first = self._record({"memory": row.get("first")}, scope)
             second = self._record({"memory": row.get("second")}, scope)
+            if first.memory_id > second.memory_id:
+                first, second = second, first
+            shared = first.subject
             if (
-                first.subject != second.subject
+                shared is None
+                or shared != second.subject
                 or first.content_sha256 == second.content_sha256
                 or not (first.is_valid_at(instant) and second.is_valid_at(instant))
             ):
@@ -978,7 +1131,7 @@ class Neo4jContextStore:
             ends = [end for end in (first.valid_until, second.valid_until) if end is not None]
             found.append(
                 MemoryConflict(
-                    subject=first.subject,
+                    subject=shared,
                     first=first,
                     second=second,
                     overlap_from=max(first.valid_from, second.valid_from),
@@ -997,46 +1150,102 @@ class Neo4jContextStore:
     ) -> bool:
         """End a memory's validity at ``at`` (default: now) and stamp ``forgotten_at``.
 
-        The node and its supersession links stay for audit. ``hard=True`` instead deletes
-        the node and its links (for erasure requests); history through it is lost.
-        Returns whether anything changed; unknown IDs return ``False``.
+        The node and its supersession links stay for audit. An ``at`` earlier than the
+        memory's ``valid_from`` is refused with :class:`Neo4jIntervalError` (nothing
+        changes). ``hard=True`` instead deletes the node, its links and any earlier
+        versions that :meth:`save` archived under its ID (for erasure requests); history
+        through them is lost. Returns whether anything changed; unknown IDs return
+        ``False``.
         """
 
         scope = self._scope(namespace)
-        key = _identifier(memory_id, "memory_id")
+        key = _memory_ref(memory_id, "memory_id")
         instant = _aware(at, "at") if at is not None else self._now()
-
-        async def work(tx: _Runner) -> bool:
-            if hard:
-                rows = await tx.run(_FORGET_HARD, {**scope, "memory_id": key})
-                return bool(rows) and _int(rows[0].get("deleted")) > 0
-            rows = await tx.run(_FORGET_SOFT, {**scope, "memory_id": key, "at": instant})
-            return bool(rows) and bool(rows[0].get("changed"))
-
-        return await self._transact("forget", _WRITE, work, statements=1)
+        return await self._forget(scope, key, hard=hard, at=instant)
 
     # --- ContextStore / ContextSource compatibility --------------------------------------
 
     async def save(self, item: ContextItem, namespace: Optional[str] = None) -> None:
-        """``ContextStore.save``: :meth:`remember` the item under ``metadata["subject"]``
-        (default ``"general"``) with ``item.item_id`` as its memory ID."""
+        """``ContextStore.save``: upsert ``item`` under its ID, like MongoDB's ``save``.
 
-        subject = item.metadata.get("subject")
-        attributes = {key: value for key, value in item.metadata.items() if key != "subject"}
-        await self.remember(
-            subject if isinstance(subject, str) and subject.strip() else "general",
-            item.content,
-            memory_id=item.item_id,
-            source=item.source,
+        ``item.item_id`` may be a bare memory ID or this store's
+        ``neo4j-memory:<hash>:<memory_id>`` form (an archived ``<id>~<suffix>`` version
+        saves to ``<id>``). ``metadata["subject"]`` is the subject; without one the
+        memory is subject-less and never conflicts. The other metadata is scrubbed and
+        stored as attributes; an item returned by this store is unwrapped, so
+        ``save(await get(id))`` writes nothing.
+
+        A new ID is created valid from now. Saving the same subject, content, source and
+        attributes for a current memory is a no-op. Anything else supersedes the stored
+        version: it is closed at now, renamed ``<id>~<suffix>`` (keeping its content,
+        interval and links) and linked from a new version that takes the ID, so
+        :meth:`history` shows every saved version. Content is NFC-normalized but not
+        trimmed.
+        """
+
+        if not isinstance(item, ContextItem):
+            raise TypeError("save() expects a ContextItem")
+        scope = self._scope(namespace)
+        key = _memory_ref(item.item_id, "item_id", mode="item")
+        subject, attributes, source, kind = _stored_fields(item)
+        new = self._new_memory(
+            subject=subject,
+            content=item.content,
+            memory_id=key,
+            kind=kind,
+            source=source,
             metadata=attributes,
-            namespace=namespace,
+            strip=False,
         )
+        now = self._now()
+
+        async def work(tx: _Runner) -> None:
+            existing = await self._fetch(tx, scope, key)
+            if existing is None:
+                await self._create(tx, scope, new, created_at=now, valid_from=now, end=None)
+                return
+            if _same_version(existing, new) and _is_live(existing, now):
+                return
+            if now < existing.valid_from:
+                raise Neo4jIntervalError(
+                    "the stored memory only becomes valid after now, so save() cannot replace "
+                    "it yet; use supersede() with an explicit at"
+                )
+            archived_id = f"{key}~{uuid.uuid4().hex[:_VERSION_SUFFIX_CHARS]}"
+            archived = await tx.run(
+                _ARCHIVE,
+                {
+                    **scope,
+                    "memory_id": key,
+                    "archived_id": archived_id,
+                    "content_sha256": existing.content_sha256,
+                },
+            )
+            if not archived or _int(archived[0].get("archived")) < 1:
+                raise Neo4jConstraintError(
+                    "the memory changed during save(); nothing was written, so retry"
+                )
+            await self._create(tx, scope, new, created_at=now, valid_from=now, end=None)
+            linked = await tx.run(
+                _LINK,
+                {
+                    **scope,
+                    "old_id": archived_id,
+                    "new_id": key,
+                    "at": now,
+                    "reason": _SAVE_REASON,
+                },
+            )
+            if not linked or _int(linked[0].get("linked")) < 1:
+                raise Neo4jMemoryNotFoundError("the memories changed during save()")
+
+        await self._transact("save", _WRITE, work, statements=4)
 
     async def get(self, item_id: str, namespace: Optional[str] = None) -> Optional[ContextItem]:
-        """``ContextStore.get``: one memory by ID, whether or not it is still valid."""
+        """``ContextStore.get``: one memory by bare or item ID, whether or not it is valid."""
 
         scope = self._scope(namespace)
-        key = _identifier(item_id, "memory_id")
+        key = _memory_ref(item_id, "item_id")
 
         async def work(tx: _Runner) -> Optional[MemoryRecord]:
             return await self._fetch(tx, scope, key)
@@ -1046,7 +1255,10 @@ class Neo4jContextStore:
             return None
         now = self._now()
         return _to_item(
-            record, order=0, recency=_recency(record.valid_from, now, self.recency_half_life_days)
+            record,
+            item_id=self._item_id(scope, record.memory_id),
+            order=0,
+            recency=_recency(record.valid_from, now, self.recency_half_life_days),
         )
 
     async def search(
@@ -1058,9 +1270,12 @@ class Neo4jContextStore:
         return await self.recall(query=text or None, limit=limit, namespace=namespace)
 
     async def delete(self, item_id: str, namespace: Optional[str] = None) -> bool:
-        """``ContextStore.delete``: hard-delete one memory (see :meth:`forget`)."""
+        """``ContextStore.delete``: erase one memory by bare or item ID, with the versions
+        :meth:`save` archived under it (see :meth:`forget`)."""
 
-        return await self.forget(item_id, hard=True, namespace=namespace)
+        scope = self._scope(namespace)
+        key = _memory_ref(item_id, "item_id")
+        return await self._forget(scope, key, hard=True, at=None)
 
     # --- lifecycle -----------------------------------------------------------------------
 
@@ -1094,41 +1309,56 @@ class Neo4jContextStore:
         chosen = self.namespace if namespace is None else _identifier(namespace, "namespace")
         return {"tenant_id": self.tenant_id, "namespace": chosen}
 
+    def _item_id(self, scope: Mapping[str, str], memory_id: str) -> str:
+        return f"{_ITEM_PREFIX}{_scope_hash(scope)}:{memory_id}"
+
     def _now(self) -> datetime:
         return _aware(self._clock(), "clock()")
 
     def _new_memory(
         self,
         *,
-        subject: str,
+        subject: Optional[str],
         content: str,
         memory_id: Optional[str],
         kind: str,
         source: str,
         metadata: Optional[Mapping[str, Any]],
+        strip: bool = True,
     ) -> _NewMemory:
-        if not isinstance(content, str):
-            raise ValueError("memory content must be a string")
-        text = content.strip()
-        if not text:
-            raise ValueError("memory content must not be empty")
-        if len(text) > self.max_content_chars:
-            raise ValueError(f"memory content exceeds max_content_chars ({self.max_content_chars})")
-        if _CONTENT_CONTROL_RE.search(text):
-            raise ValueError("memory content must not contain control characters")
+        text = _content(content, self.max_content_chars, strip=strip)
         if not isinstance(kind, str) or not _KIND_RE.fullmatch(kind):
             raise ValueError("memory kind must match [a-z][a-z0-9_-]{0,39}")
         return _NewMemory(
-            memory_id=_identifier(memory_id, "memory_id")
+            memory_id=_memory_ref(memory_id, "memory_id", mode="new")
             if memory_id is not None
             else "mem_" + uuid.uuid4().hex,
-            subject=_subject(subject),
+            subject=_subject(subject) if subject is not None else None,
             content=text,
             content_sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
             kind=kind,
             source=_bounded_text(source, "source", MAX_SOURCE_CHARS),
             metadata_json=_metadata_json(metadata),
         )
+
+    async def _forget(
+        self, scope: Mapping[str, str], key: str, *, hard: bool, at: Optional[datetime]
+    ) -> bool:
+        async def work(tx: _Runner) -> bool:
+            if hard:
+                rows = await tx.run(_FORGET_HARD, {**scope, "memory_id": key})
+                return bool(rows) and _int(rows[0].get("deleted")) > 0
+            rows = await tx.run(_FORGET_SOFT, {**scope, "memory_id": key, "at": at})
+            if not rows:
+                return False
+            if rows[0].get("started") is False:
+                raise Neo4jIntervalError(
+                    "forget(at=...) precedes the memory's valid_from, which would end it before "
+                    "it began; nothing was changed"
+                )
+            return bool(rows[0].get("changed"))
+
+        return await self._transact("forget", _WRITE, work, statements=1)
 
     async def _fetch(
         self, tx: _Runner, scope: Mapping[str, str], memory_id: str
@@ -1181,9 +1411,10 @@ class Neo4jContextStore:
             created_at = _stored_datetime(memory["created_at"])
             if valid_from is None or created_at is None:
                 raise ValueError("missing timestamp")
+            subject = memory.get("subject")
             return MemoryRecord(
                 memory_id=str(memory["memory_id"]),
-                subject=str(memory["subject"]),
+                subject=str(subject) if subject is not None else None,
                 content=str(memory["content"]),
                 content_sha256=str(memory["content_sha256"]),
                 kind=str(memory.get("kind") or "fact"),
@@ -1292,13 +1523,83 @@ def _identifier(value: Any, label: str) -> str:
     return text
 
 
+def _scope_hash(scope: Mapping[str, str]) -> str:
+    material = f"{scope['tenant_id']}\x00{scope['namespace']}".encode("utf-8")
+    return hashlib.sha256(material).hexdigest()[:_SCOPE_HASH_CHARS]
+
+
+def _memory_id_char(char: str) -> bool:
+    return char in _MEMORY_ID_PUNCTUATION or unicodedata.category(char)[0] in ("L", "M", "N")
+
+
+def _memory_ref(value: Any, label: str, *, mode: str = "lookup") -> str:
+    """Validate a memory ID given bare or as ``neo4j-memory:<hash>:<memory_id>``.
+
+    The scope hash only keeps planner IDs unique; on input it is checked for shape and
+    ignored, because the ``namespace`` argument selects the partition. ``mode`` decides
+    what an archived ``<id>~<suffix>`` version means: ``"lookup"`` keeps it,
+    ``"item"`` maps it to ``<id>`` (save), and ``"new"`` refuses it (new IDs).
+    """
+
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+    text = unicodedata.normalize("NFC", value.strip())
+    if text.startswith(_ITEM_PREFIX):
+        match = _ITEM_ID_RE.fullmatch(text)
+        if match is None:
+            raise ValueError(
+                f"{label} starts with '{_ITEM_PREFIX}' but is not a well-formed item ID "
+                f"({ITEM_ID_PREFIX}:<{_SCOPE_HASH_CHARS} hex digits>:<memory_id>)"
+            )
+        text = match.group(1)
+    base, marker, suffix = text.partition("~")
+    if marker:
+        if mode == "new" or not _VERSION_SUFFIX_RE.fullmatch(suffix):
+            raise ValueError(
+                f"{label} must not contain '~', which marks versions archived by save()"
+            )
+        if mode == "item":
+            text = base
+    if (
+        not base
+        or len(base) > MAX_IDENTIFIER_CHARS
+        or base.startswith(_ITEM_PREFIX)
+        or not all(_memory_id_char(char) for char in base)
+    ):
+        raise ValueError(
+            f"{label} must be 1-{MAX_IDENTIFIER_CHARS} letters, digits and "
+            f"{''.join(sorted(_MEMORY_ID_PUNCTUATION))}; quotes, angle brackets, '&', "
+            f"whitespace and control characters are not allowed, and it must not start "
+            f"with '{_ITEM_PREFIX}'"
+        )
+    return text
+
+
 def _subject(value: Any) -> str:
     if not isinstance(value, str):
         raise ValueError("subject must be a string")
-    text = value.strip()
+    text = unicodedata.normalize("NFC", value.strip())
     if not text or len(text) > MAX_SUBJECT_CHARS or _CONTROL_RE.search(text):
         raise ValueError(
             f"subject must contain 1-{MAX_SUBJECT_CHARS} characters and no control characters"
+        )
+    return text
+
+
+def _content(value: Any, max_chars: int, *, strip: bool) -> str:
+    if not isinstance(value, str):
+        raise ValueError("memory content must be a string")
+    text = unicodedata.normalize("NFC", value)
+    if strip:
+        text = text.strip()
+    if not text.strip():
+        raise ValueError("memory content must not be empty")
+    if len(text) > max_chars:
+        raise ValueError(f"memory content exceeds max_content_chars ({max_chars})")
+    if _CONTENT_CONTROL_RE.search(text):
+        raise ValueError(
+            "memory content must not contain control characters other than tab, line "
+            "breaks and form feeds"
         )
     return text
 
@@ -1318,12 +1619,128 @@ def _bounded_limit(value: Any, maximum: int, label: str) -> int:
     return value
 
 
-def _query_terms(query: str) -> Tuple[str, ...]:
-    lowered = query.lower()
-    terms = sorted({term for term in _TERM_RE.findall(lowered) if len(term) > 1})
-    if not terms:
-        return (lowered,)
-    return tuple(terms[:MAX_QUERY_TERMS])
+# --- text matching ------------------------------------------------------------------------
+
+
+def _fold(text: str) -> str:
+    """NFC, then lower case: the form query terms are matched in (Cypher ``toLower``)."""
+
+    return unicodedata.normalize("NFC", text).lower()
+
+
+def _is_word_char(char: str) -> bool:
+    return char in _JOINERS or unicodedata.category(char)[0] in ("L", "M", "N")
+
+
+def _words(text: str) -> List[str]:
+    """Runs of letters, combining marks and digits (plus ZWJ/ZWNJ inside a word).
+
+    Matras, viramas, nuktas and anusvaras are combining marks, so an Indic word is
+    never split inside a syllable. Underscores, punctuation, symbols and spaces separate.
+    """
+
+    words: List[str] = []
+    current: List[str] = []
+    for char in text:
+        if _is_word_char(char):
+            current.append(char)
+        elif current:
+            words.append("".join(current))
+            current = []
+    if current:
+        words.append("".join(current))
+    joiners = "".join(sorted(_JOINERS))
+    return [word for word in (raw.strip(joiners) for raw in words) if word]
+
+
+def _letter_count(word: str) -> int:
+    """Letters in ``word``: base letters, digits, and combining marks with canonical
+    combining class 0 (vowel signs, anusvara, visarga).
+
+    Viramas, nuktas and accents attach to a letter without adding one. So ``"की"``
+    (consonant + vowel sign) has two letters like ``"ki"``, while ``"क्"`` and
+    ``"a"`` have one.
+    """
+
+    count = 0
+    for char in word:
+        major = unicodedata.category(char)[0]
+        if major in ("L", "N") or (major == "M" and unicodedata.combining(char) == 0):
+            count += 1
+    return count
+
+
+def _query_terms(query: str) -> Tuple[Tuple[str, int], ...]:
+    """``(term, weight)`` pairs for a query: distinct words with at least
+    :data:`MIN_TERM_LETTERS` letters, weighted by their letter count.
+
+    When more than :data:`MAX_QUERY_TERMS` qualify, the longest are kept (query order is
+    preserved). When none qualifies, the whole folded query is one term.
+    """
+
+    folded = _fold(query)
+    weights: Dict[str, int] = {}
+    for word in _words(folded):
+        letters = _letter_count(word)
+        if letters >= MIN_TERM_LETTERS:
+            weights.setdefault(word, letters)
+    if not weights:
+        phrase = " ".join(folded.split())
+        return ((phrase, max(1, _letter_count(phrase))),)
+    ordered = list(weights.items())
+    if len(ordered) > MAX_QUERY_TERMS:
+        positions = {term: index for index, (term, _) in enumerate(ordered)}
+        longest = sorted(ordered, key=lambda entry: (-entry[1], positions[entry[0]]))
+        ordered = sorted(longest[:MAX_QUERY_TERMS], key=lambda entry: positions[entry[0]])
+    return tuple(ordered)
+
+
+def _haystack(record: MemoryRecord) -> str:
+    # The same text the Cypher filter searches: content, a space, then the subject.
+    return " ".join((_fold(record.content) + " " + _fold(record.subject or "")).split())
+
+
+# --- metadata -----------------------------------------------------------------------------
+
+
+def _sensitive_key(key: str) -> bool:
+    """Case-, underscore- and hyphen-insensitive check for secret-bearing keys."""
+
+    compact = _KEY_SEPARATOR_RE.sub("", key).lower()
+    if any(part in compact for part in _SENSITIVE_KEY_PARTS):
+        return True
+    if compact.endswith(_SENSITIVE_KEY_SUFFIXES):
+        return True
+    if "token" in compact:
+        return not any(word in compact for word in _TOKEN_COUNTER_WORDS)
+    return False
+
+
+def _char_class(char: str) -> int:
+    if char.isdigit():
+        return 0
+    if char.isupper():
+        return 1
+    if char.islower():
+        return 2
+    return 3
+
+
+def _random_looking(run: str) -> bool:
+    """A long run with upper case, lower case and digits that switches between character
+    classes as often as random text does (identifiers and slugs switch far less)."""
+
+    classes = [_char_class(char) for char in run]
+    if not {0, 1, 2} <= set(classes):
+        return False
+    switches = sum(1 for left, right in zip(classes, classes[1:]) if left != right)
+    return switches / (len(classes) - 1) >= _MIN_TOKEN_CLASS_SWITCH_RATIO
+
+
+def _secret_value(value: str) -> bool:
+    if any(pattern.search(value) for pattern in _SECRET_VALUE_RES):
+        return True
+    return any(_random_looking(match.group(0)) for match in _TOKEN_RUN_RE.finditer(value))
 
 
 def _scrub(value: Any, depth: int = 0) -> Any:
@@ -1331,25 +1748,21 @@ def _scrub(value: Any, depth: int = 0) -> Any:
         raise ValueError(f"metadata nesting exceeds {MAX_METADATA_DEPTH} levels")
     if isinstance(value, Mapping):
         return {
-            str(key): "<redacted>"
-            if _SENSITIVE_KEY_RE.search(str(key))
-            else _scrub(item, depth + 1)
+            str(key): REDACTED if _sensitive_key(str(key)) else _scrub(item, depth + 1)
             for key, item in value.items()
         }
     if isinstance(value, (list, tuple)):
         return [_scrub(item, depth + 1) for item in value]
-    return value
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    text = value if isinstance(value, str) else str(value)
+    return REDACTED if _secret_value(text) else text
 
 
-def _metadata_json(metadata: Optional[Mapping[str, Any]]) -> str:
-    if metadata is None:
-        return "{}"
-    if not isinstance(metadata, Mapping):
-        raise ValueError("metadata must be a mapping")
-    scrubbed = _scrub(metadata)
+def _encode_metadata(value: Any) -> str:
     try:
-        encoded = json.dumps(
-            scrubbed,
+        return json.dumps(
+            value,
             ensure_ascii=False,
             sort_keys=True,
             allow_nan=False,
@@ -1358,6 +1771,14 @@ def _metadata_json(metadata: Optional[Mapping[str, Any]]) -> str:
         )
     except (TypeError, ValueError):
         raise ValueError("metadata must be JSON-serializable") from None
+
+
+def _metadata_json(metadata: Optional[Mapping[str, Any]]) -> str:
+    if metadata is None:
+        return "{}"
+    if not isinstance(metadata, Mapping):
+        raise ValueError("metadata must be a mapping")
+    encoded = _encode_metadata(_scrub(metadata))
     if len(encoded.encode("utf-8")) > MAX_METADATA_BYTES:
         raise ValueError(f"metadata exceeds {MAX_METADATA_BYTES} bytes when JSON-encoded")
     return encoded
@@ -1373,6 +1794,44 @@ def _validated_auth(auth: Any) -> Any:
     return auth  # a neo4j.Auth object or auth manager
 
 
+# --- ContextStore mapping -----------------------------------------------------------------
+
+
+def _stored_fields(item: ContextItem) -> Tuple[Optional[str], Dict[str, Any], str, str]:
+    """``(subject, attributes, source, kind)`` that :meth:`Neo4jContextStore.save` stores."""
+
+    metadata = item.metadata
+    subject = metadata.get("subject")
+    subject_text = subject if isinstance(subject, str) and subject.strip() else None
+    attributes = metadata.get("attributes")
+    if item.source == _SOURCE_ID and isinstance(attributes, Mapping):
+        # An item this store returned: keep the caller's fields, not the planner envelope.
+        source = metadata.get("memory_source")
+        kind = metadata.get("memory_kind")
+        return (
+            subject_text,
+            dict(attributes),
+            source if isinstance(source, str) and source.strip() else "caller",
+            kind if isinstance(kind, str) and _KIND_RE.fullmatch(kind) else "fact",
+        )
+    others = {key: value for key, value in metadata.items() if key != "subject"}
+    return subject_text, others, item.source, "fact"
+
+
+def _same_version(record: MemoryRecord, new: _NewMemory) -> bool:
+    return (
+        record.subject == new.subject
+        and record.content_sha256 == new.content_sha256
+        and record.kind == new.kind
+        and record.source == new.source
+        and _encode_metadata(dict(record.metadata)) == new.metadata_json
+    )
+
+
+def _is_live(record: MemoryRecord, instant: datetime) -> bool:
+    return record.is_valid_at(instant) and record.forgotten_at is None and not record.superseded_by
+
+
 def _recency(valid_from: datetime, reference: datetime, half_life_days: float) -> float:
     age = (reference - valid_from).total_seconds()
     if age <= 0:
@@ -1381,9 +1840,11 @@ def _recency(valid_from: datetime, reference: datetime, half_life_days: float) -
 
 
 def _conflicts_among(records: Sequence[MemoryRecord]) -> Dict[str, Tuple[str, ...]]:
+    # Only memories with an explicit, shared subject can conflict.
     by_subject: Dict[str, List[MemoryRecord]] = {}
     for record in records:
-        by_subject.setdefault(record.subject, []).append(record)
+        if record.subject is not None:
+            by_subject.setdefault(record.subject, []).append(record)
     result: Dict[str, Tuple[str, ...]] = {}
     for group in by_subject.values():
         for record in group:
@@ -1402,6 +1863,7 @@ def _conflicts_among(records: Sequence[MemoryRecord]) -> Dict[str, Tuple[str, ..
 def _to_item(
     record: MemoryRecord,
     *,
+    item_id: str,
     order: int,
     recency: float,
     conflicts_with: Sequence[str] = (),
@@ -1426,7 +1888,7 @@ def _to_item(
     if conflicts_with:
         metadata["conflicts_with"] = list(conflicts_with)
     return ContextItem(
-        item_id=record.memory_id,
+        item_id=item_id,
         content=record.content,
         kind=ContextKind.MEMORY,
         role=ContextRole.RAG,
@@ -1434,7 +1896,7 @@ def _to_item(
         compressible=True,
         required=False,
         recency=recency,
-        source=Neo4jContextStore.source_id,
+        source=_SOURCE_ID,
         metadata=metadata,
     )
 

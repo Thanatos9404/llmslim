@@ -6,11 +6,17 @@ structure (headings, lists) from being split mid-line. If NLTK's
 ``punkt`` tokenizer data is already available locally, it is used for
 higher-accuracy sentence boundaries; its output is then post-processed so
 CJK ideographic sentence boundaries are still handled.
+
+:func:`words` is the script-aware word splitter for lexical matching:
+Python's ``\\w`` excludes combining marks, so a plain ``\\w+`` cuts Indic words
+at every vowel sign and virama.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
+from functools import lru_cache
 from typing import Callable, List, Optional, Tuple
 
 # Matches fenced code blocks so they are never split on sentence boundaries.
@@ -215,3 +221,70 @@ def split_sentences(text: str) -> List[str]:
 
     sentences = _restore_code_blocks(sentences, blocks, inline)
     return [s.strip() for s in sentences if s.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Script-aware words
+# ---------------------------------------------------------------------------
+
+# Zero-width non-joiner / joiner: they shape Indic conjuncts inside a word,
+# so they must not split it, and they are dropped for matching.
+_ZERO_WIDTH_JOINERS = "\u200c\u200d"
+_ZERO_WIDTH_TABLE = {ord(ch): None for ch in _ZERO_WIDTH_JOINERS}
+_ASCII_WORD_RE = re.compile(r"[^\W_]+")
+
+
+def _char_range(first: int, last: int) -> str:
+    low = re.escape(chr(first))
+    return low if first == last else f"{low}-{re.escape(chr(last))}"
+
+
+@lru_cache(maxsize=1)
+def _word_re() -> "re.Pattern[str]":
+    """Letters, digits and combining marks of every script, compiled on first use.
+
+    ``[^\\W_]`` covers letters and digits; combining marks (Unicode category
+    M: vowel signs, virama, nukta, anusvara, accents) are added explicitly
+    for planes 0-1, where every script in current use is encoded, plus the
+    variation selectors supplement.
+    """
+    ranges: List[str] = []
+    start = -1
+    for code in range(0x20000):
+        mark = unicodedata.category(chr(code))[0] == "M"
+        if mark and start < 0:
+            start = code
+        elif not mark and start >= 0:
+            ranges.append(_char_range(start, code - 1))
+            start = -1
+    ranges.append(_char_range(0xE0100, 0xE01EF))
+    return re.compile(r"(?:[^\W_]|[" + "".join(ranges) + _ZERO_WIDTH_JOINERS + r"])+")
+
+
+def _normalise_word(word: str) -> str:
+    """NFC, without zero-width joiners, with decimal digits of every script as ASCII."""
+    if word.isascii():
+        return word
+    word = unicodedata.normalize("NFC", word).translate(_ZERO_WIDTH_TABLE)
+    if not any(ch.isdecimal() and not ch.isascii() for ch in word):
+        return word
+    return "".join(str(unicodedata.decimal(ch)) if ch.isdecimal() else ch for ch in word)
+
+
+def words(text: str) -> List[str]:
+    """Split ``text`` into words of any script, for lexical matching.
+
+    A word is a maximal run of letters, digits and combining marks, so
+    Devanagari, Bengali, Odia, Tamil and other abugida words stay whole
+    (Python's ``\\w`` alone splits them at every vowel sign and virama).
+    Each word is NFC-normalised (nukta letters and other composition
+    exclusions match however they were typed), zero-width joiners are
+    dropped, and decimal digits of every script are written as ASCII
+    digits, so ``"২০২৬"`` and ``"2026"`` are the same word. Case is
+    preserved and the underscore separates words. ASCII text gives exactly
+    the words of ``[^\\W_]+``.
+    """
+    if text.isascii():
+        return _ASCII_WORD_RE.findall(text)
+    found = (_normalise_word(match.group(0)) for match in _word_re().finditer(text))
+    return [word for word in found if word]

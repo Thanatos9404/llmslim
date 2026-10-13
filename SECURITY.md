@@ -32,6 +32,30 @@ no model provider, holds no credentials, and stores or logs nothing it is sent.
 Payloads, question length and token counts are bounded, and each instance
 applies a per-client rate limit; platform-level rate limiting remains advisable.
 
+The optional `/api/sarvam_answer` function sends a compressed context and a
+question to Sarvam only when a visitor asks it to. It is off by default and
+fails closed: it runs only when the kill switch
+(`LLMSLIM_HOSTED_SARVAM_ENABLED`), `SARVAM_API_KEY`, `MONGODB_URI`, an HMAC
+identity secret of at least 32 characters and an exact origin allow-list
+(`LLMSLIM_ALLOWED_ORIGINS`) are all set. Requests from other origins are
+refused; bodies, context tokens and question length are bounded; and
+`llmslim.hosted` applies pseudonymous network and session rate limits, a
+per-request cost cap, daily and monthly INR budgets and concurrency leases in
+MongoDB before any provider call. Spend is reserved from a hard upper bound on
+the prompt's tokens (its UTF-8 byte length plus framing), not from an estimate,
+and a request whose bound exceeds the input budget or the per-request cost cap
+is refused. Quotas, the repeat limiter and concurrency key on the client network
+(IPv6 truncated to /64), so dropping the session cookie resets nothing. Each
+provider call is made once, without SDK retries or redirects, inside a
+concurrency lease that outlives it. The key never reaches the browser, provider
+errors are returned as fixed messages, and nothing it is sent is stored or
+logged.
+
+When `SENTRY_DSN` is set, the website's Python functions report unexpected
+errors to Sentry without tracing, request bodies, cookies, query strings,
+headers, local variables or user data; secrets and quoted text are redacted
+before an event leaves the server.
+
 ## Compression-induced instruction elevation
 
 v0.3.1 mitigates a compression-specific risk: untrusted retrieval, tool, or prior assistant content could previously receive protected priority solely because it contained imperative or safety-critical wording.

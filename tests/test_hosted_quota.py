@@ -26,7 +26,19 @@ from llmslim.hosted import (
     build_request_identity,
     estimate_sarvam_cost_micros,
 )
-from llmslim.integrations.sarvam import SarvamProvider, SarvamUsage
+from llmslim.integrations.sarvam import (
+    SarvamAuthenticationError,
+    SarvamInvalidRequestError,
+    SarvamMalformedResponseError,
+    SarvamPaymentRequiredError,
+    SarvamProvider,
+    SarvamRateLimitError,
+    SarvamServerError,
+    SarvamTimeoutError,
+    SarvamUsage,
+    UsageCapExceeded,
+    sarvam_prompt_token_bound,
+)
 
 NOW = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
 IDENTITY = RequestIdentity("i" * 64, "s" * 64, "c" * 64, "session-token", False)
@@ -368,7 +380,7 @@ def test_provider_and_store_failures_are_sanitized_and_release_leases() -> None:
 
 
 def test_cost_math_uses_current_input_and_output_rates() -> None:
-    assert estimate_sarvam_cost_micros("sarvam-105b", 1_000_000, 1_000_000) == 102_480_000
+    assert estimate_sarvam_cost_micros("sarvam-105b", 1_000_000, 1_000_000) == 75_000_000
 
 
 def test_sarvam_provider_chat_validates_messages_and_never_exposes_key() -> None:
@@ -532,3 +544,200 @@ def test_atomic_concurrency_slots_allow_only_one_simultaneous_client_request() -
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _value: acquire(), range(2)))
     assert sum(result is not None for result in results) == 1
+
+
+# --------------------------------------------------------------------------- reservations
+
+
+HINDI_DOCUMENT = " ".join(["भुगतान की स्थिति सत्यापित है और नवीनीकरण नवंबर में होगा।"] * 12)
+
+
+def _reserve_call(store: FakeQuotaStore) -> Mapping[str, Any]:
+    return next(call[1] for call in store.calls if call[0] == "reserve")
+
+
+@pytest.mark.parametrize("counter", ["tiktoken", "heuristic"])
+def test_reservation_is_a_utf8_byte_upper_bound_of_the_sent_messages(
+    monkeypatch: pytest.MonkeyPatch, counter: str
+) -> None:
+    if counter == "heuristic":
+        from llmslim import tokens
+
+        # Production without tiktoken: count_tokens is len/4, far below emoji's real cost.
+        monkeypatch.setattr(tokens, "_ENCODER", None, raising=False)
+        monkeypatch.setattr(tokens, "_ENCODER_LOAD_ATTEMPTED", True, raising=False)
+    store = FakeQuotaStore()
+    provider = FakeProvider(SarvamUsage(120, 20, 140))
+    emoji = "\U0001f642" * 1500
+    service(store, provider, max_input_tokens=8_192).execute(
+        payload(documents=["Acme renews on 30 November 2026. " + emoji], max_input_tokens=8_192),
+        IDENTITY,
+    )
+    reserved = _reserve_call(store)
+    bound = sarvam_prompt_token_bound(provider.messages)
+    assert reserved["estimated_input_tokens"] == bound
+    assert bound >= len(emoji.encode("utf-8"))  # every byte the provider could bill as a token
+    assert reserved["estimated_cost_micros"] == estimate_sarvam_cost_micros(
+        "sarvam-105b", bound, 64
+    )
+
+
+def test_a_bound_above_the_token_cap_is_refused_not_clamped() -> None:
+    store = FakeQuotaStore()
+    provider = FakeProvider()
+    with pytest.raises(HostedSarvamError) as refused:
+        # The planner fits ~800 counted tokens, but the UTF-8 bound is ~2,300 > 2,048.
+        service(store, provider).execute(payload(documents=[HINDI_DOCUMENT]), IDENTITY)
+    assert refused.value.code == "input_too_large" and refused.value.status == 413
+    assert provider.messages is None
+    assert not any(call[0] in ("reserve", "acquire") for call in store.calls)
+    events = [call[1][0] for call in store.calls if call[0] == "event"]
+    assert events == ["oversized_request"]
+
+
+def test_a_bound_above_the_per_request_cost_cap_is_refused() -> None:
+    store = FakeQuotaStore()
+    with pytest.raises(HostedSarvamError) as refused:
+        service(store, max_input_tokens=8_192, max_request_cost_inr=Decimal("0.05")).execute(
+            payload(documents=[HINDI_DOCUMENT * 2], max_input_tokens=8_192), IDENTITY
+        )
+    assert refused.value.code == "request_cost_limit"
+    assert not any(call[0] in ("reserve", "acquire") for call in store.calls)
+
+
+# --------------------------------------------------------------------------- unbilled errors
+
+
+@pytest.mark.parametrize(
+    ("error", "released"),
+    [
+        (SarvamAuthenticationError("401", status_code=401), True),
+        (SarvamAuthenticationError("403", status_code=403), True),
+        (SarvamPaymentRequiredError("402", status_code=402), True),
+        (SarvamInvalidRequestError("400", status_code=400), True),
+        (SarvamInvalidRequestError("422", status_code=422), True),
+        (SarvamRateLimitError("429", status_code=429), True),
+        (UsageCapExceeded("local guard refused before the network"), True),
+        (SarvamTimeoutError("408", status_code=408), False),
+        (SarvamServerError("503", status_code=503), False),
+        (SarvamMalformedResponseError("bad body", status_code=200), False),
+        (RuntimeError("unknown failure"), False),
+    ],
+)
+def test_unbilled_provider_errors_release_and_billable_ones_keep_the_reservation(
+    error: Exception, released: bool
+) -> None:
+    store = FakeQuotaStore()
+    with pytest.raises(HostedSarvamError) as failed:
+        service(store, FakeProvider(error=error)).execute(payload(), IDENTITY)
+    assert failed.value.code == "provider_unavailable"
+    assert len(store.settled) == 1
+    # (0, 0) returns the estimate to the spend ledger and the identity's token quota.
+    assert store.settled[0][1:] == ((0, 0) if released else (None, None))
+    assert store.released
+
+
+def test_a_provider_factory_failure_releases_the_reservation() -> None:
+    store = FakeQuotaStore()
+
+    def broken(*_args: Any) -> SarvamProvider:
+        raise ValueError("environment variable SARVAM_API_KEY is not set")
+
+    hosted = HostedSarvamService(config(), store, provider_factory=broken, clock=lambda: NOW)
+    with pytest.raises(HostedSarvamError) as failed:
+        hosted.execute(payload(), IDENTITY)
+    assert failed.value.code == "provider_unavailable"
+    assert store.settled[0][1:] == (0, 0)
+
+
+# --------------------------------------------------------------------------- default factory
+
+
+CHAT_OK = {
+    "id": "c1",
+    "created": 0,
+    "model": "sarvam-105b",
+    "object": "chat.completion",
+    "choices": [
+        {"finish_reason": "stop", "index": 0, "message": {"role": "assistant", "content": "ok"}}
+    ],
+    "usage": {"prompt_tokens": 90, "completion_tokens": 7, "total_tokens": 97},
+}
+
+
+def _default_service(
+    monkeypatch: pytest.MonkeyPatch, responses: list[Any]
+) -> tuple[HostedSarvamService, FakeQuotaStore, list[Any], list[Any]]:
+    httpx = pytest.importorskip("httpx")
+    pytest.importorskip("sarvamai")
+    from llmslim.integrations import _sarvam_common as common
+    from llmslim.integrations import sarvam as sarvam_module
+
+    seen: list[Any] = []
+    built: list[Any] = []
+
+    def handler(request: Any) -> Any:
+        seen.append(request)
+        status, body = responses[min(len(seen), len(responses)) - 1]
+        return httpx.Response(status, json=body)
+
+    transport = httpx.MockTransport(handler)
+
+    def builder(*args: Any, **kwargs: Any) -> Any:
+        sdk, http = common.sync_client(*args, transport=transport, **kwargs)
+        built.append(http)
+        return sdk, http
+
+    monkeypatch.setattr(sarvam_module, "sync_client", builder)
+    monkeypatch.setenv("SARVAM_API_KEY", "test-only-hosted-key")
+    store = FakeQuotaStore()
+    return HostedSarvamService(config(), store, clock=lambda: NOW), store, seen, built
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"LLMSLIM_SARVAM_CHAT_MAX_UNITS": "not-a-number"},
+        {"LLMSLIM_SARVAM_CHAT_REQUESTS_PER_MINUTE": "-3"},
+        {"LLMSLIM_SARVAM_CHAT_MAX_UNITS": "0.000001", "LLMSLIM_SARVAM_CHAT_MAX_REQUESTS": "1"},
+    ],
+)
+def test_default_factory_ignores_the_chat_guard_env_and_matches_0_8_1(
+    monkeypatch: pytest.MonkeyPatch, env: Mapping[str, str]
+) -> None:
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    hosted, store, seen, built = _default_service(monkeypatch, [(200, CHAT_OK)])
+    for _ in range(2):  # a second request is not refused by a per-process guard either
+        result = hosted.execute(payload(), IDENTITY)
+        assert result["answer"] == "ok"
+        assert result["usage"]["accounting_basis"] == "PROVIDER_REPORTED"
+    assert len(seen) == 2 and all(request.method == "POST" for request in seen)
+    body = json.loads(seen[0].content)
+    assert body["model"] == "sarvam-105b" and body["max_tokens"] == 64
+    assert body["stream"] is False
+    assert [message["role"] for message in body["messages"]] == ["system", "user"]
+    assert store.settled[0][1:] == (90, estimate_sarvam_cost_micros("sarvam-105b", 90, 7))
+    assert len(built) == 2 and all(http.is_closed for http in built)  # one pool per request
+
+
+@pytest.mark.parametrize(
+    ("responses", "settlement"),
+    [
+        ([(503, {}), (503, {}), (200, CHAT_OK)], (None, None)),  # 5xx: may be billed, kept
+        ([(429, {}), (200, CHAT_OK)], (0, 0)),  # rate limited before any work: released
+        ([(401, {}), (200, CHAT_OK)], (0, 0)),
+        ([(402, {}), (200, CHAT_OK)], (0, 0)),
+        ([(422, {}), (200, CHAT_OK)], (0, 0)),
+    ],
+)
+def test_default_factory_sends_one_post_without_sdk_retries(
+    monkeypatch: pytest.MonkeyPatch, responses: list[Any], settlement: Any
+) -> None:
+    hosted, store, seen, built = _default_service(monkeypatch, responses)
+    with pytest.raises(HostedSarvamError) as failed:
+        hosted.execute(payload(), IDENTITY)
+    assert failed.value.code == "provider_unavailable"
+    assert len(seen) == 1  # the SDK's two default retries are off
+    assert store.settled[0][1:] == settlement
+    assert built[0].is_closed

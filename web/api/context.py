@@ -39,6 +39,16 @@ try:
 except ImportError:  # An older installed wheel still supports the core inspector.
     CachePolicy = None  # type: ignore[assignment,misc]
 
+# api/_sentry.py is shared code: Vercel does not route files whose names start with an underscore.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.append(_API_DIR)
+
+import _sentry  # noqa: E402
+import _shared  # noqa: E402
+
+_sentry.init()
+
 MAX_BODY_BYTES = 160_000
 MAX_TOTAL_CHARS = 96_000
 MAX_ITEMS_PER_KIND = 100
@@ -195,6 +205,7 @@ def execute_context(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _allow_request(client: str, now: float) -> bool:
+    _shared.bound_windows(_request_windows, now - RATE_LIMIT_WINDOW_SECONDS)
     window = _request_windows[client]
     while window and window[0] <= now - RATE_LIMIT_WINDOW_SECONDS:
         window.popleft()
@@ -251,17 +262,15 @@ class handler(BaseHTTPRequestHandler):
         try:
             if not self.headers.get("content-type", "").lower().startswith("application/json"):
                 raise _problem(415, "json_required", "Use application/json.")
-            request = json.loads(self.rfile.read(length).decode("utf-8"))
-            if not isinstance(request, dict):
-                raise _problem(400, "object_required", "A JSON object is required.")
+            try:
+                request = _shared.decode_json_object(self.rfile.read(length))
+            except _shared.BodyError as error:
+                raise _problem(error.status, error.code, error.message) from None
             self._respond(HTTPStatus.OK, {"data": execute_context(request)})
         except RequestProblem as exc:
             self._respond(exc.status, {"error": {"code": exc.code, "message": exc.message}})
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            self._respond(
-                400, {"error": {"code": "invalid_json", "message": "Valid UTF-8 JSON is required."}}
-            )
-        except Exception:
+        except Exception as error:
+            _sentry.capture(error, function="context")
             self._respond(
                 500,
                 {

@@ -62,7 +62,11 @@ benchmark_results.csv
 benchmark_results.json
 benchmark_report.md
 benchmarks/results/live-*.json
+benchmarks/results/live-*.md
 benchmarks/results/*-private.json
+# Persistent per-day Nebius spend ledger and its lock (benchmarks/live_secondary_reader.py)
+benchmarks/results/.nebius-spend.json
+benchmarks/results/.nebius-spend.json.lock
 
 # Datasets & Notebooks
 datasets/

@@ -344,6 +344,21 @@ def parse_cache_telemetry(
         input_tokens = usage.get("prompt_token_count", usage.get("input_tokens"))
         read_tokens = usage.get("cached_content_token_count", usage.get("total_cached_tokens"))
         output_tokens = usage.get("candidates_token_count", usage.get("output_tokens"))
+    elif provider == "sarvam":
+        # sarvamai CompletionUsage: prompt_tokens_details is null on a cache miss and carries
+        # cached_tokens on a hit. A missing object stays "not reported" (None), never 0.
+        input_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
+        prompt_details = usage.get("prompt_tokens_details")
+        if prompt_details is not None:
+            read_tokens = _mapping(prompt_details).get("cached_tokens")
+        output_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
+        reported_input, reported_read = checked(input_tokens), checked(read_tokens)
+        if (
+            reported_input is not None
+            and reported_read is not None
+            and reported_read > reported_input
+        ):
+            read_tokens = None  # inconsistent report: drop the cache figure, keep the rest
     elif provider == "vllm":
         input_tokens = usage.get("prompt_tokens")
         read_tokens = _mapping(usage.get("prompt_tokens_details")).get("cached_tokens")

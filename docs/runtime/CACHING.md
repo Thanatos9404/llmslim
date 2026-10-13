@@ -94,7 +94,7 @@ records the provider response and passes only usage to telemetry.
 | OpenAI | Automatic prefix caching | GPT-5.6+ breakpoint; earlier models use their supported controls | Opt-in Responses `previous_response_id` | Model and retention support vary |
 | Anthropic | Automatic breakpoint control | `cache_control` on planned stable block, 5m/1h TTL | Not implemented | Tools, system, messages form ordered prefix |
 | Gemini | Implicit caching | Optional `CachedContent` resource for `generateContent` | Not implemented | Resource creation and deletion belong to host |
-| Sarvam | **Unverified** | Disabled | Not implemented | No production cache claim or paid experiment |
+| Sarvam | **Unverified** | Disabled | Not implemented | `parse_cache_telemetry` reads `prompt_tokens_details.cached_tokens` when Sarvam reports it (a missing object stays unreported); no production cache claim yet |
 | vLLM | Server-side automatic prefix caching | Host enables server feature; request uses tenant secret `cache_salt` | Not implemented | LLMSlim does not reimplement block cache |
 | Transformers | In-process `DynamicCache` / `StaticCache` integration | Host-owned | Local forward continuation | Strict identity, prefix, mask, offset and device checks |
 

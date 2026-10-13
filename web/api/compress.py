@@ -48,6 +48,16 @@ _add_repository_package_to_path()
 from llmslim import ContextRole, compress  # noqa: E402  (path is established above)
 from llmslim.tokens import count_tokens  # noqa: E402
 
+# api/_sentry.py is shared code: Vercel does not route files whose names start with an underscore.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.append(_API_DIR)
+
+import _sentry  # noqa: E402
+import _shared  # noqa: E402
+
+_sentry.init()
+
 MAX_BODY_BYTES = 80_000
 MAX_INPUT_CHARS = 48_000
 MAX_INPUT_TOKENS = 12_000
@@ -84,16 +94,9 @@ def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]
     if not raw_body:
         raise _problem(HTTPStatus.BAD_REQUEST, "body_required", "A JSON request body is required.")
     try:
-        payload = json.loads(raw_body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise _problem(
-            HTTPStatus.BAD_REQUEST, "invalid_json", "Request body must be valid UTF-8 JSON."
-        ) from error
-    if not isinstance(payload, dict):
-        raise _problem(
-            HTTPStatus.BAD_REQUEST, "object_required", "Request body must be a JSON object."
-        )
-    return payload
+        return _shared.decode_json_object(raw_body)
+    except _shared.BodyError as error:
+        raise _problem(error.status, error.code, error.message) from None
 
 
 def _required_string(payload: Mapping[str, Any], name: str) -> str:
@@ -232,8 +235,9 @@ def allow_request(client_key: str, now: float | None = None) -> bool:
     """Best-effort per-instance abuse guard; platform rate limiting remains advisable."""
 
     moment = time.monotonic() if now is None else now
-    window = _request_windows[client_key]
     threshold = moment - RATE_LIMIT_WINDOW_SECONDS
+    _shared.bound_windows(_request_windows, threshold)
+    window = _request_windows[client_key]
     while window and window[0] <= threshold:
         window.popleft()
     if len(window) >= RATE_LIMIT_MAX_REQUESTS:
@@ -328,7 +332,8 @@ class handler(BaseHTTPRequestHandler):
             self._respond(HTTPStatus.OK, {"data": execute_compression(payload)})
         except RequestProblem as error:
             self._respond(error.status, {"error": {"code": error.code, "message": error.message}})
-        except Exception:
+        except Exception as error:
+            _sentry.capture(error, function="compress")
             self._respond(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {

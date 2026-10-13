@@ -6,7 +6,8 @@ import type { CSSProperties } from "react"
  *
  * Logos are the companies' official artwork, unmodified. `logoDark` is the vendor's own variant
  * for dark backgrounds; MongoDB's is its reverse logo (white wordmark, green leaf), cut from the
- * official artwork. Two treatments predate this list: "mask" tints a supplied single-colour
+ * official artwork. Neo4j publishes its white logo only as a PNG (media kit), so its dark variant is
+ * that PNG beside the full-colour SVG from neo4j.com. Sources are in web/DESIGN_NOTES.md. Two treatments predate this list: "mask" tints a supplied single-colour
  * mark to the text colour, and "symbol" pairs an official symbol with the product name.
  */
 export type StartupProgram = {
@@ -39,6 +40,9 @@ export const startupPrograms: readonly StartupProgram[] = [
   { id: "sentry", name: "Sentry for Startups", href: "https://sentry.io/for/startups/", logo: "/startups/sentry-dark-text.svg", logoDark: "/startups/sentry-white-text.svg", alt: "Sentry logo", width: 222, height: 66, display: 44 },
   { id: "descope", name: "Descope Hello World Startup Program", href: "https://www.descope.com/for-startups", logo: "/startups/descope-dark-text.svg", logoDark: "/startups/descope-white-text.svg", alt: "Descope logo", width: 281, height: 64, display: 30 },
   { id: "pulumi", name: "Pulumi for Startups", href: "https://www.pulumi.com/pulumi-for-startups/", logo: "/startups/pulumi-light.svg", logoDark: "/startups/pulumi-dark.svg", alt: "Pulumi logo", width: 425, height: 106, display: 32 },
+  { id: "honeycomb", name: "Honeycomb for Builders", href: "https://www.honeycomb.io/honeycomb-for-builders", logo: "/startups/honeycomb-light.svg", logoDark: "/startups/honeycomb-dark.svg", alt: "Honeycomb logo", width: 348, height: 102, display: 34 },
+  { id: "exa", name: "Exa Startup Grants", href: "https://exa.ai/pricing", logo: "/startups/exa-blue.svg", logoDark: "/startups/exa-white.svg", alt: "Exa logo", width: 413, height: 129, display: 32 },
+  { id: "neo4j", name: "Neo4j Startup Program", href: "https://neo4j.com/startup-program/", logo: "/startups/neo4j-full-color.svg", logoDark: "/startups/neo4j-white.png", alt: "Neo4j logo", width: 678, height: 242, display: 34 },
   // Programs join this list only once acceptance is confirmed. Nebius AI Builder
   // (/startups/nebius.svg) is applied for and pending.
 ]

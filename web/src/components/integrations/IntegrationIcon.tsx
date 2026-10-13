@@ -11,8 +11,9 @@ import {
   LangChain,
   LlamaIndex,
   Vercel,
+  Exa,
 } from "@lobehub/icons";
-import { Building2, Code, Cpu, Database, Layers, Server, Workflow } from "lucide-react";
+import { Building2, Code, Cpu, Database, Layers, Network, Server, Workflow } from "lucide-react";
 
 export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: string; className?: string }) {
   switch (iconKey) {
@@ -22,6 +23,10 @@ export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: s
       return <Building2 className={`${className} text-red-400`} />;
     case "mongodb":
       return <Database className={`${className} text-emerald-500`} />;
+    case "exa":
+      return <Exa className={className} size={32} />;
+    case "neo4j":
+      return <Network className={`${className} text-sky-500`} />;
     case "openai":
       return <OpenAI className={className} size={32} />;
     case "anthropic":

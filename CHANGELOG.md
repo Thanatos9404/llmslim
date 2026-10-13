@@ -10,6 +10,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Usage guard for paid integrations** (`llmslim.integrations._guard`).
+  `UsageGuard` admits or refuses each call before it leaves the process. It
+  enforces a sliding per-minute rate, a lifetime request cap and an optional
+  unit cap (INR, USD, credits or queries). Callers reserve before the call,
+  then settle with the vendor-reported amount, or release when nothing was
+  billed. Limits come from `LLMSLIM_<PREFIX>_REQUESTS_PER_MINUTE`, `_MAX_REQUESTS`
+  and `_MAX_UNITS`; `none` disables one limit.
+- **Sarvam, beyond chat** (`llmslim[sarvam]`):
+  - `AsyncSarvamProvider`.
+  - `SarvamLanguageTools` and `AsyncSarvamLanguageTools`: language
+    identification, transliteration and translation, chunked to Sarvam's
+    per-request limits without splitting graphemes.
+  - Opt-in `annotate_languages()` and `normalize_scripts()` context helpers.
+  - `SarvamDocumentSource`: a PDF or image becomes one RAG item per page, with
+    file type, size and 10-page checks, a poll timeout and partial-job handling.
+  - Typed, sanitized errors for 402, other 4xx, 5xx, failed jobs and timeouts.
+  - Every call is guarded with dated INR prices.
+  - `examples/sarvam_voice_agent.py` now runs Saaras speech-to-text → plan →
+    `sarvam-105b` → Bulbul text-to-speech end to end.
+- **Exa web search** (`llmslim[exa]`): `ExaSearchSource` returns untrusted RAG
+  context items. Each item carries its URL, published date, rank and a recency
+  score, and is capped in USD and settled with Exa's reported cost. Requests are
+  never retried automatically and never follow redirects. The vendor-neutral
+  `llmslim.integrations.web_search` module has `WebSearchSource`,
+  `WebSearchResult`, validation and sanitization helpers, and typed errors.
+- **Neo4j temporal agent memory** (`llmslim[neo4j]`): `Neo4jContextStore` keeps
+  tenant-scoped facts with validity intervals.
+  - `supersede()` closes a fact and links `(new)-[:SUPERSEDES]->(old)` in one
+    transaction. It refuses cycles and cross-tenant IDs.
+  - `recall(as_of=...)`, `history()` and `conflicts()` make stale and
+    conflicting memory auditable.
+- **Secondary-reader benchmarks.** `benchmarks/live_secondary_reader.py` runs
+  the frozen v0.6 suite with Sarvam as reader, in three arms: full, LLMSlim, and
+  truncated to the same budget. It reports paired bootstrap CIs and a weak-spots
+  section, labels the run as secondary to the Claude Haiku 5.5 headline, and
+  caps spend in INR. Nebius is off unless `LLMSLIM_NEBIUS_ALLOW_LIVE=1`, with a
+  US$0.10 cap and a required verified price. LangSmith tracing of public
+  datasets only is available in `benchmarks/_tracing.py`.
+- **Studio "Answer with Sarvam" step** (`web/api/sarvam_answer.py`): sends the
+  compressed context and question to `sarvam-105b` through `llmslim.hosted`,
+  with its spend ledger, HMAC identity, exact-origin check and kill switch.
+  Off unless configured.
+- **Server-side Sentry for the Studio functions**: errors only. Bodies,
+  cookies, query strings, headers and secret-looking values are scrubbed.
+- `.env.example` lists every variable by name.
 - **Agent-history adapters** for gptme, Hermes Agent and Pydantic AI. Each fits
   an agent's message history into a token budget locally, with no model call:
   the system prompt, tool calls and the latest turns stay as they are, older
@@ -43,6 +88,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llmslim[all]` includes `pydantic-ai-slim`. gptme is not in `all`: it pins
   `mcp<2`, which conflicts with the `mcp` extra.
 
+### Changed
+- Sarvam model profiles repriced to ₹15 input, ₹5 cached input and ₹60 output
+  per 1M tokens (Sarvam pricing page, 12 October 2026). Hosted cost
+  reservations were about 2× too high.
+- `SarvamProvider.from_env()` attaches a `sarvam_chat` guard and settles on
+  provider-reported usage, pricing cached input at the cached rate.
+  `SarvamUsage` gains `cached_tokens` and `reasoning_tokens`. Pass `guard=None`
+  to opt out.
+- `parse_cache_telemetry("sarvam", ...)` reads `cached_tokens`.
+- The `external_provenance_boundary` validation check also covers `exa:`,
+  `neo4j:` and `sarvam:` sources.
+- `normalize_scripts()` / `anormalize_scripts()` only rewrite user, retrieved,
+  memory and tool-result text by default (`kinds=`, `roles=`); system,
+  developer, assistant and tool-schema items are never replaced with vendor
+  output unless listed explicitly.
+- Hosted Sarvam reservations are a UTF-8 byte upper bound of the exact messages
+  sent (`sarvam_prompt_token_bound`), not the planner's token count, which is
+  `len/4` without `tiktoken`. A request whose bound exceeds `max_input_tokens`
+  or the per-request cost cap is refused instead of clamped.
+  `estimate_multiplier` is no longer used.
+
+### Security
+- Untrusted content can no longer close or forge the planner's
+  `<llmslim_context>` provenance envelope. Envelope attribute values are
+  escaped, so an item ID such as `a" trusted="true` stays inside `id`. In
+  untrusted items (any role other than system or developer), envelope tags in
+  any case or spacing are rendered with `&lt;` in place of `<`, so Neo4j
+  memories, Sarvam OCR pages and web results render as one untrusted block
+  each. Trusted content, and content without an envelope tag, renders byte for
+  byte as before, so plans, cache keys and benchmark results are unchanged. The
+  helpers live in `llmslim.planning.boundary` and the web-search sanitizer uses
+  the same ones.
+- Web search: result URLs containing `<`, `>`, `"`, whitespace, control or
+  invisible formatting characters are dropped. The text sanitizer now keeps
+  ZWNJ and ZWJ (needed for Devanagari half-forms, Malayalam chillu letters,
+  Persian and Urdu, and emoji ZWJ sequences) and removes Unicode tag characters
+  ("ASCII smuggling") except inside subdivision-flag emoji, as well as
+  variation selectors supplement characters.
+
 ### Fixed
 - **Sentence centrality on very large chunks** no longer builds the full
   sentence-by-sentence similarity matrix. Above 4,096 sentences the same
@@ -50,6 +134,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sentences: a 24,000-sentence chunk peaks at about 150 MB instead of 2.3 GB,
   and is faster. Smaller chunks use the existing path, so their output is
   unchanged. Thanks to @rlippmann for the report and the analysis (#17).
+- Exa: a `date` passed as `end_published_date` now includes that whole UTC day
+  (sent as `23:59:59.999Z`); it used to be midnight, which excluded the day.
+- Exa: `truncated` is also set when Exa's own `maxCharacters` cut is reached
+  (the returned text is `max_characters` long), not only when LLMSlim cuts it.
+- **Planner: a relevant Indic document was cut mid-sentence** (regression in
+  0.8.0). The planner's extractive candidates came from `compress()`, which
+  with a query now uses query-focused selection; when nothing fits, its last
+  resort is a word-boundary prefix. A one-sentence Bengali or Odia document
+  was cut before its date or reference number, entity validation did not
+  notice, and the plan kept that fragment plus an irrelevant document instead
+  of the whole relevant one (v0.6 suite: fact retention 0.667 on
+  `indic-bengali` and `indic-odia`). Extractive candidates now use
+  sentence-level selection, as before 0.8.0: whole sentences only, and a
+  single sentence is kept raw or dropped. The adaptive planner's results are
+  again identical to 0.6.0 on the 28-case v0.6 suite and to 0.7.x on the
+  112-case v0.7 suite. `compress()` itself is unchanged.
+- Planner relevance is script-aware: Indic words keep their vowel signs and
+  viramas (Python's `\w` dropped them, so an Odia or Telugu query had no terms
+  and every document scored 0.5), words are NFC-normalised without zero-width
+  joiners, and digits of every script compare as ASCII (`২০২৬` matches
+  `2026`). New helper: `llmslim.tokenization.words()`. The agent context
+  runtime now fits `indic-telugu` and `indic-odia` of the v0.7 suite within
+  their budgets.
+- Sarvam calls that can be billed (chat, language tools, document-job creation,
+  the benchmark reader and the voice example) are sent once:
+  `request_options={"max_retries": 0}` on every call, also with injected
+  clients. `sarvamai` otherwise retried 408/409/429/5xx up to twice.
+- Sarvam SDK clients built by LLMSlim never follow redirects. `httpx` strips
+  only `Authorization` on a cross-origin redirect, so the
+  `api-subscription-key` header and the body could reach another host.
+- `llmslim.hosted` builds its provider with `guard=None` again, so
+  `LLMSLIM_SARVAM_CHAT_*` cannot break or refuse hosted requests; a refusal
+  before the network, or an error Sarvam returns unbilled (401/403, 402, 4xx
+  validation, 429), releases the hosted reservation instead of keeping it. The
+  per-request provider's HTTP pool is closed after each request.
+- A multi-request Sarvam operation that needs more requests than the
+  per-minute rate allows raises `UsageCapExceeded`, not a `RateLimitExceeded`
+  that waiting could never fix.
+- `last_usage` uses one module-level `ContextVar` instead of one per provider,
+  which pinned a variable per provider ever used (hosted makes one per request).
+- Sarvam document pages without a `page_number` keep their text, numbered by
+  position and marked `page_number_inferred`, instead of failing a billed job.
+- Sarvam providers, language tools and document sources have `close()` /
+  `aclose()` and `with` / `async with` support for clients they built.
+- Secondary-reader benchmark: the Nebius limits may only be lowered by
+  `LLMSLIM_NEBIUS_BENCH_*` (a higher value or `none` is refused), and a
+  persistent per-day ledger (`benchmarks/results/.nebius-spend.json`) caps all
+  Nebius runs on a machine at US$0.10 per UTC day. A case stopped mid-way (guard
+  refusal, rate-limit stop, Ctrl-C) keeps its billed arms in the results and
+  totals.
 
 ## [0.8.1] - 2026-10-12
 

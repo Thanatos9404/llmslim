@@ -142,7 +142,7 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of 11 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 14 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -158,6 +158,9 @@ none of them is an investor, and membership does not imply endorsement.
 | [Sentry for Startups](https://sentry.io/for/startups/) | Sentry |
 | [Descope Hello World Startup Program](https://www.descope.com/for-startups) | Descope |
 | [Pulumi for Startups](https://www.pulumi.com/pulumi-for-startups/) | Pulumi |
+| [Honeycomb for Builders](https://www.honeycomb.io/honeycomb-for-builders) | Honeycomb |
+| [Exa Startup Grants](https://exa.ai/pricing) | Exa |
+| [Neo4j Startup Program](https://neo4j.com/startup-program/) | Neo4j |
 
 Logos are trademarks of their owners and identify each program.
 
@@ -286,8 +289,14 @@ pip install "llmslim[agents]"
 # With optional local multilingual semantic retrieval
 pip install "llmslim[semantic]"
 
-# Official Sarvam SDK provider
+# Sarvam: chat providers, language tools and document source (official sarvamai SDK)
 pip install "llmslim[sarvam]"
+
+# Exa web search as an untrusted RAG context source (spend capped in USD)
+pip install "llmslim[exa]"
+
+# Neo4j temporal agent memory with auditable supersession
+pip install "llmslim[neo4j]"
 
 # Read-only Zoho CRM and WorkDrive context sources
 pip install "llmslim[zoho]"
@@ -725,13 +734,15 @@ Release notes for every version, including 0.7.0 and 0.7.1, are in
 
 ## 🤝 Ecosystem Integrations
 
-LLMSlim operates as an unopinionated context pre-processor. These integrations ship in Core; none of them sends a request for you:
+LLMSlim operates as an unopinionated context pre-processor. These integrations ship in Core; none of them sends a request for you. Every integration that spends a vendor credit is checked by a `UsageGuard` before the request leaves the process (per-minute rate, lifetime request cap and a unit cap in INR, USD or queries, configurable with `LLMSLIM_<VENDOR>_*` variables; see `.env.example`):
 
 <div align="center">
 
 | Provider / Framework | What ships in Core | Pattern |
 | :--- | :--- | :--- |
-| **Sarvam AI** | `llmslim[sarvam]`: `SarvamProvider`, `sarvam_messages()` | Local planning + official `sarvamai` Python SDK |
+| **Sarvam AI** | `llmslim[sarvam]`: `SarvamProvider`/`AsyncSarvamProvider`, `SarvamLanguageTools`, `SarvamDocumentSource`, `annotate_languages()`/`normalize_scripts()`, `sarvam_messages()` | Local planning + official `sarvamai` Python SDK, guarded with dated INR prices |
+| **Exa** | `llmslim[exa]`: `ExaSearchSource`, vendor-neutral `WebSearchSource` | Untrusted RAG context items with URL, date and rank provenance; spend capped in USD |
+| **Neo4j** | `llmslim[neo4j]`: `Neo4jContextStore` | Explicit tenant-scoped temporal memory: `supersede()`, `recall(as_of=...)`, `history()`, `conflicts()` |
 | **OpenAI** | `openai_compatible_request()`, `openai_responses_request()` | Execution-free request builders; your code sends the request |
 | **Anthropic Claude** | `anthropic_messages_request()` | Execution-free request builder with optional prompt-cache markers |
 | **Google Gemini** | `gemini_generate_request()`, `gemini_cached_content_request()` | Execution-free request builders |

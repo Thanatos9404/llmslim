@@ -41,6 +41,16 @@ import llmslim  # noqa: E402  (path is established above)
 from llmslim import compress  # noqa: E402
 from llmslim.tokens import count_tokens  # noqa: E402
 
+# api/_sentry.py is shared code: Vercel does not route files whose names start with an underscore.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.append(_API_DIR)
+
+import _sentry  # noqa: E402
+import _shared  # noqa: E402
+
+_sentry.init()
+
 MAX_BODY_BYTES = 120_000
 MAX_INPUT_CHARS = 60_000
 MAX_INPUT_TOKENS = 16_000
@@ -78,12 +88,11 @@ def parse_json_body(raw_body: bytes, content_type: str | None) -> dict[str, Any]
             HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type", "Send JSON."
         )
     try:
-        payload = json.loads(raw_body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise _bad("invalid_json", "The request body is not valid JSON.") from error
-    if not isinstance(payload, dict):
-        raise _bad("invalid_json", "The request body must be a JSON object.")
-    return payload
+        return _shared.decode_json_object(raw_body)
+    except _shared.BodyError as error:
+        # This function has always answered a non-object body with invalid_json.
+        code = "invalid_json" if error.code == "object_required" else error.code
+        raise RequestProblem(error.status, code, error.message) from None
 
 
 def _normal(text: str) -> str:
@@ -166,6 +175,7 @@ def allow_request(client_key: str, now: float | None = None) -> bool:
     """Best-effort per-instance abuse guard; platform rate limiting remains advisable."""
 
     moment = time.monotonic() if now is None else now
+    _shared.bound_windows(_request_windows, moment - RATE_LIMIT_WINDOW_SECONDS)
     window = _request_windows[client_key]
     while window and window[0] <= moment - RATE_LIMIT_WINDOW_SECONDS:
         window.popleft()
@@ -226,7 +236,8 @@ class handler(BaseHTTPRequestHandler):
             self._respond(HTTPStatus.OK, {"data": run(payload)})
         except RequestProblem as problem:
             self._error(problem.status, problem.code, problem.message)
-        except Exception:
+        except Exception as error:
+            _sentry.capture(error, function="studio")
             self._error(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 "compression_failed",

@@ -96,6 +96,7 @@
 .build-section { display:grid; grid-template-columns:1fr 1fr; gap:90px; align-items:center; padding-block:125px; }
 .build-copy .section-kicker { margin-bottom:22px; }
 .build-copy > p:not(.section-kicker) { max-width:400px; font-size:15px; line-height:1.85; color:var(--subtle); margin-block:25px; }
+.build-copy > p.build-links { display:flex; flex-wrap:wrap; gap:10px 28px; max-width:none; margin-bottom:0; color:var(--ink); }
 .build-points { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:32px; }
 .build-points span { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--subtle); }
 .build-points svg { color:var(--brand); }
@@ -560,6 +561,19 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
   --plate-bg:#111110; --plate-line:rgba(255,255,255,.06); --plate-dot:rgba(255,255,255,.1); --plate-light:rgba(255,255,255,.06);
   --win-bg:#171716; --win-line:rgba(255,255,255,.08); --win-ink:#ededea; --win-sub:#8f8e89; --win-faint:rgba(255,255,255,.08);
   --win-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 30px 60px -30px rgba(0,0,0,.85); }
+
+/* Code window (DocCodeBlock). Global because docs, integration and comparison pages all use it; a route's own
+   stylesheet only loads on that route. */
+.doc-code { margin:20px 0 0; overflow:hidden; border-radius:14px; background:var(--win-bg); box-shadow:0 0 0 1px var(--win-line), var(--win-shadow); }
+.doc-code-bar { display:flex; align-items:center; gap:12px; height:40px; padding:0 8px 0 16px; border-bottom:1px solid var(--win-line); font:11.5px var(--mono); color:var(--win-sub); }
+.doc-code-name { display:flex; flex:1; align-items:center; gap:10px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--win-ink); }
+.doc-code-pixel { flex-shrink:0; width:6px; height:6px; background:var(--brand); }
+.doc-code-lang { color:var(--win-sub); }
+.doc-code-copy { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border:0; border-radius:8px; background:transparent; font-family:Geist,Arial,sans-serif; font-size:12px; font-weight:500; color:var(--win-sub); transition:background .2s, color .2s; }
+.doc-code-copy:hover { background:color-mix(in srgb,var(--win-ink) 7%,transparent); color:var(--win-ink); }
+.doc-code pre { margin:0; padding:18px 20px 20px; overflow:auto; max-height:460px; font:13px/1.75 var(--mono); color:var(--win-ink); }
+.doc-code-error { margin:10px 16px 0; font-size:13px; color:var(--subtle); }
+.doc-code pre.doc-code-wrap { white-space:pre-wrap; overflow-wrap:anywhere; }
 
 /* App window */
 .win { position:relative; overflow:hidden; border-radius:12px; background:var(--win-bg); color:var(--win-ink); text-align:left; box-shadow:0 0 0 1px var(--win-line), var(--win-shadow); }

@@ -2,8 +2,11 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy } from "lucide-react"
 
-/** A code window in the product-card style: file name, language, and a copy button that confirms. */
-export function DocCodeBlock({ language = "bash", filename, code }: { language?: string; filename?: string; code: string }) {
+/**
+ * A code window in the product-card style: file name, language, and a copy button that confirms.
+ * `wrap` soft-wraps long lines, for program output and prose rather than code.
+ */
+export function DocCodeBlock({ language = "bash", filename, code, wrap = false }: { language?: string; filename?: string; code: string; wrap?: boolean }) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState("")
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -23,6 +26,6 @@ export function DocCodeBlock({ language = "bash", filename, code }: { language?:
       <button type="button" className="doc-code-copy" onClick={handleCopy} aria-label={copied ? "Copied" : "Copy code"}>{copied ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</button>
     </figcaption>
     {copyError && <p role="status" className="doc-code-error">{copyError}</p>}
-    <pre><code>{code}</code></pre>
+    <pre className={wrap ? "doc-code-wrap" : undefined}><code>{code}</code></pre>
   </figure>
 }

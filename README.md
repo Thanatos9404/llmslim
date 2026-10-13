@@ -300,6 +300,11 @@ pip install "llmslim[langchain]"
 pip install "llmslim[llamaindex]"
 pip install "llmslim[haystack]"
 
+# Agent history: gptme (0.34+) and Pydantic AI adapters (Python 3.10+).
+# Hermes Agent needs no extra: install llmslim into Hermes's environment.
+pip install "llmslim[gptme]"
+pip install "llmslim[pydantic-ai]"
+
 # All optional extensions
 pip install "llmslim[all]"
 ```
@@ -520,6 +525,37 @@ Runnable examples with their output:
 
 ---
 
+## Use with gptme / Hermes Agent / Pydantic AI
+
+These adapters fit an agent's message history into a token budget. They keep the
+system prompt, tool calls and the latest turns as they are, compress older tool
+output and turns locally (failures and tracebacks in tool output are kept), and keep
+every tool call paired with its result. There is no model call.
+
+| Agent | Install | Class or function | How it plugs in |
+| :--- | :--- | :--- | :--- |
+| gptme | `llmslim[gptme]` (gptme 0.34+) | `llmslim.integrations.gptme.LLMSlimContextProvider` | gptme context provider `llmslim`; `[plugin.llmslim] compaction = true` makes it the one gptme's compaction uses |
+| Hermes Agent | llmslim in Hermes's environment | `llmslim.integrations.hermes.LLMSlimContextEngine` | `ContextEngine` plugin `llmslim`; select it with `context.engine: llmslim` |
+| Pydantic AI | `llmslim[pydantic-ai]` (1.0+) | `llmslim.integrations.pydantic_ai.llmslim_history_processor` | history processor, in `ProcessHistory(...)` or `history_processors=[...]` |
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.capabilities import ProcessHistory
+from llmslim.integrations.pydantic_ai import llmslim_history_processor
+
+agent = Agent(
+    "openai:gpt-5",
+    capabilities=[ProcessHistory(llmslim_history_processor(max_tokens=8_000))],
+)
+```
+
+Setup and runnable examples with their output:
+[gptme](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/GPTME.md),
+[Hermes Agent](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/HERMES.md),
+[Pydantic AI](https://github.com/Thanatos9404/llmslim/blob/main/docs/integrations/PYDANTIC_AI.md).
+
+---
+
 ## 🛡️ Security Architecture: Provenance Isolation
 
 Compression algorithms that naively score sentences based on imperative keywords (`"Must"`, `"Always"`, `"Action Required"`) introduce a severe vulnerability: **indirect prompt injection amplification**. An attacker injecting malicious instructions into a retrieved RAG document can trick the compressor into preserving the attack payload while discarding legitimate context.
@@ -704,6 +740,9 @@ LLMSlim operates as an unopinionated context pre-processor. These integrations s
 | **LangChain** | `llmslim[langchain]`: `LLMSlimCompressor` | `BaseDocumentCompressor` for `ContextualCompressionRetriever` |
 | **LlamaIndex** | `llmslim[llamaindex]`: `LLMSlimPostprocessor` | `BaseNodePostprocessor` for query engines |
 | **Haystack** | `llmslim[haystack]`: `LLMSlimDocumentCompressor` | Pipeline component between retriever and prompt builder |
+| **gptme** | `llmslim[gptme]`: `LLMSlimContextProvider` | Context provider for gptme's compaction (entry point `llmslim`) |
+| **Hermes Agent** | `LLMSlimContextEngine` (no extra) | `ContextEngine` plugin; no LLM call, cache-stable prefix |
+| **Pydantic AI** | `llmslim[pydantic-ai]`: `llmslim_history_processor()` | History processor that keeps tool calls and returns paired |
 
 </div>
 

@@ -21,8 +21,21 @@ export function useTour(key: string, count: number) {
     let seen = true
     try { seen = window.localStorage.getItem(key) === "done" } catch { /* storage blocked: treat as seen */ }
     if (seen) return
-    const timer = window.setTimeout(() => setOpen(true), 1100)
-    return () => window.clearTimeout(timer)
+    // Count from the first contentful paint, not hydration: the tour scrolls to its first step, and a scroll
+    // before that paint is shown stops the browser from recording the page's largest contentful paint.
+    let timer = 0
+    let painted: PerformanceObserver | undefined
+    const start = () => {
+      painted?.disconnect()
+      window.removeEventListener("load", start)
+      if (!timer) timer = window.setTimeout(() => setOpen(true), 1100)
+    }
+    if (PerformanceObserver.supportedEntryTypes?.includes("paint")) {
+      painted = new PerformanceObserver((list) => { if (list.getEntriesByName("first-contentful-paint").length) start() })
+      painted.observe({ type: "paint", buffered: true })
+    } else if (document.readyState === "complete") start()
+    else window.addEventListener("load", start)
+    return () => { painted?.disconnect(); window.removeEventListener("load", start); window.clearTimeout(timer) }
   }, [key])
   const finish = useCallback(() => {
     setOpen(false)

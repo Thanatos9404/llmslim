@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Agent-history adapters** for gptme, Hermes Agent and Pydantic AI. Each fits
+  an agent's message history into a token budget locally, with no model call:
+  the system prompt, tool calls and the latest turns stay as they are, older
+  tool output and turns are compressed first (tool output keeps its failures,
+  tracebacks and line structure), and older material is dropped only when
+  compression is not enough. Tool calls always stay paired with their results.
+  Guides with runnable examples are in `docs/integrations/`.
+  - `llmslim.integrations.gptme.LLMSlimContextProvider`, a gptme
+    `ContextProvider`, registered through the `gptme.context_providers` entry
+    point as `llmslim`. A `gptme.plugins` entry point makes it the provider
+    gptme's automatic compaction and `/compact trim` use when the gptme config
+    has `[plugin.llmslim] compaction = true`; without that, gptme is
+    unchanged. Install `llmslim[gptme]` (gptme 0.34 or newer, Python 3.10+).
+    Tested with gptme 0.34.0.
+  - `llmslim.integrations.hermes.LLMSlimContextEngine`, a Hermes Agent
+    `ContextEngine`, loaded through the `hermes_agent.plugins` entry point or a
+    two-file directory plugin and selected with `context.engine: llmslim`. It
+    returns the system prompt and protected head as the same objects and, on
+    later compactions, leaves the previously compacted prefix byte-identical
+    when compressing the newer turns is enough, so prompt caches keep hitting.
+    `/compress <topic>` focuses compression on the topic. No extra: install
+    llmslim into Hermes's environment. Tested with Hermes Agent 0.19.0 (PyPI)
+    and v0.21.7 (GitHub).
+  - `llmslim.integrations.pydantic_ai.llmslim_history_processor(max_tokens)`,
+    a Pydantic AI history processor for `ProcessHistory(...)` or
+    `history_processors=[...]`. It removes older tool exchanges and turns only
+    as whole units that share no tool call id with the rest of the history, so
+    calls and returns stay paired and requests and responses still alternate.
+    Install `llmslim[pydantic-ai]` (Python 3.10+). Tested with
+    pydantic-ai-slim 1.0.0, 1.107.7 and 2.55.0.
+- `llmslim[all]` includes `pydantic-ai-slim`. gptme is not in `all`: it pins
+  `mcp<2`, which conflicts with the `mcp` extra.
+
 ## [0.8.1] - 2026-10-12
 
 ### Added

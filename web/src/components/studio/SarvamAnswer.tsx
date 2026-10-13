@@ -1,6 +1,6 @@
 "use client"
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { AnimatePresence, m, useReducedMotion } from "framer-motion"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, LoaderCircle, RotateCcw } from "lucide-react"
@@ -131,8 +131,8 @@ export function SarvamAnswer({ readiness, context, question, originalTokens, wai
 
     <div className="lab-answer-out" aria-live="polite">
       <AnimatePresence mode="wait" initial={false}>
-        {shown?.error && <motion.p key="error" className="lab-error" role="alert" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{shown.error}</motion.p>}
-        {data && <motion.div key={`answer-${key}`} className={busy ? "is-dim" : undefined} initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}>
+        {shown?.error && <m.p key="error" className="lab-error" role="alert" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{shown.error}</m.p>}
+        {data && <m.div key={`answer-${key}`} className={busy ? "is-dim" : undefined} initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}>
           <p className="lab-answer-label">{data.model} answered</p>
           <div className="lab-answer-text">{data.answer || "Sarvam returned an empty answer."}</div>
           <dl className="lab-metrics lab-answer-metrics">
@@ -146,8 +146,8 @@ export function SarvamAnswer({ readiness, context, question, originalTokens, wai
             {prices ? `Cost is an estimate from LLMSlim ${prices.core_version}’s price table for ${data.model}${prices.as_of ? ` (as of ${prices.as_of})` : ""}: ₹${prices.input_per_million.toFixed(2)} and ₹${prices.output_per_million.toFixed(2)} per million input and output tokens. Sarvam’s bill may differ.` : "Cost is an estimate from LLMSlim’s price table; Sarvam’s bill may differ."}
             {data.context.further_compressed ? " The context was trimmed further to fit the model budget." : ""}
           </p>
-        </motion.div>}
-        {!shown && <motion.p key="empty" className="lab-answer-empty" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>The answer, the tokens Sarvam counted and the cost appear here.</motion.p>}
+        </m.div>}
+        {!shown && <m.p key="empty" className="lab-answer-empty" initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>The answer, the tokens Sarvam counted and the cost appear here.</m.p>}
       </AnimatePresence>
     </div>
   </section>

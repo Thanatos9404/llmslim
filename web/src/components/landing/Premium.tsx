@@ -21,9 +21,11 @@ const EASE = [0.16, 1, 0.3, 1] as const
 export function Reveal({ children, className = "", delay = 0, as = "div", fade = true }: { children: ReactNode; className?: string; delay?: number; as?: "div" | "section" | "li"; fade?: boolean }) {
   const reduced = useReducedMotion()
   const Component = as === "section" ? motion.section : as === "li" ? motion.li : motion.div
-  if (reduced) return <Component className={className}>{children}</Component>
   const from = fade ? { opacity: 0, y: 28 } : { y: 14 }
   const to = fade ? { opacity: 1, y: 0 } : { y: 0 }
+  // The server cannot know the motion preference, so the HTML arrives in the hidden `from` state and hydration
+  // does not patch styles. Setting `to` on mount (no animation) shows the content for reduced-motion users.
+  if (reduced) return <Component className={className} initial={false} animate={to}>{children}</Component>
   return <Component className={className} initial={from} whileInView={to} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.9, ease: EASE, delay }}>{children}</Component>
 }
 

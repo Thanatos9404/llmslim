@@ -1,0 +1,88 @@
+/* Comparison pages: the benchmarks layout (bm-*) plus a few blocks of their own. */
+
+/* Long identifiers (module paths, metadata keys) wrap on phones instead of widening the page. */
+.cmp-answer li, .cmp-pair p, .cmp-notes p, .cmp-caveats dd, .cmp-cards p, .cmp-fit li, .cmp-migration-notes, .cmp-migration-general li, .cmp-faq p { overflow-wrap:anywhere; }
+
+.cmp-meta { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:18px; font:12px/1.6 var(--mono); color:var(--subtle); }
+.cmp-disclosure { max-width:640px; margin-top:10px; font-size:13.5px; line-height:1.65; color:var(--subtle); }
+
+/* The short answer: hairline rows with an accent tick. */
+.cmp-answer { max-width:880px; margin-top:44px; }
+.cmp-answer h2 { margin-bottom:18px; font:12px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--subtle); }
+.cmp-answer ul { display:grid; gap:14px; margin:0; padding:0; list-style:none; }
+.cmp-answer li { position:relative; padding-left:22px; font-size:16px; line-height:1.65; color:var(--ink); }
+.cmp-answer li::before { content:""; position:absolute; left:2px; top:.68em; width:6px; height:6px; background:var(--brand); }
+
+/* At a glance: the LLMSlim column carries the accent. */
+.cmp-glance { min-width:820px; }
+.cmp-glance tbody th { width:18%; }
+.cmp-glance td { line-height:1.55; }
+.cmp-glance td.is-us { color:var(--ink); }
+.cmp-glance thead th.is-us { color:var(--brand); }
+
+/* Two published methods, side by side. */
+.cmp-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(20px,3vw,40px); }
+.cmp-pair article { padding-top:22px; border-top:1px solid var(--line); }
+.cmp-pair h3 { font-size:22px; font-weight:600; letter-spacing:-.03em; }
+.cmp-cite { display:inline-flex; align-items:center; gap:4px; margin-top:6px; font:12px/1.5 var(--mono); color:var(--subtle); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
+.cmp-cite:hover { color:var(--ink); }
+.cmp-pair p { margin-top:14px; font-size:15px; line-height:1.7; color:var(--subtle); }
+.cmp-aside { max-width:820px; margin-top:28px; font-size:14px; line-height:1.75; color:var(--subtle); }
+.cmp-aside a { color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
+
+/* Numbered notes in a two-column grid. */
+.cmp-notes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:40px clamp(24px,4vw,56px); margin:0; padding:36px 0 0; list-style:none; border-top:1px solid var(--line); }
+.cmp-notes h3 { font-size:19px; font-weight:600; letter-spacing:-.02em; }
+.cmp-notes p { margin-top:10px; font-size:15px; line-height:1.7; color:var(--subtle); }
+
+.cmp-subhead { margin:64px 0 6px; font-size:22px; font-weight:600; letter-spacing:-.03em; }
+.cmp-diffs { min-width:860px; }
+.cmp-diffs td { font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* Caveats as a definition grid. */
+.cmp-caveats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 clamp(24px,4vw,56px); margin:12px 0 0; }
+.cmp-caveats > div { padding:18px 0; border-bottom:1px solid var(--line); }
+.cmp-caveats dt { font-size:15px; font-weight:600; letter-spacing:-.01em; color:var(--ink); }
+.cmp-caveats dd { margin:6px 0 0; font-size:14px; line-height:1.7; color:var(--subtle); }
+
+.cmp-links { display:flex; flex-wrap:wrap; gap:12px 28px; margin-top:28px; }
+
+/* When to choose each. */
+.cmp-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:0; padding:0; list-style:none; }
+.cmp-cards li { padding:22px 22px 24px; border-radius:16px; background:var(--soft); box-shadow:inset 0 0 0 1px var(--line); }
+.cmp-cards h3 { font-size:17px; font-weight:600; letter-spacing:-.02em; }
+.cmp-cards p { margin-top:8px; font-size:14.5px; line-height:1.7; color:var(--subtle); }
+.cmp-fit { max-width:820px; margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
+.cmp-fit li { position:relative; padding:16px 0 16px 22px; border-bottom:1px solid var(--line); font-size:15.5px; line-height:1.6; }
+.cmp-fit li::before { content:""; position:absolute; left:2px; top:1.45em; width:6px; height:6px; background:var(--brand); }
+
+/* Migration: before above after, so neither snippet is cut off by a narrow column. */
+.cmp-migration { padding-top:36px; border-top:1px solid var(--line); }
+.cmp-migration + .cmp-migration { margin-top:48px; }
+.cmp-migration h3 { font-size:22px; font-weight:600; letter-spacing:-.03em; }
+.cmp-code-pair { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; max-width:880px; margin-top:6px; }
+.cmp-code-label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; margin-top:16px; font:11px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--subtle); }
+.cmp-code-label strong { font-weight:500; letter-spacing:0; text-transform:none; color:var(--ink); }
+.cmp-code-label.is-us strong { color:var(--brand); }
+.cmp-code-pair .doc-code { margin-top:10px; }
+.cmp-migration-notes { max-width:880px; margin:16px 0 0; padding:0; list-style:none; font-size:14px; line-height:1.7; color:var(--subtle); }
+.cmp-migration-foot { margin-top:14px; }
+.cmp-migration-general { max-width:820px; margin:48px 0 0; padding:0; list-style:none; }
+.cmp-migration-general li { padding:12px 0; border-bottom:1px solid var(--line); font-size:14.5px; line-height:1.65; color:var(--subtle); }
+
+/* FAQ, sources and the closing call to action. */
+.cmp-faq { max-width:880px; }
+.cmp-sources { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 clamp(24px,4vw,56px); margin:0; padding:0; list-style:none; }
+.cmp-sources li { padding:12px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.cmp-sources a { display:inline-flex; align-items:center; gap:4px; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
+.cmp-cta { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+
+@media (max-width:900px) {
+  .cmp-pair, .cmp-notes, .cmp-caveats, .cmp-cards, .cmp-sources { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:700px) {
+  .cmp-answer { margin-top:40px; }
+  .cmp-answer li { font-size:15px; }
+  .cmp-subhead { margin-top:48px; }
+  .cmp-cta .button { width:100%; }
+}

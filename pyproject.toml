@@ -75,6 +75,13 @@ structured = ["pyyaml>=6.0"]
 langchain = ["langchain-core>=0.3"]
 llamaindex = ["llama-index-core>=0.12; python_version >= '3.10'"]
 haystack = ["haystack-ai>=2.0"]
+# Agent-framework adapters. gptme and Pydantic AI need Python 3.10+ (pydantic-ai-slim 2.55 needs
+# 3.11+). gptme is not in "all" because it pins mcp<2 and the mcp extra needs mcp>=2. There is no
+# Hermes Agent extra: current Hermes is installed with its own installer (it refuses to build
+# wheels, and hermes-agent on PyPI is an old 0.19 release), and its context engine needs nothing
+# beyond llmslim installed in Hermes's environment.
+gptme = ["gptme>=0.34; python_version >= '3.10'"]
+pydantic-ai = ["pydantic-ai-slim>=1.0; python_version >= '3.10'"]
 transformers-cache = ["transformers>=4.53,<6; python_version >= '3.10'", "torch>=2.0; python_version >= '3.10'"]
 all = [
     "sentence-transformers>=2.2",
@@ -92,8 +99,9 @@ all = [
     "llama-index-core>=0.12; python_version >= '3.10'",
     "haystack-ai>=2.0",
     "neo4j>=5.20,<7",
+    "pydantic-ai-slim>=1.0; python_version >= '3.10'",
 ]
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.21", "mypy>=1.8", "build>=1.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"
@@ -103,6 +111,19 @@ Repository = "https://github.com/Thanatos9404/llmslim"
 
 [project.scripts]
 llmslim = "llmslim.cli:main"
+
+# Discovered by gptme (0.34+) and Hermes Agent when they are installed; inert otherwise. gptme
+# loads the provider when it first looks one up, and the plugin at startup; the plugin replaces
+# gptme's compaction only with "[plugin.llmslim] compaction = true". Hermes loads entry-point
+# plugins only when they are listed in plugins.enabled.
+[project.entry-points."gptme.context_providers"]
+llmslim = "llmslim.integrations.gptme:LLMSlimContextProvider"
+
+[project.entry-points."gptme.plugins"]
+llmslim = "llmslim.integrations.gptme_plugin:plugin"
+
+[project.entry-points."hermes_agent.plugins"]
+llmslim = "llmslim.integrations.hermes"
 
 [tool.setuptools.packages.find]
 include = ["llmslim*"]
@@ -119,16 +140,21 @@ python_files = ["test_*.py"]
 [tool.coverage.run]
 source = ["llmslim"]
 branch = true
-# The LangChain, LlamaIndex and Haystack adapters import their framework at module import time and
-# their tests skip when it is missing, so measuring them would make the coverage gate depend on
-# which optional extras are installed. Their framework-free logic lives in
-# llmslim/integrations/_documents.py, which is measured and tested everywhere.
+# The framework adapters import their framework at module import time and their tests skip when it
+# is missing, so measuring them would make the coverage gate depend on which optional extras are
+# installed. Their framework-free logic lives in llmslim/integrations/_documents.py (LangChain,
+# LlamaIndex, Haystack) and llmslim/integrations/_history.py (gptme, Hermes Agent, Pydantic AI),
+# which are measured and tested everywhere.
 omit = [
     "tests/*",
     "benchmarks/*",
     "llmslim/integrations/langchain.py",
     "llmslim/integrations/llama_index.py",
     "llmslim/integrations/haystack.py",
+    "llmslim/integrations/gptme.py",
+    "llmslim/integrations/gptme_plugin.py",
+    "llmslim/integrations/hermes.py",
+    "llmslim/integrations/pydantic_ai.py",
 ]
 
 [tool.coverage.report]
@@ -153,6 +179,9 @@ line-length = 100
 target-version = "py39"
 src = ["llmslim", "tests", "benchmarks"]
 exclude = ["notebooks", "venv", ".venv", "dist"]
+# ruff 0.16 also formats Python blocks inside Markdown; README and docs examples are
+# formatted by hand for readability, so keep Markdown out of ruff.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [
@@ -205,6 +234,10 @@ module = [
     "langchain_core.*",
     "llama_index.*",
     "haystack.*",
+    "gptme.*",
+    "pydantic_ai.*",
+    "agent.*",
+    "hermes_cli.*",
 ]
 ignore_missing_imports = true
 

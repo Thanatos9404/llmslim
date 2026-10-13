@@ -13,7 +13,7 @@ import {
   Vercel,
   Exa,
 } from "@lobehub/icons";
-import { Building2, Code, Cpu, Database, Layers, Network, Server } from "lucide-react";
+import { Building2, Code, Cpu, Database, Layers, Network, Server, Workflow } from "lucide-react";
 
 export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: string; className?: string }) {
   switch (iconKey) {
@@ -43,6 +43,9 @@ export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: s
       return <LangChain className={className} size={32} />;
     case "llamaindex":
       return <LlamaIndex className={className} size={32} />;
+    case "haystack":
+      // No official Haystack mark in @lobehub/icons; a pipeline glyph stands in.
+      return <Workflow className={`${className} text-teal-500`} />;
     case "vercel":
       return <Vercel className={className} size={32} />;
     case "fastapi":

@@ -72,6 +72,7 @@ export default function BenchmarksPage() {
       </table></div>
       <p className="bm-note">{HEAD_TO_HEAD.note}</p>
       <p className="bm-note bm-sources">Sources and reruns: {HEAD_TO_HEAD.sources.map((source, index) => <span key={source.url}>{index > 0 && " · "}<a href={source.url} target="_blank" rel="noreferrer">{source.label}</a></span>)}</p>
+      <p className="bm-story-link"><Link className="text-link" href="/compare/llmlingua">Choosing between LLMSlim and LLMLingua? Read the comparison, with migration code <ArrowUpRight size={14} /></Link></p>
     </section>
 
     <section className="bm-section" aria-labelledby="agents-title">

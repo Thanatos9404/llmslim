@@ -1,7 +1,7 @@
 /** Homepage FAQ shown on the page, mirrored in its FAQPage structured data and in /index.md. */
 export const homeFaqs: ReadonlyArray<readonly [question: string, answer: string]> = [
   ["Does it need an API key?", "No. LLMSlim’s default extractive strategy runs right inside your Python application, with no key and no model call. Rewrite and hybrid strategies plug into any provider you choose."],
-  ["Does it work with my model?", "Yes. LLMSlim prepares context before your model call, so the output works with Sarvam, OpenAI, Anthropic, Gemini, or a local model. Your application keeps full control of the request."],
+  ["Does it work with my model?", "Yes. LLMSlim prepares context before your model call, so the output works with Sarvam, OpenAI, Anthropic, Gemini, or a local model. Adapters for LangChain, LlamaIndex and Haystack drop it into the retrieval pipeline you already run. Your application keeps full control of the request."],
   ["How much should I compress?", "Start at a 50% target and tune from there against your own evals. Every result shows exactly what was kept and why, so you can push the budget as far as your workload allows."],
   ["What is LLMSlim Platform?", "A private beta built on the open-source Core. It keeps a verifiable timeline of what your agents were told and what changed, explains and replays every context decision, and learns from real outcomes which context wins. Learned policies go live only when an administrator promotes them, and roll back instantly. Core stays MIT licensed: pip install llmslim."],
 ]

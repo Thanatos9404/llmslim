@@ -10,6 +10,7 @@ import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
 import { AGENT_FINDINGS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
+import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
 import { homeFaqs } from "@/data/home"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
@@ -96,14 +97,19 @@ export function integrationMarkdown(item: IntegrationData): string {
     `> ${item.tagline}`,
     item.description,
     `Category: ${item.category}`,
-    `## Install\n\n${fence(item.installation.packageManager === "pip" ? "bash" : "", item.installation.command)}`,
-    `## How it fits\n\n${item.architectureFlow.join("\n")}`,
-    `## Example\n\n${fence(item.codeExample.language, item.codeExample.code)}`,
+    `## Install\n\n${fence(item.installation.packageManager === "pip" ? "bash" : "", item.installation.command)}` + (item.installNote ? `\n\n${item.installNote}` : ""),
+    // Steps that are already numbered ("1. ...") stay as they are; the rest become list items.
+    `## How it fits\n\n${item.architectureFlow.map((step) => (/^\d+\. /.test(step) ? step : `- ${step}`)).join("\n")}`,
+    `## Example\n\n${fence(item.codeExample.language, item.codeExample.code)}` +
+      (item.output ? `\n\n${item.output.caption}\n\n${fence("text", item.output.text)}\n\n${item.output.explanation}` : ""),
+    item.options && item.options.length > 0 && "## Options\n\n" + table(["Option", "Default", "Meaning"], item.options.map((option) => [`\`${option.name}\``, `\`${option.defaultValue}\``, option.meaning])),
     `## Deployment\n\n${item.deploymentGuide}`,
     item.optimizationTips.length > 0 && "## Tips\n\n" + item.optimizationTips.map((tip) => `- ${tip}`).join("\n"),
+    item.limitations && item.limitations.length > 0 && "## Limitations\n\n" + item.limitations.map((limit) => `- ${limit}`).join("\n"),
     item.benchmarks.length > 0 && "## Evidence\n\n" + table(["Metric", "Uncompressed", "Compressed", "Impact"], item.benchmarks.map((row) => [row.metric, row.uncompressed, row.compressed, row.impact])),
     item.faqs.length > 0 && "## FAQ\n\n" + item.faqs.map((faq) => `### ${faq.question}\n\n${faq.answer}`).join("\n\n"),
     item.troubleshooting.length > 0 && "## Troubleshooting\n\n" + item.troubleshooting.map((row) => `- **${row.issue}:** ${row.solution}`).join("\n"),
+    item.links && item.links.length > 0 && "## Further reading\n\n" + item.links.map((link) => `- [${link.label}](${link.href.startsWith("/") ? md(link.href) : link.href})`).join("\n"),
     source(path),
   )
 }
@@ -124,6 +130,42 @@ export function benchmarkMarkdown(suite: BenchmarkSuite): string {
     suite.keyInsights.length > 0 && "## Findings\n\n" + suite.keyInsights.map((item) => `- ${item}`).join("\n"),
     suite.limitations.length > 0 && "## Limitations\n\n" + suite.limitations.map((item) => `- ${item}`).join("\n"),
     `## Reproduce\n\n${fence("bash", suite.reproducibleScript)}`,
+    source(path),
+  )
+}
+
+export function comparisonMarkdown(page: Comparison): string {
+  const path = `/compare/${page.slug}`
+  const snippet = (label: string, part: { label: string; install: string; code: string }) => `${label} (${part.label}):\n\n${fence("python", `# ${part.install}\n${part.code}`)}`
+  return join(
+    `# ${page.title}`,
+    `> ${page.lede}`,
+    `Updated ${page.lastUpdated}. ${page.disclosure}`,
+    "## The short answer\n\n" + page.shortAnswer.map((line) => `- ${line}`).join("\n"),
+    "## At a glance\n\n" + table(["Aspect", "LLMSlim", "LLMLingua-2", "LongLLMLingua"], page.glance.map((row) => [row.aspect, row.llmslim, row.lingua2, row.longLingua ?? row.lingua2])),
+    "## What LLMLingua-2 and LongLLMLingua are\n\n" + page.baselines.map((item) => `### ${item.name}\n\n[${item.citation}](${item.url}). ${item.body}`).join("\n\n") + `\n\n${page.baselinesNote}`,
+    "## How LLMSlim differs\n\n" + page.differences.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    join(
+      "## Head to head on NaturalQuestions",
+      "20 retrieved passages per question, a 25% token budget for every compressor, and Claude Haiku 5.5 reading every compressed context.",
+      table(["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Tokens kept", "Time per question"], HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreAll, row.tokens, row.time])),
+      HEAD_TO_HEAD.note,
+      "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Original (150 cases)", "Fresh (150 cases)", "All 300, by case", "All 300, by question"], page.pairedDiffs.map((row) => [row.comparison, row.original, row.fresh, row.byCase, row.byQuestion])),
+      page.pairedNote,
+    ).trimEnd(),
+    "## What this does not show\n\n" + page.caveats.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    "## When to choose LLMLingua\n\n" + page.chooseThem.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    "## When LLMSlim fits\n\n" + page.chooseUs.map((line) => `- ${line}`).join("\n"),
+    "## Migrate\n\n" + page.migrations.map((migration) => join(
+      `### ${migration.framework}`,
+      migration.before && snippet("Before", migration.before),
+      snippet(migration.before ? "After" : "Add", migration.after),
+      migration.notes.map((note) => `- ${note}`).join("\n"),
+      `Guide: ${md(migration.guide)}`,
+    ).trimEnd()).join("\n\n") + "\n\n" + page.migrationNotes.map((note) => `- ${note}`).join("\n"),
+    "## FAQ\n\n" + page.faqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),
+    "## Sources\n\n" + page.sources.map((item) => `- [${item.label}](${item.url})`).join("\n") +
+      `\n- [Methodology article](${md("/articles/llmslim-vs-llmlingua-2-vs-longllmlingua")})\n- [Every benchmark](${md("/benchmarks")})`,
     source(path),
   )
 }
@@ -150,6 +192,8 @@ function sectionIndex(section: Section): string {
       const pages = Object.values(DOCS_REGISTRY).filter((doc) => doc.category === category)
       return pages.length > 0 && `## ${category}\n\n` + pages.map((doc) => `- [${doc.title}](${md(`/docs/${doc.slug}`)}): ${doc.description}`).join("\n")
     }),
+    "## Framework integrations\n\n" + Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
+      .map((item) => `- [LLMSlim + ${item.name}](${md(`/integrations/${item.slug}`)}): ${item.tagline}`).join("\n"),
     source("/docs"),
   )
   if (section === "integrations") return join(
@@ -182,6 +226,7 @@ function sectionIndex(section: Section): string {
       "## Head to head with other compressors",
       table(["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Tokens kept", "Time per question"], HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreAll, row.tokens, row.time])),
       HEAD_TO_HEAD.note,
+      ...Object.values(COMPARISONS).map((page) => `Choosing between them: [${page.title}](${md(`/compare/${page.slug}`)}), with migration code.`),
     ).trimEnd(),
     ...AGENT_FINDINGS.map((finding) => join(
       `## ${finding.name}`,
@@ -222,6 +267,7 @@ export function markdownFor(path: readonly string[]): string | null {
   if (head === "articles" && ARTICLES_REGISTRY[slug]) return articleMarkdown(ARTICLES_REGISTRY[slug])
   if (head === "integrations" && INTEGRATIONS_REGISTRY[slug]) return integrationMarkdown(INTEGRATIONS_REGISTRY[slug])
   if (head === "benchmarks" && BENCHMARK_SUITES[slug]) return benchmarkMarkdown(BENCHMARK_SUITES[slug])
+  if (head === "compare" && COMPARISONS[slug]) return comparisonMarkdown(COMPARISONS[slug])
   return null
 }
 
@@ -233,6 +279,7 @@ export function markdownPaths(): string[][] {
     ...Object.keys(ARTICLES_REGISTRY).map((slug) => ["articles", slug]),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ["integrations", slug]),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => ["benchmarks", slug]),
+    ...Object.keys(COMPARISONS).map((slug) => ["compare", slug]),
   ]
 }
 
@@ -243,10 +290,14 @@ export function llmsTxt(): string {
     "# LLMSlim",
     `> ${SUMMARY}`,
     CORE_FACTS.map((fact) => `- ${fact}`).join("\n"),
-    "Every page below is plain Markdown. Append `.md` to any docs, integration, article or benchmark URL on this site for its Markdown version. When describing LLMSlim, distinguish the open-source Core from the private Platform, and cite benchmark limitations alongside results.",
+    "Every page below is plain Markdown. Append `.md` to any docs, integration, comparison, article or benchmark URL on this site for its Markdown version. When describing LLMSlim, distinguish the open-source Core from the private Platform, and cite benchmark limitations alongside results.",
     "## Docs\n\n" + list(Object.values(DOCS_REGISTRY).map((doc) => [doc.title, `/docs/${doc.slug}`, doc.description])),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
-    "## Benchmarks\n\n" + list(Object.values(BENCHMARK_SUITES).map((suite) => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle])),
+    "## Benchmarks\n\n" + list([
+      ["Benchmarks", "/benchmarks", "Real-model results on seven public benchmarks, with the NaturalQuestions head-to-head against LLMLingua-2 and LongLLMLingua"],
+      ...Object.values(BENCHMARK_SUITES).map((suite): [string, string, string] => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle]),
+    ]),
+    "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),
     "## Project\n\n" + list([
       ["Overview", "/", "What LLMSlim Core and LLMSlim Platform are, with a quick start and FAQ"],
       ["Changelog", "/changelog", "Released Core versions and what each changed"],
@@ -256,13 +307,14 @@ export function llmsTxt(): string {
   )
 }
 
-/** /llms-full.txt: the overview, every doc, integration and benchmark, the changelog and the engineering notes. */
+/** /llms-full.txt: the overview, every doc, integration, comparison and benchmark, the changelog and the engineering notes. */
 export function llmsFullTxt(): string {
   const rule = "\n---\n\n"
   return [
     homeMarkdown(),
     ...Object.values(DOCS_REGISTRY).map(docMarkdown),
     ...Object.values(INTEGRATIONS_REGISTRY).map(integrationMarkdown),
+    ...Object.values(COMPARISONS).map(comparisonMarkdown),
     ...Object.values(BENCHMARK_SUITES).map(benchmarkMarkdown),
     changelogMarkdown(),
     ...Object.values(ARTICLES_REGISTRY).map(articleMarkdown),

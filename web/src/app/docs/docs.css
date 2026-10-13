@@ -72,15 +72,7 @@
 .doc-anchor { position:absolute; left:-26px; top:4px; display:grid; place-items:center; width:20px; height:20px; color:var(--subtle); opacity:0; transition:opacity .2s; }
 .doc-section h2:hover .doc-anchor, .doc-anchor:focus-visible { opacity:1; }
 .doc-section > p { margin:0; font-size:16px; line-height:1.78; color:color-mix(in srgb,var(--ink) 78%,transparent); }
-.doc-code { margin:20px 0 0; overflow:hidden; border-radius:14px; background:var(--win-bg); box-shadow:0 0 0 1px var(--win-line), var(--win-shadow); }
-.doc-code-bar { display:flex; align-items:center; gap:12px; height:40px; padding:0 8px 0 16px; border-bottom:1px solid var(--win-line); font:11.5px var(--mono); color:var(--win-sub); }
-.doc-code-name { display:flex; flex:1; align-items:center; gap:10px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--win-ink); }
-.doc-code-pixel { flex-shrink:0; width:6px; height:6px; background:var(--brand); }
-.doc-code-lang { color:var(--win-sub); }
-.doc-code-copy { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border:0; border-radius:8px; background:transparent; font-family:Geist,Arial,sans-serif; font-size:12px; font-weight:500; color:var(--win-sub); transition:background .2s, color .2s; }
-.doc-code-copy:hover { background:color-mix(in srgb,var(--win-ink) 7%,transparent); color:var(--win-ink); }
-.doc-code pre { margin:0; padding:18px 20px 20px; overflow:auto; max-height:460px; font:13px/1.75 var(--mono); color:var(--win-ink); }
-.doc-code-error { margin:10px 16px 0; font-size:13px; color:var(--subtle); }
+/* .doc-code (DocCodeBlock) lives in globals.css: integration and comparison pages use it too. */
 .doc-callout { margin:20px 0 0; padding:16px 18px 16px 20px; border-radius:12px; background:var(--soft); box-shadow:inset 3px 0 0 var(--ink), inset 0 0 0 1px var(--line); }
 .doc-callout.is-tip { box-shadow:inset 3px 0 0 var(--brand), inset 0 0 0 1px var(--line); }
 .doc-callout.is-warning, .doc-callout.is-important { box-shadow:inset 3px 0 0 var(--signal), inset 0 0 0 1px var(--line); }

@@ -90,7 +90,7 @@ export default function Home() {
       </div>
     </PhotoSection>
 
-    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link></div><CodeExample /></section>
+    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, or into the LangChain, LlamaIndex or Haystack pipeline you already run. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></div><CodeExample /></section>
 
     <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
 

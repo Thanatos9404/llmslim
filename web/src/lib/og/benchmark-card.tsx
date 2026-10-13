@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { RACE } from "@/data/results-story"
 
 /**
- * The share card for /benchmarks and /results: the NaturalQuestions head-to-head as four bars.
+ * The share card for /benchmarks, /results and /compare/llmlingua: the NaturalQuestions head-to-head as four bars.
  * Scores and times come from RACE (src/data/results-story.ts), the same data the pages show.
  *
  * Fonts (assets/og) are static TTF instances of the site's own woff2 files in public/fonts (Geist 400/600,
@@ -84,7 +84,7 @@ function BarRow({ bar }: { bar: Bar }) {
   </div>
 }
 
-export async function benchmarkCard(path: "/benchmarks" | "/results") {
+export async function benchmarkCard(path: "/benchmarks" | "/results" | "/compare/llmlingua") {
   return new ImageResponse(
     <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "52px 64px 44px", backgroundColor: C.surface, backgroundImage: "radial-gradient(circle at 92% 0%, rgba(255,122,61,0.16) 0%, rgba(255,122,61,0) 46%)", color: C.ink, fontFamily: "Geist" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

@@ -377,13 +377,25 @@ def _cosine_matrix(embeddings: np.ndarray) -> np.ndarray:
     return normalized @ normalized.T
 
 
+# Above this many sentences, centrality is computed without the n-by-n similarity matrix (24,000 sentences would need
+# about 4.6 GB for it). Smaller chunks keep the matrix path, so their scores stay bit-for-bit what they were.
+_DENSE_CENTRALITY_LIMIT = 4096
+
+
 def _centrality_scores(embeddings: np.ndarray) -> np.ndarray:
     n = len(embeddings)
     if n <= 1:
         return np.ones(n)
-    similarity = _cosine_matrix(embeddings)
-    np.fill_diagonal(similarity, 0.0)
-    scores = similarity.sum(axis=1) / max(n - 1, 1)
+    if n <= _DENSE_CENTRALITY_LIMIT:
+        similarity = _cosine_matrix(embeddings)
+        np.fill_diagonal(similarity, 0.0)
+        scores = similarity.sum(axis=1) / max(n - 1, 1)
+    else:
+        # Each row sum of the cosine matrix is the row's dot product with the sum of all normalized rows, minus its
+        # similarity to itself (1 for a non-zero row, 0 for an all-zero one): the same scores in O(n * d) memory.
+        normalized = _normalize_rows(np.asarray(embeddings, dtype=float))
+        self_similarity = np.einsum("ij,ij->i", normalized, normalized)
+        scores = (normalized @ normalized.sum(axis=0) - self_similarity) / (n - 1)
     max_score = scores.max()
     if max_score > 0:
         scores = scores / max_score

@@ -76,3 +76,35 @@ def test_score_chunk_sentences_custom_weights(sample_chunk):
 
     scored = score_chunk_sentences(sample_chunk, embeddings, weights=custom_weights)
     assert len(scored) == len(sample_chunk.sentences)
+
+
+def test_centrality_without_dense_matrix_matches_dense(monkeypatch):
+    """Large chunks score centrality in O(n * d) memory, with the same result as the dense matrix (issue #17)."""
+    from llmslim import ranking
+
+    rng = np.random.default_rng(0)
+    embeddings = rng.standard_normal((300, 16)).astype(np.float32)
+    embeddings[7] = 0.0  # an all-zero row has no similarity to anything, itself included
+    dense = ranking._centrality_scores(embeddings)
+
+    def no_matrix(_embeddings):
+        raise AssertionError("the n-by-n similarity matrix must not be built above the limit")
+
+    monkeypatch.setattr(ranking, "_DENSE_CENTRALITY_LIMIT", 50)
+    monkeypatch.setattr(ranking, "_cosine_matrix", no_matrix)
+    streamed = ranking._centrality_scores(embeddings)
+    np.testing.assert_allclose(streamed, dense, rtol=1e-5, atol=1e-6)
+    assert int(np.argmax(streamed)) == int(np.argmax(dense))
+
+
+def test_centrality_small_chunks_keep_the_dense_path():
+    """Typical chunks keep the original computation, so their scores do not change."""
+    from llmslim import ranking
+
+    embeddings = np.random.default_rng(1).standard_normal((40, 8))
+    normalized = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+    similarity = normalized @ normalized.T
+    np.fill_diagonal(similarity, 0.0)
+    expected = similarity.sum(axis=1) / 39
+    expected = expected / expected.max()
+    np.testing.assert_array_equal(ranking._centrality_scores(embeddings), expected)

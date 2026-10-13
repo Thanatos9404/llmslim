@@ -43,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llmslim[all]` includes `pydantic-ai-slim`. gptme is not in `all`: it pins
   `mcp<2`, which conflicts with the `mcp` extra.
 
+### Fixed
+- **Sentence centrality on very large chunks** no longer builds the full
+  sentence-by-sentence similarity matrix. Above 4,096 sentences the same
+  scores are computed from row sums in memory proportional to the number of
+  sentences: a 24,000-sentence chunk peaks at about 150 MB instead of 2.3 GB,
+  and is faster. Smaller chunks use the existing path, so their output is
+  unchanged. Thanks to @rlippmann for the report and the analysis (#17).
+
 ## [0.8.1] - 2026-10-12
 
 ### Added

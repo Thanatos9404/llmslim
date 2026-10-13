@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion"
+import { LayoutGroup, m, useReducedMotion } from "framer-motion"
 import { useState } from "react"
 import { HEAD_TO_HEAD } from "@/data/live-benchmarks"
 import { RACE } from "@/data/results-story"
@@ -47,7 +47,7 @@ export function Race() {
     <LayoutGroup>
       <div className="rs-race-switch" role="tablist" aria-label="Question set">
         {SETS.map((item) => <button key={item.key} type="button" role="tab" aria-selected={set === item.key} onClick={() => setSet(item.key)}>
-          {set === item.key && <motion.span layoutId="race-tab" className="rs-race-tab" transition={spring} />}
+          {set === item.key && <m.span layoutId="race-tab" className="rs-race-tab" transition={spring} />}
           <span>{item.label}</span>
         </button>)}
       </div>
@@ -59,38 +59,38 @@ export function Race() {
             {X_TICKS.map(([ms, label]) => <g key={ms}><line className="rs-grid" x1={sx(ms)} x2={sx(ms)} y1={M.top} y2={H - M.bottom} /><text className="rs-tick" x={sx(ms)} y={H - M.bottom + 22} textAnchor="middle">{label}</text></g>)}
             <text className="rs-axis" x={W - M.right} y={H - 8} textAnchor="end">Time to compress one question, log scale</text>
 
-            <motion.g initial={false} animate={{ y: sy(current.full) }} transition={spring}>
+            <m.g initial={false} animate={{ y: sy(current.full) }} transition={spring}>
               <line className="rs-ref" x1={M.left} x2={W - M.right} y1={0} y2={0} />
               <text className="rs-ref-label" x={W - M.right} y={-8} textAnchor="end">Full context {fmt(current.full, 1)}</text>
-            </motion.g>
-            <motion.g initial={false} animate={{ y: sy(value(baseline, set)) }} transition={spring}>
+            </m.g>
+            <m.g initial={false} animate={{ y: sy(value(baseline, set)) }} transition={spring}>
               <line className="rs-ref is-low" x1={M.left} x2={W - M.right} y1={0} y2={0} />
               <text className="rs-ref-label" x={W - M.right} y={-8} textAnchor="end">Cut to fit {fmt(value(baseline, set), 1)}</text>
-            </motion.g>
+            </m.g>
 
-            <motion.g initial={false} animate={{ y: span }} transition={spring}>
+            <m.g initial={false} animate={{ y: span }} transition={spring}>
               <line className="rs-span" x1={sx(ours.ms)} x2={sx(rival.ms)} y1={0} y2={0} />
               <line className="rs-span" x1={sx(ours.ms)} x2={sx(ours.ms)} y1={-5} y2={5} />
               <line className="rs-span" x1={sx(rival.ms)} x2={sx(rival.ms)} y1={-5} y2={5} />
               <text className="rs-span-label" x={(sx(ours.ms) + sx(rival.ms)) / 2} y={-10} textAnchor="middle">about 100× faster per question</text>
-            </motion.g>
+            </m.g>
 
-            {points.map((row) => <motion.g key={row.name} className={`rs-point is-${row.kind}`} initial={false} animate={{ x: sx(row.ms), y: sy(value(row, set)) }} transition={spring}>
+            {points.map((row) => <m.g key={row.name} className={`rs-point is-${row.kind}`} initial={false} animate={{ x: sx(row.ms), y: sy(value(row, set)) }} transition={spring}>
               <circle r={row.kind === "llmslim" ? 8 : 6.5} />
               <text x={row.ms > 2000 ? -14 : 14} y={row.kind === "lite" ? 20 : -12} textAnchor={row.ms > 2000 ? "end" : "start"}>{row.name} <tspan className="rs-point-score">{fmt(value(row, set), 1)}</tspan></text>
-            </motion.g>)}
+            </m.g>)}
           </svg>
         </figure>
 
         <ol className="rs-board">
-          {ranked.map((row, i) => <motion.li key={row.name} layout transition={spring} className={`rs-board-row is-${row.kind}`}>
+          {ranked.map((row, i) => <m.li key={row.name} layout transition={spring} className={`rs-board-row is-${row.kind}`}>
             <span className="rs-board-rank">{i + 1}</span>
             <span className="rs-board-name">{row.name}<small>{row.model}</small></span>
             <span className="rs-board-score">{fmt(value(row, set), 1)}</span>
-          </motion.li>)}
+          </m.li>)}
         </ol>
       </div>
-      <motion.p key={set} className="rs-note" initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>{current.note}</motion.p>
+      <m.p key={set} className="rs-note" initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>{current.note}</m.p>
       <p className="rs-note rs-sources">{HEAD_TO_HEAD.sources.map((source, index) => <span key={source.url}>{index > 0 && " · "}<a href={source.url} target="_blank" rel="noreferrer">{source.label}</a></span>)}</p>
     </LayoutGroup>
   </section>

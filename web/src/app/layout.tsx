@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import { constructMetadata, getStructuredDataGraph, jsonLdScript } from "@/lib/seo";
 import { ErrorReporting } from "@/components/site/Telemetry";
+import { MotionProvider } from "@/components/site/MotionProvider";
 
 const themeController = `(() => {
   const key = "llmslim-theme";
@@ -62,7 +63,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        {children}
+        <MotionProvider>{children}</MotionProvider>
 
         {/* Vercel Web Analytics & Real User Speed Insights Tracking */}
         <Analytics />

@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
+import { m, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 import { EASE, fmt } from "./Charts"
 
@@ -159,11 +159,11 @@ export function Squeeze() {
         <p className="rs-kicker">One question, one long memory</p>
         <h2 id="squeeze-title" className="rs-visually-hidden">How LLMSlim compresses a long chat history</h2>
         <ol className="rs-steps">
-          {STEPS.map((item, index) => <motion.li key={item.kicker} className="rs-step" aria-current={!reduced && step === index ? "step" : undefined}
+          {STEPS.map((item, index) => <m.li key={item.kicker} className="rs-step" aria-current={!reduced && step === index ? "step" : undefined}
             animate={reduced ? undefined : { opacity: step === index ? 1 : 0.16, y: step === index ? 0 : step > index ? -6 : 6 }} transition={{ duration: 0.6, ease: EASE }}>
             <span className="rs-step-no">{String(index + 1).padStart(2, "0")}</span>
             <div><p className="rs-step-kicker">{item.kicker}</p><h3>{item.title}</h3><div className="rs-step-more"><p>{item.body}</p></div></div>
-          </motion.li>)}
+          </m.li>)}
         </ol>
       </div>
       <div className="rs-squeeze-stage">

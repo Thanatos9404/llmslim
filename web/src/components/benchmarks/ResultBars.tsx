@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useReducedMotion } from "framer-motion"
+import { m, useReducedMotion } from "framer-motion"
 import type { Arm } from "@/data/live-benchmarks"
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -23,7 +23,7 @@ export function ResultBars({ arms, metric, compact = false }: { arms: Arm[]; met
         <span className="rb-score">{arm.score.toFixed(1)}</span>
       </div>
       <div className="rb-track" aria-hidden="true">
-        <motion.span className="rb-bar" style={{ width: `${(arm.score / top) * 100}%`, originX: 0 }}
+        <m.span className="rb-bar" style={{ width: `${(arm.score / top) * 100}%`, originX: 0 }}
           initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.6 }}
           transition={{ duration: 1.1, ease: EASE, delay: index * 0.06 }} />
       </div>

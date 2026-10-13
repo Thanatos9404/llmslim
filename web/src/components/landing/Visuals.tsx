@@ -1,6 +1,6 @@
 "use client"
 
-import { animate, motion, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { animate, m, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useEffect, useRef, type PointerEvent, type ReactNode } from "react"
 
 // Product visuals in place of text boxes: each one shows what LLMSlim actually does.
@@ -31,7 +31,7 @@ export function Showcase({ children, className = "" }: { children: ReactNode; cl
   }
   return <div ref={panel} className={`stage ${className}`} onPointerMove={move}>
     <div className="stage-spot" aria-hidden="true" />
-    <motion.div className="stage-mock" style={reduced ? undefined : { y }}>{children}</motion.div>
+    <m.div className="stage-mock" style={reduced ? undefined : { y }}>{children}</m.div>
   </div>
 }
 
@@ -61,12 +61,12 @@ export function CompressVisual({ before, after, foot }: { before: number; after:
   return <Window title="agent.py · llmslim.compress()" badge={<><span className="dot-live" />local</>}>
     <div className="cv-row"><span>Context in</span><span className="cv-num">{before.toLocaleString("en-US")} tokens</span></div>
     <div ref={grid} className="cv-grid" aria-hidden="true">
-      {CELLS.map((cell, i) => <motion.i key={i} className={cell.keep ? "is-keep" : ""} style={{ width: cell.width }}
+      {CELLS.map((cell, i) => <m.i key={i} className={cell.keep ? "is-keep" : ""} style={{ width: cell.width }}
         initial={false} animate={done ? (cell.keep ? { opacity: 1, scale: 1 } : { opacity: 0.14, scale: 0.92 }) : { opacity: 0.7, scale: 1 }}
         transition={{ duration: 0.7, ease: EASE, delay: reduced ? 0 : 0.25 + (i % 24) * 0.025 }} />)}
     </div>
     <div className="cv-row"><span>Sent to the model</span><span className="cv-num cv-num-accent"><Count to={after} from={before} /> tokens</span></div>
-    <div className="cv-bar" aria-hidden="true"><motion.span initial={false} animate={{ scaleX: done ? after / before : 1 }} transition={{ duration: 1.4, ease: EASE, delay: reduced ? 0 : 0.3 }} /></div>
+    <div className="cv-bar" aria-hidden="true"><m.span initial={false} animate={{ scaleX: done ? after / before : 1 }} transition={{ duration: 1.4, ease: EASE, delay: reduced ? 0 : 0.3 }} /></div>
     <div className="cv-foot">{foot}</div>
   </Window>
 }
@@ -93,14 +93,14 @@ export function TraceVisual({ used = "7,287", total = "8,000" }: { used?: string
   const show = inView || reduced
   return <Window title="trace · turn 214" badge="replayable">
     <ul ref={list} className="tv-list">
-      {TRACE.map((row, i) => <motion.li key={row.handle} className={`tv-row is-${row.status}`} initial={false}
+      {TRACE.map((row, i) => <m.li key={row.handle} className={`tv-row is-${row.status}`} initial={false}
         animate={show ? { opacity: 1, x: 0 } : { opacity: 0, x: -14 }} transition={{ duration: 0.6, ease: EASE, delay: reduced ? 0 : 0.1 + i * 0.09 }}>
         <span className="tv-handle">{row.handle}</span><span className={`tv-kind tv-${row.kind}`}>{row.kind}</span>
         <span className="tv-text">{row.text}</span><span className="tv-status">{STATUS_LABEL[row.status]}</span>
-      </motion.li>)}
+      </m.li>)}
     </ul>
     <div className="tv-budget"><div className="tv-budget-bar" aria-hidden="true">{BUDGET.map(([kind, share], i) =>
-      <motion.span key={kind} className={`tb-${kind}`} style={{ width: `${share * 100}%`, originX: 0 }} initial={false}
+      <m.span key={kind} className={`tb-${kind}`} style={{ width: `${share * 100}%`, originX: 0 }} initial={false}
         animate={{ scaleX: show ? 1 : 0 }} transition={{ duration: 0.9, ease: EASE, delay: reduced ? 0 : 0.6 + i * 0.12 }} />)}</div>
       <span>{used} / {total} tokens</span></div>
   </Window>
@@ -111,10 +111,10 @@ export function TraceVisual({ used = "7,287", total = "8,000" }: { used?: string
 export function TimelineVisual() {
   const steps = [["May 1", 'home_city = "Pune"', "superseded"], ["May 20", 'home_city = "Delhi"', "correction"], ["Today", 'home_city = "Delhi"', "active"]] as const
   return <Window title="state · user.home_city" badge="verified">
-    <ol className="tl-list">{steps.map(([when, fact, state], i) => <motion.li key={when} className={`tl-step is-${state}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
+    <ol className="tl-list">{steps.map(([when, fact, state], i) => <m.li key={when} className={`tl-step is-${state}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.6 }} transition={{ duration: 0.6, ease: EASE, delay: i * 0.15 }}>
       <span className="tl-when">{when}</span><span className="tl-node" aria-hidden="true" /><span className="tl-fact">{fact}</span><span className="tl-state">{state}</span>
-    </motion.li>)}</ol>
+    </m.li>)}</ol>
     <p className="win-note">One answer reaches the model. The history stays in the ledger.</p>
   </Window>
 }
@@ -127,7 +127,7 @@ export function PolicyVisual() {
     <div className="pv-stages">{stages.map((stage, i) => <span key={stage} className={i === 2 ? "is-current" : i < 2 ? "is-done" : ""}>{stage}</span>)}</div>
     <svg className="pv-chart" viewBox="0 0 300 70" aria-hidden="true" preserveAspectRatio="none">
       <path d={`${path} L 300 70 L 0 70 Z`} fill="var(--brand)" fillOpacity=".08" />
-      <motion.path d={path} fill="none" stroke="var(--brand)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6, ease: EASE }} />
+      <m.path d={path} fill="none" stroke="var(--brand)" strokeWidth="1.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6, ease: EASE }} />
     </svg>
     <p className="win-note">Suggestions run in shadow until an offline evaluation passes.</p>
   </Window>
@@ -136,8 +136,8 @@ export function PolicyVisual() {
 export function GuardVisual() {
   const layers = [["System instructions", "locked"], ["Developer policy", "locked"], ["Tenant isolation", "enforced"], ["Tool output", "data only"]] as const
   return <Window title="trust boundaries" badge="always first">
-    <ul className="gv-list">{layers.map(([name, state], i) => <motion.li key={name} className={i === 3 ? "is-untrusted" : ""} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.6 }} transition={{ duration: 0.55, ease: EASE, delay: i * 0.1 }}><span>{name}</span><span className="gv-state">{state}</span></motion.li>)}</ul>
+    <ul className="gv-list">{layers.map(([name, state], i) => <m.li key={name} className={i === 3 ? "is-untrusted" : ""} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.6 }} transition={{ duration: 0.55, ease: EASE, delay: i * 0.1 }}><span>{name}</span><span className="gv-state">{state}</span></m.li>)}</ul>
     <p className="win-note">Learned policies can only leave out optional context.</p>
   </Window>
 }
@@ -167,7 +167,7 @@ function Meter({ bar, max, ours, delay }: { bar: Bar; max: number; ours?: boolea
   const reduced = useReducedMotion()
   return <div className={`ledger-bar${ours ? " is-ours" : ""}`}>
     <span>{bar.name}</span><span className="ledger-bar-value">{bar.display}</span>
-    <span className="ledger-bar-track"><motion.span className="ledger-bar-fill" style={{ width: `${Math.max(0, Math.min(100, (bar.value / max) * 100))}%` }}
+    <span className="ledger-bar-track"><m.span className="ledger-bar-fill" style={{ width: `${Math.max(0, Math.min(100, (bar.value / max) * 100))}%` }}
       initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.8 }} transition={{ duration: 1.2, ease: EASE, delay }} /></span>
   </div>
 }
@@ -181,7 +181,7 @@ export function StatsBand({ stats }: { stats: Stat[] }) {
     event.currentTarget.style.setProperty("--my", `${event.clientY - box.top}px`)
   }
   return <dl className="ledger" onPointerMove={move}>
-    {stats.map((stat, i) => <motion.div key={stat.topic} className="ledger-cell" initial={reduced ? false : { opacity: 0, y: 18, filter: "blur(6px)" }}
+    {stats.map((stat, i) => <m.div key={stat.topic} className="ledger-cell" initial={reduced ? false : { opacity: 0, y: 18, filter: "blur(6px)" }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.8, ease: EASE, delay: i * 0.08 }}>
       <dt className="ledger-topic">{stat.topic}</dt>
       <dd className="ledger-value"><Ticker value={stat.value} />{stat.unit && <span className="ledger-unit">{stat.unit}</span>}</dd>
@@ -191,7 +191,7 @@ export function StatsBand({ stats }: { stats: Stat[] }) {
         <Meter bar={stat.meter.after} max={stat.meter.max} ours delay={0.35 + i * 0.08} />
       </dd>
       <dd className="ledger-source">{stat.source}</dd>
-    </motion.div>)}
+    </m.div>)}
   </dl>
 }
 
@@ -199,9 +199,9 @@ export function StatsBand({ stats }: { stats: Stat[] }) {
 
 export function FeatureRow({ kicker, title, children, visual, flip = false }: { kicker: string; title: ReactNode; children: ReactNode; visual: ReactNode; flip?: boolean }) {
   return <div className={`feature-row ${flip ? "is-flipped" : ""}`}>
-    <motion.div className="feature-copy" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.8, ease: EASE }}>
+    <m.div className="feature-copy" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.8, ease: EASE }}>
       <p className="p-kicker">{kicker}</p><h3>{title}</h3><div className="feature-body">{children}</div>
-    </motion.div>
+    </m.div>
     <div className="feature-visual">{visual}</div>
   </div>
 }

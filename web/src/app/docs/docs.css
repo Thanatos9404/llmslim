@@ -32,7 +32,7 @@
 .docs-install { display:inline-flex; align-items:center; gap:12px; height:44px; margin-top:28px; padding:0 8px 0 16px; border:0; border-radius:12px; background:var(--soft); box-shadow:inset 0 0 0 1px var(--line); color:var(--ink); font:13.5px var(--mono); transition:box-shadow .2s; }
 .docs-install:hover { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 28%,transparent); }
 .docs-install-prompt { color:var(--subtle); }
-.docs-install-copy { display:inline-flex; align-items:center; gap:6px; height:30px; margin-left:8px; padding:0 10px; border-radius:8px; background:var(--surface); box-shadow:0 0 0 1px var(--line); font-family:Geist,Arial,sans-serif; font-size:12px; font-weight:500; color:var(--subtle); }
+.docs-install-copy { display:inline-flex; align-items:center; gap:6px; height:30px; margin-left:8px; padding:0 10px; border-radius:8px; background:var(--surface); box-shadow:0 0 0 1px var(--line); font-family:Geist,"Geist Fallback",Arial,sans-serif; font-size:12px; font-weight:500; color:var(--subtle); }
 .docs-quick { position:relative; isolation:isolate; margin:0; overflow:hidden; border-radius:16px; background:var(--win-bg); box-shadow:0 0 0 1px var(--win-line), var(--win-shadow); }
 .docs-quick::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:radial-gradient(320px circle at var(--mx,70%) var(--my,10%),color-mix(in srgb,var(--brand) 9%,transparent),transparent 70%); }
 .docs-quick pre { margin:0; padding:20px 22px 24px; overflow:auto; font:13px/1.75 var(--mono); color:var(--win-ink); }

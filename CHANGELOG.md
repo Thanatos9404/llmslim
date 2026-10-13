@@ -128,6 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   variation selectors supplement characters.
 
 ### Fixed
+- **Sentence centrality on very large chunks** no longer builds the full
+  sentence-by-sentence similarity matrix. Above 4,096 sentences the same
+  scores are computed from row sums in memory proportional to the number of
+  sentences: a 24,000-sentence chunk peaks at about 150 MB instead of 2.3 GB,
+  and is faster. Smaller chunks use the existing path, so their output is
+  unchanged. Thanks to @rlippmann for the report and the analysis (#17).
 - Exa: a `date` passed as `end_published_date` now includes that whole UTC day
   (sent as `23:59:59.999Z`); it used to be midnight, which excluded the day.
 - Exa: `truncated` is also set when Exa's own `maxCharacters` cut is reached

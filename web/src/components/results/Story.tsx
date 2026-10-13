@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion"
-import { useRef } from "react"
+import { m, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { useRef, type CSSProperties } from "react"
 import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react"
 import { CONSISTENCY, READER, STILL_AHEAD } from "@/data/results-story"
 import { siteConfig } from "@/config/site"
@@ -25,17 +25,18 @@ function Hero() {
   const copyY = useTransform(scrollYProgress, [0, 1], [0, -90])
   const fieldY = useTransform(scrollYProgress, [0, 1], [0, 140])
   const fade = useTransform(scrollYProgress, [0, 0.75], [1, 0])
-  const rise = (delay: number) => (reduced ? {} : { initial: { opacity: 0, y: 26, filter: "blur(8px)" }, animate: { opacity: 1, y: 0, filter: "blur(0px)" }, transition: { duration: 1, ease: EASE, delay } })
+  // Entrance from first paint, in CSS, so the copy does not wait for scripts (see .rise in globals.css).
+  const rise = (delay: number) => ({ style: { "--rise-delay": `${delay}s` } as CSSProperties })
   return <section ref={ref} className="rs-hero" aria-labelledby="results-title">
-    <motion.div className="rs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></motion.div>
-    <motion.div className="rs-hero-copy" style={reduced ? undefined : { y: copyY, opacity: fade }}>
-      <motion.p className="rs-kicker" {...rise(0)}>Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></motion.p>
-      <motion.h1 id="results-title" {...rise(0.1)}>Cut the context.<br /><em>Keep the answers.</em></motion.h1>
-      <motion.p className="rs-hero-lede" {...rise(0.2)}>Seven public benchmarks, run against full context and plain truncation, plus a head-to-head with the best-known open compressors on NaturalQuestions. Only the context changed between runs.</motion.p>
-      <motion.dl className="rs-figures" {...rise(0.32)}>
+    <m.div className="rs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></m.div>
+    <m.div className="rs-hero-copy" style={reduced ? undefined : { y: copyY, opacity: fade }}>
+      <p className="rs-kicker rise" {...rise(0)}>Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></p>
+      <h1 id="results-title" className="rise" {...rise(0.1)}>Cut the context.<br /><em>Keep the answers.</em></h1>
+      <p className="rs-hero-lede rise" {...rise(0.2)}>Seven public benchmarks, run against full context and plain truncation, plus a head-to-head with the best-known open compressors on NaturalQuestions. Only the context changed between runs.</p>
+      <dl className="rs-figures rise" {...rise(0.32)}>
         {FIGURES.map((figure) => <div key={figure.text}><dt><span>{figure.value}</span><em>{figure.unit}</em></dt><dd>{figure.text}</dd></div>)}
-      </motion.dl>
-    </motion.div>
+      </dl>
+    </m.div>
     <a className="rs-scroll" href="#squeeze-anchor"><span>See one question through</span><ArrowDown size={15} /></a>
   </section>
 }
@@ -56,8 +57,8 @@ function Held() {
         <figcaption><span>{row.suite}</span><small>{row.metric}</small></figcaption>
         <svg viewBox="0 0 220 140" role="img" aria-label={`${row.suite}: ${fmt(row.original, 1)} on the original questions, ${fmt(row.fresh, 1)} on fresh ones. Full context ${fmt(row.fullOriginal, 1)} and ${fmt(row.fullFresh, 1)}.`}>
           <line className="rs-held-axis" x1="40" x2="40" y1="8" y2="132" /><line className="rs-held-axis" x1="180" x2="180" y1="8" y2="132" />
-          <motion.line className="rs-held-full" x1="40" x2="180" y1={y(row.fullOriginal)} y2={y(row.fullFresh)} initial={reduced ? false : { opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, ease: EASE, delay: 0.1 + i * 0.1 }} />
-          <motion.line className="rs-held-ours" x1="40" x2="180" y1={y(row.original)} y2={y(row.fresh)} initial={reduced ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: EASE, delay: 0.25 + i * 0.1 }} />
+          <m.line className="rs-held-full" x1="40" x2="180" y1={y(row.fullOriginal)} y2={y(row.fullFresh)} initial={reduced ? false : { opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, ease: EASE, delay: 0.1 + i * 0.1 }} />
+          <m.line className="rs-held-ours" x1="40" x2="180" y1={y(row.original)} y2={y(row.fresh)} initial={reduced ? false : { pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: EASE, delay: 0.25 + i * 0.1 }} />
           <rect className="rs-held-dot" x="36" y={y(row.original) - 4} width="8" height="8" /><rect className="rs-held-dot" x="176" y={y(row.fresh) - 4} width="8" height="8" />
           <text className="rs-held-num" x="30" y={y(row.original) + 4} textAnchor="end">{fmt(row.original, 1)}</text>
           <text className="rs-held-num" x="190" y={y(row.fresh) + 4}>{fmt(row.fresh, 1)}</text>

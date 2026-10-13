@@ -1,5 +1,5 @@
 "use client"
-import { motion, useReducedMotion, useScroll, useSpring } from "framer-motion"
+import { m, useReducedMotion, useScroll, useSpring } from "framer-motion"
 import { useEffect, useState } from "react"
 
 /** "On this page": follows the section in view. */
@@ -20,7 +20,7 @@ export function DocToc({ sections }: { sections: { id: string; title: string }[]
     <p className="doc-toc-label">On this page</p>
     <ul>{sections.map((section) => <li key={section.id}>
       <a href={`#${section.id}`} aria-current={active === section.id ? "true" : undefined}>
-        {active === section.id && <motion.span layoutId="doc-toc-on" className="doc-toc-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
+        {active === section.id && <m.span layoutId="doc-toc-on" className="doc-toc-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
         {section.title}
       </a>
     </li>)}</ul>
@@ -31,5 +31,5 @@ export function DocToc({ sections }: { sections: { id: string; title: string }[]
 export function ReadingProgress() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 200, damping: 40, restDelta: 0.001 })
-  return <motion.div className="doc-progress" style={{ scaleX }} aria-hidden="true" />
+  return <m.div className="doc-progress" style={{ scaleX }} aria-hidden="true" />
 }

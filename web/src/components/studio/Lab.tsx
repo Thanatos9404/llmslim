@@ -1,6 +1,6 @@
 "use client"
 
-import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { AnimatePresence, m, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react"
 import { ArrowRight, Check, CircleHelp, LoaderCircle, RotateCcw, X } from "lucide-react"
 import { PRESETS, type Preset } from "@/data/studio-presets"
@@ -34,9 +34,9 @@ const TOUR = [
 /** Numbers that roll to their new value. */
 function Rolling({ value, digits = 0 }: { value: number; digits?: number }) {
   return <AnimatePresence mode="popLayout" initial={false}>
-    <motion.span key={value.toFixed(digits)} className="lab-roll" initial={{ y: "60%", opacity: 0, filter: "blur(4px)" }} animate={{ y: 0, opacity: 1, filter: "blur(0px)" }} exit={{ y: "-60%", opacity: 0, filter: "blur(4px)" }} transition={{ duration: 0.45, ease: EASE }}>
+    <m.span key={value.toFixed(digits)} className="lab-roll" initial={{ y: "60%", opacity: 0, filter: "blur(4px)" }} animate={{ y: 0, opacity: 1, filter: "blur(0px)" }} exit={{ y: "-60%", opacity: 0, filter: "blur(4px)" }} transition={{ duration: 0.45, ease: EASE }}>
       {fmt(value, digits)}
-    </motion.span>
+    </m.span>
   </AnimatePresence>
 }
 
@@ -111,13 +111,13 @@ export function StudioLab() {
 
   return <div className="lab">
     <section ref={hero} className="lab-hero" aria-labelledby="studio-title">
-      <motion.div className="lab-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></motion.div>
-      <motion.div className="lab-hero-copy" style={reduced ? undefined : { y: copyY }}>
+      <m.div className="lab-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></m.div>
+      <m.div className="lab-hero-copy" style={reduced ? undefined : { y: copyY }}>
         <p className="lab-kicker">Studio, running LLMSlim Core {result?.version ?? "0.8"}</p>
         <h1 id="studio-title">See what your agent <em>actually needs.</em></h1>
         <p className="lab-lede">Pick a scenario, ask a question and watch LLMSlim cut the context down to what answers it. Then see what plain truncation would have kept instead.</p>
         <button type="button" className="lab-tour-button" onClick={tour.start}><CircleHelp size={15} /> Take the 30-second tour</button>
-      </motion.div>
+      </m.div>
     </section>
 
     <section className="lab-bench" aria-label="Compression lab" onPointerMove={spot}>
@@ -126,7 +126,7 @@ export function StudioLab() {
           <legend><span className="lab-step-no">1</span>Pick a scenario</legend>
           <div className="lab-presets" role="radiogroup" aria-label="Scenario">
             {PRESETS.map((item) => <button key={item.id} type="button" role="radio" aria-checked={presetId === item.id} className="lab-preset" onClick={() => choose(item)}>
-              {presetId === item.id && <motion.span layoutId="lab-preset" className="lab-preset-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
+              {presetId === item.id && <m.span layoutId="lab-preset" className="lab-preset-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
               <span className="lab-preset-name">{item.name}</span>
               <span className="lab-preset-blurb">{item.blurb}</span>
               {item.text && <span className="lab-preset-size">{fmt(Math.round(item.text.length / 4 / 100) / 10, 1)}k tokens</span>}
@@ -159,7 +159,7 @@ export function StudioLab() {
       <div className="lab-output" data-tour="result" aria-live="polite">
         {error && <p className="lab-error" role="alert">{error}</p>}
         {!result && !error && <div className="lab-empty"><p>{presetId === "own" ? "Paste your text, ask a question and press Compress." : "Compressing…"}</p></div>}
-        {result && <motion.div className={`lab-result${busy || stale ? " is-dim" : ""}`} initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}>
+        {result && <m.div className={`lab-result${busy || stale ? " is-dim" : ""}`} initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}>
           <dl className="lab-metrics">
             <div><dt>Tokens sent</dt><dd><Rolling value={result.kept_tokens} /><small>of {fmt(result.original_tokens)}</small></dd></div>
             <div><dt>Smaller</dt><dd><Rolling value={smaller} /><small>%</small></dd></div>
@@ -173,7 +173,7 @@ export function StudioLab() {
           <div className="lab-map" aria-hidden="true">{pieces.map(([, kept], i) => <i key={i} className={kept ? "is-kept" : undefined} />)}</div>
           <div className="lab-tabs" role="tablist" aria-label="View">
             {([["marked", "Kept, in place"], ["sent", "What the model gets"], ["cut", "Plain truncation"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)}>
-              {view === key && <motion.span layoutId="lab-tab" className="lab-tab-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}<span>{label}</span>
+              {view === key && <m.span layoutId="lab-tab" className="lab-tab-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}<span>{label}</span>
             </button>)}
           </div>
           <div className={`lab-text${preset.mono ? " is-mono" : ""}`} role="tabpanel">
@@ -181,7 +181,7 @@ export function StudioLab() {
             {view === "sent" && result.compressed_text}
             {view === "cut" && result.baseline.text}
           </div>
-        </motion.div>}
+        </m.div>}
       </div>
     </section>
 

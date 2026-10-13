@@ -37,7 +37,8 @@ export default function PlatformPage() {
   return <div className="slim-site platform-site"><PageView event="platform_page_view" /><SiteHeader /><main id="main-content" className="platform-page">
     <PlatformHero version={siteConfig.platformVersion} />
 
-    <section className="site-width platform-features feature-rows" aria-label="Platform capabilities">
+    <section className="site-width platform-features feature-rows" aria-labelledby="capabilities-title">
+      <h2 id="capabilities-title" className="sr-only">Platform capabilities</h2>
       <FeatureRow kicker="Temporal state" title="Know what is still true." visual={<Showcase><TimelineVisual /></Showcase>}>
         <p>An append-only, tamper-evident timeline of conversation, retrieval, memory, and tool events. Corrections replace the facts they correct instead of sitting beside them.</p>
         <p>Long sessions resume from verified checkpoints.</p>

@@ -6,6 +6,10 @@
 @font-face { font-family: "Geist Mono"; src: url('/fonts/geist-mono-latin.woff2') format('woff2'); font-style: normal; font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Instrument Serif"; src: url('/fonts/InstrumentSerif-Regular.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
 @font-face { font-family: "Instrument Serif"; src: url('/fonts/InstrumentSerif-Italic.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; }
+/* A stand-in for Geist while it loads, sized (104%, measured against the font swap on every page) so the swap moves
+   text as little as possible. The range matches Geist, so characters it lacks still come from plain Arial, as before.
+   The home hero's large type moves least with plain Arial, so it keeps that (see .p-hero). */
+@font-face { font-family: "Geist Fallback"; src: local("Arial"), local("ArialMT"); size-adjust: 104%; ascent-override: 96.63%; descent-override: 28.37%; line-gap-override: 0%; unicode-range: U+0020-007E,U+00A0-00AC,U+00AE-00FF,U+0102,U+0131,U+0152-0153,U+02BC,U+02C6,U+02DA,U+02DC,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2191,U+2193,U+2212; }
 :root {
   --background:#fbfbfa; --foreground:#141413; --card:#fafafa; --card-foreground:#16181d; --popover:#fff; --popover-foreground:#16181d; --primary:#17191e; --primary-foreground:#fff; --secondary:#f0f1f3; --secondary-foreground:#262830; --muted:#f1f2f4; --muted-foreground:#72747e; --accent:#edf0f5; --accent-foreground:#17191e; --destructive:#c33242; --border:#e6e7ec; --input:#dedfe4; --ring:#c2410c; --radius:.75rem;
   --surface:#fbfbfa; --soft:#f4f4f2; --ink:#141413; --subtle:#6b6a65; --line:#e7e6e2; --brand:#c2410c; --header:#fbfbfadf; --art-shadow:#fbfbfa; --spotlight:#c2410c1a; --field-ink:#14141326; --field-hot:#c2410c; --tile:#ffffffcc; --pixel:#ecebe7;
@@ -16,13 +20,13 @@
   --surface:#0b0b0a; --soft:#121211; --ink:#ededea; --subtle:#8f8e89; --line:#252523; --brand:#ff7a3d; --header:#0b0b0ae0; --art-shadow:#0b0b0a; --spotlight:#ff7a3d22; --field-ink:#ededea1f; --field-hot:#ff7a3d; --tile:#121211cc; --pixel:#171716;
 }
 @theme inline {
-  --font-sans:"Geist",Arial,sans-serif;
+  --font-sans:"Geist","Geist Fallback",Arial,sans-serif;
   --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-card-foreground:var(--card-foreground); --color-popover:var(--popover); --color-popover-foreground:var(--popover-foreground); --color-primary:var(--primary); --color-primary-foreground:var(--primary-foreground); --color-secondary:var(--secondary); --color-secondary-foreground:var(--secondary-foreground); --color-muted:var(--muted); --color-muted-foreground:var(--muted-foreground); --color-accent:var(--accent); --color-accent-foreground:var(--accent-foreground); --color-destructive:var(--destructive); --color-border:var(--border); --color-input:var(--input); --color-ring:var(--ring); --radius-sm:calc(var(--radius) - 4px); --radius-md:calc(var(--radius) - 2px); --radius-lg:var(--radius); --radius-xl:calc(var(--radius) + 4px);
 }
 @layer base {
   * { @apply border-border outline-ring/50; }
   html { scroll-behavior:smooth; scroll-padding-top:100px; }
-  body { margin:0; min-width:320px; background:var(--surface); color:var(--ink); font-family:"Geist",Arial,sans-serif; -webkit-font-smoothing:antialiased; transition:background .3s,color .3s; }
+  body { margin:0; min-width:320px; background:var(--surface); color:var(--ink); font-family:"Geist","Geist Fallback",Arial,sans-serif; -webkit-font-smoothing:antialiased; transition:background .3s,color .3s; }
   button,input,select,textarea { font:inherit; }
   button,summary { cursor:pointer; }
   a,button { -webkit-tap-highlight-color:transparent; }
@@ -73,7 +77,7 @@
 .preview-toolbar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:20px; font:11px var(--mono); color:var(--subtle); }
 .preview-toolbar > div { display:flex; align-items:center; gap:22px; }
 .preview-count { opacity:.8; }
-.preview-switch { display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 15px; border:1px solid var(--line); border-radius:100px; font:11px "Geist",Arial,sans-serif; color:var(--ink); min-width:149px; transition:background .2s,border-color .2s; }
+.preview-switch { display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 15px; border:1px solid var(--line); border-radius:100px; font:11px "Geist","Geist Fallback",Arial,sans-serif; color:var(--ink); min-width:149px; transition:background .2s,border-color .2s; }
 .preview-switch:hover { background:var(--muted); border-color:var(--subtle); }
 .is-compressed .preview-switch { color:var(--brand); }
 .preview-document { min-height:280px; padding:40px 0 32px; font-size:clamp(19px,2.25vw,29px); line-height:1.7; letter-spacing:-.45px; }
@@ -340,6 +344,16 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 
 .ameyor-mark { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-top:22px; }
 .ameyor-mark img { width:auto; height:30px; }
+/* Hero entrances: fade, rise and unblur into place from the first paint, without waiting for scripts.
+   Each hero sets the distance, blur and duration; each element sets its delay (--rise-delay). */
+@keyframes rise-in { from { opacity:0; transform:translateY(var(--rise-y,24px)); filter:blur(var(--rise-blur,8px)); } }
+.rise { animation:rise-in var(--rise-time,1s) cubic-bezier(.16,1,.3,1) var(--rise-delay,0s) both; }
+.rs-hero-copy { --rise-y:26px; --rise-blur:8px; --rise-time:1s; }
+.docs-hero { --rise-y:18px; --rise-blur:6px; --rise-time:.9s; }
+.ph { --rise-y:24px; --rise-blur:8px; --rise-time:1s; }
+.ph .ph-proof { --rise-y:40px; --rise-blur:0px; --rise-time:1.1s; }
+@media (prefers-reduced-motion:reduce) { .rise { animation:none; } }
+
 /* ================= Premium system: header, buttons, homepage ================= */
 :root {
   --btn-bg:#141413; --btn-fg:#fbfbfa; --btn-rim:inset 0 1px 0 rgba(255,255,255,.14);
@@ -432,7 +446,7 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 
 /* Hero: night sky, floating ribbon, word-by-word headline. */
 .premium main { overflow:clip; }
-.p-hero { position:relative; isolation:isolate; display:grid; place-items:center; min-height:100svh; padding:150px 24px 120px; overflow:hidden; background:#04050a; text-align:center; }
+.p-hero { font-family:"Geist",Arial,sans-serif; position:relative; isolation:isolate; display:grid; place-items:center; min-height:100svh; padding:150px 24px 120px; overflow:hidden; background:#04050a; text-align:center; }
 .p-hero-sky { position:absolute; inset:-12% 0 -12% 0; z-index:-3; }
 .p-hero-sky img { object-fit:cover; }
 .p-hero-sky-set, .photo-set { position:absolute; inset:0; }
@@ -569,7 +583,7 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
 .doc-code-name { display:flex; flex:1; align-items:center; gap:10px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--win-ink); }
 .doc-code-pixel { flex-shrink:0; width:6px; height:6px; background:var(--brand); }
 .doc-code-lang { color:var(--win-sub); }
-.doc-code-copy { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border:0; border-radius:8px; background:transparent; font-family:Geist,Arial,sans-serif; font-size:12px; font-weight:500; color:var(--win-sub); transition:background .2s, color .2s; }
+.doc-code-copy { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border:0; border-radius:8px; background:transparent; font-family:Geist,"Geist Fallback",Arial,sans-serif; font-size:12px; font-weight:500; color:var(--win-sub); transition:background .2s, color .2s; }
 .doc-code-copy:hover { background:color-mix(in srgb,var(--win-ink) 7%,transparent); color:var(--win-ink); }
 .doc-code pre { margin:0; padding:18px 20px 20px; overflow:auto; max-height:460px; font:13px/1.75 var(--mono); color:var(--win-ink); }
 .doc-code-error { margin:10px 16px 0; font-size:13px; color:var(--subtle); }

@@ -1,10 +1,9 @@
 "use client"
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion"
-import { useRef, useState, type PointerEvent } from "react"
+import { m, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react"
 import { Check, Copy } from "lucide-react"
 import { PixelField } from "@/components/results/PixelField"
 
-const EASE = [0.16, 1, 0.3, 1] as const
 const INSTALL = "pip install llmslim"
 const QUICK = `from llmslim import compress
 
@@ -29,25 +28,26 @@ export function DocsHero() {
     event.currentTarget.style.setProperty("--mx", `${event.clientX - box.left}px`)
     event.currentTarget.style.setProperty("--my", `${event.clientY - box.top}px`)
   }
-  const rise = (delay: number) => (reduced ? {} : { initial: { opacity: 0, y: 18, filter: "blur(6px)" }, animate: { opacity: 1, y: 0, filter: "blur(0px)" }, transition: { duration: 0.9, ease: EASE, delay } })
+  // Entrance from first paint, in CSS, so the copy does not wait for scripts (see .rise in globals.css).
+  const rise = (delay: number) => ({ style: { "--rise-delay": `${delay}s` } as CSSProperties })
   return <section ref={ref} className="docs-hero" aria-labelledby="docs-title">
-    <motion.div className="docs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField gap={9} /></motion.div>
+    <m.div className="docs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField gap={9} /></m.div>
     <div className="docs-hero-copy">
-      <motion.p className="docs-kicker" {...rise(0)}>Documentation</motion.p>
-      <motion.h1 id="docs-title" {...rise(0.06)}>Start in one line. <em>Go as deep as you need.</em></motion.h1>
-      <motion.p className="docs-lede" {...rise(0.12)}>Short guides for compressing context, keeping provenance, and fitting chat, retrieval and tool output into a real token budget.</motion.p>
-      <motion.button type="button" className="docs-install" onClick={() => copy("install")} {...rise(0.18)} aria-label="Copy the install command">
+      <p className="docs-kicker rise" {...rise(0)}>Documentation</p>
+      <h1 id="docs-title" className="rise" {...rise(0.06)}>Start in one line. <em>Go as deep as you need.</em></h1>
+      <p className="docs-lede rise" {...rise(0.12)}>Short guides for compressing context, keeping provenance, and fitting chat, retrieval and tool output into a real token budget.</p>
+      <button type="button" className="docs-install rise" onClick={() => copy("install")} {...rise(0.18)} aria-label="Copy the install command">
         <span className="docs-install-prompt" aria-hidden="true">$</span><code>{INSTALL}</code>
         <span className="docs-install-copy">{copied === "install" ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</span>
-      </motion.button>
+      </button>
     </div>
-    <motion.figure className="docs-quick" onPointerMove={spot} {...rise(0.24)}>
+    <figure className="docs-quick rise" onPointerMove={spot} {...rise(0.24)}>
       <figcaption className="doc-code-bar">
         <span className="doc-code-name"><span className="doc-code-pixel" aria-hidden="true" />quickstart.py</span>
         <span className="doc-code-lang">python</span>
         <button type="button" className="doc-code-copy" onClick={() => copy("quick")} aria-label="Copy the example">{copied === "quick" ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</button>
       </figcaption>
       <pre><code>{QUICK}</code></pre>
-    </motion.figure>
+    </figure>
   </section>
 }

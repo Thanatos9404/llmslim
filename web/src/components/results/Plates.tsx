@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { m, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { BENCHMARKS, type Arm, type Benchmark } from "@/data/results-story"
 import { Count, EASE, fmt } from "./Charts"
@@ -15,7 +15,7 @@ function Ruler({ arms, max }: { arms: Arm[]; max: number }) {
     {arms.map((arm, i) => <li key={arm.name} className={`rs-ruler-row is-${arm.kind}`}>
       <span className="rs-ruler-name">{arm.name}</span>
       <span className="rs-ruler-value">{fmt(arm.score, digits(arm.score))}</span>
-      <span className="rs-ruler-track"><motion.span className="rs-ruler-fill" style={{ width: `${Math.max(0.6, (arm.score / max) * 100)}%` }}
+      <span className="rs-ruler-track"><m.span className="rs-ruler-fill" style={{ width: `${Math.max(0.6, (arm.score / max) * 100)}%` }}
         initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.6 }} transition={{ duration: 1.1, ease: EASE, delay: 0.15 + i * 0.08 }} /></span>
     </li>)}
   </ul>
@@ -25,13 +25,13 @@ function Ruler({ arms, max }: { arms: Arm[]; max: number }) {
 function PixelStrip({ total, lit, label }: Benchmark["pixels"]) {
   const reduced = useReducedMotion()
   return <figure className="rs-strip">
-    <motion.div className="rs-strip-grid" style={{ gridTemplateColumns: `repeat(${total / 2}, 1fr)` }} initial="off" whileInView="on" viewport={{ once: true, amount: 0.6 }}>
+    <m.div className="rs-strip-grid" style={{ gridTemplateColumns: `repeat(${total / 2}, 1fr)` }} initial="off" whileInView="on" viewport={{ once: true, amount: 0.6 }}>
       {Array.from({ length: total }, (_, i) => {
         const on = (i % (total / 2)) * 2 + Math.floor(i / (total / 2)) < lit
-        return <motion.i key={i} className={on ? "is-lit" : undefined}
+        return <m.i key={i} className={on ? "is-lit" : undefined}
           variants={{ off: { opacity: reduced ? 1 : 0.25 }, on: { opacity: 1 } }} transition={{ duration: 0.3, delay: reduced ? 0 : (on ? 0.2 : 0) + (i % (total / 2)) * 0.012 }} />
       })}
-    </motion.div>
+    </m.div>
     <figcaption>{label}</figcaption>
   </figure>
 }
@@ -110,7 +110,7 @@ export function Plates() {
 
   return <section ref={section} id="benchmarks" className={`rs-plates${pinned ? " is-pinned" : ""}`} aria-labelledby="plates-title" style={pinned ? { height: `calc(100vh + ${distance}px)` } : undefined}>
     <div className="rs-plates-pin">
-      <motion.div ref={track} className="rs-plates-track" style={pinned ? { x } : undefined}>
+      <m.div ref={track} className="rs-plates-track" style={pinned ? { x } : undefined}>
         <div className="rs-plates-intro">
           <p className="rs-kicker">Seven benchmarks</p>
           <h2 id="plates-title">Memory, retrieval, documents, <em>and agents.</em></h2>
@@ -118,9 +118,9 @@ export function Plates() {
           {pinned && <p className="rs-plates-hint" aria-hidden="true">Scroll to move through them</p>}
         </div>
         {BENCHMARKS.map((bench, i) => <Plate key={bench.id} bench={bench} index={i} />)}
-      </motion.div>
+      </m.div>
       {pinned && <nav className="rs-plates-index" aria-label="Benchmarks">
-        <motion.span className="rs-plates-progress" style={{ scaleX: bar }} aria-hidden="true" />
+        <m.span className="rs-plates-progress" style={{ scaleX: bar }} aria-hidden="true" />
         {BENCHMARKS.map((bench, i) => <button key={bench.id} type="button" onClick={() => go(i)} aria-current={active === i ? "true" : undefined}>
           <span className="rs-plates-index-no">{pad(i + 1)}</span><span className="rs-plates-index-name">{bench.short}</span>
         </button>)}

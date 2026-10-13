@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
+import { AnimatePresence, m, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
 import { ArrowRight, ArrowUpRight, Moon, Sun } from "lucide-react"
 import { siteConfig } from "@/config/site"
 import { TrackedLink } from "./TrackedLink"
@@ -76,50 +76,50 @@ export function SiteHeader() {
   return <header ref={header} className="site-header" data-compact={compact ? "" : undefined} data-where={current ? "" : undefined} data-open={open ? "" : undefined}
     onPointerEnter={(event) => { if (event.pointerType === "mouse") setReaching(true) }} onPointerLeave={() => setReaching(false)}
     onFocus={() => setReaching(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setReaching(false) }}>
-    <motion.div className="island" layout transition={spring} style={{ borderRadius: 16 }}>
-      <motion.div layout="position" transition={spring}>
+    <m.div className="island" layout transition={spring} style={{ borderRadius: 16 }}>
+      <m.div layout="position" transition={spring}>
         <Link className="island-brand" href="/" aria-label="LLMSlim home" onClick={() => setOpen(false)}><Brand /></Link>
-      </motion.div>
+      </m.div>
 
       <AnimatePresence initial={false} mode="popLayout">
-        {compact ? current && <motion.span key="where" className="island-where" layout="position" initial={{ opacity: 0, filter: "blur(4px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, filter: "blur(4px)" }} transition={fade}>
+        {compact ? current && <m.span key="where" className="island-where" layout="position" initial={{ opacity: 0, filter: "blur(4px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, filter: "blur(4px)" }} transition={fade}>
           {current}
-        </motion.span> : <motion.nav key="links" className="island-links" aria-label="Primary navigation" onMouseLeave={() => setHover(null)}
+        </m.span> : <m.nav key="links" className="island-links" aria-label="Primary navigation" onMouseLeave={() => setHover(null)}
           initial={{ opacity: 0, filter: "blur(6px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, filter: "blur(6px)" }} transition={fade}>
           {links.map(([label, href]) => {
             const active = isActive(pathname, href)
             return <Link prefetch={false} key={href} href={href} aria-current={active ? "page" : undefined} onMouseEnter={() => setHover(href)} onFocus={() => setHover(href)} onBlur={() => setHover(null)}>
-              {hover === href && <motion.span layoutId="island-hover" className="island-hover" transition={spring} />}
+              {hover === href && <m.span layoutId="island-hover" className="island-hover" transition={spring} />}
               {active && <span className="island-active" aria-hidden="true" />}
               <span className="island-label">{label}</span>
             </Link>
           })}
-        </motion.nav>}
+        </m.nav>}
       </AnimatePresence>
 
-      <motion.div className="island-actions" layout="position" transition={spring}>
+      <m.div className="island-actions" layout="position" transition={spring}>
         {!compact && <a className="island-icon island-github" href={siteConfig.github} target="_blank" rel="noreferrer" aria-label="LLMSlim on GitHub" title="GitHub"><GitHubMark /></a>}
         <button className="island-icon" data-theme-toggle aria-label="Switch color theme" title="Switch color theme"><Sun className="theme-sun" size={15} /><Moon className="theme-moon" size={15} /></button>
         <button ref={menuButton} className="island-menu" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
           <span className="island-menu-lines" aria-hidden="true"><i /><i /></span>
         </button>
         <TrackedLink prefetch={false} className="island-cta" href="/playground" event="studio_clicked" properties={{ location: "header" }} aria-label="Try Studio"><span>Try Studio</span><ArrowRight size={14} /></TrackedLink>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
 
-    <AnimatePresence>{open && <motion.div id="site-menu" className="island-panel" role="dialog" aria-label="Site menu"
+    <AnimatePresence>{open && <m.div id="site-menu" className="island-panel" role="dialog" aria-label="Site menu"
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.97, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98, filter: "blur(4px)" }} transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 460, damping: 34 }}>
-      <ul className="island-grid">{menu.map(([label, href, note], index) => <motion.li key={href} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduced ? 0 : 0.04 + index * 0.03, duration: 0.3 }}>
+      <ul className="island-grid">{menu.map(([label, href, note], index) => <m.li key={href} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduced ? 0 : 0.04 + index * 0.03, duration: 0.3 }}>
         <Link prefetch={false} href={href} onClick={() => setOpen(false)} aria-current={isActive(pathname, href) ? "page" : undefined}>
           <span className="island-grid-label">{label}<ArrowRight size={13} /></span><span className="island-grid-note">{note}</span>
         </Link>
-      </motion.li>)}</ul>
+      </m.li>)}</ul>
       <div className="island-panel-foot">
         <a href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> GitHub <ArrowUpRight size={13} /></a>
         <a href={siteConfig.pypi} target="_blank" rel="noreferrer">PyPI <ArrowUpRight size={13} /></a>
         <Link prefetch={false} href="/articles" onClick={() => setOpen(false)}>Engineering notes <ArrowUpRight size={13} /></Link>
       </div>
-    </motion.div>}</AnimatePresence>
+    </m.div>}</AnimatePresence>
   </header>
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { AnimatePresence, m, useReducedMotion } from "framer-motion"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { ArrowLeft, ArrowRight, X } from "lucide-react"
@@ -91,18 +91,19 @@ export function Tour({ steps, state }: { steps: Step[]; state: TourState }) {
   const spring = reduced ? { duration: 0 } : { type: "spring" as const, stiffness: 260, damping: 30 }
   const spot = box ? place(box) : null
   return createPortal(<AnimatePresence>
-    {state.open && current && box && spot && <motion.div key="tour" className="tour" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-      <motion.div className="tour-hole" aria-hidden="true" initial={false} animate={box} transition={spring} />
-      <motion.div className="tour-card" role="dialog" aria-modal="false" aria-labelledby="tour-title" initial={false} animate={{ top: spot.top, left: spot.left, width: spot.width }} transition={spring}>
+    {state.open && current && box && spot && <m.div key="tour" className="tour" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+      {/* Moved with transforms, not top/left, so following the target never counts as a layout shift. */}
+      <m.div className="tour-hole" aria-hidden="true" initial={false} animate={{ x: box.left, y: box.top, width: box.width, height: box.height }} transition={spring} />
+      <m.div className="tour-card" role="dialog" aria-modal="false" aria-labelledby="tour-title" initial={false} animate={{ x: spot.left, y: spot.top, width: spot.width }} transition={spring}>
         <div className="tour-head">
           <span className="tour-count">Step {state.step + 1} of {state.count}</span>
           <button type="button" className="tour-skip" onClick={state.finish}>Skip tour <X size={13} /></button>
         </div>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={state.step} initial={reduced ? false : { opacity: 0, y: 8, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -6, filter: "blur(4px)" }} transition={{ duration: 0.25 }}>
+          <m.div key={state.step} initial={reduced ? false : { opacity: 0, y: 8, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -6, filter: "blur(4px)" }} transition={{ duration: 0.25 }}>
             <h2 id="tour-title" className="tour-title">{current.title}</h2>
             <p className="tour-body">{current.body}</p>
-          </motion.div>
+          </m.div>
         </AnimatePresence>
         <div className="tour-foot">
           <div className="tour-dots" aria-hidden="true">{steps.map((item, i) => <i key={item.target} className={i === state.step ? "is-on" : i < state.step ? "is-done" : undefined} />)}</div>
@@ -111,7 +112,7 @@ export function Tour({ steps, state }: { steps: Step[]; state: TourState }) {
             <button ref={nextButton} type="button" className="tour-next" onClick={state.next}>{state.step + 1 === state.count ? "Done" : <>Next <ArrowRight size={14} /></>}</button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>}
+      </m.div>
+    </m.div>}
   </AnimatePresence>, document.body)
 }

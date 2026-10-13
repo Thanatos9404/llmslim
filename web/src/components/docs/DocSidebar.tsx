@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { motion, useReducedMotion } from "framer-motion"
+import { m, useReducedMotion } from "framer-motion"
 import { Search } from "lucide-react"
 import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs"
 
@@ -26,7 +26,7 @@ export function DocSidebar({ className }: { className?: string }) {
           <p className="docs-nav-label">{category}</p>
           <ul>{items.map((item) => <li key={item.slug}>
             <Link href={`/docs/${item.slug}`} aria-current={current === item.slug ? "page" : undefined}>
-              {current === item.slug && <motion.span layoutId="docs-nav-on" className="docs-nav-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
+              {current === item.slug && <m.span layoutId="docs-nav-on" className="docs-nav-on" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }} />}
               <span>{item.title}</span>
             </Link>
           </li>)}</ul>

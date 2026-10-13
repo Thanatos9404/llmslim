@@ -298,11 +298,11 @@ def test_http_status_errors_are_typed_sanitized_and_accounted(
 
 def test_sdk_error_classes_map_by_type() -> None:
     pytest.importorskip("sarvamai")
+    from sarvamai import errors as sdk_errors
     from sarvamai.core.api_error import ApiError
     from sarvamai.errors import (
         BadGatewayError,
         ForbiddenError,
-        GatewayTimeoutError,
         InternalServerError,
         PaymentRequiredError,
         ServiceUnavailableError,
@@ -316,13 +316,16 @@ def test_sdk_error_classes_map_by_type() -> None:
         (ForbiddenError(body=SECRET), SarvamAuthenticationError),
         (TooManyRequestsError(body=SECRET), SarvamRateLimitError),
         (PaymentRequiredError(body=SECRET), SarvamPaymentRequiredError),
-        (GatewayTimeoutError(body=SECRET), SarvamTimeoutError),
         (InternalServerError(body=SECRET), SarvamServerError),
         (BadGatewayError(body=SECRET), SarvamServerError),
         (ServiceUnavailableError(body=SECRET), SarvamServerError),
         (UnprocessableEntityError(body=SECRET), SarvamInvalidRequestError),
         (ApiError(status_code=200, body=SECRET), SarvamMalformedResponseError),
     ]
+    # GatewayTimeoutError arrived after sarvamai 0.1.34, the oldest version the extra allows.
+    gateway_timeout = getattr(sdk_errors, "GatewayTimeoutError", None)
+    if gateway_timeout is not None:
+        cases.append((gateway_timeout(body=SECRET), SarvamTimeoutError))
     for exc, expected in cases:
         mapped = map_sarvam_error(exc)
         assert type(mapped) is expected, exc

@@ -38,12 +38,21 @@ def main() -> None:
     out: dict = {"seed": SEED}
 
     locomo = json.loads((args.data / "locomo" / "locomo10.json").read_text(encoding="utf-8"))
-    test_ids = [f"c{c}q{i}" for c in range(2, 10) for i, qa in enumerate(locomo[c]["qa"])
-                if int(qa.get("category", 0)) in (1, 2, 3, 4)]
-    out["locomo"] = {"dev_convs": [0, 1], "test_convs": list(range(2, 10)),
-                     "longlingua_sample": sorted(rng.sample(test_ids, 300))}
+    test_ids = [
+        f"c{c}q{i}"
+        for c in range(2, 10)
+        for i, qa in enumerate(locomo[c]["qa"])
+        if int(qa.get("category", 0)) in (1, 2, 3, 4)
+    ]
+    out["locomo"] = {
+        "dev_convs": [0, 1],
+        "test_convs": list(range(2, 10)),
+        "longlingua_sample": sorted(rng.sample(test_ids, 300)),
+    }
 
-    lme = json.loads((args.data / "longmemeval" / "longmemeval_s_cleaned.json").read_text(encoding="utf-8"))
+    lme = json.loads(
+        (args.data / "longmemeval" / "longmemeval_s_cleaned.json").read_text(encoding="utf-8")
+    )
     types = {row["question_id"]: row["question_type"] for row in lme}
     test = old["lme"]["test_a"] + old["lme"]["test_b"]
     by_type = defaultdict(list)
@@ -55,7 +64,10 @@ def main() -> None:
     with gzip.open(args.data / "nq20" / "gold_at_0.jsonl.gz", "rt", encoding="utf-8") as handle:
         total = sum(1 for _ in handle)
     dev = set(old["nq"]["dev"])
-    out["nq"] = {"dev": sorted(dev), "test": [[i, rng.choice([0, 9, 19])] for i in range(total) if i not in dev]}
+    out["nq"] = {
+        "dev": sorted(dev),
+        "test": [[i, rng.choice([0, 9, 19])] for i in range(total) if i not in dev],
+    }
 
     hotpot = json.loads((args.data / "hotpot_full" / "validation.json").read_text(encoding="utf-8"))
     hot_dev = set(old["hotpot"]["dev"])
@@ -64,10 +76,18 @@ def main() -> None:
 
     # Drawn after every split above so those stay exactly as first written.
     sample_rng = random.Random(SEED + 1)
-    out["nq"]["longlingua_sample"] = sorted(f"nq{i}-g{g}" for i, g in sample_rng.sample(out["nq"]["test"], 1000))
+    out["nq"]["longlingua_sample"] = sorted(
+        f"nq{i}-g{g}" for i, g in sample_rng.sample(out["nq"]["test"], 1000)
+    )
     out["hotpot"]["longlingua_sample"] = sorted(sample_rng.sample(out["hotpot"]["test"], 1000))
     (HERE / "splits_r3.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
-    print({k: {kk: len(vv) for kk, vv in v.items() if isinstance(vv, list)} for k, v in out.items() if isinstance(v, dict)})
+    print(
+        {
+            k: {kk: len(vv) for kk, vv in v.items() if isinstance(vv, list)}
+            for k, v in out.items()
+            if isinstance(v, dict)
+        }
+    )
 
 
 if __name__ == "__main__":

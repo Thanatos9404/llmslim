@@ -71,7 +71,9 @@ def sessions(conversation: dict) -> list[Session]:
     keys = [k for k in conv if re.fullmatch(r"session_\d+", k) and conv[k]]
     out = []
     for key in keys:
-        turns = tuple(Turn(t["speaker"], turn_text(t), t.get("dia_id", "")) for t in conv[key] if turn_text(t))
+        turns = tuple(
+            Turn(t["speaker"], turn_text(t), t.get("dia_id", "")) for t in conv[key] if turn_text(t)
+        )
         raw = conv[f"{key}_date_time"]
         out.append(Session(key, parse_date(raw), turns, raw))
     return sorted(out, key=lambda s: (s.date, int(s.key.split("_")[1])))
@@ -90,9 +92,19 @@ def questions(data: list[dict], categories=SCORED) -> list[Question]:
                 continue
             answer = qa.get("answer", qa.get("adversarial_answer", ""))
             if category == 3 and isinstance(answer, str) and ";" in answer:
-                answer = answer.split(";")[0].strip()  # Mem0's harness: open-domain keeps the first part
-            out.append(Question(f"c{conv_index}q{q_index}", conv_index, category, qa["question"], str(answer),
-                                tuple(qa.get("evidence", []))))
+                answer = answer.split(";")[
+                    0
+                ].strip()  # Mem0's harness: open-domain keeps the first part
+            out.append(
+                Question(
+                    f"c{conv_index}q{q_index}",
+                    conv_index,
+                    category,
+                    qa["question"],
+                    str(answer),
+                    tuple(qa.get("evidence", [])),
+                )
+            )
     return out
 
 

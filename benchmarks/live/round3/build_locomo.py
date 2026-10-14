@@ -87,7 +87,10 @@ class Arms:
         lines = lines_of(conversation)
         key = id(conversation)
         if getattr(self, "_cache_key", None) != key:
-            self._cache_key, self._cache = key, self._embedder.encode(lines, normalize_embeddings=True, batch_size=64)
+            self._cache_key, self._cache = (
+                key,
+                self._embedder.encode(lines, normalize_embeddings=True, batch_size=64),
+            )
         query = self._embedder.encode([question], prompt_name="query", normalize_embeddings=True)[0]
         order = sorted(range(len(lines)), key=lambda i: -float(self._cache[i] @ query))
         return fit_lines(order, lines, budget)
@@ -100,8 +103,12 @@ class Arms:
         total = sum(count_tokens(d) for d in docs)
         ratio = budget / total
         for _ in range(4):  # hold the rendered text to the budget, as for every compressor
-            results = compress_documents(docs, query=question, target_ratio=min(ratio, 1.0), **options)
-            text = "\n\n".join(r.compressed_text.strip() for r in results if r.compressed_text.strip())
+            results = compress_documents(
+                docs, query=question, target_ratio=min(ratio, 1.0), **options
+            )
+            text = "\n\n".join(
+                r.compressed_text.strip() for r in results if r.compressed_text.strip()
+            )
             tokens = count_tokens(text)
             if tokens <= budget * 1.02:
                 return text
@@ -119,10 +126,17 @@ class Arms:
         if self._lingua2 is None:
             from llmlingua import PromptCompressor
 
-            self._lingua2 = PromptCompressor(model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
-                                             use_llmlingua2=True, device_map=self.device)
-        out = self._lingua2.compress_prompt(documents(conversation), target_token=budget,
-                                            force_tokens=["\n", "?", ".", "!"], drop_consecutive=True)
+            self._lingua2 = PromptCompressor(
+                model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
+                use_llmlingua2=True,
+                device_map=self.device,
+            )
+        out = self._lingua2.compress_prompt(
+            documents(conversation),
+            target_token=budget,
+            force_tokens=["\n", "?", ".", "!"],
+            drop_consecutive=True,
+        )
         return out["compressed_prompt"]
 
     def longlingua(self, conversation, question, budget):
@@ -130,12 +144,23 @@ class Arms:
             import torch
             from llmlingua import PromptCompressor
 
-            self._long = PromptCompressor(model_name="NousResearch/Llama-2-7b-chat-hf", device_map="auto",
-                                          model_config={"torch_dtype": torch.float16})
-        out = self._long.compress_prompt(documents(conversation), question=question, target_token=budget,
-                                         condition_in_question="after_condition", reorder_context="sort",
-                                         dynamic_context_compression_ratio=0.3, condition_compare=True,
-                                         context_budget="+100", rank_method="longllmlingua", concate_question=False)
+            self._long = PromptCompressor(
+                model_name="NousResearch/Llama-2-7b-chat-hf",
+                device_map="auto",
+                model_config={"torch_dtype": torch.float16},
+            )
+        out = self._long.compress_prompt(
+            documents(conversation),
+            question=question,
+            target_token=budget,
+            condition_in_question="after_condition",
+            reorder_context="sort",
+            dynamic_context_compression_ratio=0.3,
+            condition_compare=True,
+            context_budget="+100",
+            rank_method="longllmlingua",
+            concate_question=False,
+        )
         return out["compressed_prompt"]
 
 
@@ -149,7 +174,9 @@ def main() -> None:
     parser.add_argument("--arms", nargs="+", required=True)
     parser.add_argument("--budgets", type=int, nargs="+", required=True)
     parser.add_argument("--convs", type=int, nargs="*")
-    parser.add_argument("--ids", type=Path, help="optional file with one question id per line (a sample)")
+    parser.add_argument(
+        "--ids", type=Path, help="optional file with one question id per line (a sample)"
+    )
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
     data = ld.load(args.data)
@@ -157,9 +184,13 @@ def main() -> None:
     arms = Arms(args.device)
     args.out.mkdir(parents=True, exist_ok=True)
     for arm in args.arms:
-        for budget in ([0] if arm == "full" else args.budgets):
+        for budget in [0] if arm == "full" else args.budgets:
             path = args.out / (f"{arm}.jsonl" if arm == "full" else f"{arm}_{budget}.jsonl")
-            done = {json.loads(l)["id"] for l in path.open(encoding="utf-8")} if path.exists() else set()
+            done = (
+                {json.loads(l)["id"] for l in path.open(encoding="utf-8")}
+                if path.exists()
+                else set()
+            )
             with path.open("a", encoding="utf-8") as handle:
                 for conv, conversation in enumerate(data):
                     if args.convs is not None and conv not in args.convs:
@@ -177,8 +208,17 @@ def main() -> None:
                             ms = (time.perf_counter() - started) * 1000
                             if arm in QUESTION_AGNOSTIC:
                                 shared = (context, ms)
-                        handle.write(json.dumps({"id": qid, "context": context, "tokens": count_tokens(context),
-                                                 "build_ms": round(ms, 1)}) + "\n")
+                        handle.write(
+                            json.dumps(
+                                {
+                                    "id": qid,
+                                    "context": context,
+                                    "tokens": count_tokens(context),
+                                    "build_ms": round(ms, 1),
+                                }
+                            )
+                            + "\n"
+                        )
                         handle.flush()
             print(f"{path.name}: done", flush=True)
 

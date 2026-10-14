@@ -91,12 +91,18 @@ def cache_system(body: dict) -> None:
     system = body.get("system")
     if isinstance(system, str) and len(system) >= CACHE_MIN_CHARS:
         body["system"] = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
-    elif isinstance(system, list) and system and not any("cache_control" in block for block in system):
+    elif (
+        isinstance(system, list)
+        and system
+        and not any("cache_control" in block for block in system)
+    ):
         if sum(len(block.get("text", "")) for block in system) >= CACHE_MIN_CHARS:
             system[-1]["cache_control"] = {"type": "ephemeral"}
 
 
-def record(tag: str, requested: str, usage: dict, seconds: float, status: int, error: str = "") -> None:
+def record(
+    tag: str, requested: str, usage: dict, seconds: float, status: int, error: str = ""
+) -> None:
     usd = price(usage) if status == 200 else 0.0
     with LOCK:
         mine = read_ledger(LEDGER) if LEDGER.exists() else {"usd": 0.0, "calls": 0}
@@ -110,9 +116,23 @@ def record(tag: str, requested: str, usage: dict, seconds: float, status: int, e
                 time.sleep(0.05 * (attempt + 1))
         else:
             LEDGER.write_text(tmp.read_text())
-        row = {"t": round(time.time(), 3), "tag": tag, "requested_model": requested, "status": status,
-               "seconds": round(seconds, 3), "usd": round(usd, 8), **{k: usage.get(k) or 0 for k in (
-                   "input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")}}
+        row = {
+            "t": round(time.time(), 3),
+            "tag": tag,
+            "requested_model": requested,
+            "status": status,
+            "seconds": round(seconds, 3),
+            "usd": round(usd, 8),
+            **{
+                k: usage.get(k) or 0
+                for k in (
+                    "input_tokens",
+                    "output_tokens",
+                    "cache_creation_input_tokens",
+                    "cache_read_input_tokens",
+                )
+            },
+        }
         if error:
             row["error"] = error[:300]
         with CALLS.open("a", encoding="utf-8") as handle:
@@ -138,7 +158,9 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(int(self.headers.get("content-length") or 0))
         path = self.path.split("?")[0]
         if path not in ("/v1/messages", "/v1/messages/count_tokens"):
-            self.reply(404, b'{"type":"error","error":{"type":"not_found_error","message":"not proxied"}}')
+            self.reply(
+                404, b'{"type":"error","error":{"type":"not_found_error","message":"not proxied"}}'
+            )
             return
         body = json.loads(raw or b"{}")
         requested = str(body.get("model", ""))
@@ -156,8 +178,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         with LOCK:
             if spent() >= CAP_USD:
-                self.reply(402, json.dumps({"type": "error", "error": {
-                    "type": "budget_exceeded", "message": f"spend cap ${CAP_USD:.2f} reached"}}).encode())
+                self.reply(
+                    402,
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "error": {
+                                "type": "budget_exceeded",
+                                "message": f"spend cap ${CAP_USD:.2f} reached",
+                            },
+                        }
+                    ).encode(),
+                )
                 return
         tag = self.headers.get("x-bench-tag", "untagged")
         if body.get("stream"):
@@ -169,7 +201,10 @@ class Handler(BaseHTTPRequestHandler):
             if response.status_code not in (429, 500, 502, 503, 529) or attempt == 11:
                 break
             wait = response.headers.get("retry-after")
-            time.sleep((float(wait) if wait else min(60.0, 5.0 * 2 ** min(attempt, 3))) + random.random() * 3)
+            time.sleep(
+                (float(wait) if wait else min(60.0, 5.0 * 2 ** min(attempt, 3)))
+                + random.random() * 3
+            )
         usage = response.json().get("usage", {}) if response.status_code == 200 else {}
         error = "" if response.status_code == 200 else response.text
         record(tag, requested, usage, time.perf_counter() - started, response.status_code, error)
@@ -180,7 +215,9 @@ class Handler(BaseHTTPRequestHandler):
         usage: dict = {}
         with self.client.stream("POST", UPSTREAM + path, json=body, headers=headers) as response:
             self.send_response(response.status_code)
-            self.send_header("content-type", response.headers.get("content-type", "text/event-stream"))
+            self.send_header(
+                "content-type", response.headers.get("content-type", "text/event-stream")
+            )
             self.send_header("transfer-encoding", "chunked")
             self.end_headers()
             buffer = b""
@@ -197,7 +234,9 @@ class Handler(BaseHTTPRequestHandler):
                         if event.get("type") == "message_start":
                             usage.update(event["message"].get("usage", {}))
                         elif event.get("type") == "message_delta":
-                            usage.update({k: v for k, v in event.get("usage", {}).items() if v is not None})
+                            usage.update(
+                                {k: v for k, v in event.get("usage", {}).items() if v is not None}
+                            )
             self.wfile.write(b"0\r\n\r\n")
             record(tag, requested, usage, time.perf_counter() - started, response.status_code)
 
@@ -212,7 +251,10 @@ def main() -> None:
         Handler.auth["anthropic-workspace-id"] = values["CLAUDE_WORKSPACE_ID"]
     Handler.client = httpx.Client(timeout=httpx.Timeout(300.0, connect=30.0))
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"metering proxy on 127.0.0.1:{args.port}, suite {SUITE}, cap ${CAP_USD:.2f}, spent ${spent():.2f}", flush=True)
+    print(
+        f"metering proxy on 127.0.0.1:{args.port}, suite {SUITE}, cap ${CAP_USD:.2f}, spent ${spent():.2f}",
+        flush=True,
+    )
     server.serve_forever()
 
 

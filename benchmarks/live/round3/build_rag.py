@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import sys
 import time
 from pathlib import Path
 
@@ -46,23 +45,49 @@ def load(suite: str, data: Path, split: str) -> list[dict]:
     if suite == "nq":
         files = {}
         for gold in (0, 9, 19):
-            with gzip.open(data / "nq20" / f"gold_at_{gold}.jsonl.gz", "rt", encoding="utf-8") as handle:
+            with gzip.open(
+                data / "nq20" / f"gold_at_{gold}.jsonl.gz", "rt", encoding="utf-8"
+            ) as handle:
                 files[gold] = [json.loads(line) for line in handle]
         pairs = splits["test"] if split == "test" else [[i, 9] for i in splits["dev"]]
         for index, gold in pairs:
             row = files[gold][index]
-            docs = [f"Document [{k + 1}](Title: {d['title']}) {d['text']}" for k, d in enumerate(row["ctxs"])]
-            items.append({"id": f"nq{index}-g{gold}", "question": row["question"], "answers": row["answers"],
-                          "docs": docs})
+            docs = [
+                f"Document [{k + 1}](Title: {d['title']}) {d['text']}"
+                for k, d in enumerate(row["ctxs"])
+            ]
+            items.append(
+                {
+                    "id": f"nq{index}-g{gold}",
+                    "question": row["question"],
+                    "answers": row["answers"],
+                    "docs": docs,
+                }
+            )
     else:
-        rows = {row["id"]: row for row in json.loads((data / "hotpot_full" / "validation.json").read_text(
-            encoding="utf-8"))}
+        rows = {
+            row["id"]: row
+            for row in json.loads(
+                (data / "hotpot_full" / "validation.json").read_text(encoding="utf-8")
+            )
+        }
         for qid in splits[split]:
             row = rows[qid]
             ctx = row["context"]
-            docs = [f"{title}: {''.join(sentences).strip()}" for title, sentences in zip(ctx["title"], ctx["sentences"])]
-            items.append({"id": qid, "question": row["question"], "answers": [row["answer"]], "docs": docs,
-                          "type": row["type"], "level": row["level"]})
+            docs = [
+                f"{title}: {''.join(sentences).strip()}"
+                for title, sentences in zip(ctx["title"], ctx["sentences"])
+            ]
+            items.append(
+                {
+                    "id": qid,
+                    "question": row["question"],
+                    "answers": [row["answer"]],
+                    "docs": docs,
+                    "type": row["type"],
+                    "level": row["level"],
+                }
+            )
     return items
 
 
@@ -95,13 +120,19 @@ class Arms:
         if self._reranker is None:
             self._reranker = CrossEncoder(RERANKER, device=self.device)
         scores = self._reranker.predict([(item["question"], d) for d in item["docs"]])
-        return fit_whole(item["docs"], sorted(range(len(item["docs"])), key=lambda i: -float(scores[i])), budget,
-                         self.joiner)
+        return fit_whole(
+            item["docs"],
+            sorted(range(len(item["docs"])), key=lambda i: -float(scores[i])),
+            budget,
+            self.joiner,
+        )
 
     def _llmslim(self, item, budget, **options):
         from llmslim import compress_documents
 
-        results = compress_documents(item["docs"], query=item["question"], target_ratio=RATIO[self.suite], **options)
+        results = compress_documents(
+            item["docs"], query=item["question"], target_ratio=RATIO[self.suite], **options
+        )
         return self.joiner.join(r.compressed_text for r in results if r.compressed_text.strip())
 
     def llmslim(self, item, budget):
@@ -114,10 +145,17 @@ class Arms:
         if self._lingua2 is None:
             from llmlingua import PromptCompressor
 
-            self._lingua2 = PromptCompressor(model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
-                                             use_llmlingua2=True, device_map=self.device)
-        out = self._lingua2.compress_prompt(item["docs"], target_token=budget, force_tokens=["\n", "?", ".", "!"],
-                                            drop_consecutive=True)
+            self._lingua2 = PromptCompressor(
+                model_name="microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
+                use_llmlingua2=True,
+                device_map=self.device,
+            )
+        out = self._lingua2.compress_prompt(
+            item["docs"],
+            target_token=budget,
+            force_tokens=["\n", "?", ".", "!"],
+            drop_consecutive=True,
+        )
         return out["compressed_prompt"]
 
     def longlingua(self, item, budget):
@@ -125,12 +163,23 @@ class Arms:
             import torch
             from llmlingua import PromptCompressor
 
-            self._long = PromptCompressor(model_name="NousResearch/Llama-2-7b-chat-hf", device_map="auto",
-                                          model_config={"torch_dtype": torch.float16})
-        out = self._long.compress_prompt(item["docs"], question=item["question"], target_token=budget,
-                                         condition_in_question="after_condition", reorder_context="sort",
-                                         dynamic_context_compression_ratio=0.3, condition_compare=True,
-                                         context_budget="+100", rank_method="longllmlingua", concate_question=False)
+            self._long = PromptCompressor(
+                model_name="NousResearch/Llama-2-7b-chat-hf",
+                device_map="auto",
+                model_config={"torch_dtype": torch.float16},
+            )
+        out = self._long.compress_prompt(
+            item["docs"],
+            question=item["question"],
+            target_token=budget,
+            condition_in_question="after_condition",
+            reorder_context="sort",
+            dynamic_context_compression_ratio=0.3,
+            condition_compare=True,
+            context_budget="+100",
+            rank_method="longllmlingua",
+            concate_question=False,
+        )
         return out["compressed_prompt"]
 
 
@@ -142,19 +191,25 @@ def main() -> None:
     parser.add_argument("--arms", nargs="+", required=True)
     parser.add_argument("--split", default="test", choices=["test", "dev"])
     parser.add_argument("--limit", type=int)
-    parser.add_argument("--sample", action="store_true", help="only the pre-registered longlingua_sample")
+    parser.add_argument(
+        "--sample", action="store_true", help="only the pre-registered longlingua_sample"
+    )
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
     items = load(args.suite, args.data, args.split)
     if args.sample:
-        keep = set(json.loads((HERE / "splits_r3.json").read_text())[args.suite]["longlingua_sample"])
+        keep = set(
+            json.loads((HERE / "splits_r3.json").read_text())[args.suite]["longlingua_sample"]
+        )
         items = [item for item in items if item["id"] in keep]
     items = items[: args.limit]
     arms = Arms(args.suite, args.device)
     args.out.mkdir(parents=True, exist_ok=True)
     for arm in args.arms:
         path = args.out / f"{args.suite}_{args.split}_{arm}.jsonl"
-        done = {json.loads(l)["id"] for l in path.open(encoding="utf-8")} if path.exists() else set()
+        done = (
+            {json.loads(l)["id"] for l in path.open(encoding="utf-8")} if path.exists() else set()
+        )
         started_all, built = time.time(), 0
         with path.open("a", encoding="utf-8") as handle:
             for item in items:
@@ -164,8 +219,18 @@ def main() -> None:
                 started = time.perf_counter()
                 context = getattr(arms, arm)(item, budget)
                 ms = (time.perf_counter() - started) * 1000
-                handle.write(json.dumps({"id": item["id"], "context": context, "tokens": count_tokens(context),
-                                         "budget": budget, "build_ms": round(ms, 1)}) + "\n")
+                handle.write(
+                    json.dumps(
+                        {
+                            "id": item["id"],
+                            "context": context,
+                            "tokens": count_tokens(context),
+                            "budget": budget,
+                            "build_ms": round(ms, 1),
+                        }
+                    )
+                    + "\n"
+                )
                 handle.flush()
                 built += 1
                 if built in (1, 5) or built % 100 == 0:

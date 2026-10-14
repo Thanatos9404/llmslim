@@ -55,17 +55,30 @@ def memory_for(store: Path, conv: int):
     from mem0 import Memory
 
     store.mkdir(parents=True, exist_ok=True)
-    return Memory.from_config({
-        "version": "v1.1",
-        "llm": {"provider": "anthropic", "config": {"model": MODEL, "temperature": 0.1}},
-        "embedder": {"provider": "huggingface", "config": {
-            "model": EMBEDDER, "embedding_dims": 1024,
-            "model_kwargs": {"device": "cuda", "model_kwargs": {"torch_dtype": "float16"}}}},
-        "vector_store": {"provider": "qdrant", "config": {
-            "collection_name": f"locomo_{conv}", "path": str(store / "qdrant"),
-            "embedding_model_dims": 1024, "on_disk": True}},
-        "history_db_path": str(store / "history.db"),
-    })
+    return Memory.from_config(
+        {
+            "version": "v1.1",
+            "llm": {"provider": "anthropic", "config": {"model": MODEL, "temperature": 0.1}},
+            "embedder": {
+                "provider": "huggingface",
+                "config": {
+                    "model": EMBEDDER,
+                    "embedding_dims": 1024,
+                    "model_kwargs": {"device": "cuda", "model_kwargs": {"torch_dtype": "float16"}},
+                },
+            },
+            "vector_store": {
+                "provider": "qdrant",
+                "config": {
+                    "collection_name": f"locomo_{conv}",
+                    "path": str(store / "qdrant"),
+                    "embedding_model_dims": 1024,
+                    "on_disk": True,
+                },
+            },
+            "history_db_path": str(store / "history.db"),
+        }
+    )
 
 
 def ingest(memory, conversation: dict, conv: int, progress: Path) -> dict:
@@ -84,8 +97,11 @@ def ingest(memory, conversation: dict, conv: int, progress: Path) -> dict:
             started = time.perf_counter()
             for attempt in range(3):
                 try:
-                    memory.add([{"role": role, "content": f"{turn.speaker}: {turn.text}"}],
-                               user_id=f"locomo_{conv}", metadata={"created_at": created_at})
+                    memory.add(
+                        [{"role": role, "content": f"{turn.speaker}: {turn.text}"}],
+                        user_id=f"locomo_{conv}",
+                        metadata={"created_at": created_at},
+                    )
                     break
                 except Exception as error:  # noqa: BLE001 - a failed add is counted, as in Mem0's harness
                     if "budget_exceeded" in str(error):
@@ -106,13 +122,24 @@ def search(memory, conversation: dict, conv: int, out: Path) -> None:
     rows = []
     for question in ld.questions([conversation]):
         started = time.perf_counter()
-        result = memory.search(question.question, filters={"user_id": f"locomo_{conv}"}, top_k=TOP_K)
+        result = memory.search(
+            question.question, filters={"user_id": f"locomo_{conv}"}, top_k=TOP_K
+        )
         hits = result.get("results", result) if isinstance(result, dict) else result
-        rows.append({
-            "id": f"c{conv}{question.id[2:]}", "search_ms": round((time.perf_counter() - started) * 1000, 1),
-            "memories": [{"memory": h.get("memory", ""), "created_at": h.get("created_at", ""),
-                          "score": h.get("score")} for h in hits],
-        })
+        rows.append(
+            {
+                "id": f"c{conv}{question.id[2:]}",
+                "search_ms": round((time.perf_counter() - started) * 1000, 1),
+                "memories": [
+                    {
+                        "memory": h.get("memory", ""),
+                        "created_at": h.get("created_at", ""),
+                        "score": h.get("score"),
+                    }
+                    for h in hits
+                ],
+            }
+        )
     out.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
 

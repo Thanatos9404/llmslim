@@ -44,14 +44,20 @@ def load_source(spec: str) -> dict[str, dict]:
     if kind == "arm":
         for line in Path(rest).open(encoding="utf-8"):
             row = json.loads(line)
-            rows[row["id"]] = {"memories": f"{CHRONO}\n\n{row['context']}", "context_tokens": row["tokens"],
-                               "build_ms": row.get("build_ms")}
+            rows[row["id"]] = {
+                "memories": f"{CHRONO}\n\n{row['context']}",
+                "context_tokens": row["tokens"],
+                "build_ms": row.get("build_ms"),
+            }
     elif kind == "mem0":
         folder, _, k = rest.rpartition(":")
         for path in Path(folder).glob("search_c*.jsonl"):
             for line in path.open(encoding="utf-8"):
                 row = json.loads(line)
-                rows[row["id"]] = {"search": row["memories"][: int(k)], "build_ms": row.get("search_ms")}
+                rows[row["id"]] = {
+                    "search": row["memories"][: int(k)],
+                    "build_ms": row.get("search_ms"),
+                }
     elif kind == "zep":
         for path in Path(rest).glob("search_c*.jsonl"):
             for line in path.open(encoding="utf-8"):
@@ -63,10 +69,15 @@ def load_source(spec: str) -> dict[str, dict]:
 
 
 def answer_prompt(question: ld.Question, source: dict, reference: str) -> str:
-    if "search" in source:  # Mem0's own formatter: top memories, sorted by date, human dates, no scores
-        return mem0p.get_answer_generation_prompt(question.question, source["search"], reference_date=reference)
-    return mem0p.ANSWER_GENERATION_PROMPT.format(memories=source["memories"], question=question.question,
-                                                 reference_date=reference)
+    if (
+        "search" in source
+    ):  # Mem0's own formatter: top memories, sorted by date, human dates, no scores
+        return mem0p.get_answer_generation_prompt(
+            question.question, source["search"], reference_date=reference
+        )
+    return mem0p.ANSWER_GENERATION_PROMPT.format(
+        memories=source["memories"], question=question.question, reference_date=reference
+    )
 
 
 def evidence_context(conversation: dict, question: ld.Question) -> str:
@@ -114,25 +125,47 @@ def parse_label(text: str) -> str:
     return "CORRECT" if "CORRECT" in upper and "WRONG" not in upper else "WRONG"
 
 
-def run_one(api, name: str, question: ld.Question, conversation: dict, source: dict, reference: str) -> dict:
+def run_one(
+    api, name: str, question: ld.Question, conversation: dict, source: dict, reference: str
+) -> dict:
     prompt = answer_prompt(question, source, reference)
-    response, seconds, usd = haiku_client.call(api, messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+    response, seconds, usd = haiku_client.call(
+        api, messages=[{"role": "user", "content": prompt}], max_tokens=4096
+    )
     raw = haiku_client.text_of(response)
     answer = raw.rsplit("ANSWER:", 1)[-1].strip() if "ANSWER:" in raw else raw.strip()
     evidence = evidence_context(conversation, question)
-    judge_prompt = (mem0p.get_judge_prompt_with_evidence(question.category, question.question, question.answer,
-                                                         answer, evidence) if evidence else
-                    mem0p.get_judge_prompt(question.category, question.question, question.answer, answer))
-    verdict, _, judge_usd = haiku_client.call(api, system=mem0p.JUDGE_SYSTEM_PROMPT,
-                                              messages=[{"role": "user", "content": judge_prompt}], max_tokens=600)
+    judge_prompt = (
+        mem0p.get_judge_prompt_with_evidence(
+            question.category, question.question, question.answer, answer, evidence
+        )
+        if evidence
+        else mem0p.get_judge_prompt(question.category, question.question, question.answer, answer)
+    )
+    verdict, _, judge_usd = haiku_client.call(
+        api,
+        system=mem0p.JUDGE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": judge_prompt}],
+        max_tokens=600,
+    )
     label = parse_label(haiku_client.text_of(verdict))
     return {
-        "suite": "locomo", "id": f"c{question.conv}{question.id[2:]}", "arm": name, "category": question.category,
-        "score": 1.0 if label == "CORRECT" else 0.0, "f1": round(token_f1(answer, question.answer), 4),
-        "context_tokens": source.get("context_tokens"), "prompt_tokens": haiku_client.prompt_tokens(response.usage),
-        "output_tokens": response.usage.output_tokens, "build_ms": source.get("build_ms"),
-        "usd": round(usd, 6), "judge_usd": round(judge_usd, 6), "seconds": round(seconds, 2),
-        "stop": response.stop_reason, "prediction": answer, "gold": question.answer,
+        "suite": "locomo",
+        "id": f"c{question.conv}{question.id[2:]}",
+        "arm": name,
+        "category": question.category,
+        "score": 1.0 if label == "CORRECT" else 0.0,
+        "f1": round(token_f1(answer, question.answer), 4),
+        "context_tokens": source.get("context_tokens"),
+        "prompt_tokens": haiku_client.prompt_tokens(response.usage),
+        "output_tokens": response.usage.output_tokens,
+        "build_ms": source.get("build_ms"),
+        "usd": round(usd, 6),
+        "judge_usd": round(judge_usd, 6),
+        "seconds": round(seconds, 2),
+        "stop": response.stop_reason,
+        "prediction": answer,
+        "gold": question.answer,
     }
 
 
@@ -158,9 +191,17 @@ def main() -> None:
             continue
         reference = ld.reference_date(conversation)
         for question in ld.questions([conversation]):
-            question = ld.Question(f"c{conv}{question.id[2:]}", conv, question.category, question.question,
-                                   question.answer, question.evidence)
-            if (args.name, question.id) in done or (wanted is not None and question.id not in wanted):
+            question = ld.Question(
+                f"c{conv}{question.id[2:]}",
+                conv,
+                question.category,
+                question.question,
+                question.answer,
+                question.evidence,
+            )
+            if (args.name, question.id) in done or (
+                wanted is not None and question.id not in wanted
+            ):
                 continue
             if question.id not in source:
                 print(f"{args.name}: no context for {question.id}", flush=True)
@@ -178,8 +219,11 @@ def main() -> None:
     with ThreadPoolExecutor(args.workers) as pool:
         rows = list(pool.map(work, jobs))
     if rows:
-        print(f"{args.name}: {len(rows)} answered, judge {100 * sum(r['score'] for r in rows) / len(rows):.1f}, "
-              f"F1 {100 * sum(r['f1'] for r in rows) / len(rows):.1f}, spent ${haiku_client.spent():.2f}", flush=True)
+        print(
+            f"{args.name}: {len(rows)} answered, judge {100 * sum(r['score'] for r in rows) / len(rows):.1f}, "
+            f"F1 {100 * sum(r['f1'] for r in rows) / len(rows):.1f}, spent ${haiku_client.spent():.2f}",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

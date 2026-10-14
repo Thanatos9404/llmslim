@@ -60,17 +60,19 @@ Timestamps in memories represent the actual time the event occurred, not the tim
 
 
 def components():
+    import torch
     from graphiti_core.cross_encoder.bge_reranker_client import BGERerankerClient
     from graphiti_core.embedder.client import EmbedderClient
     from graphiti_core.llm_client.anthropic_client import AnthropicClient
     from graphiti_core.llm_client.config import LLMConfig
     from sentence_transformers import SentenceTransformer
 
-    import torch
-
     cuda = torch.cuda.is_available()
-    model = SentenceTransformer(EMBEDDER, device="cuda" if cuda else "cpu",
-                                model_kwargs={"torch_dtype": "float16"} if cuda else {})
+    model = SentenceTransformer(
+        EMBEDDER,
+        device="cuda" if cuda else "cpu",
+        model_kwargs={"torch_dtype": "float16"} if cuda else {},
+    )
     lock = asyncio.Lock()
 
     class LocalEmbedder(EmbedderClient):
@@ -83,7 +85,9 @@ def components():
             async with lock:
                 return model.encode(list(input_data_list), normalize_embeddings=True).tolist()
 
-    llm = AnthropicClient(config=LLMConfig(api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL, small_model=MODEL))
+    llm = AnthropicClient(
+        config=LLMConfig(api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL, small_model=MODEL)
+    )
     return llm, LocalEmbedder(), BGERerankerClient()
 
 
@@ -92,13 +96,21 @@ async def graph_for(store: Path, conv: int, parts):
     from graphiti_core import Graphiti
 
     llm, embedder, reranker = parts
-    graph = Graphiti(os.environ["NEO4J_URI"], os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"],
-                     llm_client=llm, embedder=embedder, cross_encoder=reranker)
+    graph = Graphiti(
+        os.environ["NEO4J_URI"],
+        os.environ["NEO4J_USER"],
+        os.environ["NEO4J_PASSWORD"],
+        llm_client=llm,
+        embedder=embedder,
+        cross_encoder=reranker,
+    )
     await graph.build_indices_and_constraints()
     return graph
 
 
-async def ingest(graph, conversation: dict, conv: int, progress: Path, limit: int | None = None) -> dict:
+async def ingest(
+    graph, conversation: dict, conv: int, progress: Path, limit: int | None = None
+) -> dict:
     from graphiti_core.nodes import EpisodeType
 
     done = set(json.loads(progress.read_text())["done"]) if progress.exists() else set()
@@ -114,9 +126,14 @@ async def ingest(graph, conversation: dict, conv: int, progress: Path, limit: in
             started = time.perf_counter()
             for attempt in range(3):
                 try:
-                    await graph.add_episode(name=key, episode_body=f"{turn.speaker}: {turn.text}",
-                                            source=EpisodeType.message, source_description="conversation message",
-                                            reference_time=when, group_id=f"locomo_{conv}")
+                    await graph.add_episode(
+                        name=key,
+                        episode_body=f"{turn.speaker}: {turn.text}",
+                        source=EpisodeType.message,
+                        source_description="conversation message",
+                        reference_time=when,
+                        group_id=f"locomo_{conv}",
+                    )
                     break
                 except Exception as error:  # noqa: BLE001 - a failed episode is counted and skipped
                     if "budget_exceeded" in str(error):
@@ -129,12 +146,18 @@ async def ingest(graph, conversation: dict, conv: int, progress: Path, limit: in
             stats["episodes"] += 1
             done.add(key)
             progress.write_text(json.dumps({"done": sorted(done)}))
-        print(f"conv {conv} {session.key} ({session.date.date()}) done, {len(done)} episodes", flush=True)
+        print(
+            f"conv {conv} {session.key} ({session.date.date()}) done, {len(done)} episodes",
+            flush=True,
+        )
     return stats
 
 
 async def search(graph, conversation: dict, conv: int, out: Path) -> None:
-    from graphiti_core.search.search_config_recipes import EDGE_HYBRID_SEARCH_CROSS_ENCODER, NODE_HYBRID_SEARCH_RRF
+    from graphiti_core.search.search_config_recipes import (
+        EDGE_HYBRID_SEARCH_CROSS_ENCODER,
+        NODE_HYBRID_SEARCH_RRF,
+    )
 
     edge_config = EDGE_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
     edge_config.limit = LIMIT
@@ -145,13 +168,19 @@ async def search(graph, conversation: dict, conv: int, out: Path) -> None:
         started = time.perf_counter()
         nodes, edges = await asyncio.gather(
             graph.search_(question.question, config=node_config, group_ids=[f"locomo_{conv}"]),
-            graph.search_(question.question, config=edge_config, group_ids=[f"locomo_{conv}"]))
+            graph.search_(question.question, config=edge_config, group_ids=[f"locomo_{conv}"]),
+        )
         facts = [f"  - {edge.fact} (event_time: {edge.valid_at})" for edge in edges.edges]
         entities = [f"  - {node.name}: {node.summary}" for node in nodes.nodes]
-        rows.append({"id": f"c{conv}{question.id[2:]}",
-                     "search_ms": round((time.perf_counter() - started) * 1000, 1),
-                     "context": TEMPLATE.format(facts="\n".join(facts), entities="\n".join(entities)),
-                     "facts": len(facts), "entities": len(entities)})
+        rows.append(
+            {
+                "id": f"c{conv}{question.id[2:]}",
+                "search_ms": round((time.perf_counter() - started) * 1000, 1),
+                "context": TEMPLATE.format(facts="\n".join(facts), entities="\n".join(entities)),
+                "facts": len(facts),
+                "entities": len(entities),
+            }
+        )
     out.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
 
@@ -165,7 +194,9 @@ async def run(args) -> None:
         async with gate:
             graph = await graph_for(args.store, conv, parts)
             if not args.search_only:
-                stats = await ingest(graph, data[conv], conv, args.store / f"conv{conv}.progress.json", args.limit)
+                stats = await ingest(
+                    graph, data[conv], conv, args.store / f"conv{conv}.progress.json", args.limit
+                )
                 (args.out / f"ingest_c{conv}.json").write_text(json.dumps(stats))
             await search(graph, data[conv], conv, args.out / f"search_c{conv}.jsonl")
             print(f"conv {conv}: searched", flush=True)
@@ -182,7 +213,9 @@ def main() -> None:
     parser.add_argument("--convs", type=int, nargs="+", required=True)
     parser.add_argument("--parallel", type=int, default=1)
     parser.add_argument("--search-only", action="store_true")
-    parser.add_argument("--limit", type=int, help="pilot: stop each conversation after this many episodes")
+    parser.add_argument(
+        "--limit", type=int, help="pilot: stop each conversation after this many episodes"
+    )
     asyncio.run(run(parser.parse_args()))
 
 

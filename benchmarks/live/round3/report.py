@@ -117,12 +117,13 @@ def main() -> None:
     print(
         f"| Arm | n | {args.metric} (95% CI) | vs {args.reference} (paired, 95% CI) | Context tokens | "
         "Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | "
-        "Total $/1k as run | $ per 1k correct |"
+        "Total $/1k as run | $ per 1k correct | Cost frontier |"
     )
-    print("|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|")
+    print("|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|")
     order = sorted(
         by_arm, key=lambda arm: -statistics.mean(r[args.metric] for r in by_arm[arm].values())
     )
+    frontier = cost_frontier(by_arm, args.metric, ingest, args.gpu)
     for arm in order:
         answered = by_arm[arm]
         values = [r[args.metric] for r in answered.values()]
@@ -148,8 +149,39 @@ def main() -> None:
         print(
             f"| {arm} | {len(values)} | {100 * mean:.1f} ({100 * low:.1f}-{100 * high:.1f}) | {paired} | "
             f"{context} | {latency} | {1000 * reader:.2f} | {1000 * no_cache:.2f} | {1000 * extra:.2f} | "
-            f"{1000 * total:.2f} | {1000 * per_correct:.2f} |"
+            f"{1000 * total:.2f} | {1000 * per_correct:.2f} | {frontier[arm]} |"
         )
+
+
+def cost_frontier(
+    by_arm: dict[str, dict[str, dict]], metric: str, ingest: dict[str, float], gpu: list[str]
+) -> dict[str, str]:
+    """Which arms no other arm beats on both accuracy and total cost ("as run" and with no prompt cache): an arm is
+    on the frontier when nothing is at least as accurate for at most its cost, and better on one of the two."""
+    stats = {}
+    for arm, answered in by_arm.items():
+        memory = next((v for prefix, v in ingest.items() if arm.startswith(prefix)), 0.0)
+        extra = memory + compute_usd(arm, answered, gpu)
+        stats[arm] = (
+            statistics.mean(r[metric] for r in answered.values()),
+            statistics.mean(list_usd(r) for r in answered.values()) + extra,
+            statistics.mean(uncached_usd(r) for r in answered.values()) + extra,
+        )
+    out = {}
+    for arm, (accuracy, *costs) in stats.items():
+        marks = []
+        for k, label in ((0, "as run"), (1, "no cache")):
+            dominated = any(
+                other != arm
+                and o_acc >= accuracy
+                and o_costs[k] <= costs[k]
+                and (o_acc > accuracy or o_costs[k] < costs[k])
+                for other, (o_acc, *o_costs) in stats.items()
+            )
+            if not dominated:
+                marks.append(label)
+        out[arm] = ", ".join(marks)
+    return out
 
 
 if __name__ == "__main__":

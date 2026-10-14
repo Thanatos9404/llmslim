@@ -22,18 +22,31 @@ Earlier rounds were criticised on three points, and this round answers each:
   `2110c3e`, before any round-3 model call. Later additions (Zep's LongMemEval sample) were also committed before any
   result they could affect, and none of them changed an earlier split.
 - **Tuning used dev only.** LoCoMo conversations 0-1, the LongMemEval dev questions, and the earlier NQ and HotpotQA
-  dev questions. The one LLMSlim change made in this round, turn-by-turn transcripts (PR #48), was chosen and checked
-  there. It was frozen and merged before any test result was read.
-- **Both LLMSlim configurations are reported everywhere:** lexical (the default, no model) and with its optional 22M
-  reranker. Neither is picked per suite.
-- **Before and after.** The release as it was (0.8.1 plus merged changes up to `e607cbd`) is reported next to the
-  round-3 change (`0accc73`).
+  dev questions. Round 3 made two LLMSlim changes, both chosen and checked there:
+  - **v2**, turn-by-turn transcripts (PR #48), frozen and merged before any test result was read;
+  - **v3**, chained transcript rounds and quantity words (PR #49), made after v2's first test numbers had been read,
+    but chosen on dev evidence alone (no test data was used to pick or tune it).
+  Every version is reported: the release (`e607cbd`), v2 and v3. The `llmslim_v23` build makes v2 from the v3 code
+  with #49's two switches off (`--off CHAINED_ROUNDS QUANTITY_TERMS`); that reproduces v2's output byte for byte
+  (3,921 of 3,921 LoCoMo test contexts checked).
+- **Both LLMSlim configurations are reported:** lexical (the default, no model) and with its optional 22M reranker.
+  Neither is picked per suite.
 - **Competitors in their own words.** Answer and judge prompts are Mem0's, vendored verbatim in `vendor/`
   (Apache-2.0). LongMemEval also uses its official judge, the headline there; LoCoMo also reports token F1, its
   original metric, which needs no model.
 - **One meter for everything.** Every Mem0 and Zep LLM call goes through `meter_proxy.py`. It pins the model to Haiku
   5.5, adds the key so the libraries never see it, and records every call's tokens and cost. Ingestion cost is
   reported per system.
+
+### Cost is the main criterion
+
+Every table prices 1,000 questions end to end (`report.py` has the details): the reader's answer call at Haiku 5.5
+list prices, Mem0's and Zep's ingestion calls, and each system's build time as cloud machine time (a T4 GPU at
+AWS's g4dn.xlarge on-demand price, $0.526/h, or a 2-vCPU c7i.large at $0.0892/h). The reader cost is shown twice:
+as run, where a context that does not depend on the question (the full history, recent turns, LLMLingua-2) was
+read from Anthropic's prompt cache across a conversation's questions, and with no cache, as when questions arrive
+too far apart for it. Each table marks the **cost frontier**: the arms that nothing else beats on both accuracy and
+cost. Judge calls are not counted for any arm, and neither is Mem0's and Zep's embedding and database compute.
 
 ### LLMSlim's two installs
 
@@ -48,7 +61,7 @@ Every other arm's local build matched its Kaggle build byte for byte.
 
 | System | Version | How it ran |
 |---|---|---|
-| LLMSlim | release `e607cbd`; round 3 `0accc73` | `compress_documents(sessions or passages, query=question, target_ratio)`; `relevance="semantic"` for the reranker variant (`cross-encoder/ms-marco-MiniLM-L-6-v2`) |
+| LLMSlim | release `e607cbd`; v2 `0accc73` (#48); v3 `851190d` (#49) | `compress_documents(sessions or passages, query=question, target_ratio)`; `relevance="semantic"` for the reranker variant (`cross-encoder/ms-marco-MiniLM-L-6-v2`) |
 | Mem0 OSS | mem0ai 2.2.1 with spaCy and fastembed (BM25) | Mem0's harness (`mem0ai/memory-benchmarks@4b61c5d`): one LoCoMo turn per `add()`, a user/assistant pair per `add()` on LongMemEval, `search(top_k=200)`; read at top 20, 50 and 200 |
 | Zep (Graphiti) | graphiti-core 0.30.2 on Neo4j 2026.09 | Zep's harness (`getzep/zep-papers`): each LoCoMo message an episode; each LongMemEval session an episode; 20 facts (cross-encoder) and 20 entities (RRF) in Zep's own context template |
 | LLMLingua-2 | llmlingua 0.2.2, `microsoft/llmlingua-2-xlm-roberta-large-meetingbank` | held to the same token budget (`target_token`) |
@@ -85,8 +98,30 @@ Each difference is in their favour or is forced by this benchmark's rules (one m
   histories of about 115k tokens would need roughly 13 hours, more than one Kaggle session allows. It is reported on
   NQ, HotpotQA and LoCoMo.
 
+## What went wrong, and how it was handled
+
+- **Kaggle.** The `llmslim_v2` job built every file but failed to package them on a CPU machine (no `nvidia-smi`);
+  `llmslim_v23` rebuilt them and added v3. The `lme` job ran out of GPU memory embedding long turns for its RAG arm;
+  `lme2` reran its non-LLMSlim arms with smaller batches (LLMSlim's LongMemEval arms come from `llmslim_v23`). The
+  failed runs stay visible on Kaggle.
+- **Mem0, LongMemEval.** A run lost its GPU to memory pressure, after which every add failed and the runner (as in
+  Mem0's harness) counted and skipped them. The failed adds were found in the log and rebuilt in order on top of the
+  adds that had succeeded; questions with no successful add were rebuilt from scratch. The runner now retries
+  failed adds on a rerun and stops on GPU errors. One extraction reply in all of Mem0's LongMemEval runs could not
+  be parsed and is counted.
+- **Zep, LongMemEval.** Neo4j (and WSL with it) crashed once, and a later run ran out of GPU memory because an empty
+  `CUDA_VISIBLE_DEVICES` does not reach a Windows process. Each time, every question that had not finished was
+  deleted from the graph and built again from its first session; finished questions were left as they were.
+- **Readers.** Two readers once shared a spend ledger and crashed on its temporary file; since then every reader
+  process writes its own ledger and its own results file, and a resumed reader only answers what is missing.
+- **Batches.** From partway through, readers sent their calls through the Message Batches API (`HAIKU_BATCH=1`):
+  the same model and parameters at half the price. Rows record it, and costs count every answer at list price.
+
 ## Reproduce
 
-1. Builds: the public notebooks (`kaggle_round3_*.ipynb`, or `kaggle_run.py setup|data|build|package` on any Linux GPU).
+1. Builds: the public Kaggle notebooks `kaggle_round3_main`, `_longlingua`, `_llmslim_v23` and `_lme2`
+   (`kaggle_run.py setup|data|build|package` on any Linux machine; a GPU for the model-based arms). Each output zip
+   carries a manifest with the commit, machine, package versions and the sha256 of every input and output.
 2. Memory systems: `meter_proxy.py`, then `mem0_locomo.py`, `zep_locomo.py`, `mem0_lme.py`, `zep_lme.py` (Neo4j for Zep).
-3. Reader and judges: `reader_rag.py`, `reader_locomo.py`, `reader_lme.py` with a Claude API key; `report.py` for tables.
+3. Reader and judges: `reader_rag.py`, `reader_locomo.py`, `reader_lme.py` with a Claude API key.
+4. Tables: `bash tables.sh` over `results/*.jsonl.gz` (every answer and judgement, one row per question).

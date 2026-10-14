@@ -75,9 +75,11 @@ Each difference is in their favour or is forced by this benchmark's rules (one m
 - On LongMemEval, Mem0's default output cap (2,000 tokens) cut off about 2% of its extraction replies, which Mem0 then
   drops. The cap is raised to 8,192 for Mem0's LongMemEval run; the 12 questions first built under the old cap were
   rebuilt before any reader saw them. (No LoCoMo extraction reply reached 2,000 tokens.)
-- Mem0 and Zep are compared on the same 24 LongMemEval questions (`zep_sample`, 4 per question type). Mem0 also runs
-  on the rest of its 60-question `memory_sample` if the spend cap allows; Mem0's extraction costs about $0.33 a
-  question on these 500-message histories.
+- Mem0 runs on the 24 LongMemEval questions of `zep_sample` (4 per question type); its extraction costs about $0.33
+  a question on these 500-message histories. Zep's graph costs about $0.68 a question (a measured one-question
+  pilot: 49 session episodes, 445 calls), so to stay inside the spend cap Zep runs on the first 2 questions of each
+  type in `zep_sample` (12 questions, the pilot's included). This cut was made before any Zep or Mem0 LongMemEval
+  answer was read, and Mem0 and Zep are compared on those same 12.
 
 ### What was not run
 

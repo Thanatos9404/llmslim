@@ -151,6 +151,13 @@ def jobs(work: Path) -> dict[str, list[tuple[str, list[str]]]]:
             ("main", lme(["recent", "rag", "llmslim", "llmslim_rr"], [2500, 10000])),
             ("lingua", lme(["lingua2"], [2500, 10000])),
         ],
+        # The lme job ran out of GPU memory embedding long turns for the RAG arm (batches of 64); this reruns its
+        # non-LLMSlim arms with smaller batches. LLMSlim's LongMemEval arms come from the llmslim_v23 job.
+        "lme2": [
+            ("main", lme(["full"], [0])),
+            ("main", lme(["recent", "rag"], [2500, 10000])),
+            ("lingua", lme(["lingua2"], [2500, 10000])),
+        ],
         # LLMSlim after the round-3 change (#48, frozen before any test result was read), on the suites it changes.
         # NQ and HotpotQA output is identical to the release, so the main job's files stand for both.
         "llmslim_v2": [

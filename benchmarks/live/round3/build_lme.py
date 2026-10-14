@@ -65,7 +65,8 @@ class Arms(LocomoArms):
                 "Qwen/Qwen3-Embedding-0.6B", device=self.device, model_kwargs=fp16
             )
         lines = lines_of(row)
-        vectors = self._embedder.encode(lines, normalize_embeddings=True, batch_size=64)
+        # LongMemEval turns run to thousands of tokens: small batches keep a T4 within memory.
+        vectors = self._embedder.encode(lines, normalize_embeddings=True, batch_size=8)
         query = self._embedder.encode([question], prompt_name="query", normalize_embeddings=True)[0]
         order = sorted(range(len(lines)), key=lambda i: -float(vectors[i] @ query))
         return fit_lines(order, lines, budget)

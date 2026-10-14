@@ -125,12 +125,31 @@ def parse_label(text: str) -> str:
     return "CORRECT" if "CORRECT" in upper and "WRONG" not in upper else "WRONG"
 
 
+def user_content(prompt: str, cache: bool):
+    """The prompt as one text, or (cache) as the same text in two blocks: everything up to the question, marked
+    cacheable, then the question. Arms whose context is the same for every question of a conversation (full, recent,
+    LLMLingua-2) pay for that context once per conversation instead of once per question; the answers do not change."""
+    if not cache:
+        return prompt
+    cut = prompt.rindex("Question: ")
+    return [
+        {"type": "text", "text": prompt[:cut], "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": prompt[cut:]},
+    ]
+
+
 def run_one(
-    api, name: str, question: ld.Question, conversation: dict, source: dict, reference: str
+    api,
+    name: str,
+    question: ld.Question,
+    conversation: dict,
+    source: dict,
+    reference: str,
+    cache: bool = False,
 ) -> dict:
     prompt = answer_prompt(question, source, reference)
     response, seconds, usd = haiku_client.call(
-        api, messages=[{"role": "user", "content": prompt}], max_tokens=4096
+        api, messages=[{"role": "user", "content": user_content(prompt, cache)}], max_tokens=4096
     )
     raw = haiku_client.text_of(response)
     answer = raw.rsplit("ANSWER:", 1)[-1].strip() if "ANSWER:" in raw else raw.strip()
@@ -178,6 +197,11 @@ def main() -> None:
     parser.add_argument("--convs", type=int, nargs="*")
     parser.add_argument("--ids", type=Path)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument(
+        "--cache",
+        action="store_true",
+        help="cache the shared prefix (arms with one context per conversation)",
+    )
     args = parser.parse_args()
     data = ld.load(args.data)
     source = load_source(args.source)
@@ -211,7 +235,7 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
     def work(job):
-        row = run_one(api, args.name, *job)
+        row = run_one(api, args.name, *job, cache=args.cache)
         with WRITE, args.out.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row) + "\n")
         return row

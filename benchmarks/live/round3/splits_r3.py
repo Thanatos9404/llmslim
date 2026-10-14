@@ -12,6 +12,8 @@ comes from the test sets, which no change was tuned on. Earlier rounds' dev ques
 - hotpot: 2,000 validation questions drawn at random from those not in the earlier dev split.
 - nq and hotpot `longlingua_sample`: a fixed random 1,000 of each test set for LongLLMLingua (about 8 s a question
   on a T4, so all 4,255 would not fit a Kaggle session). Added before any round-3 result existed.
+- lme `zep_sample`: 24 of the memory sample, 4 per question type, for Zep, whose graph ingestion costs more per
+  question than Mem0's. Added before any LongMemEval test result existed.
 
   python splits_r3.py --data DATA_DIR
 """
@@ -80,6 +82,13 @@ def main() -> None:
         f"nq{i}-g{g}" for i, g in sample_rng.sample(out["nq"]["test"], 1000)
     )
     out["hotpot"]["longlingua_sample"] = sorted(sample_rng.sample(out["hotpot"]["test"], 1000))
+    zep_rng = random.Random(SEED + 2)
+    by_kind = defaultdict(list)
+    for qid in out["lme"]["memory_sample"]:
+        by_kind[types[qid]].append(qid)
+    out["lme"]["zep_sample"] = [
+        qid for kind in sorted(by_kind) for qid in zep_rng.sample(by_kind[kind], 4)
+    ]
     (HERE / "splits_r3.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     print(
         {

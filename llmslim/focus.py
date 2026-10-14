@@ -192,6 +192,77 @@ def _chat_units(line: str, max_tokens: int) -> Optional[List[Tuple[str, str]]]:
     return out
 
 
+# A transcript line: an optional bracketed stamp, then a short speaker name and a colon ("[8 May 2023] Caroline: hi",
+# "user: ...", "Dr. Smith: ...").
+_SPEAKER_LINE = re.compile(
+    r"^(?:\[(?P<stamp>[^\]\n]{1,60})\]\s*)?(?P<speaker>(?:[A-Z][\w.'-]*|user|assistant|system|tool|human|ai|bot)"
+    r"(?: [A-Z][\w.'-]*){0,3}):\s+\S"
+)
+TRANSCRIPTS = True  # speaker-prefixed lines become one unit per turn
+TRANSCRIPT_ROUNDS = (
+    True  # a turn that asks a question is kept together with the reply that follows it
+)
+FACTOR_STAMPS = (
+    True  # a stamp shared by every line of a transcript block is shown once, as its header
+)
+
+
+def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
+    """(stamp, speaker, line) per turn when the block reads as a transcript: at least two turns, two speakers, and
+    nearly every line starting with a speaker. A line without one continues the turn above it. None otherwise."""
+    turns: List[List] = []
+    for raw in lines:
+        line = raw.strip()
+        match = _SPEAKER_LINE.match(line)
+        if match:
+            turns.append([match.group("stamp"), match.group("speaker"), line])
+        elif turns:
+            turns[-1][2] += " " + line
+        else:
+            return None
+    if len(turns) < 2 or len({t[1] for t in turns}) < 2 or len(turns) < 0.8 * len(lines):
+        return None
+    return [(t[0], t[1], t[2]) for t in turns]
+
+
+def _transcript_units(
+    turns: Sequence[Tuple[Optional[str], str, str]], max_tokens: int
+) -> Tuple[Optional[str], List[Tuple[str, str]]]:
+    """Units for a transcript block, and the stamp to show once as its header (when every turn shares it)."""
+    stamps = {t[0] for t in turns}
+    shared = (
+        next(iter(stamps)) if FACTOR_STAMPS and len(stamps) == 1 and None not in stamps else None
+    )
+    texts = [t[2][len(f"[{shared}]") :].lstrip() if shared else t[2] for t in turns]
+    groups: List[List[int]] = []
+    i = 0
+    while i < len(turns):
+        group = [i]
+        if (
+            TRANSCRIPT_ROUNDS
+            and "?" in texts[i]
+            and i + 1 < len(turns)
+            and turns[i + 1][1] != turns[i][1]
+        ):
+            group.append(i + 1)
+        groups.append(group)
+        i += len(group)
+    out: List[Tuple[str, str]] = []
+    for group in groups:
+        body = "\n".join(texts[j] for j in group)
+        if count_tokens(body) <= max_tokens * 3:
+            out.append((body, "\n"))
+            continue
+        for j in group:  # a very long round: each turn on its own, long turns in sentence windows
+            parts = (
+                _windows(texts[j], max_tokens)
+                if count_tokens(texts[j]) > max_tokens
+                else [texts[j]]
+            )
+            out.extend((part, " " if k else "\n") for k, part in enumerate(parts))
+    return (f"[{shared}]" if shared else None), out
+
+
 def segment(text: str, max_unit_tokens: int = 220) -> List[Unit]:
     """Split text into rankable units: documents, chat rounds, paragraphs or sentence windows of long paragraphs.
 
@@ -217,9 +288,22 @@ def segment(text: str, max_unit_tokens: int = 220) -> List[Unit]:
     paragraph: List[str] = []
 
     def flush() -> None:
-        if paragraph:
+        nonlocal group
+        if not paragraph:
+            return
+        turns = _transcript(paragraph) if TRANSCRIPTS else None
+        if turns is None:
             add(" ".join(p.strip() for p in paragraph))
-            paragraph.clear()
+        else:
+            stamp, pieces = _transcript_units(turns, max_unit_tokens)
+            if stamp:
+                group += 1  # the shared stamp heads this block only
+            header = "\n".join([*header_lines, stamp] if stamp else header_lines)
+            for body, joiner in pieces:
+                units.append(Unit(len(units), group, body, count_tokens(body), header, joiner))
+            if stamp:
+                group += 1
+        paragraph.clear()
 
     for raw in text.split("\n"):
         line = raw.rstrip()

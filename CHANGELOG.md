@@ -89,6 +89,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp<2`, which conflicts with the `mcp` extra.
 
 ### Changed
+- **Plain-text transcripts are selected turn by turn.** A block of
+  speaker-prefixed lines (`Caroline: ...`, `user: ...`, optionally after a
+  stamp such as `[8 May 2023]`) is no longer joined into one paragraph and cut
+  into sentence windows that straddle turns. Instead:
+  - each turn is its own unit, so turns are never split or merged;
+  - a turn that asks a question is kept together with the reply that follows;
+  - a stamp shared by every line of the block is shown once, as its header.
+  JSON chat messages were already handled this way; nothing else changes
+  (identical output on the NQ, HotpotQA, LongBench and LongMemEval-JSON dev
+  checks). On the round-3 dev splits, with Claude Haiku 5.5 reading:
+  - LoCoMo (2 dev conversations, 233 questions): 90.1 → 92.7 at 1,000 tokens.
+    Labelled evidence turns kept: 60% → 74% at 1,000 tokens, 77% → 83% at
+    2,500 and 93% → 96% at 10,000.
+  - LongMemEval-S in the same line format (120 dev questions, official judge):
+    77.5 → 78.3 at 2,500 tokens and 76.7 → 80.0 at 10,000.
 - Sarvam model profiles repriced to ₹15 input, ₹5 cached input and ₹60 output
   per 1M tokens (Sarvam pricing page, 12 October 2026). Hosted cost
   reservations were about 2× too high.

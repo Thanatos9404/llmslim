@@ -112,6 +112,15 @@ def load(data: Path, split: str) -> list[dict]:
     return [rows[qid] for qid in ids]
 
 
+def default_device() -> str:
+    try:
+        import torch
+
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=Path, required=True)
@@ -120,8 +129,10 @@ def main() -> None:
     parser.add_argument("--budgets", type=int, nargs="+", required=True)
     parser.add_argument("--split", default="test", choices=["test", "dev", "memory_sample"])
     parser.add_argument("--limit", type=int)
-    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device", default=None, help="default: cuda when available, else cpu")
+    parser.add_argument("--tag", help="suffix for the output names, e.g. v2 for a newer LLMSlim")
     args = parser.parse_args()
+    args.device = args.device or default_device()
     rows = load(args.data, args.split)[: args.limit]
     arms = Arms(args.device)
     args.out.mkdir(parents=True, exist_ok=True)
@@ -130,7 +141,7 @@ def main() -> None:
             path = args.out / (
                 f"lme_{args.split}_full.jsonl"
                 if arm == "full"
-                else f"lme_{args.split}_{arm}_{budget}.jsonl"
+                else f"lme_{args.split}_{arm}{'-' + args.tag if args.tag else ''}_{budget}.jsonl"
             )
             done = (
                 {json.loads(l)["id"] for l in path.open(encoding="utf-8")}

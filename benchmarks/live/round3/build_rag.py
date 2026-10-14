@@ -183,6 +183,15 @@ class Arms:
         return out["compressed_prompt"]
 
 
+def default_device() -> str:
+    try:
+        import torch
+
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", choices=sorted(RATIO), required=True)
@@ -194,8 +203,9 @@ def main() -> None:
     parser.add_argument(
         "--sample", action="store_true", help="only the pre-registered longlingua_sample"
     )
-    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device", default=None, help="default: cuda when available, else cpu")
     args = parser.parse_args()
+    args.device = args.device or default_device()
     items = load(args.suite, args.data, args.split)
     if args.sample:
         keep = set(

@@ -150,6 +150,12 @@ def jobs(work: Path) -> dict[str, list[tuple[str, list[str]]]]:
             ("main", lme(["recent", "rag", "llmslim", "llmslim_rr"], [2500, 10000])),
             ("lingua", lme(["lingua2"], [2500, 10000])),
         ],
+        # LLMSlim after the round-3 change (#48, frozen before any test result was read), on the suites it changes.
+        # NQ and HotpotQA output is identical to the release, so the main job's files stand for both.
+        "llmslim_v2": [
+            ("main", locomo(["llmslim", "llmslim_rr"], LOCOMO_BUDGETS, "--tag", "v2")),
+            ("main", lme(["llmslim", "llmslim_rr"], [2500, 10000]) + ["--tag", "v2"]),
+        ],
         # LongLLMLingua (LLaMA-2-7B-chat, fp16) on the pre-registered samples.
         "longlingua": [
             ("lingua", rag("nq", ["longlingua"], "--sample")),

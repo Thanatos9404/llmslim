@@ -167,6 +167,15 @@ class Arms:
 QUESTION_AGNOSTIC = {"full", "recent", "lingua2"}
 
 
+def default_device() -> str:
+    try:
+        import torch
+
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=Path, required=True)
@@ -177,15 +186,18 @@ def main() -> None:
     parser.add_argument(
         "--ids", type=Path, help="optional file with one question id per line (a sample)"
     )
-    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device", default=None, help="default: cuda when available, else cpu")
+    parser.add_argument("--tag", help="suffix for the output names, e.g. v2 for a newer LLMSlim")
     args = parser.parse_args()
+    args.device = args.device or default_device()
     data = ld.load(args.data)
     wanted = set(args.ids.read_text().split()) if args.ids else None
     arms = Arms(args.device)
     args.out.mkdir(parents=True, exist_ok=True)
     for arm in args.arms:
         for budget in [0] if arm == "full" else args.budgets:
-            path = args.out / (f"{arm}.jsonl" if arm == "full" else f"{arm}_{budget}.jsonl")
+            label = f"{arm}-{args.tag}" if args.tag else arm
+            path = args.out / (f"{label}.jsonl" if arm == "full" else f"{label}_{budget}.jsonl")
             done = (
                 {json.loads(l)["id"] for l in path.open(encoding="utf-8")}
                 if path.exists()

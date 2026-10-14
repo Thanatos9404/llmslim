@@ -67,7 +67,7 @@ Every other arm's local build matched its Kaggle build byte for byte.
 | LLMLingua-2 | llmlingua 0.2.2, `microsoft/llmlingua-2-xlm-roberta-large-meetingbank` | held to the same token budget (`target_token`) |
 | LongLLMLingua | llmlingua 0.2.2, `NousResearch/Llama-2-7b-chat-hf`, float16 | the paper's NQ settings, held to the same token budget; on pre-registered samples (it takes about 7 s a question on a T4) |
 | Rerank-only | `cross-encoder/ms-marco-MiniLM-L-6-v2` | whole passages ranked by the reranker LLMSlim's semantic mode uses, best first, while they fit |
-| RAG over turns | `Qwen/Qwen3-Embedding-0.6B` | the turns most similar to the question, in date order, while they fit |
+| RAG over turns | `Qwen/Qwen3-Embedding-0.6B` | the turns most similar to the question, in date order, while they fit (on LongMemEval each turn is embedded from its first 2,048 tokens, which 99.9% of turns are shorter than) |
 | Full / recent / order | | the whole context; the latest turns that fit; passages in retrieval order that fit |
 
 ### Where Mem0 and Zep differ from their own harnesses

@@ -205,6 +205,9 @@ TRANSCRIPT_ROUNDS = (
 FACTOR_STAMPS = (
     True  # a stamp shared by every line of a transcript block is shown once, as its header
 )
+CHAINED_ROUNDS = (
+    True  # a reply that asks a question back keeps its own reply too (at most three turns)
+)
 
 
 def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
@@ -236,15 +239,17 @@ def _transcript_units(
     texts = [t[2][len(f"[{shared}]") :].lstrip() if shared else t[2] for t in turns]
     groups: List[List[int]] = []
     i = 0
+    longest = 3 if CHAINED_ROUNDS else 2
     while i < len(turns):
         group = [i]
-        if (
+        while (
             TRANSCRIPT_ROUNDS
-            and "?" in texts[i]
-            and i + 1 < len(turns)
-            and turns[i + 1][1] != turns[i][1]
+            and len(group) < longest
+            and "?" in texts[group[-1]]
+            and group[-1] + 1 < len(turns)
+            and turns[group[-1] + 1][1] != turns[group[-1]][1]
         ):
-            group.append(i + 1)
+            group.append(group[-1] + 1)
         groups.append(group)
         i += len(group)
     out: List[Tuple[str, str]] = []
@@ -365,6 +370,20 @@ _ANSWER_SHAPES = {
 }
 
 
+QUANTITY_TERMS = (
+    True  # in "how long / how many ..." the word after "how" names the answer's kind, not a topic
+)
+_QUANTITY = re.compile(
+    r"\bhow\s+(?:long|many|much|old|far|big|often|soon|tall|large|high|late|early)\b", re.I
+)
+
+
+def _query_terms(query: str) -> List[str]:
+    """The query's terms for matching. "How long has she painted?" asks for a duration: "long" would match "long
+    time no see", so it is left to the answer-type bonus instead."""
+    return terms(_QUANTITY.sub("how", query) if QUANTITY_TERMS else query)
+
+
 def _answer_type(query: str) -> Optional[str]:
     q = query.strip().lower()
     if re.match(r"(when|what year|which year|what date|in what year|how long ago)\b", q):
@@ -414,7 +433,7 @@ def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> 
     """BM25 of the query against each unit (headers count), one round of pseudo-relevance feedback,
     and small bonuses for numbers and word pairs shared with the query. With a ``scorer`` (a reranking
     model), the strongest lexical candidates are rescored by the model."""
-    query_terms = terms(query)
+    query_terms = _query_terms(query)
     if not units or not query_terms:
         return [0.0] * len(units)
     # Headers (titles, section names) count twice: they say what a unit is about.
@@ -515,7 +534,7 @@ def _excerpt(unit: Unit, query: str, budget: int) -> Optional[str]:
     if len(sentences) < 2:
         return None
     bm25 = BM25([terms(s) for s in sentences])
-    scores = bm25.scores(dict.fromkeys(terms(query), 1.0))
+    scores = bm25.scores(dict.fromkeys(_query_terms(query), 1.0))
     chosen, used = set(), 0
     for i in sorted(range(len(sentences)), key=lambda k: (-scores[k], k)):
         cost = count_tokens(sentences[i])

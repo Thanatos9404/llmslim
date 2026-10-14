@@ -3,7 +3,8 @@ difference from a reference arm on the questions both answered, context size, la
 
 Cost per 1,000 questions is the reader (answer) call at Haiku 5.5 list prices, plus, for Mem0 and Zep, their
 ingestion calls spread over the questions asked of the memory they built (LoCoMo: every question of a conversation
-shares one memory; LongMemEval: one memory per question). Judge calls are not counted for any arm.
+shares one memory; LongMemEval: one memory per question). Judge calls are not counted for any arm. Answers read
+through the Message Batches API were billed at half price; they are counted here at the list price like the rest.
 
   python report.py --results results/locomo_test*.jsonl --reference llmslim-v2_2500 [--ingest mem0=2.70:1540 ...]
 """
@@ -18,6 +19,12 @@ from collections import defaultdict
 from pathlib import Path
 
 ROUNDS = 2000
+
+
+def list_usd(row: dict) -> float:
+    """The answer call's cost at list price. Batch answers took minutes (every synchronous call took under 30 s)."""
+    batch = row.get("batch", row.get("seconds", 0) > 60)
+    return row["usd"] * (2 if batch else 1)
 
 
 def bootstrap(values: list[float], rng: random.Random) -> tuple[float, float]:
@@ -69,7 +76,7 @@ def main() -> None:
             paired = f"{100 * statistics.mean(diffs):+.1f} ({100 * d_low:+.1f}, {100 * d_high:+.1f}), n={len(common)}"
         tokens = [r["context_tokens"] for r in answered.values() if r.get("context_tokens")]
         ms = [r["build_ms"] for r in answered.values() if r.get("build_ms") is not None]
-        per_question = statistics.mean(r["usd"] for r in answered.values())
+        per_question = statistics.mean(list_usd(r) for r in answered.values())
         per_question += next((v for prefix, v in ingest.items() if arm.startswith(prefix)), 0.0)
         print(
             f"| {arm} | {len(values)} | {mean:.1f} | {100 * low:.1f}-{100 * high:.1f} | {paired} | "

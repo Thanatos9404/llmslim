@@ -199,6 +199,7 @@ def run_one(
         "output_tokens": response.usage.output_tokens,
         "build_ms": source.get("build_ms"),
         "usd": round(usd, 6),
+        "batch": haiku_client.BATCH,
         "judge_usd": round(judge_usd, 6),
         "seconds": round(seconds, 2),
         "stop": response.stop_reason,

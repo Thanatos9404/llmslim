@@ -87,6 +87,7 @@ def run_one(api, suite: str, name: str, item: dict, row: dict) -> dict:
         "output_tokens": response.usage.output_tokens,
         "build_ms": row.get("build_ms"),
         "usd": round(usd, 6),
+        "batch": haiku_client.BATCH,
         "seconds": round(seconds, 2),
         "stop": response.stop_reason,
         "prediction": text,

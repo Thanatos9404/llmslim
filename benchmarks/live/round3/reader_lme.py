@@ -124,6 +124,7 @@ def run_one(api, name: str, item: dict, source: dict) -> dict:
         "output_tokens": response.usage.output_tokens,
         "build_ms": source.get("build_ms"),
         "usd": round(usd, 6),
+        "batch": haiku_client.BATCH,
         "judge_usd": round(usd_a + usd_b, 6),
         "seconds": round(seconds, 2),
         "stop": response.stop_reason,

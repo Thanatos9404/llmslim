@@ -85,10 +85,19 @@ def components():
             async with lock:
                 return model.encode(list(input_data_list), normalize_embeddings=True).tolist()
 
+    class LocalReranker(BGERerankerClient):
+        """Graphiti's BGE reranker (BAAI/bge-reranker-v2-m3) on a chosen device; it only runs at search time."""
+
+        def __init__(self, device: str):
+            from sentence_transformers import CrossEncoder
+
+            self.model = CrossEncoder("BAAI/bge-reranker-v2-m3", device=device)
+
     llm = AnthropicClient(
         config=LLMConfig(api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL, small_model=MODEL)
     )
-    return llm, LocalEmbedder(), BGERerankerClient()
+    device = os.environ.get("ZEP_RERANK_DEVICE", "cuda" if cuda else "cpu")
+    return llm, LocalEmbedder(), LocalReranker(device)
 
 
 async def graph_for(store: Path, conv: int, parts):
@@ -187,6 +196,7 @@ async def search(graph, conversation: dict, conv: int, out: Path) -> None:
 async def run(args) -> None:
     data = ld.load(args.data)
     args.out.mkdir(parents=True, exist_ok=True)
+    args.store.mkdir(parents=True, exist_ok=True)
     parts = components()
     gate = asyncio.Semaphore(args.parallel)
 

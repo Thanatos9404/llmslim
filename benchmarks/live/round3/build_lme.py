@@ -130,9 +130,21 @@ def main() -> None:
     parser.add_argument("--split", default="test", choices=["test", "dev", "memory_sample"])
     parser.add_argument("--limit", type=int)
     parser.add_argument("--device", default=None, help="default: cuda when available, else cpu")
+    parser.add_argument(
+        "--off",
+        nargs="*",
+        default=[],
+        help="llmslim.focus switches to turn off, e.g. CHAINED_ROUNDS",
+    )
     parser.add_argument("--tag", help="suffix for the output names, e.g. v2 for a newer LLMSlim")
     args = parser.parse_args()
     args.device = args.device or default_device()
+    import llmslim.focus
+
+    for switch in args.off:
+        if not isinstance(getattr(llmslim.focus, switch, None), bool):
+            raise SystemExit(f"llmslim.focus has no switch {switch}")
+        setattr(llmslim.focus, switch, False)
     rows = load(args.data, args.split)[: args.limit]
     arms = Arms(args.device)
     args.out.mkdir(parents=True, exist_ok=True)

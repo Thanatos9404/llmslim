@@ -203,9 +203,24 @@ def main() -> None:
     parser.add_argument(
         "--sample", action="store_true", help="only the pre-registered longlingua_sample"
     )
+    parser.add_argument(
+        "--tag", help="suffix for the arm in the output names, e.g. v3 for a newer LLMSlim"
+    )
     parser.add_argument("--device", default=None, help="default: cuda when available, else cpu")
+    parser.add_argument(
+        "--off",
+        nargs="*",
+        default=[],
+        help="llmslim.focus switches to turn off, e.g. CHAINED_ROUNDS",
+    )
     args = parser.parse_args()
     args.device = args.device or default_device()
+    import llmslim.focus
+
+    for switch in args.off:
+        if not isinstance(getattr(llmslim.focus, switch, None), bool):
+            raise SystemExit(f"llmslim.focus has no switch {switch}")
+        setattr(llmslim.focus, switch, False)
     items = load(args.suite, args.data, args.split)
     if args.sample:
         keep = set(
@@ -216,7 +231,8 @@ def main() -> None:
     arms = Arms(args.suite, args.device)
     args.out.mkdir(parents=True, exist_ok=True)
     for arm in args.arms:
-        path = args.out / f"{args.suite}_{args.split}_{arm}.jsonl"
+        label = f"{arm}-{args.tag}" if args.tag else arm
+        path = args.out / f"{args.suite}_{args.split}_{label}.jsonl"
         done = (
             {json.loads(l)["id"] for l in path.open(encoding="utf-8")} if path.exists() else set()
         )

@@ -90,6 +90,7 @@ REQUIREMENTS = {  # the versions the local round-3 builds ran with
 }
 
 LOCOMO_BUDGETS = (1000, 2500, 10000)
+V2_OFF = ("--off", "CHAINED_ROUNDS", "QUANTITY_TERMS")  # LLMSlim v3's switches that v2 did not have
 
 
 def jobs(work: Path) -> dict[str, list[tuple[str, list[str]]]]:
@@ -155,6 +156,19 @@ def jobs(work: Path) -> dict[str, list[tuple[str, list[str]]]]:
         "llmslim_v2": [
             ("main", locomo(["llmslim", "llmslim_rr"], LOCOMO_BUDGETS, "--tag", "v2")),
             ("main", lme(["llmslim", "llmslim_rr"], [2500, 10000]) + ["--tag", "v2"]),
+        ],
+        # The llmslim_v2 job built everything but failed to package on a CPU machine (no nvidia-smi). This job
+        # rebuilds those files and adds round 3's second change (#49, chosen on dev only). Both come from the same
+        # code: v2 is v3 with #49's two switches off, which reproduces v2's output byte for byte.
+        "llmslim_v23": [
+            ("main", locomo(["llmslim"], LOCOMO_BUDGETS, "--tag", "v2", *V2_OFF)),
+            ("main", locomo(["llmslim_rr"], [1000, 2500], "--tag", "v2", *V2_OFF)),
+            ("main", lme(["llmslim", "llmslim_rr"], [2500, 10000]) + ["--tag", "v2", *V2_OFF]),
+            ("main", locomo(["llmslim"], LOCOMO_BUDGETS, "--tag", "v3")),
+            ("main", locomo(["llmslim_rr"], [1000, 2500], "--tag", "v3")),
+            ("main", lme(["llmslim", "llmslim_rr"], [2500, 10000]) + ["--tag", "v3"]),
+            ("main", rag("nq", ["llmslim", "llmslim_rr"], "--tag", "v3")),
+            ("main", rag("hotpot", ["llmslim", "llmslim_rr"], "--tag", "v3")),
         ],
         # LongLLMLingua (LLaMA-2-7B-chat, fp16) on the pre-registered samples.
         "longlingua": [
@@ -271,15 +285,18 @@ def package(work: Path, job: str, zip_path: Path) -> None:
     commit = subprocess.run(
         ["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True
     ).stdout.strip()
-    gpus = (
-        subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            capture_output=True,
-            text=True,
+    try:  # a CPU-only machine has no nvidia-smi
+        gpus = (
+            subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                capture_output=True,
+                text=True,
+            )
+            .stdout.strip()
+            .splitlines()
         )
-        .stdout.strip()
-        .splitlines()
-    )
+    except FileNotFoundError:
+        gpus = []
     versions = {}
     for name in REQUIREMENTS:
         versions[name] = (

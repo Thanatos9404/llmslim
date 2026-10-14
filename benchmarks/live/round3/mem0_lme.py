@@ -150,12 +150,14 @@ def build(row: dict, store: Path, out: Path) -> None:
                     )
                     break
                 except Exception as error:  # noqa: BLE001 - a failed add is counted, as in Mem0's harness
-                    if "budget_exceeded" in str(error):
-                        raise
+                    if "budget_exceeded" in str(error) or "CUDA" in str(error):
+                        raise  # a broken GPU fails every later add: stop, so a rerun can resume
                     if attempt == 2:
                         stats["failed"] += 1
                         print(f"{qid} {key}: add failed: {str(error)[:200]}", flush=True)
                     time.sleep(2 * (attempt + 1))
+            else:
+                continue  # not marked done: a rerun retries it
             stats["seconds"] += time.perf_counter() - started
             stats["adds"] += 1
             stats["parse_errors"] += getattr(LOCAL, "parse_errors", 0) - errors_before

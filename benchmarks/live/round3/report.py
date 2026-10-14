@@ -23,6 +23,7 @@ Cost per 1,000 questions (USD, list prices; judge calls are not counted for any 
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import random
 import statistics
@@ -53,6 +54,13 @@ def uncached_usd(row: dict) -> float:
 def conversation(question_id: str) -> str:
     """LoCoMo ids are c<conversation>q<question>; other suites have one context per question."""
     return question_id[: question_id.index("q")] if question_id.startswith("c") else question_id
+
+
+def read_lines(path: Path):
+    """Lines of a .jsonl or .jsonl.gz file."""
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", encoding="utf-8") as handle:
+        yield from handle
 
 
 def bootstrap(values: list[float], rng: random.Random) -> tuple[float, float]:
@@ -92,7 +100,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     wanted = set(args.ids.read_text().split()) if args.ids else None
-    rows = [json.loads(line) for path in args.results for line in path.open(encoding="utf-8")]
+    rows = [json.loads(line) for path in args.results for line in read_lines(path)]
     by_arm: dict[str, dict[str, dict]] = defaultdict(dict)
     for row in rows:
         if args.arms and row["arm"] not in args.arms:

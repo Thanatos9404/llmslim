@@ -10,6 +10,8 @@ comes from the test sets, which no change was tuned on. Earlier rounds' dev ques
 - nq: every question that is not in the earlier dev split, each with one gold position drawn at random from the
   three published files (1st, 10th, 20th).
 - hotpot: 2,000 validation questions drawn at random from those not in the earlier dev split.
+- nq and hotpot `longlingua_sample`: a fixed random 1,000 of each test set for LongLLMLingua (about 8 s a question
+  on a T4, so all 4,255 would not fit a Kaggle session). Added before any round-3 result existed.
 
   python splits_r3.py --data DATA_DIR
 """
@@ -60,6 +62,10 @@ def main() -> None:
     pool = [row["id"] for row in hotpot if row["id"] not in hot_dev]
     out["hotpot"] = {"dev": sorted(hot_dev), "test": sorted(rng.sample(pool, 2000))}
 
+    # Drawn after every split above so those stay exactly as first written.
+    sample_rng = random.Random(SEED + 1)
+    out["nq"]["longlingua_sample"] = sorted(f"nq{i}-g{g}" for i, g in sample_rng.sample(out["nq"]["test"], 1000))
+    out["hotpot"]["longlingua_sample"] = sorted(sample_rng.sample(out["hotpot"]["test"], 1000))
     (HERE / "splits_r3.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     print({k: {kk: len(vv) for kk, vv in v.items() if isinstance(vv, list)} for k, v in out.items() if isinstance(v, dict)})
 

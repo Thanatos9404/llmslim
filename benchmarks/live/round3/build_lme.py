@@ -64,6 +64,9 @@ class Arms(LocomoArms):
             self._embedder = SentenceTransformer(
                 "Qwen/Qwen3-Embedding-0.6B", device=self.device, model_kwargs=fp16
             )
+            # A T4 has no memory-efficient attention for this model, so attention memory grows with the square of
+            # the length: each turn is embedded from its first 2,048 tokens (99.9% of LongMemEval turns are shorter).
+            self._embedder.max_seq_length = 2048
         lines = lines_of(row)
         # LongMemEval turns run to thousands of tokens: small batches keep a T4 within memory.
         vectors = self._embedder.encode(lines, normalize_embeddings=True, batch_size=8)

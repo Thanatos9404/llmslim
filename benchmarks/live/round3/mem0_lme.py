@@ -5,6 +5,9 @@ two messages (a user/assistant pair) per add(); then search(question, top_k=200)
 The same differences from that harness as on LoCoMo (see mem0_locomo.py), all in Mem0's favour or forced by this
 benchmark's rules: Haiku 5.5 through meter_proxy.py, the Qwen3-Embedding-0.6B embedder of Mem0's published OSS runs,
 each memory dated with its session's date (created_at and the extraction prompt's Observation Date), embedded Qdrant.
+One more, in Mem0's favour: Mem0's default output cap of 2,000 tokens cut off about 2% of its extraction replies on
+LongMemEval's long assistant turns (Mem0 then logs a parse error and stores nothing for that pair), so the cap is
+raised to 8,192. Any parse errors that remain are counted per question. (On LoCoMo no reply reached 2,000.)
 
 Questions are built concurrently in threads (one Memory and one Qdrant store per question, one shared embedder).
 
@@ -15,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import threading
 import time
@@ -28,8 +32,18 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "unused-the-proxy-adds-the-key")
 MODEL = "claude-haiku-5-5"
 EMBEDDER = "Qwen/Qwen3-Embedding-0.6B"
 TOP_K = 200
+MAX_TOKENS = 8192
 LOCAL = threading.local()
 WRITE = threading.Lock()
+
+
+class ParseErrors(logging.Filter):
+    """Counts, per thread, the extraction replies Mem0 could not parse (it logs them and carries on)."""
+
+    def filter(self, record):
+        if "Error parsing extraction response" in record.getMessage():
+            LOCAL.parse_errors = getattr(LOCAL, "parse_errors", 0) + 1
+        return True
 
 
 def patch_mem0() -> None:
@@ -46,6 +60,7 @@ def patch_mem0() -> None:
         return original(*args, **kwargs)
 
     main.generate_additive_extraction_prompt = dated
+    logging.getLogger(main.__name__).addFilter(ParseErrors())
 
     real, cache, lock = hf.SentenceTransformer, {}, threading.Lock()
 
@@ -78,7 +93,10 @@ def memory_for(store: Path, qid: str):
     return Memory.from_config(
         {
             "version": "v1.1",
-            "llm": {"provider": "anthropic", "config": {"model": MODEL, "temperature": 0.1}},
+            "llm": {
+                "provider": "anthropic",
+                "config": {"model": MODEL, "temperature": 0.1, "max_tokens": MAX_TOKENS},
+            },
             "embedder": {
                 "provider": "huggingface",
                 "config": {
@@ -110,7 +128,7 @@ def build(row: dict, store: Path, out: Path) -> None:
     progress = store / "progress.json"
     done = set(json.loads(progress.read_text())["done"]) if progress.exists() else set()
     memory = memory_for(store, qid)
-    stats = {"adds": 0, "failed": 0, "seconds": 0.0}
+    stats = {"adds": 0, "failed": 0, "parse_errors": 0, "seconds": 0.0}
     for date, turns in sorted(
         zip(row["haystack_dates"], row["haystack_sessions"]), key=lambda pair: pair[0]
     ):
@@ -122,6 +140,7 @@ def build(row: dict, store: Path, out: Path) -> None:
             if key in done:
                 continue
             started = time.perf_counter()
+            errors_before = getattr(LOCAL, "parse_errors", 0)
             for attempt in range(3):
                 try:
                     memory.add(
@@ -139,6 +158,7 @@ def build(row: dict, store: Path, out: Path) -> None:
                     time.sleep(2 * (attempt + 1))
             stats["seconds"] += time.perf_counter() - started
             stats["adds"] += 1
+            stats["parse_errors"] += getattr(LOCAL, "parse_errors", 0) - errors_before
             done.add(key)
             progress.write_text(json.dumps({"done": sorted(done)}))
     started = time.perf_counter()
@@ -160,7 +180,8 @@ def build(row: dict, store: Path, out: Path) -> None:
     with WRITE, (out / "search.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(line) + "\n")
     print(
-        f"{qid}: {stats['adds']} adds ({stats['failed']} failed), {len(hits)} memories found",
+        f"{qid}: {stats['adds']} adds ({stats['failed']} failed, {stats['parse_errors']} unparsed), "
+        f"{len(hits)} memories found",
         flush=True,
     )
 

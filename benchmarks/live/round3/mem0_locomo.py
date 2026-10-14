@@ -37,6 +37,13 @@ TOP_K = 200
 _session_date: str | None = None
 
 
+def save_progress(progress: Path, done: set) -> None:
+    """Write the checkpoint to a temporary file and swap it in, so a stopped run never leaves it half written."""
+    tmp = progress.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"done": sorted(done)}))
+    os.replace(tmp, progress)
+
+
 def patch_observation_date() -> None:
     import mem0.memory.main as main
 
@@ -113,7 +120,7 @@ def ingest(memory, conversation: dict, conv: int, progress: Path) -> dict:
             stats["seconds"] += time.perf_counter() - started
             stats["adds"] += 1
             done.add(key)
-            progress.write_text(json.dumps({"done": sorted(done)}))
+            save_progress(progress, done)
         print(f"conv {conv} {session.key} ({_session_date}) done, {len(done)} turns", flush=True)
     return stats
 

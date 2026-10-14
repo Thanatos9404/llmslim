@@ -46,6 +46,13 @@ class ParseErrors(logging.Filter):
         return True
 
 
+def save_progress(progress: Path, done: set) -> None:
+    """Write the checkpoint to a temporary file and swap it in, so a stopped run never leaves it half written."""
+    tmp = progress.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"done": sorted(done)}))
+    os.replace(tmp, progress)
+
+
 def patch_mem0() -> None:
     import mem0.embeddings.huggingface as hf
     import mem0.memory.main as main
@@ -162,7 +169,7 @@ def build(row: dict, store: Path, out: Path) -> None:
             stats["adds"] += 1
             stats["parse_errors"] += getattr(LOCAL, "parse_errors", 0) - errors_before
             done.add(key)
-            progress.write_text(json.dumps({"done": sorted(done)}))
+            save_progress(progress, done)
     started = time.perf_counter()
     result = memory.search(row["question"], filters={"user_id": f"lme_{qid}"}, top_k=TOP_K)
     hits = result.get("results", result) if isinstance(result, dict) else result

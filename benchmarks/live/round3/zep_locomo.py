@@ -59,6 +59,13 @@ Timestamps in memories represent the actual time the event occurred, not the tim
 """
 
 
+def save_progress(progress: Path, done: set) -> None:
+    """Write the checkpoint to a temporary file and swap it in, so a stopped run never leaves it half written."""
+    tmp = progress.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"done": sorted(done)}))
+    os.replace(tmp, progress)
+
+
 def components():
     import torch
     from graphiti_core.cross_encoder.bge_reranker_client import BGERerankerClient
@@ -154,7 +161,7 @@ async def ingest(
             stats["seconds"] += time.perf_counter() - started
             stats["episodes"] += 1
             done.add(key)
-            progress.write_text(json.dumps({"done": sorted(done)}))
+            save_progress(progress, done)
         print(
             f"conv {conv} {session.key} ({session.date.date()}) done, {len(done)} episodes",
             flush=True,

@@ -89,6 +89,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp<2`, which conflicts with the `mcp` extra.
 
 ### Changed
+- **Transcripts keep more of the evidence a question needs.** Two dev-only
+  changes to query-focused selection:
+  - A reply that asks a question back keeps its own reply too ("How long have
+    you been into art?" stays with "Seven years now"), up to three turns.
+  - In "how long / how many / how much ..." questions the word after "how"
+    names the kind of answer, not a topic, so it no longer matches text such as
+    "long time no see". The answer-type bonus still favours units with numbers
+    and dates.
+  On the round-3 dev splits (no API calls), labelled evidence kept by the
+  default lexical mode: LoCoMo 74.3% → 75.6% at 1,000 tokens, 82.7% → 83.4% at
+  2,500 and 96.1% → 97.1% at 10,000; LongMemEval-S 75.4% → 77.3% at 2,500 and
+  91.8% → 93.2% at 10,000; with the reranker, LoCoMo 84.4% → 86.6% at 2,500.
+  NQ, HotpotQA and LongBench dev checks are unchanged or slightly up. With
+  Claude Haiku 5.5 reading LoCoMo dev: 92.7 → 92.7 at 1,000 tokens, 95.7 → 97.4
+  at 2,500.
 - **Plain-text transcripts are selected turn by turn.** A block of
   speaker-prefixed lines (`Caroline: ...`, `user: ...`, optionally after a
   stamp such as `[8 May 2023]`) is no longer joined into one paragraph and cut

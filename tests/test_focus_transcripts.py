@@ -97,3 +97,40 @@ def test_select_counts_the_shared_stamp_once():
     units = segment(_session("8 May 2023", FILLER), max_unit_tokens=40)
     kept = select(units, [1.0] * len(units), budget=10_000, query="lake")
     assert render(units, kept).count("[8 May 2023]") == 1
+
+
+def test_a_reply_that_asks_back_keeps_its_own_reply():
+    lines = [
+        "Melanie: How long have you been creating art?",
+        "Caroline: Since I was 17 or so. How long have you been into art?",
+        "Melanie: Seven years now, painting and pottery.",
+        *FILLER[:2],
+    ]
+    units = segment(_session("8 May 2023", lines), max_unit_tokens=40)
+    assert units[0].text == "\n".join(lines[:3])
+    assert len(units) == 3
+
+
+def test_a_chain_of_questions_stops_after_three_turns():
+    lines = [
+        "Melanie: Did you go?",
+        "Caroline: Yes. Did you?",
+        "Melanie: No. Was it fun?",
+        "Caroline: Very.",
+    ]
+    units = segment(_session("8 May 2023", lines), max_unit_tokens=40)
+    assert [u.text for u in units] == ["\n".join(lines[:3]), lines[3]]
+
+
+def test_the_word_after_how_does_not_match_as_a_topic(monkeypatch):
+    import llmslim.focus as focus
+
+    assert "long" not in focus._query_terms("How long has Melanie been practicing art?")
+    assert "many" not in focus._query_terms("How many times did she go to the beach?")
+    assert "long" in focus._query_terms("Is the bridge long?")
+    lines = ["Caroline: Hey Mel, long time no talk! Lots has been going on.", *FILLER]
+    units = segment(_session("8 May 2023", lines), max_unit_tokens=40)
+    query = "How long has Melanie been practicing art?"
+    assert focus.rank(units, query)[0] == 0
+    monkeypatch.setattr(focus, "QUANTITY_TERMS", False)
+    assert focus.rank(units, query)[0] > 0

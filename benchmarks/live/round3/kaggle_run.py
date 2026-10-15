@@ -177,6 +177,13 @@ def jobs(work: Path) -> dict[str, list[tuple[str, list[str]]]]:
             ("main", rag("nq", ["llmslim", "llmslim_rr"], "--tag", "v3")),
             ("main", rag("hotpot", ["llmslim", "llmslim_rr"], "--tag", "v3")),
         ],
+        # LLMSlim v4 (#51: messages with blank lines stay whole in transcripts), chosen on dev only after the
+        # round-3 results, on the suites it changes. NQ and HotpotQA output is identical to v3.
+        "llmslim_v4": [
+            ("main", locomo(["llmslim"], LOCOMO_BUDGETS, "--tag", "v4")),
+            ("main", locomo(["llmslim_rr"], [1000, 2500], "--tag", "v4")),
+            ("main", lme(["llmslim", "llmslim_rr"], [2500, 10000]) + ["--tag", "v4"]),
+        ],
         # LongLLMLingua (LLaMA-2-7B-chat, fp16) on the pre-registered samples.
         "longlingua": [
             ("lingua", rag("nq", ["longlingua"], "--sample")),

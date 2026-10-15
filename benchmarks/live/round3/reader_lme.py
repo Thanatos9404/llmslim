@@ -34,6 +34,19 @@ from vendor import mem0_longmemeval_prompts as mem0p  # noqa: E402
 WRITE = threading.Lock()
 
 
+def count_tokens(text: str) -> int:
+    """LLMSlim's counter: tiktoken cl100k_base, so every arm's context is measured the same way."""
+    import tiktoken
+
+    return len(tiktoken.get_encoding("cl100k_base").encode(text))
+
+
+def memory_tokens(memories: list) -> int:
+    """Mem0's memories as its own prompt shows them: one '(date) memory' line each."""
+    lines = [f"({m.get('created_at', '')[:10]}) {m.get('memory', '')}" for m in memories]
+    return count_tokens("\n".join(lines))
+
+
 def load_source(spec: str) -> dict[str, dict]:
     kind, _, rest = spec.partition(":")
     rows: dict[str, dict] = {}
@@ -49,14 +62,20 @@ def load_source(spec: str) -> dict[str, dict]:
         folder, _, k = rest.rpartition(":")
         for line in (Path(folder) / "search.jsonl").open(encoding="utf-8"):
             row = json.loads(line)
+            kept = row["memories"][: int(k)]
             rows[row["id"]] = {
-                "search": row["memories"][: int(k)],
+                "search": kept,
                 "build_ms": row.get("search_ms"),
+                "context_tokens": memory_tokens(kept),
             }
     elif kind == "zep":
         for line in (Path(rest) / "search.jsonl").open(encoding="utf-8"):
             row = json.loads(line)
-            rows[row["id"]] = {"memories": row["context"], "build_ms": row.get("search_ms")}
+            rows[row["id"]] = {
+                "memories": row["context"],
+                "build_ms": row.get("search_ms"),
+                "context_tokens": count_tokens(row["context"]),
+            }
     else:
         raise SystemExit(f"unknown source {spec}")
     return rows

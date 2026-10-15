@@ -66,26 +66,48 @@ sample) at a quarter of its cost; on HotpotQA the default LLMSlim (52.4%) beats 
   significant with 180 questions, but both point the same way. On the dev questions RAG keeps 95% of the labelled
   evidence turns at 2,500 tokens and LLMSlim 83-85%, and giving LLMSlim the same embedding model as its relevance
   scorer (its `relevance=` accepts any scorer) does not close that gap (84.5%), so the difference is in how LLMSlim
-  cuts and packs long turns, not in how it scores them. That is the next thing to work on. If a history is embedded
-  once and asked many questions, RAG's cost falls further.
+  cuts and packs long turns, not in how it scores them. A fix found that way (v4, below) helped on dev but not on
+  test, so it was not shipped and the gap stays open. If a history is embedded once and asked many questions, RAG's
+  cost falls further.
 - **LongMemEval under Mem0's more lenient judge.** The full history answers 95.0% to LLMSlim's 89.4% (reranker,
   2,500 tokens); under the official judge they are level.
 
 ## LLMSlim versions
 
-Three versions are reported (README.md has the rules): the release before this round, **v2** (turn-by-turn
-transcripts, frozen before any test result was read) and **v3** (v2 plus chained rounds and quantity words, chosen on
-dev only after v2's first test numbers). On LoCoMo v2 lifted the release from 84.4% to 87.5% at 1,000 tokens and
-v3 is identical to v2 at every budget; on LongMemEval v3 adds 1.7 points to v2 at both budgets (official judge).
-The `-nltk` rows are the `llmslim[nlp]` install, read from earlier local builds; they differ from the default
-install by less than a point.
+Four versions are reported (README.md has the rules): the release before this round, **v2** (turn-by-turn
+transcripts, frozen before any test result was read), **v3** (v2 plus chained rounds and quantity words, chosen on
+dev only after v2's first test numbers) and **v4** (below). v3 is the version llmslim 0.9.0 ships. On LoCoMo v2
+lifted the release from 84.4% to 87.5% at 1,000 tokens and v3 is identical to v2 at every budget; on LongMemEval v3
+adds 1.7 points to v2 at both budgets (official judge). The `-nltk` rows are the `llmslim[nlp]` install, read from
+earlier local builds; they differ from the default install by less than a point.
+
+**v4, tried and not shipped.** After every other result here had been read, the LongMemEval gap to RAG was
+diagnosed on dev questions only. A message containing a blank line (a markdown answer, a pasted note) ended the
+transcript there: its later paragraphs lost their speaker and date, and the turns after it lost their shared date
+header. v4 (#51) keeps such messages whole. On 146 stratified LongMemEval dev questions it lifted LLMSlim with its
+reranker from 80.1% to 81.5% at 2,500 tokens and from 81.5% to 86.3% at 10,000 (the default mode from 80.1% to
+80.8% and from 82.9% to 83.6%). It was to ship only if it also held on test, where it was read once, after the merge:
+
+| LongMemEval-S test, official judge | v3 | v4 | v4 minus v3 (paired, 95% interval) |
+|---|---:|---:|---|
+| Default, 2,500 tokens | 70.6% | 73.9% | +3.3 (-1.7 to +8.3) |
+| Default, 10,000 tokens | 77.8% | 75.6% | -2.2 (-7.8 to +3.9) |
+| With the reranker, 2,500 tokens | 74.4% | 72.2% | -2.2 (-7.8 to +3.3) |
+| With the reranker, 10,000 tokens | 74.4% | 72.2% | -2.2 (-8.3 to +3.9) |
+
+On LoCoMo v4 is level with v3 (default 87.3%, 91.7% and 94.6% against 87.5%, 91.7% and 94.3%; with the reranker
+90.4% and 92.7% against 90.5% and 93.0%). No difference is significant and RAG is still ahead at 10,000 tokens, so
+#52 reverted v4 before the release. Its rows are in the last tables, kept apart so they do not change the cost
+frontier of the others, and its dev evidence is in `results/dev/*_v4*`. For scale: on the 1,526 LoCoMo questions
+where v3 and v4 sent byte-identical contexts, the reader and judge gave a different verdict 2% of the time.
 
 ## Spend
 
-Round 3 cost $97.57 in Claude API calls, as billed: every reader and judge call, Mem0's and Zep's ingestion, the
-discarded and crashed runs described in README.md, and the dev checks (the ledger for every round so far stands at
-$127.30, under the $150 cap). Batch calls were billed at half price; the tables count every answer at the list
-price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and the benchmark machine.
+Round 3 cost $107.10 in Claude API calls, as billed: every reader and judge call, Mem0's and Zep's ingestion, the
+discarded and crashed runs described in README.md, and the dev checks, including $9.53 for v4 ($4.80 on dev, $4.73
+on test). The ledger for every round so far stands at $136.83, under the $225 cap. Batch calls were billed at half
+price; the tables count every answer at the list price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and
+the benchmark machine.
 
 ---
 
@@ -94,7 +116,7 @@ price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and the benchmark 
 Columns: accuracy with a 95% bootstrap interval; the paired difference from the reference LLMSlim arm on the
 questions both answered; mean context tokens (tiktoken cl100k_base); median build time on the machine it ran on
 (LLMSlim's lexical arms, the v2/v3 reranker arms and the full/recent/order baselines on Kaggle's CPU; the
-LLMLingua family, RAG, the plain reranker and the release reranker arms on Kaggle's T4s; Mem0's and Zep's search on
-the benchmark machine); reader cost per 1,000 questions as run and with no cache; memory ingestion plus build compute
-per 1,000 questions; total; total per 1,000 correct answers; and the cost frontier.
+LLMLingua family, RAG, the plain reranker and the release and v4 reranker arms on Kaggle's T4s; Mem0's and Zep's
+search on the benchmark machine); reader cost per 1,000 questions as run and with no cache; memory ingestion plus
+build compute per 1,000 questions; total; total per 1,000 correct answers; and the cost frontier.
 

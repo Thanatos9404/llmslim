@@ -7,7 +7,7 @@ report() { python report.py "$@"; echo; }
 # Memory systems' ingestion (Haiku 5.5 calls through meter_proxy.py), USD : questions served by that memory.
 MEM0_LOCOMO="mem0=2.70:1540"   # all 10 conversations ingested; 1,540 questions
 ZEP_LOCOMO="zep=6.28:1307"     # the 8 test conversations; 1,307 questions
-GPU=(--gpu rag rerank lingua2 longlingua llmslim_rr --cpu llmslim_rr-v)  # the v2/v3 reranker arms were built on a CPU
+GPU=(--gpu rag rerank lingua2 longlingua llmslim_rr --cpu llmslim_rr-v2 llmslim_rr-v3)  # v2/v3 reranker arms: CPU
 
 LOCOMO=($R/locomo_test*.jsonl.gz)
 echo "## LoCoMo, about 1,000 tokens"
@@ -55,4 +55,20 @@ for METRIC in score score_mem0_judge; do
   report --results "${LME[@]}" --reference llmslim-v3_2500 --metric $METRIC --ids "$R/lme_zep_sample.txt" \
     --ingest "mem0=$(cat $R/mem0_lme_ingest_usd.txt):60" "zep=$(cat $R/zep_lme_ingest_usd.txt):24" "${GPU[@]}" \
     --arms llmslim-v3_2500 llmslim-v3_10000 llmslim_rr-v3_2500 rag_2500 mem0_top50 mem0_top200 zep full
+done
+
+# LLMSlim v4 (#51), chosen on dev after the other round-3 results, read once on test and not shipped (#52 reverted
+# it). Kept apart so it does not change the cost frontier of the tables above.
+for B in 1000 2500 10000; do
+  echo "## LLMSlim v4 (not shipped), LoCoMo, about $((B / 1000)),$(printf %03d $((B % 1000))) tokens"
+  ARMS=(llmslim-v3_$B llmslim-v4_$B)
+  [ $B != 10000 ] && ARMS+=(llmslim_rr-v3_$B llmslim_rr-v4_$B)
+  report --results "${LOCOMO[@]}" --reference llmslim-v3_$B "${GPU[@]}" --arms "${ARMS[@]}"
+done
+for METRIC in score score_mem0_judge; do
+  for B in 2500 10000; do
+    echo "## LLMSlim v4 (not shipped), LongMemEval-S, about $((B / 1000)),$(printf %03d $((B % 1000))) tokens ($METRIC)"
+    report --results "${LME[@]}" --reference llmslim-v3_$B --metric $METRIC "${GPU[@]}" \
+      --arms llmslim-v3_$B llmslim-v4_$B llmslim_rr-v3_$B llmslim_rr-v4_$B rag_$B
+  done
 done

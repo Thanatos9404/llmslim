@@ -69,9 +69,13 @@ def bootstrap(values: list[float], rng: random.Random) -> tuple[float, float]:
     return means[int(0.025 * ROUNDS)], means[int(0.975 * ROUNDS) - 1]
 
 
-def compute_usd(arm: str, answered: dict[str, dict], gpu: list[str]) -> float:
-    """Mean build cost per question, with a question-independent LoCoMo context counted once per conversation."""
-    hourly = GPU_HOUR if any(arm.startswith(prefix) for prefix in gpu) else CPU_HOUR
+def compute_usd(
+    arm: str, answered: dict[str, dict], gpu: list[str], cpu: list[str] | None = None
+) -> float:
+    """Mean build cost per question, with a question-independent LoCoMo context counted once per conversation.
+    An arm matching a --cpu prefix was built on a CPU machine even if it also matches a --gpu prefix."""
+    on_gpu = any(arm.startswith(p) for p in gpu) and not any(arm.startswith(p) for p in cpu or [])
+    hourly = GPU_HOUR if on_gpu else CPU_HOUR
     rows = [r for r in answered.values() if r.get("build_ms") is not None]
     if not rows:
         return 0.0
@@ -93,6 +97,9 @@ def main() -> None:
     parser.add_argument("--ingest", nargs="*", default=[], help="ARM_PREFIX=USD:QUESTIONS")
     parser.add_argument(
         "--gpu", nargs="*", default=[], help="arm prefixes whose context was built on a GPU"
+    )
+    parser.add_argument(
+        "--cpu", nargs="*", default=[], help="arm prefixes built on a CPU (overrides --gpu)"
     )
     parser.add_argument("--ids", type=Path, help="restrict to these question ids")
     parser.add_argument(
@@ -123,7 +130,7 @@ def main() -> None:
     order = sorted(
         by_arm, key=lambda arm: -statistics.mean(r[args.metric] for r in by_arm[arm].values())
     )
-    frontier = cost_frontier(by_arm, args.metric, ingest, args.gpu)
+    frontier = cost_frontier(by_arm, args.metric, ingest, args.gpu, args.cpu)
     for arm in order:
         answered = by_arm[arm]
         values = [r[args.metric] for r in answered.values()]
@@ -141,7 +148,7 @@ def main() -> None:
         reader = statistics.mean(list_usd(r) for r in answered.values())
         no_cache = statistics.mean(uncached_usd(r) for r in answered.values())
         memory = next((v for prefix, v in ingest.items() if arm.startswith(prefix)), 0.0)
-        extra = memory + compute_usd(arm, answered, args.gpu)
+        extra = memory + compute_usd(arm, answered, args.gpu, args.cpu)
         total = reader + extra
         per_correct = total / mean if mean else float("inf")
         context = f"{statistics.mean(tokens):,.0f}" if tokens else ""
@@ -154,14 +161,18 @@ def main() -> None:
 
 
 def cost_frontier(
-    by_arm: dict[str, dict[str, dict]], metric: str, ingest: dict[str, float], gpu: list[str]
+    by_arm: dict[str, dict[str, dict]],
+    metric: str,
+    ingest: dict[str, float],
+    gpu: list[str],
+    cpu: list[str],
 ) -> dict[str, str]:
     """Which arms no other arm beats on both accuracy and total cost ("as run" and with no prompt cache): an arm is
     on the frontier when nothing is at least as accurate for at most its cost, and better on one of the two."""
     stats = {}
     for arm, answered in by_arm.items():
         memory = next((v for prefix, v in ingest.items() if arm.startswith(prefix)), 0.0)
-        extra = memory + compute_usd(arm, answered, gpu)
+        extra = memory + compute_usd(arm, answered, gpu, cpu)
         stats[arm] = (
             statistics.mean(r[metric] for r in answered.values()),
             statistics.mean(list_usd(r) for r in answered.values()) + extra,

@@ -7,7 +7,7 @@ report() { python report.py "$@"; echo; }
 # Memory systems' ingestion (Haiku 5.5 calls through meter_proxy.py), USD : questions served by that memory.
 MEM0_LOCOMO="mem0=2.70:1540"   # all 10 conversations ingested; 1,540 questions
 ZEP_LOCOMO="zep=6.28:1307"     # the 8 test conversations; 1,307 questions
-GPU=(--gpu rag rerank lingua2 longlingua llmslim_rr)
+GPU=(--gpu rag rerank lingua2 longlingua llmslim_rr --cpu llmslim_rr-v)  # the v2/v3 reranker arms were built on a CPU
 
 LOCOMO=($R/locomo_test*.jsonl.gz)
 echo "## LoCoMo, about 1,000 tokens"

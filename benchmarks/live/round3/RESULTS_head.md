@@ -82,9 +82,10 @@ install by less than a point.
 
 ## Spend
 
-About $135 of Claude API calls in all (cap $150), including every reader call, judge call, Mem0's and Zep's
-ingestion, the discarded and crashed runs described in README.md, and the dev checks. Batch calls are billed at half
-price; the tables count every answer at the list price.
+Round 3 cost $97.57 in Claude API calls, as billed: every reader and judge call, Mem0's and Zep's ingestion, the
+discarded and crashed runs described in README.md, and the dev checks (the ledger for every round so far stands at
+$127.30, under the $150 cap). Batch calls were billed at half price; the tables count every answer at the list
+price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and the benchmark machine.
 
 ---
 

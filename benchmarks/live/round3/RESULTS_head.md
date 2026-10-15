@@ -27,7 +27,10 @@ across a conversation's questions (as here, where they are asked back to back), 
 
 **LongMemEval-S** (180 test questions; histories of about 111k tokens; official judge). At 10,000 tokens LLMSlim
 answers 77.8%, the same as the whole history, for $2.13 per 1,000 questions instead of $90.20 (prompts over 100k
-tokens are billed at the higher rate). On the questions the memory systems were run on:
+tokens are billed at the higher rate). The most accurate compressed context here is not LLMSlim but RAG over turns
+(dense retrieval with Qwen3-Embedding-0.6B): 80.6% at 10,000 tokens for $4.45, most of it GPU time to embed each
+history. LLMSlim holds the cheaper end of the cost frontier ($0.98 to $2.13); LLMLingua-2 answers 7-16%. On the
+questions the memory systems were run on:
 
 | Sample | LLMSlim + reranker, 2,500 tokens | Mem0 top 200 | Zep | Full history |
 |---|---|---|---|---|
@@ -57,6 +60,10 @@ sample) at a quarter of its cost; on HotpotQA the default LLMSlim (52.4%) beats 
   (95.1% for $0.83) is cheaper than LLMSlim at 10,000 tokens ($2.02) and more accurate than every compressed context.
   LLMSlim is the cheaper choice when the context changes between questions, when questions arrive too far apart for
   the cache, or when the history is long enough to be billed at the long-prompt rate (LongMemEval).
+- **LongMemEval against dense retrieval.** RAG over turns beats LLMSlim at both budgets: 80.6% vs 77.8% at
+  10,000 tokens, 76.1% vs 74.4% (LLMSlim with its reranker) at 2,500, at about twice the cost per question. In
+  500-message histories LLMSlim's lexical candidates, which its reranker only rescores, miss turns that an embedding
+  model finds. If a history is embedded once and asked many questions, RAG's cost falls further.
 - **LongMemEval under Mem0's more lenient judge.** The full history answers 95.0% to LLMSlim's 89.4% (reranker,
   2,500 tokens); under the official judge they are level.
 

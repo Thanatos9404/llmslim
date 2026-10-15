@@ -181,7 +181,7 @@ src = ["llmslim", "tests", "benchmarks"]
 exclude = ["notebooks", "venv", ".venv", "dist"]
 # ruff 0.16 also formats Python blocks inside Markdown; README and docs examples are
 # formatted by hand for readability, so keep Markdown out of ruff.
-extend-exclude = ["*.md"]
+extend-exclude = ["*.md", "benchmarks/live/round3/vendor"]  # vendor: third-party prompts kept verbatim
 
 [tool.ruff.lint]
 select = [

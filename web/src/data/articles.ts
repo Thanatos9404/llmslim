@@ -44,7 +44,7 @@ export const ARTICLES_REGISTRY: Record<string, DeepArticle> = {
     slug: "llmslim-vs-llmlingua-2-vs-longllmlingua",
     title: "LLMSlim vs LLMLingua-2 vs LongLLMLingua: A Reproducible Prompt Compression Benchmark",
     subtitle: "One reader, one token budget, 300 paired cases on NaturalQuestions, and every script and per-case result published",
-    abstract: "We compared LLMSlim 0.8 with LLMLingua-2 and LongLLMLingua on 20-document NaturalQuestions at a 25% token budget, with Claude Haiku 5.5 as the reader. With its optional 22M-parameter reranker, LLMSlim was level with LongLLMLingua (78.7 vs 78.0) and 9.7 points ahead of LLMLingua-2, with a median compression time per case of 0.09 s against 9.3 s and 2.3 s.",
+    abstract: "Superseded on 15 October 2026 by round 3 on /benchmarks, which reran LongLLMLingua in float16 on three benchmarks with LLMSlim 0.9; the numbers below are the earlier run. We compared LLMSlim 0.8 with LLMLingua-2 and LongLLMLingua on 20-document NaturalQuestions at a 25% token budget, with Claude Haiku 5.5 as the reader. With its optional 22M-parameter reranker, LLMSlim was level with LongLLMLingua (78.7 vs 78.0) and 9.7 points ahead of LLMLingua-2, with a median compression time per case of 0.09 s against 9.3 s and 2.3 s.",
     author: "Yashvardhan Thanvi",
     authorRole: "LLMSlim Author & Core Maintainer",
     publishedDate: "October 12, 2026",

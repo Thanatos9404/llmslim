@@ -8,7 +8,10 @@
 import { siteConfig } from "@/config/site"
 import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
-import { AGENT_FINDINGS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED } from "@/data/live-benchmarks"
+import {
+  AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES,
+  PLATFORM_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type Arm, type LiveSuite,
+} from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
@@ -27,6 +30,31 @@ const table = (headers: readonly string[], rows: ReadonlyArray<ReadonlyArray<str
   [`| ${headers.map(cell).join(" | ")} |`, `|${headers.map(() => "---").join("|")}|`, ...rows.map((row) => `| ${row.map(cell).join(" | ")} |`)].join("\n")
 const source = (path: string) => `Canonical page: ${absoluteUrl(path)}`
 const join = (...blocks: Array<string | false | undefined>) => blocks.filter(Boolean).join("\n\n") + "\n"
+// Formatted as the bars on /benchmarks show them (ResultBars).
+const usd = (cost: number | undefined) => (cost === undefined ? "" : `$${cost < 0.1 ? cost.toFixed(3) : cost.toFixed(2)}`)
+const armRows = (arms: Arm[], withTokens: boolean) =>
+  arms.map((arm) => [arm.name, arm.score.toFixed(1), ...(withTokens ? [arm.tokens?.toLocaleString("en-US") ?? ""] : []), usd(arm.cost)])
+
+/** One /benchmarks suite: its main table, then its second view (`extra`) under its own label. */
+function liveSuiteMarkdown(suite: LiveSuite): string {
+  const extraHasCost = suite.extra?.arms.some((arm) => arm.cost !== undefined) ?? false
+  return join(
+    `### ${suite.name}`,
+    `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
+    table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], armRows(suite.arms, true)),
+    suite.takeaway,
+    suite.caveat && `Note: ${suite.caveat}`,
+    suite.extra && `**${suite.extra.label}** (${suite.extra.n}):\n\n` + table(
+      extraHasCost ? ["Configuration", "Score", "Cost per 1k questions"] : ["Configuration", "Score"],
+      armRows(suite.extra.arms, false).map((row) => (extraHasCost ? row : row.slice(0, 2))),
+    ),
+  ).trimEnd()
+}
+
+const headToHeadTable = () => table(
+  ["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Cost per 1k", "Time per question"],
+  HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreC, row.cost, row.time]),
+)
 
 const SUMMARY =
   "LLMSlim is the context layer for production AI agents. LLMSlim Core is an open-source, MIT-licensed Python library " +
@@ -97,7 +125,8 @@ export function integrationMarkdown(item: IntegrationData): string {
     `> ${item.tagline}`,
     item.description,
     `Category: ${item.category}`,
-    `## Install\n\n${fence(item.installation.packageManager === "pip" ? "bash" : "", item.installation.command)}` + (item.installNote ? `\n\n${item.installNote}` : ""),
+    `## Install\n\n${fence(item.installation.packageManager === "pip" ? "bash" : "", item.installation.command)}` + (item.installNote ? `\n\n${item.installNote}` : "") +
+      (item.setup ?? []).map((step) => `\n\n${step.caption}\n\n${fence(step.language, step.code)}`).join(""),
     // Steps that are already numbered ("1. ...") stay as they are; the rest become list items.
     `## How it fits\n\n${item.architectureFlow.map((step) => (/^\d+\. /.test(step) ? step : `- ${step}`)).join("\n")}`,
     `## Example\n\n${fence(item.codeExample.language, item.codeExample.code)}` +
@@ -140,18 +169,20 @@ export function comparisonMarkdown(page: Comparison): string {
   return join(
     `# ${page.title}`,
     `> ${page.lede}`,
-    `Updated ${page.lastUpdated}. ${page.disclosure}`,
+    `Updated ${page.lastUpdated} · LLMSlim Core ${CORE_VERSION_TESTED} · Reader: ${LIVE_MODEL}. ${page.disclosure}`,
     "## The short answer\n\n" + page.shortAnswer.map((line) => `- ${line}`).join("\n"),
     "## At a glance\n\n" + table(["Aspect", "LLMSlim", "LLMLingua-2", "LongLLMLingua"], page.glance.map((row) => [row.aspect, row.llmslim, row.lingua2, row.longLingua ?? row.lingua2])),
     "## What LLMLingua-2 and LongLLMLingua are\n\n" + page.baselines.map((item) => `### ${item.name}\n\n[${item.citation}](${item.url}). ${item.body}`).join("\n\n") + `\n\n${page.baselinesNote}`,
     "## How LLMSlim differs\n\n" + page.differences.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
     join(
-      "## Head to head on NaturalQuestions",
-      "20 retrieved passages per question, a 25% token budget for every compressor, and Claude Haiku 5.5 reading every compressed context.",
-      table(["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Tokens kept", "Time per question"], HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreAll, row.tokens, row.time])),
+      "## Head to head on NaturalQuestions, HotpotQA and LoCoMo",
+      page.headToHeadIntro,
+      headToHeadTable(),
       HEAD_TO_HEAD.note,
-      "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Original (150 cases)", "Fresh (150 cases)", "All 300, by case", "All 300, by question"], page.pairedDiffs.map((row) => [row.comparison, row.original, row.fresh, row.byCase, row.byQuestion])),
+      "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Benchmark (questions)", "Difference (95% CI)", "Reading"], page.pairedDiffs.map((row) => [row.comparison, row.benchmark, row.difference, row.reading])),
       page.pairedNote,
+      "### On every test question\n\n" + table(["System", ...page.testSets.columns], page.testSets.rows.map((row) => [row.system, ...row.cells])),
+      page.testSets.note,
     ).trimEnd(),
     "## What this does not show\n\n" + page.caveats.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
     "## When to choose LLMLingua\n\n" + page.chooseThem.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
@@ -165,7 +196,7 @@ export function comparisonMarkdown(page: Comparison): string {
     ).trimEnd()).join("\n\n") + "\n\n" + page.migrationNotes.map((note) => `- ${note}`).join("\n"),
     "## FAQ\n\n" + page.faqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),
     "## Sources\n\n" + page.sources.map((item) => `- [${item.label}](${item.url})`).join("\n") +
-      `\n- [Methodology article](${md("/articles/llmslim-vs-llmlingua-2-vs-longllmlingua")})\n- [Every benchmark](${md("/benchmarks")})`,
+      `\n- [Every benchmark](${md("/benchmarks")})`,
     source(path),
   )
 }
@@ -213,29 +244,40 @@ function sectionIndex(section: Section): string {
   )
   return join(
     "# LLMSlim benchmarks",
-    `> Measured on ${LIVE_MODEL} (${LIVE_DATE}) with public datasets and official scoring. Only the context changes between configurations. LLMSlim Core ${CORE_VERSION_TESTED}, Platform ${PLATFORM_VERSION_TESTED}. Weak spots are listed with each result.`,
-    ...LIVE_SUITES.map((suite) => join(
-      `## ${suite.name}`,
-      `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
-      table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], suite.arms.map((arm) => [arm.name, arm.score.toFixed(1), arm.tokens?.toLocaleString("en-US") ?? "", arm.cost !== undefined ? `$${arm.cost}` : ""])),
-      suite.fresh && `Fresh sample (${suite.fresh.n}, run once after development was frozen): ${suite.fresh.arms.map((arm) => `${arm.name} ${arm.score.toFixed(1)}`).join("; ")}.`,
-      suite.takeaway,
-      suite.caveat && `Note: ${suite.caveat}`,
-    ).trimEnd()),
+    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Platform ${PLATFORM_VERSION_TESTED}. Weak spots are published with the rest.`,
+    `Report, harness and raw results: ${ROUND3_REPORT}`,
     join(
-      "## Head to head with other compressors",
-      table(["Compressor", "Model it runs", ...HEAD_TO_HEAD.columns, "Tokens kept", "Time per question"], HEAD_TO_HEAD.rows.map((row) => [row.system, row.model, row.scoreA, row.scoreB, row.scoreAll, row.tokens, row.time])),
+      `## Round 3, Core ${CORE_VERSION_TESTED} (15 Oct 2026): memory systems and compressors, cost first`,
+      "The question is not only how many answers a context gets right, but what each right answer costs. Costs are per 1,000 questions at list prices, including building Mem0's and Zep's memory and every system's compute.",
+      ...LIVE_SUITES.map(liveSuiteMarkdown),
+    ).trimEnd(),
+    join(
+      "## Head to head with the LLMLingua family",
+      "We ran the best-known open-source prompt compressors ourselves, with their published settings, on the questions they were pre-registered for. Same reader, same questions, same budget.",
+      headToHeadTable(),
       HEAD_TO_HEAD.note,
+      "Sources and reruns:\n\n" + HEAD_TO_HEAD.sources.map((item) => `- [${item.label}](${item.url})`).join("\n"),
       ...Object.values(COMPARISONS).map((page) => `Choosing between them: [${page.title}](${md(`/compare/${page.slug}`)}), with migration code.`),
     ).trimEnd(),
-    ...AGENT_FINDINGS.map((finding) => join(
-      `## ${finding.name}`,
-      finding.what,
-      table(["Configuration", "Result", "Detail"], finding.rows.map((row) => [row.arm, row.result, row.detail])),
-      finding.takeaway,
-    ).trimEnd()),
-    "## Published results from other systems\n\nDifferent reader models: compare each system's gap to its own full-context baseline.\n\n" + table(["System", "Benchmark", "Reader", "Score", "Full context", "Source"], PUBLISHED.map((row) => [row.system, row.benchmark, row.reader, row.score, row.fullContext, `${row.source}: ${row.url}`])),
-    "## Method\n\n" + METHOD_NOTES.map((note) => `- ${note}`).join("\n"),
+    "## Where LLMSlim loses\n\n" + WEAK_SPOTS.map((spot) => `- **${spot.title}.** ${spot.body}`).join("\n"),
+    join(
+      `## Long documents, Core ${CORE_VERSION_LONG_DOCS} (12 Oct 2026): against full context and truncation`,
+      "From the previous round, with fresh questions run once after the code was frozen. 0.9.0 changes only how chat transcripts are selected. Costs here are the answer call alone.",
+      ...LONG_DOC_SUITES.map(liveSuiteMarkdown),
+    ).trimEnd(),
+    join(
+      `## Agents, Core ${CORE_VERSION_LONG_DOCS}: where compression does not help yet`,
+      ...AGENT_FINDINGS.map((finding) => join(
+        `### ${finding.name}`,
+        finding.what,
+        table(["Configuration", "Result", "Detail"], finding.rows.map((row) => [row.arm, row.result, row.detail])),
+        finding.takeaway,
+      ).trimEnd()),
+    ).trimEnd(),
+    "## Published results from other systems\n\nThese numbers come from each project's paper or a third-party re-run, with different reader models. Compare each system's gap to its own full-context baseline, not raw scores across models.\n\n" +
+      table(["System", "Benchmark", "Reader", "Score", "Full context", "Tokens", "Source"], PUBLISHED.map((row) => [row.system, row.benchmark, row.reader, row.score, row.fullContext, row.tokens, `${row.source}: ${row.url}`])),
+    "## Method\n\n" + METHOD_NOTES.map((note) => `- ${note}`).join("\n") +
+      `\n\nHow the numbers were kept honest, and everything that went wrong: ${siteConfig.github}/tree/main/benchmarks/live/round3`,
     "## Earlier offline suites\n\n" + Object.values(BENCHMARK_SUITES).map((suite) => `- [${suite.title}](${md(`/benchmarks/${suite.slug}`)}): ${suite.subtitle}`).join("\n"),
     source("/benchmarks"),
   )
@@ -294,7 +336,7 @@ export function llmsTxt(): string {
     "## Docs\n\n" + list(Object.values(DOCS_REGISTRY).map((doc) => [doc.title, `/docs/${doc.slug}`, doc.description])),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
     "## Benchmarks\n\n" + list([
-      ["Benchmarks", "/benchmarks", "Real-model results on seven public benchmarks, with the NaturalQuestions head-to-head against LLMLingua-2 and LongLLMLingua"],
+      ["Benchmarks", "/benchmarks", `Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
       ...Object.values(BENCHMARK_SUITES).map((suite): [string, string, string] => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle]),
     ]),
     "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),

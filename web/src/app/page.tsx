@@ -19,17 +19,17 @@ const faqs: ReadonlyArray<readonly [string, string]> = [
   ["What do the startup programs give LLMSlim?", `LLMSlim is part of ${startupProgramCount} startup programs: ${startupProgramNames}. They provide credits, tools, and guidance. Our Sarvam integration guide shows how to pair local context compression with the official Sarvam Python SDK.`],
 ]
 
-// Real-model results only (Claude Haiku 5.5, public benchmarks, paired against full context and truncation).
+// Real-model results only (Claude Haiku 5.5, public benchmarks, held-out test questions, costs end to end).
 // The full report is on /benchmarks.
 const stats: Stat[] = [
-  { topic: "Chat memory", value: "62", unit: "×", label: "lower cost per question over long chat histories, at Haiku 5.5 list prices", source: "LongMemEval, 76.7% vs 82.2% with the whole history; 14× fewer tokens",
-    meter: { before: { name: "Whole history", value: 90.72, display: "$90.72" }, after: { name: "LLMSlim", value: 1.45, display: "$1.45" }, max: 90.72 } },
+  { topic: "Chat memory", value: "2.8", unit: "×", label: "lower cost than Mem0 on long conversations, with more questions right", source: "LoCoMo, 93.0% vs 91.0% for Mem0 at about 2,500 tokens",
+    meter: { before: { name: "Mem0", value: 2.66, display: "$2.66" }, after: { name: "LLMSlim", value: 0.95, display: "$0.95" }, max: 2.66 } },
+  { topic: "Long histories", value: "42", unit: "×", label: "lower cost than sending the whole chat history, at the same accuracy", source: "LongMemEval, 77.8% for both at 10,000 tokens",
+    meter: { before: { name: "Whole history", value: 90.21, display: "$90.21" }, after: { name: "LLMSlim", value: 2.13, display: "$2.13" }, max: 90.21 } },
+  { topic: "Memory systems", value: "212", unit: "×", label: "lower cost than Mem0 on its own LongMemEval questions, as accurate", source: "Mem0's 60-question sample, 78.3% vs 76.7%",
+    meter: { before: { name: "Mem0", value: 220.88, display: "$220.88" }, after: { name: "LLMSlim", value: 1.04, display: "$1.04" }, max: 220.88 } },
   { topic: "Long documents", value: "3", unit: "×", label: "fewer tokens on long documents, for the same score", source: "LongBench v1, 54.9 vs 54.9 with full context",
     meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
-  { topic: "Retrieval", value: "+23", label: "points over truncation at the same token budget", source: "NaturalQuestions, 20 passages, 25% budget",
-    meter: { before: { name: "Cut to fit", value: 52, display: "52.0" }, after: { name: "LLMSlim", value: 75, display: "75.0" }, max: 100 } },
-  { topic: "Agent turns", value: "0", label: "repeated tool calls across 1,054 agent turns", source: "InjecAgent, Platform agent turns",
-    meter: { before: { name: "Before", value: 50, display: "50" }, after: { name: "Agent turn", value: 0, display: "0" }, max: 50 } },
 ]
 
 export default function Home() {
@@ -41,7 +41,7 @@ export default function Home() {
       {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
           The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
       <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
-      <Reveal fade={false} delay={0.1}><p className="p-hero-sub">Open-source context compression for RAG and agents. <Link className="p-hero-proof" href="/benchmarks">Level with LongLLMLingua on NaturalQuestions at about 100× the speed, with a 22M reranker instead of a 7B model.<ArrowRight size={15} aria-hidden="true" /></Link></p></Reveal>
+      <Reveal fade={false} delay={0.1}><p className="p-hero-sub">Open-source context compression for RAG and agents. <Link className="p-hero-proof" href="/benchmarks">More answers right than Mem0 on long conversations, at a third of the cost, with no memory to build.<ArrowRight size={15} aria-hidden="true" /></Link></p></Reveal>
       <Reveal fade={false} delay={0.2}><p className="p-hero-lede">Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p></Reveal>
       <Reveal fade={false} delay={0.3} className="p-hero-actions">
         <TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Get started <ArrowRight size={16} /></TrackedLink>
@@ -62,7 +62,7 @@ export default function Home() {
       <Reveal className="p-head"><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
       <div className="duo">
         <div>
-          <Showcase><CompressVisual before={114006} after={7985} foot={<><span><b>62× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices; 14× fewer tokens</span></>} /></Showcase>
+          <Showcase><CompressVisual before={111372} after={10008} foot={<><span><b>42× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices, as accurate as the whole history</span></>} /></Showcase>
           <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
         <div>
@@ -90,7 +90,7 @@ export default function Home() {
       </div>
     </PhotoSection>
 
-    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, or into the LangChain, LlamaIndex or Haystack pipeline you already run. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></div><CodeExample /></section>
+    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, into the LangChain, LlamaIndex or Haystack pipeline you already run, or into a gptme, Hermes Agent or Pydantic AI agent&apos;s history. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></div><CodeExample /></section>
 
     <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
 

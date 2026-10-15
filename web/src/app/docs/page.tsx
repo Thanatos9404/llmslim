@@ -5,7 +5,7 @@ import { constructMetadata } from "@/lib/seo"
 import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs"
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations"
 
-/** LangChain, LlamaIndex and Haystack adapters, listed with the guides because most readers arrive from a framework. */
+/** LangChain, LlamaIndex and Haystack adapters and the gptme, Hermes Agent and Pydantic AI history adapters, listed with the guides because most readers arrive from a framework. */
 const FRAMEWORKS = Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
 
 export const metadata = constructMetadata({ title: "Documentation | LLMSlim Prompt & Context Compression", description: "Install LLMSlim with pip and compress prompts, chat history, RAG passages and tool output in Python: getting started, the optional reranker, ContextRole, pipelines and the context planner.", path: "/docs", markdownPath: "/docs.md" })
@@ -45,7 +45,7 @@ export default function DocsIndexPage() {
       <ul>{FRAMEWORKS.map((item) => <li key={item.slug}><Link href={`/integrations/${item.slug}`}>
         <span className="docs-row-title">{item.name}</span>
         <span className="docs-row-body">{item.tagline}</span>
-        <span className="docs-row-time">{item.installation.command.match(/llmslim\[[a-z]+\]/)?.[0] ?? "Guide"}</span>
+        <span className="docs-row-time">{item.installation.command.match(/llmslim\[[a-z-]+\]/)?.[0] ?? "Guide"}</span>
         <ArrowRight size={15} className="docs-row-arrow" aria-hidden="true" />
       </Link></li>)}</ul>
     </section>

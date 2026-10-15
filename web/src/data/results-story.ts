@@ -1,7 +1,7 @@
 /**
- * Numbers behind /results. Every value comes from a run in the public repository's benchmarks/live harness, with
- * Claude Haiku 5.5 reading every context. "Original" questions are the ones reported since the first round;
- * "fresh" questions were drawn after development was frozen and run once.
+ * Numbers behind /results. Every value comes from a run in the public repository, with Claude Haiku 5.5 reading
+ * every context: round 3 (benchmarks/live/round3, Core 0.9, held-out test questions, cost first) for chat memory and
+ * retrieval, and round 2 (benchmarks/live, Core 0.8) for long documents and agents.
  */
 
 /** Named once, in the fine print. */
@@ -28,43 +28,56 @@ export type Benchmark = {
 
 export const BENCHMARKS: Benchmark[] = [
   {
-    id: "longmemeval", name: "LongMemEval-S", short: "Chat memory",
+    id: "locomo", name: "LoCoMo", short: "Chat memory",
+    question: "Questions about long conversations between two people", metric: "accuracy", max: 100, unit: "%",
+    arms: [
+      { name: "Whole history", score: 95.1, kind: "full" },
+      { name: "LLMSlim + reranker", score: 93.0, kind: "llmslim" },
+      { name: "Mem0, top 50 memories", score: 91.0, kind: "competitor" },
+      { name: "Zep", score: 74.4, kind: "competitor" },
+    ],
+    info: [["Questions", "1,307 held-out"], ["Budget", "about 2,500 tokens"], ["Context", "27,133 → 2,495 tokens"], ["Cost per 1k", "$0.95 · Mem0 $2.66 · Zep $6.24"], ["LongLLMLingua", "73.3% on its 300 questions"]],
+    verdict: "More answers right than Mem0, at about a third of the cost",
+    pixels: { total: 100, lit: 9, label: "9% of the tokens kept" },
+  },
+  {
+    id: "longmemeval", name: "LongMemEval-S", short: "Long histories",
     question: "Answer from about 50 earlier chat sessions", metric: "accuracy", max: 100, unit: "%",
     arms: [
-      { name: "Whole history", score: 82.2, kind: "full" },
-      { name: "LLMSlim + reranker", score: 76.7, kind: "llmslim" },
-      { name: "LLMSlim", score: 68.9, kind: "lite" },
-      { name: "Most recent sessions", score: 14.4, kind: "baseline" },
+      { name: "Dense retrieval over turns", score: 80.6, kind: "baseline" },
+      { name: "Whole history", score: 77.8, kind: "full" },
+      { name: "LLMSlim", score: 77.8, kind: "llmslim" },
+      { name: "LLMLingua-2", score: 15.6, kind: "competitor" },
     ],
-    info: [["Questions", "90 · 15 per type"], ["Budget", "8,000 tokens"], ["Context", "114,006 → 7,984 tokens"], ["Cost per 1k", "$90.72 → $1.45"], ["Fresh 90", "76.7% vs 72.2% whole history"]],
-    verdict: "Within noise of the whole history at 1/62 of the cost (list prices)",
-    pixels: { total: 100, lit: 7, label: "7% of the tokens kept" },
+    info: [["Questions", "180 held-out"], ["Budget", "10,000 tokens"], ["Context", "111,372 → 10,008 tokens"], ["Cost per 1k", "$90.21 → $2.13"], ["Mem0, its 60", "76.7% for $220.88 · LLMSlim 78.3% for $1.04"]],
+    verdict: "As accurate as the whole history at 1/42 of the cost",
+    pixels: { total: 100, lit: 9, label: "9% of the tokens kept" },
   },
   {
     id: "nq", name: "NaturalQuestions", short: "Retrieval",
     question: "20 retrieved passages, the answer in one", metric: "accuracy", max: 100, unit: "%",
     arms: [
-      { name: "Every passage", score: 86.3, kind: "full" },
-      { name: "LLMSlim + reranker", score: 75.0, kind: "llmslim" },
-      { name: "LLMSlim", score: 65.7, kind: "lite" },
-      { name: "Passages in order", score: 52.0, kind: "baseline" },
+      { name: "Every passage", score: 78.4, kind: "full" },
+      { name: "LLMSlim + reranker", score: 73.5, kind: "llmslim" },
+      { name: "LLMSlim", score: 60.6, kind: "lite" },
+      { name: "LLMLingua-2", score: 52.5, kind: "competitor" },
     ],
-    info: [["Cases", "300 · 100 questions × 3 answer positions"], ["Budget", "25%"], ["Context", "2,889 → 668 tokens"], ["By position", "74 / 75 / 76% (cut: 95 / 32 / 29%)"], ["Fresh 300 cases", "75.7% vs 88.0% every passage"]],
-    verdict: "Finds the answer wherever it sits",
+    info: [["Questions", "2,255 held-out"], ["Budget", "25%"], ["Context", "2,908 → 668 tokens"], ["Cost per 1k", "$0.65 → $0.33"], ["LongLLMLingua", "70.5% vs 72.7% on its 1,000"]],
+    verdict: "Level with a plain reranker, ahead of the LLMLingua family",
     pixels: { total: 100, lit: 23, label: "23% of the tokens kept" },
   },
   {
     id: "hotpotqa", name: "HotpotQA", short: "Multi-hop",
-    question: "Two of ten paragraphs hold the answer", metric: "answer F1", max: 100, unit: "",
+    question: "Two of ten paragraphs hold the answer", metric: "exact match", max: 100, unit: "",
     arms: [
-      { name: "All ten paragraphs", score: 74.9, kind: "full" },
-      { name: "LLMSlim + reranker", score: 69.4, kind: "llmslim" },
-      { name: "LLMSlim", score: 67.5, kind: "lite" },
-      { name: "Cut to the same size", score: 49.5, kind: "baseline" },
+      { name: "All ten paragraphs", score: 58.0, kind: "full" },
+      { name: "LLMSlim", score: 52.4, kind: "llmslim" },
+      { name: "Plain reranker", score: 50.5, kind: "baseline" },
+      { name: "LLMLingua-2", score: 46.7, kind: "competitor" },
     ],
-    info: [["Questions", "200"], ["Budget", "40%"], ["Context", "2,179 → 939 tokens"], ["Exact match", "56.0 vs 57.0 all paragraphs"], ["Fresh 200", "71.8 vs 77.5 F1"]],
-    verdict: "93% of the full-context F1 on 43% of the tokens",
-    pixels: { total: 100, lit: 43, label: "43% of the tokens kept" },
+    info: [["Questions", "2,000 held-out"], ["Budget", "40%"], ["Context", "1,315 → 522 tokens"], ["Cost per 1k", "$0.24 → $0.13"], ["LongLLMLingua", "50.4 vs 53.3 on its 1,000"]],
+    verdict: "90% of the full-context score on 40% of the tokens",
+    pixels: { total: 100, lit: 40, label: "40% of the tokens kept" },
   },
   {
     id: "longbench", name: "LongBench v1", short: "Long docs",
@@ -75,7 +88,7 @@ export const BENCHMARKS: Benchmark[] = [
       { name: "LLMSlim + reranker", score: 54.2, kind: "lite" },
       { name: "Middle truncation", score: 45.2, kind: "baseline" },
     ],
-    info: [["Samples", "210 · 30 per task"], ["Budget", "3,000 tokens"], ["Context", "15,532 → 5,232 tokens"], ["vs full", "+0.0 (95% CI −4.5 to +4.6)"], ["Fresh 210", "55.0 vs 55.1 full context"]],
+    info: [["Samples", "210 · Core 0.8"], ["Budget", "3,000 tokens"], ["Context", "15,532 → 5,232 tokens"], ["vs full", "+0.0 (95% CI −4.5 to +4.6)"], ["Fresh 210", "55.0 vs 55.1 full context"]],
     verdict: "The same score on a third of the tokens",
     pixels: { total: 100, lit: 34, label: "34% of the tokens kept" },
   },
@@ -88,7 +101,7 @@ export const BENCHMARKS: Benchmark[] = [
       { name: "LLMSlim", score: 53.9, kind: "lite" },
       { name: "Middle truncation", score: 48.3, kind: "baseline" },
     ],
-    info: [["Questions", "180 · short split"], ["Budget", "25%"], ["Context", "30,493 → 8,469 tokens"], ["Cost per 1k", "$7.62 → $1.69"], ["vs full", "−4.4 (95% CI −11.7 to +2.8)"]],
+    info: [["Questions", "180 · Core 0.8"], ["Budget", "25%"], ["Context", "30,493 → 8,469 tokens"], ["Cost per 1k", "$7.62 → $1.69"], ["vs full", "−4.4 (95% CI −11.7 to +2.8)"]],
     verdict: "72% fewer tokens, the best compressed score",
     pixels: { total: 100, lit: 28, label: "28% of the tokens kept" },
   },
@@ -120,28 +133,90 @@ export const BENCHMARKS: Benchmark[] = [
   },
 ]
 
-/** Head to head on NaturalQuestions: two sets of 150 cases (50 questions, each with the answer at 3 positions), same reader, same budget. */
-export const RACE = {
-  questions: 150,
-  full: 87.3,
-  fullFresh: 90.7,
-  fullAll: 89.0,
-  rows: [
-    { name: "LLMSlim + reranker", model: "22M cross-encoder", score: 74.0, fresh: 83.3, all: 78.7, ms: 94, hardware: "GPU", kind: "llmslim" },
-    { name: "LongLLMLingua", model: "LLaMA-2-7B, 4-bit", score: 80.0, fresh: 76.0, all: 78.0, ms: 9321, hardware: "GPU", kind: "competitor" },
-    { name: "LLMLingua-2", model: "XLM-RoBERTa-large", score: 64.7, fresh: 73.3, all: 69.0, ms: 2259, hardware: "GPU · ~43 s on CPU", kind: "competitor" },
-    { name: "LLMSlim", model: "No model", score: 63.3, fresh: 74.0, all: 68.7, ms: 25, hardware: "CPU", kind: "lite" },
-    { name: "Cut to fit", model: "No model", score: 49.3, fresh: 47.3, all: 48.3, ms: 0, hardware: "", kind: "baseline" },
-  ],
-} as const
+export type RacePoint = {
+  name: string; model: string; score: number; cost: number; kind: ArmKind
+  /** Where the label sits: above or below the point. Default: below for lite and baseline points, above otherwise. */
+  place?: "above" | "below"
+  /** Label offset from the point, in chart units, when two labels would collide. */
+  dy?: number
+}
+export type RaceSet = {
+  key: string
+  label: string
+  /** What was measured, for the chart's caption. */
+  n: string
+  metric: string
+  /** The reference line: the whole context, and what it costs. */
+  full: { score: number; cost: number; label: string }
+  /** The system the cost ratio is drawn against. */
+  rival: string
+  y: [number, number]
+  rows: RacePoint[]
+  note: string
+}
 
-/** LLMSlim with the reranker on original and fresh questions, with full context on each. */
-export const CONSISTENCY = [
-  { suite: "LongMemEval", metric: "accuracy", original: 76.7, fresh: 76.7, fullOriginal: 82.2, fullFresh: 72.2 },
-  { suite: "NaturalQuestions", metric: "accuracy", original: 75.0, fresh: 75.7, fullOriginal: 86.3, fullFresh: 88.0 },
-  { suite: "HotpotQA", metric: "answer F1", original: 69.4, fresh: 71.8, fullOriginal: 74.9, fullFresh: 77.5 },
-  { suite: "LongBench v1", metric: "macro", original: 54.2, fresh: 55.4, fullOriginal: 54.9, fullFresh: 55.1 },
-] as const
+/** Accuracy against what 1,000 questions cost end to end (round 3): one set per benchmark sample. */
+export const RACE: RaceSet[] = [
+  {
+    key: "locomo", label: "LoCoMo", n: "1,307 questions, about 2,500 tokens", metric: "accuracy", rival: "Mem0",
+    full: { score: 95.1, cost: 0.83, label: "Whole history, cached" }, y: [70, 100],
+    rows: [
+      { name: "LLMSlim + reranker", model: "22M cross-encoder", score: 93.0, cost: 0.95, kind: "llmslim" },
+      { name: "LLMSlim", model: "No model", score: 91.7, cost: 0.89, kind: "lite" },
+      { name: "Mem0", model: "Top 50 memories", score: 91.0, cost: 2.66, kind: "competitor" },
+      { name: "RAG over turns", model: "Qwen3-Embedding-0.6B", score: 85.2, cost: 0.90, kind: "baseline" },
+      { name: "Zep", model: "Graphiti on Neo4j", score: 74.4, cost: 6.24, kind: "competitor" },
+      { name: "LongLLMLingua", model: "LLaMA-2-7B, its 300 questions", score: 73.3, cost: 7.01, kind: "competitor", place: "below" },
+    ],
+    note: "Mem0's and Zep's cost is mostly the model calls that build their memory. LLMLingua-2 scores 34.1% and is off this chart. The whole history was read from the prompt cache; without it, it costs $4.48.",
+  },
+  {
+    key: "mem0", label: "vs Mem0", n: "LongMemEval, Mem0's 60 questions", metric: "accuracy", rival: "Mem0",
+    full: { score: 78.3, cost: 90.20, label: "Whole history" }, y: [65, 85],
+    rows: [
+      { name: "LLMSlim + reranker", model: "22M cross-encoder", score: 78.3, cost: 1.04, kind: "llmslim" },
+      { name: "LLMSlim", model: "No model", score: 71.7, cost: 0.96, kind: "lite" },
+      { name: "Mem0", model: "Top 200 memories", score: 76.7, cost: 220.88, kind: "competitor" },
+      { name: "RAG over turns", model: "Qwen3-Embedding-0.6B", score: 80.0, cost: 3.36, kind: "baseline" },
+    ],
+    note: "Each LongMemEval question has its own 500-message history, so Mem0 builds a memory for each: about $0.22 a question. Small sample: the 95% intervals are about ±10 points.",
+  },
+  {
+    key: "zep", label: "vs Zep", n: "LongMemEval, Zep's 24 questions", metric: "accuracy", rival: "Zep",
+    full: { score: 91.7, cost: 90.22, label: "Whole history" }, y: [50, 100],
+    rows: [
+      { name: "LLMSlim", model: "No model", score: 87.5, cost: 0.94, kind: "llmslim" },
+      { name: "Mem0", model: "Top 50 memories", score: 87.5, cost: 219.48, kind: "competitor" },
+      { name: "RAG over turns", model: "Qwen3-Embedding-0.6B", score: 83.3, cost: 3.28, kind: "baseline" },
+      { name: "Zep", model: "Graphiti on Neo4j", score: 58.3, cost: 697.56, kind: "competitor" },
+    ],
+    note: "Building Zep's graph of a 500-message history costs about $0.70 a question. On 24 questions the 95% intervals are about ±17 points.",
+  },
+  {
+    key: "nq", label: "NaturalQuestions", n: "LongLLMLingua's 1,000 questions, 25% of the tokens", metric: "accuracy", rival: "LongLLMLingua",
+    full: { score: 77.2, cost: 0.65, label: "Every passage" }, y: [45, 82],
+    rows: [
+      { name: "LLMSlim + reranker", model: "22M cross-encoder", score: 72.7, cost: 0.33, kind: "llmslim" },
+      { name: "LLMSlim", model: "No model", score: 59.6, cost: 0.30, kind: "lite" },
+      { name: "LongLLMLingua", model: "LLaMA-2-7B, float16", score: 70.5, cost: 1.32, kind: "competitor", place: "below" },
+      { name: "LLMLingua-2", model: "XLM-RoBERTa-large", score: 52.0, cost: 0.86, kind: "competitor" },
+      { name: "Plain reranker", model: "22M cross-encoder", score: 73.6, cost: 0.29, kind: "baseline", dy: -22 },
+    ],
+    note: "LLMSlim with its reranker is level with LongLLMLingua (+2.2 points, 95% interval −0.8 to +5.3) at a quarter of its cost, and level with a plain reranker. The default lexical mode needs the reranker for paraphrased questions.",
+  },
+  {
+    key: "hotpot", label: "HotpotQA", n: "LongLLMLingua's 1,000 questions, 40% of the tokens", metric: "exact match", rival: "LongLLMLingua",
+    full: { score: 58.5, cost: 0.24, label: "All ten paragraphs" }, y: [45, 60],
+    rows: [
+      { name: "LLMSlim", model: "No model", score: 53.3, cost: 0.13, kind: "llmslim" },
+      { name: "LLMSlim + reranker", model: "22M cross-encoder", score: 52.8, cost: 0.15, kind: "lite" },
+      { name: "LongLLMLingua", model: "LLaMA-2-7B, float16", score: 50.4, cost: 0.77, kind: "competitor" },
+      { name: "LLMLingua-2", model: "XLM-RoBERTa-large", score: 48.9, cost: 0.47, kind: "competitor" },
+      { name: "Plain reranker", model: "22M cross-encoder", score: 51.6, cost: 0.13, kind: "baseline" },
+    ],
+    note: "The default LLMSlim is level with LongLLMLingua (+2.9 points, 95% interval −0.1 to +5.7) at a sixth of its cost. Full context still leads by about 5 points.",
+  },
+]
 
-/** The short version of where full context still leads; the full report has the rest. */
-export const STILL_AHEAD = "Full context still leads on open-domain retrieval and multi-hop questions, by about 5 to 12 points."
+/** The short version of where LLMSlim still trails; the benchmarks page has the rest. */
+export const STILL_AHEAD = "Full context still leads on NaturalQuestions and HotpotQA by about 5 points, and dense retrieval over turns leads on LongMemEval at both budgets, within noise."

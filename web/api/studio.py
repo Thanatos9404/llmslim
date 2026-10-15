@@ -1,7 +1,8 @@
 """Same-origin Vercel Function for the Studio.
 
-It compresses the submitted text around a question with the repository's
-``llmslim`` package and, for comparison, cuts the same text to the same token
+It compresses the submitted text around a question with LLMSlim Core (the
+release pinned in ``web/requirements.txt`` in production, the sibling source
+tree in local runs) and, for comparison, cuts the same text to the same token
 count without looking at it. The response lists which parts of the original
 were kept so the page can show them in place. Nothing is stored or logged.
 """

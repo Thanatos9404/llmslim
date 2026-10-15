@@ -34,8 +34,8 @@ questions the memory systems were run on:
 
 | Sample | LLMSlim + reranker, 2,500 tokens | Mem0 top 200 | Zep | Full history |
 |---|---|---|---|---|
-| Mem0's 60 | 78.3% for $1.49 | 76.7% for $220.88 | | 78.3% for $90.20 |
-| Zep's 24 | 87.5% for $1.43 | 83.3% for $220.84 | 58.3% for $697.56 | 91.7% for $90.22 |
+| Mem0's 60 | 78.3% for $1.04 | 76.7% for $220.88 | | 78.3% for $90.20 |
+| Zep's 24 | 87.5% for $1.01 | 83.3% for $220.84 | 58.3% for $697.56 | 91.7% for $90.22 |
 
 Mem0's and Zep's cost is almost all ingestion: each question has its own 500-message history, and building their
 memory of it costs about $0.22 (Mem0) and $0.70 (Zep) on Haiku 5.5.

@@ -14,20 +14,25 @@ The step is paid, server-side and off by default. It is ready only when all of t
 - the ``sarvamai`` and ``pymongo`` packages are installed, and
 - the lease, provider timeout and the function's ``maxDuration`` are consistent.
 
-It runs against the released Core (``llmslim==0.8.1`` from PyPI) and wraps it where 0.8.1 is not
-strict enough for a public endpoint:
+It runs against the released Core (``llmslim==0.9.0`` from PyPI, pinned in ``web/requirements.txt``)
+and adds what a public endpoint needs on top of ``llmslim.hosted``. None of these controls relies on
+0.9.0's own safeguards, so the step also stays safe on an older Core (0.8.x), which had fewer:
 
-- **Spend is bounded by bytes, not estimates.** 0.8.1 counts tokens as characters / 4 without
-  tiktoken, which undercounts dense scripts and emoji by up to ~10x. Every token covers at least one
-  UTF-8 byte, so the byte length of the whole prompt is a hard upper bound on the tokens Sarvam can
-  bill. The request is refused unless that bound fits the input budget and the per-request cost cap.
-  On 0.8.1 the ledger reserves exactly that bound; later Core releases reserve their own exact byte
-  bound of the messages sent, which is never larger (see :func:`request_service`). Settlement
-  refunds to provider-reported usage either way.
+- **Spend is bounded by bytes, not estimates.** Without tiktoken, which the Studio does not install,
+  Core counts tokens as characters / 4, which undercounts dense scripts and emoji by up to ~10x.
+  Every token covers at least one UTF-8 byte, so the byte length of the whole prompt is a hard upper
+  bound on the tokens Sarvam can bill. The request is refused unless that bound fits the input
+  budget and the per-request cost cap. 0.9.0's hosted service then reserves its own, smaller UTF-8
+  byte bound of the exact messages it sends, and refuses a prompt whose bound exceeds this one (see
+  :func:`request_service`); on 0.8.x the ledger reserves this bound itself. Settlement refunds to
+  provider-reported usage either way.
 - **Identity keys on the network.** Quotas, the repeat limiter and concurrency key on the HMAC of
-  the client address (IPv6 truncated to /64), so dropping the session cookie resets nothing.
+  the client address (IPv6 truncated to /64), so dropping the session cookie resets nothing. Core's
+  own combined hash includes the session, and it does not truncate IPv6.
 - **No retries, no redirects.** The Sarvam SDK retries billable POSTs and follows redirects by
-  default; here every call is made once, without redirects, within a lease that outlives it.
+  default. 0.9.0's ``SarvamProvider`` already sends each chat once; this module still forces one
+  attempt (0.8.x did not) and builds its own SDK client, shared per process, that never follows
+  redirects. Every call is made within a lease that outlives it.
 - **Hostile bodies are 4xx, not 500s.** Errors are fixed codes and messages; nothing a visitor sends
   is stored or logged, and provider failures reach Sentry without content.
 """
@@ -103,10 +108,13 @@ MAX_QUESTION_CHARS = 500
 ANSWER_MAX_OUTPUT_TOKENS = 256
 # Input budget for the step, in byte-bound tokens, unless LLMSLIM_SARVAM_MAX_INPUT_TOKENS is set.
 # 16,384 admits about 15 KB of compressed context: ~15,000 characters of English, ~5,000 of
-# Devanagari. At 0.8.1's sarvam-105b prices the worst case is about Rs 0.50 per request.
+# Devanagari. At 0.9.0's sarvam-105b prices (Rs 15 / Rs 60 per million input / output tokens) the
+# worst case, 16,384 input and 256 output tokens, is about Rs 0.26 per request.
 DEFAULT_INPUT_BUDGET_TOKENS = 16_384
 # Bytes the hosted service adds around the context and the question: the system prompt, section
-# labels and planner tags (441 bytes measured on 0.8.1), with room to spare.
+# labels and planner tags (441 bytes measured on 0.8.1 and on 0.9.0), with room to spare. Since
+# 0.9.0 the planner also writes "&lt;" for the "<" of each envelope tag found in untrusted text,
+# 3 more bytes per tag; a prompt that outgrows the allowance that way is refused, not under-reserved.
 FRAMING_BYTES = 1_024
 # Chat-template tokens around the messages, which have no bytes of their own.
 TEMPLATE_TOKENS = 64
@@ -383,6 +391,7 @@ class _GuardedChat:
             raise error
         options = dict(kwargs.pop("request_options", None) or {})
         # sarvamai retries failed POSTs twice by default, honouring Retry-After for up to 60 s.
+        # 0.9.0's SarvamProvider already passes max_retries=0; 0.8.x passed no request options.
         options["max_retries"] = 0
         try:
             return self._chat.completions(**kwargs, request_options=options)
@@ -436,7 +445,10 @@ def _sdk_client(timeout: float) -> Any:
 def make_provider(
     model: str, max_output_tokens: int, timeout_seconds: float, *, prompt_limit: int
 ) -> SarvamProvider:
-    """0.8.1's ``SarvamProvider`` around the shared, guarded SDK client."""
+    """Core's ``SarvamProvider`` around the shared, guarded SDK client.
+
+    Constructed directly rather than with ``from_env()``, so 0.9.0 attaches no in-process
+    ``LLMSLIM_SARVAM_CHAT_*`` guard: the MongoDB ledger is the only spend authority here."""
 
     timeout = min(float(timeout_seconds), MAX_PROVIDER_TIMEOUT_SECONDS)
     return SarvamProvider(
@@ -470,13 +482,16 @@ def request_service(base: HostedSarvamService, reserved: int) -> HostedSarvamSer
 
     It works with both ``llmslim.hosted`` behaviours:
 
-    - 0.8.1 (production today) reserves ``min(max_input_tokens, ceil(planned_tokens *
-      estimate_multiplier))``. Setting both to ``reserved`` makes it reserve exactly ``reserved``
-      for any non-empty plan, and the guarded client refuses to send a prompt above it.
-    - Later Core releases reserve an exact UTF-8 byte bound of the messages they send (smaller
-      than ``reserved``, which allows for more framing), ignore the multiplier, refuse anything
-      above ``max_input_tokens`` with 413, and release the reservation for errors Sarvam returns
-      without billing. The same settings keep every one of those checks within ``reserved``.
+    - 0.9.0 (production) reserves ``sarvam_prompt_token_bound`` of the exact messages it sends:
+      their UTF-8 bytes plus 16 tokens per message. For ordinary text that is 615 below
+      ``reserved`` (441 bytes of framing and 2 x 16 against the 1,024 + 64 allowed here). Before
+      reserving anything it refuses with 413 (``input_too_large``) a prompt whose bound exceeds
+      ``max_input_tokens``, so setting that to ``reserved`` caps the reservation. It ignores
+      ``estimate_multiplier``, and releases the reservation for errors Sarvam returns without
+      billing. The guarded client's own check (bytes + 64) stays as a backstop.
+    - 0.8.x reserves ``min(max_input_tokens, ceil(planned_tokens * estimate_multiplier))``.
+      Setting both to ``reserved`` makes it reserve exactly ``reserved`` for any non-empty plan,
+      and the guarded client refuses to send a prompt above it. The multiplier is set only for it.
     """
 
     config = dataclasses.replace(

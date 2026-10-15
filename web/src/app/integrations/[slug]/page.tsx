@@ -30,7 +30,13 @@ export default async function IntegrationSlugPage({ params }: { params: Promise<
   return <article className="mx-auto max-w-4xl space-y-8 [overflow-wrap:anywhere]"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
     <Button variant="ghost" size="sm" render={<Link href="/integrations" />}><ArrowLeft /> Back to integrations</Button>
     <header className="space-y-4"><div className="flex items-center gap-4"><Card className="p-3"><IntegrationIcon iconKey={item.iconKey} className="size-8" /></Card><div><div className="flex flex-wrap gap-2"><Badge>{item.category}</Badge><Badge variant="outline">{item.badgeText}</Badge></div><h1 className="mt-2 text-4xl font-semibold tracking-tight">LLMSlim + {item.name}</h1></div></div><p className="text-lg text-muted-foreground">{item.tagline}</p><p className="text-muted-foreground">{item.description}</p></header>
-    <Guide title={numbered("Package installation")} icon={Zap}><p className="text-muted-foreground">{item.installNote ?? `Install LLMSlim and the official ${item.name} SDK using your package manager.`}</p><DocCodeBlock language="bash" filename="terminal" code={item.installation.command} /></Guide>
+    <Guide title={numbered(item.setup ? "Installation and setup" : "Package installation")} icon={Zap}><p className="text-muted-foreground">{item.installNote ?? `Install LLMSlim and the official ${item.name} SDK using your package manager.`}</p><DocCodeBlock language="bash" filename="terminal" code={item.installation.command} />
+      {/* Config files and wiring copied from the guide; each block spaces itself like the output block below. */}
+      {item.setup?.map((step) => <div key={step.caption} className="mt-8">
+        <p className="text-muted-foreground">{step.caption}</p>
+        <DocCodeBlock language={step.language} filename={step.filename} code={step.code} />
+      </div>)}
+    </Guide>
     <Guide title={numbered("Architecture & execution flow")} icon={Layers}><Card><CardContent className="space-y-3">{item.architectureFlow.map((step, index) => <div key={step} className="flex gap-3"><Badge variant="secondary">{index + 1}</Badge><p className="text-sm text-muted-foreground">{step}</p></div>)}</CardContent></Card></Guide>
     <Guide title={numbered(item.output ? "Runnable example and its output" : "Production code pattern")} icon={Cpu}>
       <DocCodeBlock language={item.codeExample.language} filename={item.codeExample.filename} code={item.codeExample.code} />

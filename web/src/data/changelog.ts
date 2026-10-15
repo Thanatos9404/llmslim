@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.9.0",
+    date: "15 Oct 2026",
+    theme: "Chat history, selected turn by turn.",
+    summary: "Plain-text transcripts are now selected turn by turn, so a question stays with its answer and no turn is cut in half. New adapters fit agent histories into a token budget in gptme, Hermes Agent and Pydantic AI, and the Sarvam, Exa and Neo4j integrations run behind a usage guard. Measured once on held-out test questions against Mem0, Zep, LLMLingua-2 and LongLLMLingua, cost first.",
+    metrics: ["LoCoMo 84.4% to 87.5% at 1,000 tokens", "93.0% on LoCoMo for $0.95 per 1,000 questions", "gptme, Hermes Agent, Pydantic AI"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.9.0",
+    items: [
+      { label: "Changed", icon: CheckCircle2, title: "Transcripts, turn by turn", body: "Speaker-labelled lines such as \"Caroline: ...\" or \"user: ...\" are each their own unit, a turn that asks a question stays with its reply, and a date stamp shared by the block is shown once. \"How long\" and \"how many\" no longer match text like \"long time no see\"." },
+      { label: "Added", icon: Wrench, title: "Agent-history adapters", body: "A gptme context provider, a Hermes Agent context engine and a Pydantic AI history processor fit an agent's history into a token budget locally, with no model call. Tool calls stay paired with their results." },
+      { label: "Added", icon: CheckCircle2, title: "Sarvam, Exa and Neo4j behind a usage guard", body: "UsageGuard caps rate, requests and spend before a paid call leaves the process. Sarvam gains language tools and a document source, Exa returns web results as untrusted context, and Neo4j keeps temporal agent memory." },
+      { label: "Boundary", icon: ShieldCheck, title: "The provenance envelope cannot be forged", body: "Retrieved, tool and memory text can no longer close or forge the planner's provenance envelope. Trusted content renders byte for byte as before." },
+    ],
+  },
+  {
     version: "v0.8.1",
     date: "12 Oct 2026",
     theme: "Drop it into the framework you already use.",

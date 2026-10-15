@@ -4,8 +4,8 @@ import { join } from "node:path"
 import { RACE } from "@/data/results-story"
 
 /**
- * The share card for /benchmarks, /results and /compare/llmlingua: the NaturalQuestions head-to-head as four bars.
- * Scores and times come from RACE (src/data/results-story.ts), the same data the pages show.
+ * The share card for /benchmarks, /results and /compare/llmlingua: round 3's LoCoMo head-to-head as bars, with what
+ * 1,000 questions cost. Scores and costs come from RACE (src/data/results-story.ts), the same data the pages show.
  *
  * Fonts (assets/og) are static TTF instances of the site's own woff2 files in public/fonts (Geist 400/600,
  * Geist Mono 500, Instrument Serif italic; SIL OFL 1.1), made with fontTools: the image renderer cannot read
@@ -15,16 +15,21 @@ import { RACE } from "@/data/results-story"
 
 export const benchmarkCardSize = { width: 1200, height: 630 }
 
-const [slim, longLingua, lingua2] = RACE.rows
+const locomo = RACE.find((set) => set.key === "locomo")!
+const row = (name: string) => locomo.rows.find((item) => item.name === name)!
+const slim = row("LLMSlim + reranker")
+const mem0 = row("Mem0")
+const zep = row("Zep")
+const longLingua = row("LongLLMLingua")
 
 const percent = (score: number) => `${score.toFixed(1)}%`
-const seconds = (ms: number, digits: number) => `${(ms / 1000).toFixed(digits)} s`
+const dollars = (cost: number) => `$${cost.toFixed(2)}`
 
 export const benchmarkCardAlt =
-  `NaturalQuestions head-to-head, read by Claude Haiku 5.5 at the same ~25% token budget: ` +
-  `LLMSlim 0.8 with its 22M reranker ${percent(slim.all)}, LongLLMLingua ${percent(longLingua.all)}, ` +
-  `LLMLingua-2 ${percent(lingua2.all)}; full context ${percent(RACE.fullAll)}. ` +
-  `300 cases: 100 questions × 3 answer positions.`
+  `LoCoMo, 1,307 held-out questions at about 2,500 tokens, read by Claude Haiku 5.5: ` +
+  `LLMSlim 0.9 with its 22M reranker ${percent(slim.score)} for ${dollars(slim.cost)} per 1,000 questions, ` +
+  `Mem0 ${percent(mem0.score)} for ${dollars(mem0.cost)}, Zep ${percent(zep.score)} for ${dollars(zep.cost)}, ` +
+  `LongLLMLingua ${percent(longLingua.score)} on its 300-question sample; the whole history ${percent(locomo.full.score)}.`
 
 // The site's dark theme tokens (src/app/globals.css, .dark).
 const C = {
@@ -54,10 +59,11 @@ const fonts = Promise.all([
 type Bar = { name: string; model: string; score: number; fill: string; value: string; reference?: boolean }
 
 const bars: Bar[] = [
-  { name: "LLMSlim 0.8 + reranker", model: slim.model, score: slim.all, fill: C.brand, value: C.brand },
-  { name: "LongLLMLingua", model: longLingua.model, score: longLingua.all, fill: C.rival, value: C.ink },
-  { name: "LLMLingua-2", model: lingua2.model, score: lingua2.all, fill: C.rival, value: C.ink },
-  { name: "Full context", model: "every token, for reference", score: RACE.fullAll, fill: "rgba(237,237,234,0.10)", value: C.inkDim, reference: true },
+  { name: "LLMSlim 0.9 + reranker", model: `${dollars(slim.cost)} per 1k`, score: slim.score, fill: C.brand, value: C.brand },
+  { name: "Mem0", model: `${dollars(mem0.cost)} per 1k`, score: mem0.score, fill: C.rival, value: C.ink },
+  { name: "Zep", model: `${dollars(zep.cost)} per 1k`, score: zep.score, fill: C.rival, value: C.ink },
+  { name: "LongLLMLingua", model: `${dollars(longLingua.cost)} per 1k`, score: longLingua.score, fill: C.rival, value: C.ink },
+  { name: "Whole history", model: "every token, for reference", score: locomo.full.score, fill: "rgba(237,237,234,0.10)", value: C.inkDim, reference: true },
 ]
 
 /** The site's mark: five lines of context folding into three, with the kept lines in the accent. */
@@ -99,15 +105,16 @@ export async function benchmarkCard(path: "/benchmarks" | "/results" | "/compare
         <div style={{ display: "flex", flexDirection: "column", width: 440, marginRight: 60 }}>
           <div style={{ display: "flex", alignItems: "center", fontSize: 18, color: C.subtle }}>
             <div style={{ display: "flex", width: 8, height: 8, marginRight: 10, backgroundColor: C.brand }} />
-            NaturalQuestions, 20 passages
+            LoCoMo, long conversations
           </div>
-          <div style={{ display: "flex", marginTop: 18, fontSize: 54, fontWeight: 600, lineHeight: 1.04, letterSpacing: -2.2 }}>Level with LongLLMLingua.</div>
-          <div style={{ display: "flex", marginTop: 4, fontFamily: "Instrument Serif", fontStyle: "italic", fontSize: 62, lineHeight: 1.05, letterSpacing: -1, color: C.inkDim }}>About 100× faster.</div>
-          <div style={{ display: "flex", marginTop: 22, fontSize: 19, color: C.subtle }}>Median time to compress one question</div>
+          <div style={{ display: "flex", marginTop: 18, fontSize: 54, fontWeight: 600, lineHeight: 1.04, letterSpacing: -2.2 }}>Ahead of Mem0 and Zep.</div>
+          <div style={{ display: "flex", marginTop: 4, fontFamily: "Instrument Serif", fontStyle: "italic", fontSize: 62, lineHeight: 1.05, letterSpacing: -1, color: C.inkDim }}>At a third of the cost.</div>
+          <div style={{ display: "flex", marginTop: 22, fontSize: 19, color: C.subtle }}>Cost of 1,000 questions, end to end</div>
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 6, fontFamily: "Geist Mono", fontSize: 22, fontWeight: 500 }}>
-            <span style={{ color: C.brand }}>{seconds(slim.ms, 2)}</span>
+            <span style={{ color: C.brand }}>{dollars(slim.cost)}</span>
             <span style={{ marginLeft: 12, fontFamily: "Geist", fontSize: 19, color: C.subtle }}>against</span>
-            <span style={{ marginLeft: 12, color: C.ink }}>{seconds(longLingua.ms, 1)}</span>
+            <span style={{ marginLeft: 12, color: C.ink }}>{dollars(mem0.cost)}</span>
+            <span style={{ marginLeft: 10, fontFamily: "Geist", fontSize: 19, color: C.subtle }}>for Mem0</span>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
@@ -116,7 +123,7 @@ export async function benchmarkCard(path: "/benchmarks" | "/results" | "/compare
       </div>
 
       <div style={{ display: "flex", paddingTop: 18, borderTop: `1px solid ${C.line}`, fontSize: 17, lineHeight: 1.45, color: C.subtle }}>
-        Reader: Claude Haiku 5.5. 300 cases (100 questions × 3 answer positions). All three compressors held to the same ~25% token budget; full context sends every token.
+        Reader: Claude Haiku 5.5. 1,307 held-out questions at about 2,500 tokens (LongLLMLingua: its 300-question sample). Costs include the model calls that build Mem0&apos;s and Zep&apos;s memory.
       </div>
     </div>,
     { ...benchmarkCardSize, fonts: await fonts },

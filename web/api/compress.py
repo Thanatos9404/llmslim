@@ -1,10 +1,9 @@
 """Same-origin Vercel Function for the live LLMSlim Studio.
 
-The function deliberately imports the repository's ``llmslim`` package rather
-than maintaining a second compression implementation.  When this Next.js app
-is deployed with ``web`` as Vercel's Root Directory, enable *Include source
-files outside of the Root Directory in the Build Step* so the sibling package
-is present in the function bundle.  See ``web/VERCEL_STUDIO_DEPLOYMENT.md``.
+The function imports LLMSlim Core rather than maintaining a second compression
+implementation.  Production installs the released Core from PyPI at the version
+pinned in ``web/requirements.txt``; local runs prefer the sibling source tree.
+See ``web/VERCEL_STUDIO_DEPLOYMENT.md``.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ from typing import Any
 def _add_repository_package_to_path() -> None:
     """Make the repository's LLMSlim package importable in local/Vercel runs."""
 
-    # Production installs the exact repository revision through requirements.txt.
+    # Production installs the released Core from PyPI through requirements.txt.
     # Keep the path lookup for local development, where the sibling source tree is
     # preferred and no package installation is necessary.
     candidates = (

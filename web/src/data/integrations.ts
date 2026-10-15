@@ -9,6 +9,8 @@ export interface IntegrationData {
   codeExample: { language: string; filename: string; code: string }; deploymentGuide: string; optimizationTips: string[]; benchmarks: IntegrationBenchmark[]; faqs: IntegrationFaq[]; troubleshooting: IntegrationTroubleshooting[]; iconKey: string;
   /** Replaces the generic "install LLMSlim and the provider SDK" sentence under the install command. */
   installNote?: string;
+  /** Configuration shown under the install command (config files, plugin files, how to pass the adapter), copied verbatim from docs/integrations/*.md. */
+  setup?: { caption: string; language: string; filename: string; code: string }[];
   /** What codeExample printed when it was run, copied from the run (docs/integrations/*.md); never written by hand. */
   output?: { caption: string; text: string; explanation: string };
   options?: IntegrationOption[];
@@ -41,7 +43,7 @@ const frameworkOptions = (unit: string, metadata: string): IntegrationOption[] =
 ];
 const FRAMEWORK_LIMITS = [
   "Extractive: it keeps or drops whole documents and sentences, copied from the input. It does not shorten or rewrite the sentences it keeps.",
-  "Compression costs some accuracy. On NaturalQuestions at a quarter of the tokens, LLMSlim with its optional reranker scored 78.7% against 89.0% for the full context, read by Claude Haiku 5.5. Measure on your own questions before choosing a ratio.",
+  "Compression costs some accuracy. On NaturalQuestions at a quarter of the tokens, LLMSlim 0.9 with its optional reranker scored 73.5% against 78.4% for the full context on 2,255 held-out questions, read by Claude Haiku 5.5. Measure on your own questions before choosing a ratio.",
   "relevance=\"semantic\" needs pip install \"llmslim[semantic]\" (sentence-transformers) and downloads a 22M-parameter cross-encoder from Hugging Face on first use.",
 ];
 const FRAMEWORK_FAQS: IntegrationFaq[] = [
@@ -57,6 +59,15 @@ const framework = {
     "Keep context_role at \"rag\" for retrieved text: imperative wording inside untrusted documents is never force-kept.",
     "Set record_token_counts=False if downstream code should not see the llmslim_original_tokens and llmslim_compressed_tokens metadata keys.",
   ],
+  benchmarks: [] as IntegrationBenchmark[],
+};
+// Shared by the agent-history adapters below (gptme, Hermes Agent, Pydantic AI; Core 0.9.0).
+const HISTORY_OPTIONS: IntegrationOption[] = [
+  { name: "relevance", defaultValue: "\"lexical\"", meaning: "\"lexical\", \"semantic\" (needs llmslim[semantic]) or a callable scorer(query, texts) -> scores." },
+  { name: "additional_compress_kwargs", defaultValue: "None", meaning: "Other llmslim.ContextCompressor options, for example mode." },
+];
+const agentHistory = {
+  category: "Framework" as const,
   benchmarks: [] as IntegrationBenchmark[],
 };
 export const INTEGRATIONS_REGISTRY: Record<string, IntegrationData> = {
@@ -441,6 +452,401 @@ You can return any item within 30 days of delivery for a full refund. Refunds go
       { label: "Haystack guide on GitHub", href: `${GUIDES}/HAYSTACK.md` },
       { label: "Component source: llmslim/integrations/haystack.py", href: `${siteConfig.github}/blob/main/llmslim/integrations/haystack.py` },
       { label: "LLMSlim vs LLMLingua", href: "/compare/llmlingua" },
+      { label: "Benchmarks", href: "/benchmarks" },
+    ],
+  },
+  // Agent-history adapters (Core 0.9.0). Code, configuration and output are copied verbatim from docs/integrations/*.md,
+  // where the output was recorded from a real run; regenerate them together if the guides change.
+  gptme: {
+    ...agentHistory,
+    slug: "gptme", name: "gptme", iconKey: "gptme", badgeText: "Context provider",
+    tagline: "A gptme context provider for automatic compaction and /compact trim. Older tool output is compressed instead of being replaced by a stub.",
+    description: "LLMSlimContextProvider is a gptme context provider backed by LLMSlim. It keeps the system prompt, the first messages, pinned messages, tool calls and the latest turns exactly as they are, and compresses older tool output and history until the conversation fits gptme's limit. Tool output keeps its failures, tracebacks and line structure. It runs locally, with no model call. Python 3.10+.",
+    installation: { packageManager: "pip", command: `pip install "llmslim[gptme]"   # gptme 0.34 or newer, Python 3.10+; needs llmslim 0.9.0 or newer` },
+    installNote: "The extra installs gptme 0.34 or newer and needs Python 3.10 or newer. Installing llmslim registers two gptme entry points, so there is nothing to import or register yourself. gptme pins mcp<2, while llmslim[mcp] and llmslim[agents] need mcp>=2, so they cannot share an environment; that is also why llmslim[all] does not include gptme.",
+    setup: [
+      {
+        caption: "To make LLMSlim the provider gptme's own compaction uses, turn it on in ~/.config/gptme/config.toml (or in a project's gptme.toml, which overrides the user file key by key):",
+        language: "toml", filename: "config.toml", code: `[plugin.llmslim]
+compaction = true
+# Optional:
+keep_recent = 6      # most recent messages kept verbatim (tool output in them is still capped)
+min_tokens = 200     # shorter messages are never compressed`,
+      },
+    ],
+    architectureFlow: [
+      "Installing llmslim registers the provider through the gptme.context_providers entry point, so get_context_provider(\"llmslim\") and list_providers() find it.",
+      "gptme's automatic compaction and /compact trim always ask for the provider named \"default\". With [plugin.llmslim] compaction = true, the gptme.plugins entry point makes LLMSlim that provider; without it, gptme's own compaction is unchanged.",
+      "compress(messages, config) keeps exactly as they are: the leading system messages, the first config.keep_head messages, pinned messages, assistant messages that contain a tool call or a code block, and the user and assistant messages among the last keep_recent.",
+      "Tool output longer than config.max_tool_result_tokens (2,000 by default) is compressed to that size. If the conversation is still over config.limit (80% of the model's context when gptme passes no limit), the older messages are compressed by one shared ratio.",
+      "If that is not enough, the oldest are replaced by a one-line placeholder, and as a last resort recent tool output is compressed below its cap.",
+      "Messages are never removed or reordered, and role, timestamp, call_id and the other fields are kept. The result is gptme's CompactionResult.",
+    ],
+    codeExample: { language: "python", filename: "gptme_provider.py", code: `from gptme.message import Message
+from gptme.tools.autocompact.context_provider import CompressionConfig, get_context_provider
+
+from llmslim import count_tokens
+
+# 300 lines of test output with one failure, as gptme's shell tool would return it.
+lines = [f"tests/test_api.py::test_case_{i} PASSED" for i in range(300)]
+lines.insert(200, "tests/test_refund.py::test_rounding FAILED - AssertionError: 10.05 != 10.04")
+test_output = "Ran command: \`pytest -q\`\\n" + "\\n".join(lines)
+
+log = [
+    Message("system", "You are gptme, a coding agent.", pinned=True),
+    Message("user", "Fix the failing refund test."),
+    Message("assistant", "Running the tests.\\n\`\`\`shell\\npytest -q\\n\`\`\`"),
+    Message("system", test_output),
+    Message("assistant", "One test fails: test_rounding. Reading refund.py next."),
+    Message("user", "Go ahead."),
+]
+
+provider = get_context_provider("llmslim")  # found through llmslim's entry point
+result = provider.compress(log, CompressionConfig(limit=1000, keep_head=2))
+
+for before, after in zip(log, result.messages):
+    print(f"{before.role:9} {count_tokens(before.content):5} -> {count_tokens(after.content):4} tokens")
+print(result.limitations[0])
+print()
+print(result.messages[3].content)` },
+    output: {
+      caption: "Output (Python 3.12, gptme 0.34.0, token counts from tiktoken):",
+      text: `system       10 ->   10 tokens
+user          6 ->    6 tokens
+assistant    12 ->   12 tokens
+system     3631 ->   91 tokens
+assistant    13 ->   13 tokens
+user          3 ->    3 tokens
+LLMSlim extractive compression: 3,675 -> 135 tokens; budget 1,000; 1 compressed, 0 dropped
+
+Ran command: \`pytest -q\`
+tests/test_api.py::test_case_0 PASSED
+... [198 similar lines]
+tests/test_api.py::test_case_199 PASSED
+tests/test_refund.py::test_rounding FAILED - AssertionError: 10.05 != 10.04
+tests/test_api.py::test_case_200 PASSED
+... [98 similar lines]
+tests/test_api.py::test_case_299 PASSED`,
+      explanation: "gptme stores tool output as system messages. The test output is over gptme's 2,000-token limit for a single tool result, so it is compressed even though it is recent: the failure and its neighbours stay, and the runs of passing tests collapse into a count. This output is a favourable case, because near-identical lines compress very well; prose is compressed only as far as the budget requires. The tool call that produced the output is kept as it is, so the model still sees which command ran.",
+    },
+    options: [
+      { name: "keep_recent", defaultValue: "6", meaning: "Most recent messages kept verbatim (their tool output is still capped)." },
+      { name: "min_tokens", defaultValue: "200", meaning: "Messages with at most this many tokens are not compressed." },
+      ...HISTORY_OPTIONS,
+    ],
+    deploymentGuide: "Install llmslim[gptme] and set compaction = true under [plugin.llmslim] in ~/.config/gptme/config.toml or in a project's gptme.toml. Without it the plugin does nothing and gptme's own compaction is unchanged. /compact summarize is not affected; it still asks the model for a summary. Set options in the same [plugin.llmslim] table, as keyword arguments, or with LLMSlimContextProvider.configured(...), which returns a class for register_provider.",
+    optimizationTips: [
+      "Turn compaction on in a project's gptme.toml when only some projects should use LLMSlim; it overrides the user file key by key.",
+      "Raise keep_recent to keep more of the latest messages verbatim. Tool output in them is still capped at config.max_tool_result_tokens.",
+      "Messages with at most min_tokens tokens are never compressed; raise it to leave more short messages untouched.",
+      "Use LLMSlimContextProvider.configured(...) to build a provider class with your own options for register_provider.",
+    ],
+    limitations: [
+      "Needs llmslim 0.9.0 or newer, gptme 0.34 or newer and Python 3.10 or newer. The 0.9.0 release was tested with gptme 0.34.0.",
+      "gptme pins mcp<2, while LLMSlim's MCP catalog support (llmslim[mcp], llmslim[agents]) needs mcp>=2, so the two cannot share an environment. llmslim[all] does not include gptme.",
+      "gptme imports the plugins of all installed packages at startup unless you keep a [plugins] enabled = [...] allowlist, so with llmslim installed gptme also imports llmslim (and NumPy and scikit-learn) when it starts.",
+      "When compression is not enough, the oldest messages are replaced by a one-line placeholder such as [3,631 tokens of earlier tool output omitted by LLMSlim].",
+    ],
+    faqs: [
+      { question: "Do I need to import or register anything?", answer: "No. Installing llmslim registers two gptme entry points. gptme.context_providers lets get_context_provider(\"llmslim\") and list_providers() find the provider; gptme.plugins makes LLMSlim the provider gptme's own compaction uses when [plugin.llmslim] compaction = true is set." },
+      { question: "Which gptme commands does it change?", answer: "gptme's automatic compaction and /compact trim, which always ask for the provider named \"default\" (gptme's development branch also uses it for context-overflow recovery). /compact summarize is not affected; it still asks the model for a summary." },
+      { question: "Does it call a model?", answer: "No. It runs locally, with no model call. Token counts use llmslim.count_tokens (tiktoken when installed)." },
+      { question: "Why is gptme not in llmslim[all]?", answer: "gptme pins mcp<2, while LLMSlim's MCP catalog support (llmslim[mcp], llmslim[agents]) needs mcp>=2, so the two cannot share an environment." },
+      { question: "Which gptme versions are supported?", answer: "gptme 0.34 or newer, on Python 3.10 or newer. The 0.9.0 release was tested with gptme 0.34.0." },
+    ],
+    troubleshooting: [
+      { issue: "ImportError: llmslim.integrations.gptme requires gptme 0.34 or newer", solution: "Install the extra in the same environment as gptme, on Python 3.10 or newer: pip install \"llmslim[gptme]\". The provider needs llmslim 0.9.0 or newer." },
+      { issue: "gptme's compaction does not use LLMSlim", solution: "Set compaction = true under [plugin.llmslim] in ~/.config/gptme/config.toml or the project's gptme.toml. Without it the plugin does nothing. A project's gptme.toml overrides the user file key by key." },
+      { issue: "pip cannot install llmslim[gptme] together with llmslim[mcp] or llmslim[agents]", solution: "gptme pins mcp<2 and LLMSlim's MCP catalog support needs mcp>=2, so they cannot share an environment. Install them in separate environments." },
+    ],
+    links: [
+      { label: "gptme guide on GitHub", href: `${GUIDES}/GPTME.md` },
+      { label: "Provider source: llmslim/integrations/gptme.py", href: `${siteConfig.github}/blob/main/llmslim/integrations/gptme.py` },
+      { label: "gptme context compression docs", href: "https://gptme.org/docs/context-compression.html" },
+      { label: "Benchmarks", href: "/benchmarks" },
+    ],
+  },
+  "hermes-agent": {
+    ...agentHistory,
+    slug: "hermes-agent", name: "Hermes Agent", iconKey: "hermes-agent", badgeText: "Context engine",
+    tagline: "A Hermes Agent context engine that compresses older turns locally instead of asking a model for a summary, so prompt caches keep hitting.",
+    description: "LLMSlimContextEngine is a Hermes Agent ContextEngine that a plugin puts in place of the built-in context compressor. When the prompt nears the context window it compresses older tool results and turns locally instead of asking a model for a summary. There is no LLM call, the output is deterministic, and the start of the prompt is sent byte for byte the same, so the provider's prompt cache keeps hitting.",
+    installation: { packageManager: "pip", command: `# No extra: install llmslim into the Python environment Hermes runs in.
+# Needs llmslim 0.9.0 or newer.
+uv pip install --python <hermes venv>/bin/python llmslim` },
+    installNote: "There is no llmslim[hermes] extra: current Hermes releases are installed with Hermes's installer, Docker image or Nix (the hermes-agent package on PyPI is an old 0.19 release), and the engine needs nothing beyond llmslim. With llmslim in Hermes's environment (with uv as shown, or Nix extraPythonPackages), Hermes discovers llmslim's hermes_agent.plugins entry point. A managed Hermes install may rebuild its environment on hermes update and drop packages installed by hand.",
+    setup: [
+      {
+        caption: "Or use a directory plugin: create ~/.hermes/plugins/llmslim/ with two files, plugin.yaml and __init__.py. On Hermes 0.21 and newer, its package manager installs the declared python_dependencies when you enable the plugin and keeps them across updates; on older releases, install llmslim into Hermes's environment yourself.",
+        language: "yaml", filename: "plugin.yaml", code: `name: llmslim
+version: 1.0.0
+description: Local context compression with LLMSlim (no LLM call)
+python_dependencies:
+  - "llmslim>=0.9.0,<1"`,
+      },
+      {
+        caption: "__init__.py, in the same directory:",
+        language: "python", filename: "__init__.py", code: `from llmslim.integrations.hermes import register  # noqa: F401`,
+      },
+      {
+        caption: "Then enable the plugin and select the engine in ~/.hermes/config.yaml. hermes plugins enable llmslim does the first part.",
+        language: "yaml", filename: "config.yaml", code: `plugins:
+  enabled: [llmslim]
+context:
+  engine: llmslim`,
+      },
+      {
+        caption: "Optional settings go under the plugin's entry in config.yaml:",
+        language: "yaml", filename: "config.yaml", code: `plugins:
+  entries:
+    llmslim:
+      settings:
+        target_percent: 0.5     # compress to about half the context window
+        protect_last_n: 6`,
+      },
+    ],
+    architectureFlow: [
+      "Hermes loads the engine from llmslim's hermes_agent.plugins entry point or from the directory plugin, and uses it when config.yaml has context.engine: llmslim.",
+      "Hermes builds the engine and tells it the model's context window. should_compress() is true once the prompt reaches threshold_percent (75%) of the window, using the token counts Hermes reports after each response.",
+      "The system prompt, the first protect_first_n other messages and the user and assistant messages among the last protect_last_n are returned as the same objects. System messages and multimodal content are never rewritten.",
+      "The text of the messages in between (tool results, user and assistant text) is compressed by one shared ratio until the prompt is about target_percent (50%) of the window. If that is not enough, the oldest are replaced by a one-line placeholder, and as a last resort tool results among the last protect_last_n are compressed too.",
+      "No message is removed, so every tool call keeps its result. On the next compaction, messages that are exactly what the previous compaction returned are left alone as long as compressing the newer ones is enough, so the cached prefix is sent unchanged.",
+    ],
+    codeExample: { language: "python", filename: "hermes_engine.py", code: `import json
+
+from llmslim import count_tokens
+from llmslim.integrations.hermes import LLMSlimContextEngine
+
+
+def test_output(suite):
+    lines = [f"{suite}/test_api.py::test_case_{i} PASSED" for i in range(300)]
+    lines.insert(200, f"{suite}/test_refund.py::test_rounding FAILED - 10.05 != 10.04")
+    return "\\n".join(lines)
+
+
+def tool_call(call_id, command):
+    arguments = json.dumps({"command": command})
+    return {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {"id": call_id, "type": "function", "function": {"name": "terminal", "arguments": arguments}}
+        ],
+    }
+
+
+messages = [
+    {"role": "system", "content": "You are Hermes, a coding agent."},
+    {"role": "user", "content": "Fix the failing refund test."},
+    tool_call("c1", "pytest -q tests"),
+    {"role": "tool", "tool_call_id": "c1", "content": test_output("tests")},
+    {"role": "assistant", "content": "test_rounding fails. Checking the API suite as well."},
+    tool_call("c2", "pytest -q api"),
+    {"role": "tool", "tool_call_id": "c2", "content": test_output("api")},
+    {"role": "assistant", "content": "Same failure there. Switching refund.py to Decimal."},
+    {"role": "user", "content": "Go ahead."},
+]
+
+# What Hermes does with a plugin engine: build it, tell it the model's window, then compress.
+engine = LLMSlimContextEngine(protect_first_n=1, protect_last_n=2)
+engine.update_model(model="any-model", context_length=8_000)  # threshold 6,000, target 4,000
+print("compress?", engine.should_compress(sum(count_tokens(m["content"] or "") for m in messages)))
+compacted = engine.compress(messages, current_tokens=7_500)  # Hermes's estimate incl. tool schemas
+
+for before, after in zip(messages, compacted):
+    same = "same object" if before is after else "rewritten"
+    tokens = count_tokens(after["content"] or "")
+    print(f"{before['role']:9} {count_tokens(before['content'] or ''):5} -> {tokens:4} tokens  {same}")
+print(engine.last_fit.summary())
+print()
+print(compacted[6]["content"])` },
+    output: {
+      caption: "Output (Python 3.14, Hermes Agent v0.21.7 from GitHub, token counts from tiktoken):",
+      text: `compress? True
+system        8 ->    8 tokens  same object
+user          6 ->    6 tokens  same object
+assistant     0 ->    0 tokens  same object
+tool       3620 ->   80 tokens  rewritten
+assistant    12 ->   12 tokens  same object
+assistant     0 ->    0 tokens  same object
+tool       3620 ->   80 tokens  rewritten
+assistant    11 ->   11 tokens  same object
+user          3 ->    3 tokens  same object
+7,280 -> 200 tokens; budget 3,780; 2 compressed, 0 dropped
+
+api/test_api.py::test_case_0 PASSED
+... [198 similar lines]
+api/test_api.py::test_case_199 PASSED
+api/test_refund.py::test_rounding FAILED - 10.05 != 10.04
+api/test_api.py::test_case_200 PASSED
+... [98 similar lines]
+api/test_api.py::test_case_299 PASSED`,
+      explanation: "Only the two tool results changed; every other message is the same object, and tool_calls and tool_call_id are untouched. The budget is 50% of the window minus the 220 tokens of the request that are not in the messages (Hermes's estimate of 7,500 minus the 7,280 counted here). The test output is a favourable case, because runs of near-identical lines collapse into a count; prose is compressed only as far as the budget requires.",
+    },
+    options: [
+      { name: "threshold_percent", defaultValue: "0.75", meaning: "Compress when the prompt reaches this share of the context window." },
+      { name: "target_percent", defaultValue: "0.5", meaning: "Compress to about this share of the window (must be below threshold_percent)." },
+      { name: "protect_first_n", defaultValue: "3", meaning: "Messages after the system prompt kept verbatim." },
+      { name: "protect_last_n", defaultValue: "6", meaning: "Most recent messages kept verbatim (tool results among them only as a last resort)." },
+      { name: "min_tokens", defaultValue: "200", meaning: "Messages with at most this many tokens are not compressed." },
+      ...HISTORY_OPTIONS,
+    ],
+    deploymentGuide: "Install llmslim into the Python environment Hermes runs in, or use the directory plugin so that Hermes 0.21 and newer installs it and keeps it across updates. Enable the plugin with hermes plugins enable llmslim and select the engine with context.engine: llmslim in ~/.hermes/config.yaml. Options are constructor arguments or go under plugins.entries.llmslim.settings in config.yaml. Hermes gives every agent its own copy of the engine (copy.deepcopy); the engine holds only plain data.",
+    optimizationTips: [
+      "Use /compress <topic> to focus a compaction: the topic is used as the query, so each message keeps the parts about that topic first.",
+      "Keep target_percent below threshold_percent. The engine compresses once the prompt reaches threshold_percent of the window, down to about target_percent.",
+      "Raise protect_first_n or protect_last_n to keep more of the head or the latest turns verbatim. Tool results among the last protect_last_n are compressed only as a last resort.",
+      "Messages with at most min_tokens tokens are not compressed; raise it to leave more short messages untouched.",
+    ],
+    limitations: [
+      "Needs llmslim 0.9.0 or newer, the first release with this engine. The 0.9.0 release was tested with Hermes Agent 0.19.0 (PyPI) and v0.21.7 (GitHub).",
+      "There is no llmslim[hermes] extra. A managed Hermes install may rebuild its environment on hermes update and drop packages installed by hand; the directory plugin keeps its python_dependencies across updates only on Hermes 0.21 and newer.",
+      "The cached prefix is sent unchanged only while compressing the newer messages makes enough room. Otherwise the earlier messages are compressed again.",
+      "When compression is not enough, the oldest messages are replaced by a one-line placeholder.",
+    ],
+    faqs: [
+      { question: "How is it different from Hermes's built-in compressor?", answer: "It compresses older tool results and turns locally instead of asking a model for a summary. There is no LLM call and the output is deterministic." },
+      { question: "Does the provider's prompt cache keep hitting?", answer: "Yes, while compressing the newer messages is enough. The system prompt and the protected head are returned as the same objects, and on the next compaction messages that are exactly what the previous compaction returned are left alone. The cached prefix (system prompt, head and earlier compacted history) is then sent unchanged and only what follows it changes. If the newer messages cannot make enough room, the earlier ones are compressed again." },
+      { question: "Can a tool call lose its result?", answer: "No. No message is removed, so every tool call keeps its result, and tool_calls and tool_call_id are left untouched." },
+      { question: "Why is there no llmslim[hermes] extra?", answer: "Current Hermes releases are installed with Hermes's installer, Docker image or Nix, and the hermes-agent package on PyPI is an old 0.19 release. The engine needs nothing beyond llmslim, so install llmslim into Hermes's environment or use the directory plugin." },
+      { question: "Which Hermes versions was it tested with?", answer: "Hermes Agent 0.19.0 from PyPI and v0.21.7 from GitHub, with llmslim 0.9.0. On Hermes 0.21 and newer, the directory plugin's python_dependencies are installed when you enable the plugin." },
+    ],
+    troubleshooting: [
+      { issue: "ImportError: llmslim.integrations.hermes needs Hermes Agent (agent.context_engine)", solution: "The engine imports from Hermes itself. Install llmslim into the Python environment Hermes runs in, not into a separate one." },
+      { issue: "Hermes still uses its built-in compressor", solution: "Enable the plugin (plugins.enabled: [llmslim], or hermes plugins enable llmslim) and select the engine with context.engine: llmslim in ~/.hermes/config.yaml." },
+      { issue: "The engine is gone after hermes update", solution: "A managed Hermes install may rebuild its environment and drop packages installed by hand. On Hermes 0.21 and newer, use the directory plugin, whose python_dependencies are kept across updates; on older releases, install llmslim into Hermes's environment again." },
+      { issue: "ValueError: need 0 < target_percent < threshold_percent <= 1", solution: "target_percent must be below threshold_percent. Lower target_percent or raise threshold_percent." },
+    ],
+    links: [
+      { label: "Hermes Agent guide on GitHub", href: `${GUIDES}/HERMES.md` },
+      { label: "Engine source: llmslim/integrations/hermes.py", href: `${siteConfig.github}/blob/main/llmslim/integrations/hermes.py` },
+      { label: "Hermes Agent context compression developer guide", href: "https://hermes-agent.nousresearch.com/docs/developer-guide/context-compression-and-caching" },
+      { label: "Benchmarks", href: "/benchmarks" },
+    ],
+  },
+  "pydantic-ai": {
+    ...agentHistory,
+    slug: "pydantic-ai", name: "Pydantic AI", iconKey: "pydantic-ai", badgeText: "History processor",
+    tagline: "A Pydantic AI history processor that fits the message history into a token budget before every model request. Tool calls and returns stay paired.",
+    description: "llmslim_history_processor(max_tokens=...) returns a Pydantic AI history processor. Before every model request it fits the message history into a token budget: older text is compressed by LLMSlim first, and older tool exchanges and turns are removed only when that is not enough. Tool calls and their returns are always kept or removed together, so the provider never sees an unpaired call or return. It runs locally, with no model call. Python 3.10+.",
+    installation: { packageManager: "pip", command: `pip install "llmslim[pydantic-ai]"   # pydantic-ai-slim 1.0 or newer, Python 3.10+; needs llmslim 0.9.0 or newer` },
+    installNote: "The extra installs pydantic-ai-slim 1.0 or newer and needs Python 3.10 or newer. llmslim[all] includes it.",
+    setup: [
+      {
+        caption: "Pydantic AI 2.x (and recent 1.x releases) take the processor in the ProcessHistory capability; earlier 1.x releases take it in history_processors, which recent 1.x releases deprecate and 2.x removed:",
+        language: "python", filename: "agent.py", code: `from pydantic_ai import Agent
+from pydantic_ai.capabilities import ProcessHistory
+
+from llmslim.integrations.pydantic_ai import llmslim_history_processor
+
+fit = llmslim_history_processor(max_tokens=8_000)
+agent = Agent("openai:gpt-5", capabilities=[ProcessHistory(fit)])
+
+# Pydantic AI 1.x without pydantic_ai.capabilities:
+agent = Agent("openai:gpt-5", history_processors=[fit])`,
+      },
+    ],
+    architectureFlow: [
+      "Pass it to an Agent in ProcessHistory(...), or in history_processors on earlier 1.x releases. It runs before each model request.",
+      "System prompt parts, instructions, tool-availability changes and the most recent user prompt are never changed, and nothing is removed from the last keep_recent messages.",
+      "Older text is compressed by one shared ratio: user prompts, model text and string tool results. Tool output and model text are untrusted, so imperative wording in them is never force-kept.",
+      "If that is not enough, older tool exchanges are removed, oldest first (a model response with tool calls together with the request that returns them), then older turns whole, oldest first. The turn with the system prompt is never removed.",
+      "As a last resort, the text in the last keep_recent messages is compressed, for example a very large tool result that just came back.",
+      "A message is removed only together with every message that shares a tool call id with it, so the history still alternates request, response, request. Messages that do not change are passed through as the same objects; the input list is not modified.",
+    ],
+    codeExample: { language: "python", filename: "pydantic_ai_agent.py", code: `from pydantic_ai import Agent
+from pydantic_ai.capabilities import ProcessHistory
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+from llmslim.integrations.pydantic_ai import history_tokens, llmslim_history_processor
+
+
+def run_tests(suite: str) -> str:
+    """Run a test suite and return its output."""
+    lines = [f"{suite}/test_api.py::test_case_{i} PASSED" for i in range(300)]
+    lines.insert(200, f"{suite}/test_refund.py::test_rounding FAILED - 10.05 != 10.04")
+    return "\\n".join(lines)
+
+
+def run(capabilities):
+    sent = []  # history tokens in each request the model receives
+
+    def fake_model(messages, info: AgentInfo) -> ModelResponse:
+        """Stands in for an LLM: runs three test suites, then answers."""
+        sent.append(history_tokens(messages))
+        if len(sent) <= 3:
+            return ModelResponse(parts=[ToolCallPart("run_tests", {"suite": f"suite{len(sent)}"})])
+        return ModelResponse(parts=[TextPart("test_rounding fails in every suite.")])
+
+    agent = Agent(
+        FunctionModel(fake_model),
+        system_prompt="You are a careful test runner.",
+        tools=[run_tests],
+        capabilities=capabilities,
+    )
+    result = agent.run_sync("Run the test suites and tell me what fails.")
+    return result, sent
+
+
+_, plain = run([])
+result, slim = run([ProcessHistory(llmslim_history_processor(max_tokens=1_000))])
+print(result.output)
+print("history tokens per request without LLMSlim:", plain)
+print("history tokens per request with LLMSlim:   ", slim)
+print()
+print(result.all_messages()[2].parts[0].content)` },
+    output: {
+      caption: "Output (Python 3.12 with pydantic-ai-slim 2.55.0, and Python 3.10 with 1.107.7 passing the processor in history_processors; token counts from tiktoken):",
+      text: `test_rounding fails in every suite.
+history tokens per request without LLMSlim: [17, 3946, 7875, 11804]
+history tokens per request with LLMSlim:    [17, 110, 203, 296]
+
+suite1/test_api.py::test_case_0 PASSED
+... [198 similar lines]
+suite1/test_api.py::test_case_199 PASSED
+suite1/test_refund.py::test_rounding FAILED - 10.05 != 10.04
+suite1/test_api.py::test_case_200 PASSED
+... [98 similar lines]
+suite1/test_api.py::test_case_299 PASSED`,
+      explanation: "An agent runs three test suites, once without LLMSlim and once with it; FunctionModel stands in for the LLM, so the example runs offline. Every tool result stays in the history, paired with its call, and keeps the failure. The history ends far below the 1,000-token budget because runs of near-identical lines collapse into a count; this is a favourable case. Prose is compressed only as far as the budget requires.",
+    },
+    options: [
+      { name: "max_tokens", defaultValue: "required", meaning: "Token budget for the history." },
+      { name: "keep_recent", defaultValue: "2", meaning: "Most recent messages never removed and compressed only as a last resort (at least 1)." },
+      { name: "min_tokens", defaultValue: "50", meaning: "Parts with at most this many tokens are not compressed." },
+      ...HISTORY_OPTIONS,
+    ],
+    deploymentGuide: "Pass the processor in ProcessHistory(...) on Pydantic AI 2.x and recent 1.x releases, or in history_processors on earlier 1.x releases. max_tokens counts the text of all message parts with llmslim.count_tokens; the instructions and tool definitions Pydantic AI adds to each request are not part of the history and are not counted. Pydantic AI stores the processed history, so result.all_messages() holds the compressed messages: keep your own copy if you need the originals.",
+    optimizationTips: [
+      "Measure a history with history_tokens(messages); it gives the same count that max_tokens uses.",
+      "Use fit_messages(messages, max_tokens, ...) for logging or tests: it does the same and also returns the token counts (HistoryFit).",
+      "Raise keep_recent to protect more of the latest messages: they are never removed and are compressed only as a last resort.",
+      "Parts with at most min_tokens tokens are not compressed; raise it to leave more short parts untouched.",
+    ],
+    limitations: [
+      "Needs llmslim 0.9.0 or newer, pydantic-ai-slim 1.0 or newer and Python 3.10 or newer. The 0.9.0 release was tested with pydantic-ai-slim 1.0.0, 1.107.7 and 2.55.0.",
+      "max_tokens covers the message history only. The instructions and tool definitions Pydantic AI adds to each request are not counted.",
+      "Pydantic AI stores the processed history, so result.all_messages() holds the compressed messages, not the originals.",
+      "When compression is not enough, older tool exchanges and turns are removed whole. If the protected parts alone exceed the budget, the processor returns the smallest valid history it can rather than an invalid one.",
+    ],
+    faqs: [
+      { question: "Can the provider see a tool call without its return?", answer: "No. Tool calls and their returns are always kept or removed together. A message is removed only together with every message that shares a tool call id with it, so a call answered several requests later is never orphaned, and the history still alternates request, response, request." },
+      { question: "ProcessHistory or history_processors?", answer: "Pydantic AI 2.x and recent 1.x releases take the processor in the ProcessHistory capability. Earlier 1.x releases, without pydantic_ai.capabilities, take it in history_processors, which recent 1.x releases deprecate and 2.x removed." },
+      { question: "What does max_tokens count?", answer: "The text of all message parts, counted with llmslim.count_tokens; history_tokens(messages) gives the same count. The instructions and tool definitions Pydantic AI adds to each request are not part of the history and are not counted." },
+      { question: "Does it call a model?", answer: "No. It runs locally, with no model call. In the example, FunctionModel stands in for the LLM, so the whole run is offline." },
+      { question: "Which Pydantic AI versions are supported?", answer: "pydantic-ai-slim 1.0 or newer, on Python 3.10 or newer. The 0.9.0 release was tested with pydantic-ai-slim 1.0.0, 1.107.7 and 2.55.0." },
+    ],
+    troubleshooting: [
+      { issue: "ImportError: llmslim.integrations.pydantic_ai requires the optional extra", solution: "Install the extra on Python 3.10 or newer: pip install \"llmslim[pydantic-ai]\". The module is llmslim.integrations.pydantic_ai; the extra is pydantic-ai." },
+      { issue: "No module named pydantic_ai.capabilities", solution: "Earlier Pydantic AI 1.x releases have no ProcessHistory capability. Pass the processor in history_processors=[fit] instead." },
+      { issue: "history_processors is deprecated or no longer accepted", solution: "Recent 1.x releases deprecate history_processors and 2.x removed it. Pass ProcessHistory(fit) in capabilities instead." },
+      { issue: "result.all_messages() returns compressed messages", solution: "Pydantic AI stores the processed history. Keep your own copy of the messages if you need the originals." },
+    ],
+    links: [
+      { label: "Pydantic AI guide on GitHub", href: `${GUIDES}/PYDANTIC_AI.md` },
+      { label: "Processor source: llmslim/integrations/pydantic_ai.py", href: `${siteConfig.github}/blob/main/llmslim/integrations/pydantic_ai.py` },
+      { label: "Pydantic AI message history docs", href: "https://pydantic.dev/docs/ai/core-concepts/message-history/" },
       { label: "Benchmarks", href: "/benchmarks" },
     ],
   },

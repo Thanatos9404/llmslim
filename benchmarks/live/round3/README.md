@@ -108,7 +108,9 @@ Each difference is in their favour or is forced by this benchmark's rules (one m
   Mem0's harness) counted and skipped them. The failed adds were found in the log and rebuilt in order on top of the
   adds that had succeeded; questions with no successful add were rebuilt from scratch. The runner now retries
   failed adds on a rerun and stops on GPU errors. Stopping a run once left one question's checkpoint half written;
-  that question was rebuilt from scratch, and checkpoints are now written to a temporary file and swapped in. One extraction reply in all of Mem0's LongMemEval runs could not
+  that question was rebuilt from scratch, and checkpoints are now written to a temporary file and swapped in. One
+  history has a turn too long for the 6 GB GPU's attention memory; its remaining adds ran with Mem0's embedder on
+  the CPU (`MEM0_EMBED_DEVICE=cpu`, the same model in full precision). One extraction reply in all of Mem0's LongMemEval runs could not
   be parsed and is counted.
 - **Zep, LongMemEval.** Neo4j (and WSL with it) crashed once, and a later run ran out of GPU memory because an empty
   `CUDA_VISIBLE_DEVICES` does not reach a Windows process. Each time, every question that had not finished was

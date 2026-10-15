@@ -33,6 +33,12 @@ MODEL = "claude-haiku-5-5"
 EMBEDDER = "Qwen/Qwen3-Embedding-0.6B"
 TOP_K = 200
 MAX_TOKENS = 8192
+# MEM0_EMBED_DEVICE=cpu for a history whose longest turn does not fit a small GPU's attention memory.
+EMBED_KWARGS = (
+    {"device": "cpu"}
+    if os.environ.get("MEM0_EMBED_DEVICE") == "cpu"
+    else {"device": "cuda", "model_kwargs": {"torch_dtype": "float16"}}
+)
 LOCAL = threading.local()
 WRITE = threading.Lock()
 
@@ -109,7 +115,7 @@ def memory_for(store: Path, qid: str):
                 "config": {
                     "model": EMBEDDER,
                     "embedding_dims": 1024,
-                    "model_kwargs": {"device": "cuda", "model_kwargs": {"torch_dtype": "float16"}},
+                    "model_kwargs": EMBED_KWARGS,
                 },
             },
             "vector_store": {

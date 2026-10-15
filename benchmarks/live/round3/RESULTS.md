@@ -66,26 +66,48 @@ sample) at a quarter of its cost; on HotpotQA the default LLMSlim (52.4%) beats 
   significant with 180 questions, but both point the same way. On the dev questions RAG keeps 95% of the labelled
   evidence turns at 2,500 tokens and LLMSlim 83-85%, and giving LLMSlim the same embedding model as its relevance
   scorer (its `relevance=` accepts any scorer) does not close that gap (84.5%), so the difference is in how LLMSlim
-  cuts and packs long turns, not in how it scores them. That is the next thing to work on. If a history is embedded
-  once and asked many questions, RAG's cost falls further.
+  cuts and packs long turns, not in how it scores them. A fix found that way (v4, below) helped on dev but not on
+  test, so it was not shipped and the gap stays open. If a history is embedded once and asked many questions, RAG's
+  cost falls further.
 - **LongMemEval under Mem0's more lenient judge.** The full history answers 95.0% to LLMSlim's 89.4% (reranker,
   2,500 tokens); under the official judge they are level.
 
 ## LLMSlim versions
 
-Three versions are reported (README.md has the rules): the release before this round, **v2** (turn-by-turn
-transcripts, frozen before any test result was read) and **v3** (v2 plus chained rounds and quantity words, chosen on
-dev only after v2's first test numbers). On LoCoMo v2 lifted the release from 84.4% to 87.5% at 1,000 tokens and
-v3 is identical to v2 at every budget; on LongMemEval v3 adds 1.7 points to v2 at both budgets (official judge).
-The `-nltk` rows are the `llmslim[nlp]` install, read from earlier local builds; they differ from the default
-install by less than a point.
+Four versions are reported (README.md has the rules): the release before this round, **v2** (turn-by-turn
+transcripts, frozen before any test result was read), **v3** (v2 plus chained rounds and quantity words, chosen on
+dev only after v2's first test numbers) and **v4** (below). v3 is the version llmslim 0.9.0 ships. On LoCoMo v2
+lifted the release from 84.4% to 87.5% at 1,000 tokens and v3 is identical to v2 at every budget; on LongMemEval v3
+adds 1.7 points to v2 at both budgets (official judge). The `-nltk` rows are the `llmslim[nlp]` install, read from
+earlier local builds; they differ from the default install by less than a point.
+
+**v4, tried and not shipped.** After every other result here had been read, the LongMemEval gap to RAG was
+diagnosed on dev questions only. A message containing a blank line (a markdown answer, a pasted note) ended the
+transcript there: its later paragraphs lost their speaker and date, and the turns after it lost their shared date
+header. v4 (#51) keeps such messages whole. On 146 stratified LongMemEval dev questions it lifted LLMSlim with its
+reranker from 80.1% to 81.5% at 2,500 tokens and from 81.5% to 86.3% at 10,000 (the default mode from 80.1% to
+80.8% and from 82.9% to 83.6%). It was to ship only if it also held on test, where it was read once, after the merge:
+
+| LongMemEval-S test, official judge | v3 | v4 | v4 minus v3 (paired, 95% interval) |
+|---|---:|---:|---|
+| Default, 2,500 tokens | 70.6% | 73.9% | +3.3 (-1.7 to +8.3) |
+| Default, 10,000 tokens | 77.8% | 75.6% | -2.2 (-7.8 to +3.9) |
+| With the reranker, 2,500 tokens | 74.4% | 72.2% | -2.2 (-7.8 to +3.3) |
+| With the reranker, 10,000 tokens | 74.4% | 72.2% | -2.2 (-8.3 to +3.9) |
+
+On LoCoMo v4 is level with v3 (default 87.3%, 91.7% and 94.6% against 87.5%, 91.7% and 94.3%; with the reranker
+90.4% and 92.7% against 90.5% and 93.0%). No difference is significant and RAG is still ahead at 10,000 tokens, so
+#52 reverted v4 before the release. Its rows are in the last tables, kept apart so they do not change the cost
+frontier of the others, and its dev evidence is in `results/dev/*_v4*`. For scale: on the 1,526 LoCoMo questions
+where v3 and v4 sent byte-identical contexts, the reader and judge gave a different verdict 2% of the time.
 
 ## Spend
 
-Round 3 cost $97.57 in Claude API calls, as billed: every reader and judge call, Mem0's and Zep's ingestion, the
-discarded and crashed runs described in README.md, and the dev checks (the ledger for every round so far stands at
-$127.30, under the $150 cap). Batch calls were billed at half price; the tables count every answer at the list
-price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and the benchmark machine.
+Round 3 cost $107.10 in Claude API calls, as billed: every reader and judge call, Mem0's and Zep's ingestion, the
+discarded and crashed runs described in README.md, and the dev checks, including $9.53 for v4 ($4.80 on dev, $4.73
+on test). The ledger for every round so far stands at $136.83, under the $225 cap. Batch calls were billed at half
+price; the tables count every answer at the list price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and
+the benchmark machine.
 
 ---
 
@@ -94,9 +116,9 @@ price. Compute ran on free Kaggle notebooks (CPU and T4 GPUs) and the benchmark 
 Columns: accuracy with a 95% bootstrap interval; the paired difference from the reference LLMSlim arm on the
 questions both answered; mean context tokens (tiktoken cl100k_base); median build time on the machine it ran on
 (LLMSlim's lexical arms, the v2/v3 reranker arms and the full/recent/order baselines on Kaggle's CPU; the
-LLMLingua family, RAG, the plain reranker and the release reranker arms on Kaggle's T4s; Mem0's and Zep's search on
-the benchmark machine); reader cost per 1,000 questions as run and with no cache; memory ingestion plus build compute
-per 1,000 questions; total; total per 1,000 correct answers; and the cost frontier.
+LLMLingua family, RAG, the plain reranker and the release and v4 reranker arms on Kaggle's T4s; Mem0's and Zep's
+search on the benchmark machine); reader cost per 1,000 questions as run and with no cache; memory ingestion plus
+build compute per 1,000 questions; total; total per 1,000 correct answers; and the cost frontier.
 
 ## LoCoMo, about 1,000 tokens
 | Arm | n | score (95% CI) | vs llmslim-v3_1000 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
@@ -286,4 +308,62 @@ per 1,000 questions; total; total per 1,000 correct answers; and the cost fronti
 | mem0_top200 | 24 | 87.5 (70.8-100.0) | -4.2 (-12.5, +0.0), n=24 | 11,348 | 976 | 2.36 | 2.36 | 218.48 | 220.84 | 252.39 |  |
 | mem0_top50 | 24 | 87.5 (75.0-100.0) | -4.2 (-16.7, +8.3), n=24 | 2,844 | 976 | 1.00 | 1.00 | 218.48 | 219.48 | 250.83 |  |
 | zep | 24 | 70.8 (54.2-87.5) | -20.8 (-41.7, +0.0), n=24 | 2,053 | 20,718 | 0.85 | 0.85 | 696.71 | 697.56 | 984.79 |  |
+
+## LLMSlim v4 (not shipped), LoCoMo, about 1,000 tokens
+| Arm | n | score (95% CI) | vs llmslim-v3_1000 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| llmslim_rr-v3_1000 | 1307 | 90.5 (88.9-92.0) | +3.1 (+1.7, +4.5), n=1307 | 994 | 1,564 | 0.67 | 0.67 | 0.04 | 0.70 | 0.78 | as run, no cache |
+| llmslim_rr-v4_1000 | 1307 | 90.4 (88.7-92.0) | +3.0 (+1.5, +4.5), n=1307 | 993 | 155 | 0.66 | 0.66 | 0.02 | 0.69 | 0.76 | as run, no cache |
+| llmslim-v3_1000 | 1307 | 87.5 (85.7-89.1) |  | 994 | 110 | 0.66 | 0.66 | 0.00 | 0.67 | 0.76 | as run, no cache |
+| llmslim-v4_1000 | 1307 | 87.3 (85.5-89.1) | -0.2 (-1.1, +0.8), n=1307 | 993 | 84 | 0.66 | 0.66 | 0.00 | 0.66 | 0.76 | as run, no cache |
+
+## LLMSlim v4 (not shipped), LoCoMo, about 2,500 tokens
+| Arm | n | score (95% CI) | vs llmslim-v3_2500 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| llmslim_rr-v3_2500 | 1307 | 93.0 (91.5-94.3) | +1.2 (+0.2, +2.3), n=1307 | 2,495 | 2,360 | 0.90 | 0.90 | 0.06 | 0.95 | 1.03 | as run, no cache |
+| llmslim_rr-v4_2500 | 1307 | 92.7 (91.3-94.1) | +1.0 (-0.1, +2.1), n=1307 | 2,495 | 197 | 0.89 | 0.89 | 0.03 | 0.92 | 0.99 | as run, no cache |
+| llmslim-v3_2500 | 1307 | 91.7 (90.3-93.3) |  | 2,492 | 103 | 0.89 | 0.89 | 0.00 | 0.89 | 0.97 | as run, no cache |
+| llmslim-v4_2500 | 1307 | 91.7 (90.2-93.1) | -0.1 (-0.9, +0.7), n=1307 | 2,492 | 83 | 0.89 | 0.89 | 0.00 | 0.89 | 0.98 |  |
+
+## LLMSlim v4 (not shipped), LoCoMo, about 10,000 tokens
+| Arm | n | score (95% CI) | vs llmslim-v3_10000 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| llmslim-v4_10000 | 1307 | 94.6 (93.3-95.7) | +0.3 (-0.6, +1.2), n=1307 | 9,998 | 85 | 2.02 | 2.02 | 0.00 | 2.02 | 2.14 | as run, no cache |
+| llmslim-v3_10000 | 1307 | 94.3 (93.0-95.6) |  | 9,997 | 111 | 2.02 | 2.02 | 0.00 | 2.02 | 2.14 | as run, no cache |
+
+## LLMSlim v4 (not shipped), LongMemEval-S, about 2,500 tokens (score)
+| Arm | n | score (95% CI) | vs llmslim-v3_2500 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| rag_2500 | 180 | 76.1 (70.0-82.2) | +5.6 (-1.7, +12.8), n=180 | 2,473 | 16,076 | 0.94 | 0.94 | 2.37 | 3.32 | 4.36 | as run, no cache |
+| llmslim_rr-v3_2500 | 180 | 74.4 (67.8-80.6) | +3.9 (-2.2, +8.9), n=180 | 2,501 | 3,405 | 0.96 | 0.96 | 0.09 | 1.05 | 1.41 | as run, no cache |
+| llmslim-v4_2500 | 180 | 73.9 (67.2-80.0) | +3.3 (-1.7, +8.3), n=180 | 2,498 | 463 | 0.96 | 0.96 | 0.01 | 0.97 | 1.31 | as run, no cache |
+| llmslim_rr-v4_2500 | 180 | 72.2 (65.6-78.9) | +1.7 (-4.4, +7.8), n=180 | 2,498 | 595 | 0.96 | 0.96 | 0.09 | 1.06 | 1.46 |  |
+| llmslim-v3_2500 | 180 | 70.6 (63.3-76.7) |  | 2,501 | 562 | 0.96 | 0.96 | 0.01 | 0.98 | 1.38 |  |
+
+## LLMSlim v4 (not shipped), LongMemEval-S, about 10,000 tokens (score)
+| Arm | n | score (95% CI) | vs llmslim-v3_10000 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| rag_10000 | 180 | 80.6 (74.4-86.1) | +2.8 (-3.3, +8.9), n=180 | 9,912 | 16,125 | 2.09 | 2.09 | 2.37 | 4.45 | 5.53 | as run, no cache |
+| llmslim-v3_10000 | 180 | 77.8 (71.7-83.9) |  | 10,008 | 514 | 2.12 | 2.12 | 0.01 | 2.13 | 2.74 | as run, no cache |
+| llmslim-v4_10000 | 180 | 75.6 (68.9-82.2) | -2.2 (-7.8, +3.9), n=180 | 9,993 | 393 | 2.14 | 2.14 | 0.01 | 2.15 | 2.84 |  |
+| llmslim_rr-v3_10000 | 180 | 74.4 (68.3-80.6) | -3.3 (-8.9, +2.2), n=180 | 10,007 | 3,725 | 2.11 | 2.11 | 0.09 | 2.21 | 2.97 |  |
+| llmslim_rr-v4_10000 | 180 | 72.2 (65.0-78.3) | -5.6 (-11.7, +0.6), n=180 | 9,993 | 546 | 2.13 | 2.13 | 0.08 | 2.21 | 3.07 |  |
+
+## LLMSlim v4 (not shipped), LongMemEval-S, about 2,500 tokens (score_mem0_judge)
+| Arm | n | score_mem0_judge (95% CI) | vs llmslim-v3_2500 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| rag_2500 | 180 | 92.2 (87.8-96.1) | +9.4 (+4.4, +14.4), n=180 | 2,473 | 16,076 | 0.94 | 0.94 | 2.37 | 3.32 | 3.60 | as run, no cache |
+| llmslim_rr-v3_2500 | 180 | 89.4 (85.0-93.3) | +6.7 (+3.3, +10.6), n=180 | 2,501 | 3,405 | 0.96 | 0.96 | 0.09 | 1.05 | 1.17 | as run, no cache |
+| llmslim_rr-v4_2500 | 180 | 85.6 (80.6-90.6) | +2.8 (-1.7, +7.2), n=180 | 2,498 | 595 | 0.96 | 0.96 | 0.09 | 1.06 | 1.24 |  |
+| llmslim-v4_2500 | 180 | 83.9 (78.3-88.9) | +1.1 (-2.8, +5.0), n=180 | 2,498 | 463 | 0.96 | 0.96 | 0.01 | 0.97 | 1.16 | as run, no cache |
+| llmslim-v3_2500 | 180 | 82.8 (77.2-88.3) |  | 2,501 | 562 | 0.96 | 0.96 | 0.01 | 0.98 | 1.18 |  |
+
+## LLMSlim v4 (not shipped), LongMemEval-S, about 10,000 tokens (score_mem0_judge)
+| Arm | n | score_mem0_judge (95% CI) | vs llmslim-v3_10000 (paired, 95% CI) | Context tokens | Build ms (median) | Reader $/1k as run | Reader $/1k no cache | Memory + compute $/1k | Total $/1k as run | $ per 1k correct | Cost frontier |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| rag_10000 | 180 | 93.3 (89.4-96.7) | +4.4 (+0.0, +9.4), n=180 | 9,912 | 16,125 | 2.09 | 2.09 | 2.37 | 4.45 | 4.77 | as run, no cache |
+| llmslim-v4_10000 | 180 | 89.4 (85.0-93.9) | +0.6 (-2.8, +3.9), n=180 | 9,993 | 393 | 2.14 | 2.14 | 0.01 | 2.15 | 2.40 | as run, no cache |
+| llmslim-v3_10000 | 180 | 88.9 (84.4-93.3) |  | 10,008 | 514 | 2.12 | 2.12 | 0.01 | 2.13 | 2.40 | as run, no cache |
+| llmslim_rr-v4_10000 | 180 | 88.9 (83.9-93.3) | +0.0 (-3.9, +3.9), n=180 | 9,993 | 546 | 2.13 | 2.13 | 0.08 | 2.21 | 2.49 |  |
+| llmslim_rr-v3_10000 | 180 | 86.7 (81.7-91.7) | -2.2 (-5.6, +0.6), n=180 | 10,007 | 3,725 | 2.11 | 2.11 | 0.09 | 2.21 | 2.55 |  |
 

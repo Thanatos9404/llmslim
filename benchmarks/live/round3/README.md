@@ -22,11 +22,15 @@ Earlier rounds were criticised on three points, and this round answers each:
   `2110c3e`, before any round-3 model call. Later additions (Zep's LongMemEval sample) were also committed before any
   result they could affect, and none of them changed an earlier split.
 - **Tuning used dev only.** LoCoMo conversations 0-1, the LongMemEval dev questions, and the earlier NQ and HotpotQA
-  dev questions. Round 3 made two LLMSlim changes, both chosen and checked there:
+  dev questions. Round 3 made three LLMSlim changes, all chosen and checked there:
   - **v2**, turn-by-turn transcripts (PR #48), frozen and merged before any test result was read;
   - **v3**, chained transcript rounds and quantity words (PR #49), made after v2's first test numbers had been read,
-    but chosen on dev evidence alone (no test data was used to pick or tune it).
-  Every version is reported: the release (`e607cbd`), v2 and v3. The `llmslim_v23` build makes v2 from the v3 code
+    but chosen on dev evidence alone (no test data was used to pick or tune it);
+  - **v4**, messages with blank lines stay whole in transcripts (PR #51), made after every other round-3 test result
+    had been read, to close the LongMemEval gap to RAG. Its cause was found and the change chosen on 146 stratified
+    LongMemEval dev questions and LoCoMo dev (`results/dev/*_v4*`); the test set was read once, after the merge.
+    It did not hold up there, and #52 reverted it before the 0.9.0 release, which ships v3.
+  Every version is reported: the release (`e607cbd`), v2, v3 and v4. The `llmslim_v23` build makes v2 from the v3 code
   with #49's two switches off (`--off CHAINED_ROUNDS QUANTITY_TERMS`); that reproduces v2's output byte for byte
   (3,921 of 3,921 LoCoMo test contexts checked).
 - **Both LLMSlim configurations are reported:** lexical (the default, no model) and with its optional 22M reranker.
@@ -61,7 +65,7 @@ Every other arm's local build matched its Kaggle build byte for byte.
 
 | System | Version | How it ran |
 |---|---|---|
-| LLMSlim | release `e607cbd`; v2 `0accc73` (#48); v3 `851190d` (#49) | `compress_documents(sessions or passages, query=question, target_ratio)`; `relevance="semantic"` for the reranker variant (`cross-encoder/ms-marco-MiniLM-L-6-v2`) |
+| LLMSlim | release `e607cbd`; v2 `0accc73` (#48); v3 `851190d` (#49); v4 `89a1b13` (#51) | `compress_documents(sessions or passages, query=question, target_ratio)`; `relevance="semantic"` for the reranker variant (`cross-encoder/ms-marco-MiniLM-L-6-v2`) |
 | Mem0 OSS | mem0ai 2.2.1 with spaCy and fastembed (BM25) | Mem0's harness (`mem0ai/memory-benchmarks@4b61c5d`): one LoCoMo turn per `add()`, a user/assistant pair per `add()` on LongMemEval, `search(top_k=200)`; read at top 20, 50 and 200 |
 | Zep (Graphiti) | graphiti-core 0.30.2 on Neo4j 2026.09 | Zep's harness (`getzep/zep-papers`): each LoCoMo message an episode; each LongMemEval session an episode; 20 facts (cross-encoder) and 20 entities (RRF) in Zep's own context template |
 | LLMLingua-2 | llmlingua 0.2.2, `microsoft/llmlingua-2-xlm-roberta-large-meetingbank` | held to the same token budget (`target_token`) |
@@ -103,7 +107,9 @@ Each difference is in their favour or is forced by this benchmark's rules (one m
 - **Kaggle.** The `llmslim_v2` job built every file but failed to package them on a CPU machine (no `nvidia-smi`);
   `llmslim_v23` rebuilt them and added v3. The `lme` job ran out of GPU memory embedding long turns for its RAG arm;
   `lme2` reran its non-LLMSlim arms with smaller batches (LLMSlim's LongMemEval arms come from `llmslim_v23`). The
-  failed runs stay visible on Kaggle.
+  failed runs stay visible on Kaggle. `llmslim_v4` built v4 on LoCoMo and LongMemEval only: the change touches
+  only speaker-labelled transcripts, and v4's lexical NQ and HotpotQA contexts are byte-identical to v3's on every
+  test question.
 - **Mem0, LongMemEval.** A run lost its GPU to memory pressure, after which every add failed and the runner (as in
   Mem0's harness) counted and skipped them. The failed adds were found in the log and rebuilt in order on top of the
   adds that had succeeded; questions with no successful add were rebuilt from scratch. The runner now retries
@@ -122,7 +128,7 @@ Each difference is in their favour or is forced by this benchmark's rules (one m
 
 ## Reproduce
 
-1. Builds: the public Kaggle notebooks `kaggle_round3_main`, `_longlingua`, `_llmslim_v23` and `_lme2`
+1. Builds: the public Kaggle notebooks `kaggle_round3_main`, `_longlingua`, `_llmslim_v23`, `_lme2` and `_llmslim_v4`
    (`kaggle_run.py setup|data|build|package` on any Linux machine; a GPU for the model-based arms). Each output zip
    carries a manifest with the commit, machine, package versions and the sha256 of every input and output.
 2. Memory systems: `meter_proxy.py`, then `mem0_locomo.py`, `zep_locomo.py`, `mem0_lme.py`, `zep_lme.py` (Neo4j for Zep).

@@ -60,10 +60,14 @@ sample) at a quarter of its cost; on HotpotQA the default LLMSlim (52.4%) beats 
   (95.1% for $0.83) is cheaper than LLMSlim at 10,000 tokens ($2.02) and more accurate than every compressed context.
   LLMSlim is the cheaper choice when the context changes between questions, when questions arrive too far apart for
   the cache, or when the history is long enough to be billed at the long-prompt rate (LongMemEval).
-- **LongMemEval against dense retrieval.** RAG over turns beats LLMSlim at both budgets: 80.6% vs 77.8% at
-  10,000 tokens, 76.1% vs 74.4% (LLMSlim with its reranker) at 2,500, at about twice the cost per question. In
-  500-message histories LLMSlim's lexical candidates, which its reranker only rescores, miss turns that an embedding
-  model finds. If a history is embedded once and asked many questions, RAG's cost falls further.
+- **LongMemEval against dense retrieval.** RAG over turns is ahead of LLMSlim at both budgets: 80.6% vs 77.8% at
+  10,000 tokens (paired difference 2.8 points, 95% interval -3.3 to +8.9) and 76.1% vs 74.4% (LLMSlim with its
+  reranker) at 2,500 (1.7 points, -4.4 to +7.2), at about twice the cost per question. Neither difference is
+  significant with 180 questions, but both point the same way. On the dev questions RAG keeps 95% of the labelled
+  evidence turns at 2,500 tokens and LLMSlim 83-85%, and giving LLMSlim the same embedding model as its relevance
+  scorer (its `relevance=` accepts any scorer) does not close that gap (84.5%), so the difference is in how LLMSlim
+  cuts and packs long turns, not in how it scores them. That is the next thing to work on. If a history is embedded
+  once and asked many questions, RAG's cost falls further.
 - **LongMemEval under Mem0's more lenient judge.** The full history answers 95.0% to LLMSlim's 89.4% (reranker,
   2,500 tokens); under the official judge they are level.
 

@@ -89,6 +89,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp<2`, which conflicts with the `mcp` extra.
 
 ### Changed
+- **Messages with blank lines stay whole in transcripts.** A transcript turn
+  that spans several paragraphs (a markdown answer, a pasted note) used to end
+  the transcript at its first blank line: the rest of the message became
+  separate paragraphs without its speaker or date, and the next turns lost the
+  shared date header and their question-and-reply pairing. Now a dialogue block
+  continues across blank lines (when at least two speakers take turns and one
+  speaks more than once, so prose with "Note:" lines is handled as before), and
+  in a question-and-reply pair too long to keep together, each turn stays whole
+  up to three units instead of being cut into fragments. Switches:
+  `TRANSCRIPT_PARAGRAPHS`, `WHOLE_TURNS` in `llmslim/focus.py`. Chosen on the dev
+  splits only; with Claude Haiku 5.5 reading 146 stratified LongMemEval-S dev
+  questions (official judge), LLMSlim with its reranker goes from 80.1% to 81.5%
+  at 2,500 tokens and from 81.5% to 86.3% at 10,000, and the default lexical
+  mode from 80.1% to 80.8% and from 82.9% to 83.6% (a RAG baseline with
+  Qwen3-Embedding-0.6B: 82.9% and 86.3%). NQ, HotpotQA and LongBench dev checks
+  are unchanged.
 - **Transcripts keep more of the evidence a question needs.** Two dev-only
   changes to query-focused selection:
   - A reply that asks a question back keeps its own reply too ("How long have

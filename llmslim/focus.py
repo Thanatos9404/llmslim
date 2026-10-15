@@ -208,6 +208,11 @@ FACTOR_STAMPS = (
 CHAINED_ROUNDS = (
     True  # a reply that asks a question back keeps its own reply too (at most three turns)
 )
+TRANSCRIPT_PARAGRAPHS = (
+    True  # a turn may span blank lines (a multi-paragraph message) and stays one turn
+)
+WHOLE_TURNS = True  # a transcript turn is kept whole up to three units long, not cut into windows
+_BREAK = "\x00"  # marks a blank line inside a block that may be a multi-paragraph transcript
 
 
 def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
@@ -224,6 +229,34 @@ def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str,
         else:
             return None
     if len(turns) < 2 or len({t[1] for t in turns}) < 2 or len(turns) < 0.8 * len(lines):
+        return None
+    return [(t[0], t[1], t[2]) for t in turns]
+
+
+def _transcript_across(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
+    """Turns of a block that spans blank lines, when it reads as a dialogue: it starts with a speaker, at least two
+    speakers take turns and one of them speaks more than once (prose with "Note:" or "Methods:" lines does not). A
+    paragraph without a speaker continues the turn above it, after a line break. When the turns carry stamps, a
+    line without one ("Example: ...", inside a message) continues the turn too. None otherwise."""
+    turns: List[List] = []
+    after_break = False
+    for raw in lines:
+        if raw == _BREAK:
+            after_break = True
+            continue
+        line = raw.strip()
+        match = _SPEAKER_LINE.match(line)
+        if match and turns and turns[0][0] is not None and match.group("stamp") is None:
+            match = None
+        if match:
+            turns.append([match.group("stamp"), match.group("speaker"), line])
+        elif turns:
+            turns[-1][2] += ("\n" if after_break else " ") + line
+        else:
+            return None
+        after_break = False
+    speakers = Counter(t[1] for t in turns)
+    if len(turns) < 2 or len(speakers) < 2 or max(speakers.values()) < 2:
         return None
     return [(t[0], t[1], t[2]) for t in turns]
 
@@ -258,11 +291,12 @@ def _transcript_units(
         if count_tokens(body) <= max_tokens * 3:
             out.append((body, "\n"))
             continue
-        for j in group:  # a very long round: each turn on its own, long turns in sentence windows
+        # A very long round: each turn on its own, long turns in sentence windows. With WHOLE_TURNS a turn stays
+        # whole up to the round limit, so a message is not cut into fragments that lose their subject.
+        longest = max_tokens * 3 if WHOLE_TURNS else max_tokens
+        for j in group:
             parts = (
-                _windows(texts[j], max_tokens)
-                if count_tokens(texts[j]) > max_tokens
-                else [texts[j]]
+                _windows(texts[j], max_tokens) if count_tokens(texts[j]) > longest else [texts[j]]
             )
             out.extend((part, " " if k else "\n") for k, part in enumerate(parts))
     return (f"[{shared}]" if shared else None), out
@@ -292,29 +326,62 @@ def segment(text: str, max_unit_tokens: int = 220) -> List[Unit]:
 
     paragraph: List[str] = []
 
-    def flush() -> None:
+    def emit_transcript(turns: List[Tuple[Optional[str], str, str]]) -> None:
         nonlocal group
+        stamp, pieces = _transcript_units(turns, max_unit_tokens)
+        if stamp:
+            group += 1  # the shared stamp heads this block only
+        header = "\n".join([*header_lines, stamp] if stamp else header_lines)
+        for body, joiner in pieces:
+            units.append(Unit(len(units), group, body, count_tokens(body), header, joiner))
+        if stamp:
+            group += 1
+
+    def flush_block(block: List[str]) -> None:
+        turns = _transcript(block) if TRANSCRIPTS else None
+        if turns is None:
+            add(" ".join(p.strip() for p in block))
+        else:
+            emit_transcript(turns)
+
+    def flush() -> None:
+        while paragraph and paragraph[-1] == _BREAK:
+            paragraph.pop()
         if not paragraph:
             return
-        turns = _transcript(paragraph) if TRANSCRIPTS else None
-        if turns is None:
-            add(" ".join(p.strip() for p in paragraph))
-        else:
-            stamp, pieces = _transcript_units(turns, max_unit_tokens)
-            if stamp:
-                group += 1  # the shared stamp heads this block only
-            header = "\n".join([*header_lines, stamp] if stamp else header_lines)
-            for body, joiner in pieces:
-                units.append(Unit(len(units), group, body, count_tokens(body), header, joiner))
-            if stamp:
-                group += 1
+        block = list(paragraph)
         paragraph.clear()
+        if _BREAK not in block:
+            flush_block(block)
+            return
+        turns = _transcript_across(block)
+        if turns is not None:
+            emit_transcript(turns)
+            return
+        # Not a dialogue: its paragraphs are handled one by one, as without the switch.
+        current: List[str] = []
+        for line in [*block, _BREAK]:
+            if line == _BREAK:
+                if current:
+                    flush_block(current)
+                current = []
+            else:
+                current.append(line)
 
     for raw in text.split("\n"):
         line = raw.rstrip()
         stripped = line.strip()
         if not stripped:
-            flush()
+            if (
+                TRANSCRIPTS
+                and TRANSCRIPT_PARAGRAPHS
+                and paragraph
+                and _SPEAKER_LINE.match(paragraph[0].strip())
+            ):
+                if paragraph[-1] != _BREAK:
+                    paragraph.append(_BREAK)  # the dialogue may go on after the blank line
+            else:
+                flush()
             continue
         if _CHAT_LINE.match(stripped):
             rounds = _chat_units(stripped, max_unit_tokens)
@@ -429,6 +496,9 @@ def _with_compounds(
     return query_terms + joined_query
 
 
+GROUP_SHARE = 0.35  # how much of its group's (document's, session's) relevance a unit inherits
+
+
 def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> List[float]:
     """BM25 of the query against each unit (headers count), one round of pseudo-relevance feedback,
     and small bonuses for numbers and word pairs shared with the query. With a ``scorer`` (a reranking
@@ -471,7 +541,7 @@ def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> 
         top_unit = max(scores) or 1.0
         for g, gs in zip(group_ids, group_scores):
             for i in groups[g]:
-                scores[i] += 0.35 * top_unit * gs / top_group
+                scores[i] += GROUP_SHARE * top_unit * gs / top_group
     top = max(scores) if scores else 0.0
     query_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", query))
     query_pairs = set(zip(query_terms, query_terms[1:]))

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-15
+
 ### Added
 - **Usage guard for paid integrations** (`llmslim.integrations._guard`).
   `UsageGuard` admits or refuses each call before it leaves the process. It
@@ -119,6 +121,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     2,500 and 93% → 96% at 10,000.
   - LongMemEval-S in the same line format (120 dev questions, official judge):
     77.5 → 78.3 at 2,500 tokens and 76.7 → 80.0 at 10,000.
+- **Round-3 test results for the two transcript changes above**, read once
+  with Claude Haiku 5.5 (`benchmarks/live/round3/RESULTS.md`). On 1,307 LoCoMo
+  test questions the default lexical mode goes from 84.4% to 87.5% at 1,000
+  tokens, 90.9% to 91.7% at 2,500 and 94.0% to 94.3% at 10,000 (Mem0's judge).
+  On 180 LongMemEval-S test questions the reply-chaining and quantity-word
+  change adds 1.7 points at both budgets (70.6% at 2,500 tokens, 77.8% at
+  10,000, official judge). There, dense retrieval over turns is still ahead
+  (76.1% and 80.6%); a further transcript change that narrowed the gap on dev
+  did not hold up on test and is not in this release.
 - Sarvam model profiles repriced to ₹15 input, ₹5 cached input and ₹60 output
   per 1M tokens (Sarvam pricing page, 12 October 2026). Hosted cost
   reservations were about 2× too high.

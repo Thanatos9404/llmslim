@@ -36,7 +36,7 @@ Hermes finds the engine in either of two ways:
   version: 1.0.0
   description: Local context compression with LLMSlim (no LLM call)
   python_dependencies:
-    - "llmslim>0.8.1,<1"
+    - "llmslim>=0.9.0,<1"
   ```
 
   `__init__.py`
@@ -45,7 +45,7 @@ Hermes finds the engine in either of two ways:
   from llmslim.integrations.hermes import register  # noqa: F401
   ```
 
-  The first llmslim release after 0.8.1 is the first one with this engine.
+  llmslim 0.9.0 is the first release with this engine.
 
 Then enable the plugin and select the engine in `~/.hermes/config.yaml`:
 

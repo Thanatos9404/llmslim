@@ -44,6 +44,47 @@ def test_terms_stem_and_drop_stop_words():
     assert "1889" in terms("completed in 1889")
 
 
+@pytest.mark.parametrize(
+    "forms",
+    [
+        "move moves moved moving",
+        "time times timed",
+        "date dates dated dating",
+        "live lives lived living",
+        "shop shops shopping shopped",
+        "plan plans planned planning",
+        "get gets getting",
+        "class classes",
+        "address addresses",
+        "status statuses",
+        "agree agreed agreeing agreement",
+        "study studies studied studying",
+        "call called calling",
+        "kiss kissed kisses kissing",
+    ],
+)
+def test_terms_bring_inflected_forms_to_one_stem(forms):
+    assert len({terms(word)[0] for word in forms.split()}) == 1, [
+        terms(word) for word in forms.split()
+    ]
+
+
+@pytest.mark.parametrize("word", ["speed", "breed", "focus", "status", "class"])
+def test_terms_keep_words_that_only_look_inflected(word):
+    assert terms(word) == [word]
+
+
+def test_a_question_finds_the_turn_in_another_word_form():
+    sessions = [
+        "[2026-03-02] user: The bakery downtown sells sourdough loaves on weekends.",
+        "[2026-03-09] user: I moved to Pune last spring and the commute is shorter now.",
+        "[2026-03-16] user: My sister is training for a half marathon in the hills.",
+    ]
+    kept = compress_documents(sessions, query="Where did I move to?", target_ratio=0.34)
+    assert "Pune" in kept[1].compressed_text
+    assert not kept[0].compressed_text.strip() and not kept[2].compressed_text.strip()
+
+
 def test_bm25_prefers_matching_documents():
     bm25 = BM25([terms("eiffel tower paris"), terms("bakery sourdough loaves")])
     scores = bm25.scores(dict.fromkeys(terms("Who designed the Eiffel Tower?"), 1.0))

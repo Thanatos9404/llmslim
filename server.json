@@ -1,0 +1,53 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.thanatos9404/llmslim",
+  "title": "LLMSlim memory",
+  "description": "Long-term memory and context fitting for agents, with no LLM in the loop. Local SQLite.",
+  "repository": {
+    "url": "https://github.com/Thanatos9404/llmslim",
+    "source": "github"
+  },
+  "websiteUrl": "https://llmslim.app",
+  "version": "0.10.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "llmslim",
+      "version": "0.10.0",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "llmslim[mcp]==0.10.0"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LLMSLIM_MEMORY_DB",
+          "description": "SQLite file for the memory (default ~/.llmslim/memory.db)",
+          "isRequired": false
+        },
+        {
+          "name": "LLMSLIM_USER_ID",
+          "description": "Whose memory this server holds (default \"default\")",
+          "isRequired": false
+        },
+        {
+          "name": "LLMSLIM_AGENT_ID",
+          "description": "Optional agent id, so each agent keeps its own memory",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - With the round-3 benchmark's date format, `Memory.search` reproduced the benchmark builder's contexts byte for
     byte on 120 of 120 LongMemEval-S development contexts. Its measured results therefore apply to it.
   - Guide: `docs/MEMORY.md`. Example: `examples/memory_quickstart.py`. Roadmap: `docs/roadmap/1.0.md`.
+- **`llmslim mcp`: memory and context tools for any MCP client** (`pip install "llmslim[mcp]"`, Python 3.10+).
+  - Tools:
+    - `remember` stores a message word for word;
+    - `recall` returns the stored messages that answer a question within a token budget, labelled as data;
+    - `list_memories` and `forget` show and delete stored messages;
+    - `fit_context` shrinks a long text to a budget around a question.
+  - The user and agent scope is fixed by the server (`--user-id`, `--agent-id`), never chosen by the model. `forget`
+    refuses ids outside it.
+  - Storage is a local SQLite file. The server uses stdio, makes no model or network calls, and gives tool hints
+    (read-only, destructive).
+  - `llmslim.mcp_server.build_server(memory, user_id=...)` builds the same server from Python.
+  - Guide: `docs/MCP.md`. `server.json` is ready for the MCP Registry once a release includes the server.
 
 ## [0.9.0] - 2026-10-15
 

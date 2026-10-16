@@ -44,7 +44,19 @@ except ImportError as exc:  # pragma: no cover - exercised only without Hermes A
 
 from ..core import ContextRole
 from ..tokens import count_tokens
-from ._history import HistoryFit, HistoryItem, fit_history, validate_history_options
+from ._history import (
+    CALL,
+    OTHER,
+    PROMPT,
+    REPLY,
+    HistoryFit,
+    HistoryItem,
+    first_edited,
+    fit_history,
+    is_signed_thinking,
+    open_tool_round,
+    validate_history_options,
+)
 
 __all__ = ["CONFIG_KEYS", "ENGINE_NAME", "LLMSlimContextEngine", "plugin_settings", "register"]
 
@@ -61,6 +73,10 @@ CONFIG_KEYS = (
     "additional_compress_kwargs",
 )
 _ROLES = {"tool": ContextRole.TOOL, "assistant": ContextRole.ASSISTANT, "user": ContextRole.USER}
+# Where Hermes keeps an assistant turn's Anthropic thinking blocks, and the readable copies of
+# their text; Hermes's own agent/anthropic_thinking_replay.py strips rejected thinking from both.
+_THINKING_CARRIERS = ("reasoning_details", "anthropic_content_blocks", "_anthropic_content_blocks")
+_READABLE_THINKING = ("reasoning", "reasoning_content")
 
 
 class LLMSlimContextEngine(ContextEngine):
@@ -87,6 +103,15 @@ class LLMSlimContextEngine(ContextEngine):
     sent byte-for-byte the same and only the tail after it changes.
     ``focus_topic`` from ``/compress <topic>`` is used as the query, so the
     parts of each message about that topic are kept first.
+
+    Claude thinking: each signed thinking block is bound to everything before
+    it, so the signed thinking of the first changed message and of every later
+    assistant message is removed (Anthropic would reject it); the blocks before
+    the first change are kept. While a tool round is unfinished and its
+    assistant turns have signed thinking, compaction first leaves everything up
+    to the round's last thinking alone, and compacts the earlier messages at
+    the next user message instead, as long as the request still fits the
+    model's context window.
     """
 
     def __init__(
@@ -183,19 +208,48 @@ class LLMSlimContextEngine(ContextEngine):
         budget = max(0, int(self.context_length * self.target_percent) - overhead)
 
         frozen_end = self._unchanged_prefix(messages)
-        fit = self._fit(messages, texts, head_end, tail_start, frozen_end, budget, focus_topic)
-        if not fit.fits and frozen_end > head_end:
-            # Compressing the new turns is not enough: compress the earlier ones again too.
-            fit = self._fit(messages, texts, head_end, tail_start, head_end, budget, focus_topic)
+        fit: Optional[HistoryFit] = None
+        tool_round = open_tool_round(
+            [_kind(message) for message in messages], [_has_thinking(m) for m in messages]
+        )
+        if tool_round is not None:
+            # Mid tool round: leave everything up to its last thinking alone while the request
+            # still fits the context window; the earlier history waits for the next user message.
+            attempt = self._fit(
+                messages,
+                texts,
+                head_end,
+                tail_start,
+                max(frozen_end, tool_round[1]),
+                budget,
+                focus_topic,
+            )
+            if attempt.fits or attempt.tokens <= self.context_length - overhead:
+                fit = attempt
+                fit.kept_tool_round = True
+        if fit is None:
+            fit = self._fit(messages, texts, head_end, tail_start, frozen_end, budget, focus_topic)
+            if not fit.fits and frozen_end > head_end:
+                # Compressing the new turns is not enough: compress the earlier ones again too.
+                fit = self._fit(
+                    messages, texts, head_end, tail_start, head_end, budget, focus_topic
+                )
         self.last_fit = fit
 
+        first = first_edited(fit, range(len(messages)))
         compacted: List[Dict[str, Any]] = []
-        for message, (original, _), text in zip(messages, texts, fit.texts):
+        for i, (message, (original, _), text) in enumerate(zip(messages, texts, fit.texts)):
             if text is not None and text != original:
                 message = {**message, "content": text}
+            if first is not None and i >= first and _has_thinking(message):
+                # Its signature covers history that has just changed: Anthropic would reject it.
+                message, removed = _without_thinking(message)
+                fit.thinking_stripped += removed
             compacted.append(message)
         if fit.changed:
             self.compression_count += 1
+            logger.info("LLMSlim context engine: %s", fit.summary())
+        elif fit.kept_tool_round and not fit.fits:
             logger.info("LLMSlim context engine: %s", fit.summary())
         self._previous_output = [_digest(message) for message in compacted]
         return compacted
@@ -314,6 +368,58 @@ def _text(message: Mapping[str, Any]) -> Tuple[str, bool]:
 
 def _compressible(message: Mapping[str, Any]) -> bool:
     return message.get("role") != "system" and isinstance(message.get("content"), str)
+
+
+def _kind(message: Mapping[str, Any]) -> str:
+    role = message.get("role")
+    if role == "assistant":
+        return CALL if message.get("tool_calls") else REPLY
+    return PROMPT if role == "user" else OTHER
+
+
+def _has_thinking(message: Mapping[str, Any]) -> bool:
+    """Whether an assistant message carries signed Anthropic thinking."""
+    return message.get("role") == "assistant" and any(
+        is_signed_thinking(block)
+        for key in _THINKING_CARRIERS
+        if isinstance(message.get(key), list)
+        for block in message[key]
+    )
+
+
+def _without_thinking(message: Mapping[str, Any]) -> Tuple[Dict[str, Any], int]:
+    """A copy of ``message`` without its signed thinking, and how many blocks were removed.
+
+    The readable copy of that thinking (``reasoning``, ``reasoning_content``)
+    goes too, so Hermes cannot send it back as unsigned thinking or text.
+    """
+    copy = dict(message)
+    readable: List[str] = []
+    removed = 0
+    for key in _THINKING_CARRIERS:
+        blocks = message.get(key)
+        if not isinstance(blocks, list):
+            continue
+        signed = [block for block in blocks if is_signed_thinking(block)]
+        if not signed:
+            continue
+        removed += len(signed)
+        if not readable:
+            readable = [
+                b["thinking"]
+                for b in signed
+                if isinstance(b, Mapping) and isinstance(b.get("thinking"), str)
+            ]
+        kept = [block for block in blocks if not is_signed_thinking(block)]
+        if kept:
+            copy[key] = kept
+        else:
+            del copy[key]
+    mirror = "\n\n".join(text for text in readable if text)
+    for key in _READABLE_THINKING:
+        if mirror and copy.get(key) == mirror:
+            del copy[key]
+    return copy, removed
 
 
 def _digest(message: Mapping[str, Any]) -> str:

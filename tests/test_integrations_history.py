@@ -5,15 +5,25 @@ These run in every environment; the framework-specific tests skip when a framewo
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from llmslim import ContextCompressor, ContextRole, count_tokens
 from llmslim.core import CompressionResult
 from llmslim.integrations._history import (
+    CALL,
+    OTHER,
+    PROMPT,
+    REPLY,
     HistoryFit,
     HistoryItem,
+    first_edited,
     fit_history,
+    is_signed_thinking,
+    open_tool_round,
     placeholder_text,
+    protect_before,
     validate_history_options,
 )
 from tests._history_corpus import NOTES, SYSTEM_PROMPT, TASK, make_log
@@ -273,3 +283,84 @@ def test_additional_options_are_used():
         items, count_tokens(NOTES), additional_compress_kwargs={"selection": "proportional"}
     )
     assert fit.fits and fit.compressed == [0]
+
+
+def test_first_edited_is_the_first_changed_or_dropped_message():
+    fit = HistoryFit(
+        texts=[], original_tokens=0, tokens=0, budget=None, compressed=[3], dropped=[5]
+    )
+    assert first_edited(fit, [0, 1, 1, 2, 2, 3]) == 2
+    assert first_edited(fit, range(6)) == 3
+    unchanged = HistoryFit(texts=[], original_tokens=0, tokens=0, budget=None)
+    assert first_edited(unchanged, range(6)) is None
+
+
+@pytest.mark.parametrize(
+    ("kinds", "thinking", "expected"),
+    [
+        # The latest model turn calls a tool and its result is back: the round is open.
+        ([PROMPT, CALL, OTHER], [False, True, False], (1, 2)),
+        # The tool has not run yet.
+        ([PROMPT, REPLY, PROMPT, CALL], [False, True, False, True], (3, 4)),
+        # Several steps in one round: everything up to the last thinking stays.
+        ([PROMPT, CALL, OTHER, CALL, OTHER], [False, True, False, True, False], (1, 4)),
+        ([PROMPT, CALL, OTHER, CALL, OTHER], [False, True, False, False, False], (1, 2)),
+        # Thinking before the latest user message is not part of the round.
+        ([PROMPT, REPLY, PROMPT, CALL, OTHER], [False, True, False, False, False], None),
+        # A new user message closes the round; so does a final answer.
+        ([PROMPT, CALL, OTHER, PROMPT], [False, True, False, False], None),
+        ([PROMPT, CALL, OTHER, REPLY], [False, True, False, True], None),
+        ([OTHER, PROMPT], [False, False], None),
+        ([], [], None),
+        # No user message at all: the round starts at the beginning.
+        ([OTHER, CALL, OTHER], [False, True, False], (0, 2)),
+    ],
+)
+def test_open_tool_round(kinds, thinking, expected):
+    assert open_tool_round(kinds, thinking) == expected
+
+
+def test_protect_before_protects_whole_messages():
+    items = [HistoryItem(LOG, ContextRole.TOOL) for _ in range(4)]
+    guarded = protect_before(items, [0, 1, 1, 2], 2)
+    assert [item.protected for item in guarded] == [True, True, True, False]
+    assert not any(item.protected for item in items)  # the input is not changed
+
+
+def test_a_protected_prefix_is_left_alone_and_what_follows_is_compressed():
+    items = [
+        HistoryItem(SYSTEM_PROMPT, ContextRole.SYSTEM, protected=True),
+        HistoryItem(LOG, ContextRole.TOOL),
+        HistoryItem(NOTES, ContextRole.ASSISTANT),
+        HistoryItem(make_log("new", 300), ContextRole.TOOL, recent=True),
+    ]
+    budget = _tokens([SYSTEM_PROMPT, LOG, NOTES]) + 120
+    fit = fit_history(protect_before(items, range(4), 3), budget)
+    assert fit.texts[:3] == [SYSTEM_PROMPT, LOG, NOTES]
+    assert fit.compressed == [3] and fit.fits
+    assert first_edited(fit, range(4)) == 3
+
+
+def test_is_signed_thinking_for_dicts_and_sdk_objects():
+    assert is_signed_thinking({"type": "thinking", "thinking": "", "signature": "abc"})
+    assert is_signed_thinking({"type": "redacted_thinking", "data": "abc"})
+    assert not is_signed_thinking({"type": "thinking", "thinking": "x", "signature": ""})
+    assert not is_signed_thinking({"type": "redacted_thinking"})
+    assert not is_signed_thinking({"type": "text", "text": "x", "signature": "abc"})
+    assert is_signed_thinking(SimpleNamespace(type="thinking", thinking="", signature="abc"))
+    assert not is_signed_thinking(SimpleNamespace(type="tool_use", id="t1"))
+    assert not is_signed_thinking("thinking")
+
+
+def test_summary_reports_removed_thinking_and_a_kept_tool_round():
+    fit = HistoryFit(texts=[], original_tokens=900, tokens=500, budget=600, compressed=[1])
+    fit.thinking_stripped = 2
+    assert fit.summary() == (
+        "900 -> 500 tokens; budget 600; 1 compressed, 0 dropped; "
+        "2 thinking block(s) removed after the first change"
+    )
+    waiting = HistoryFit(texts=[], original_tokens=900, tokens=800, budget=600, protected_tokens=10)
+    waiting.kept_tool_round = True
+    assert waiting.summary().endswith(
+        "still over budget: earlier messages wait for the open tool round to end"
+    )

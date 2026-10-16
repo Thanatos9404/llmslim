@@ -26,8 +26,17 @@ if not hasattr(context_engine, "ContextEngine"):  # pragma: no cover - an unrela
     pytest.skip("agent.context_engine is not Hermes Agent's", allow_module_level=True)
 
 from llmslim import count_tokens
+from llmslim.integrations import hermes as hermes_adapter
 from llmslim.integrations.hermes import CONFIG_KEYS, LLMSlimContextEngine, plugin_settings
-from tests._history_corpus import FAILURE, NOTES, SYSTEM_PROMPT, TASK, make_log
+from tests._history_corpus import (
+    FAILURE,
+    NOTES,
+    SYSTEM_PROMPT,
+    TASK,
+    ThinkingBinding,
+    make_log,
+    signature,
+)
 from tests._integration_corpus import PreferringScorer
 
 ContextEngine = context_engine.ContextEngine
@@ -219,6 +228,179 @@ def test_engines_copy_and_reset():
 def test_invalid_options(kwargs):
     with pytest.raises(ValueError):
         LLMSlimContextEngine(**kwargs)
+
+
+# Claude thinking: Hermes keeps signed blocks in reasoning_details (and, when they interleave with
+# tool calls, in anthropic_content_blocks), with a readable copy of their text in "reasoning".
+
+
+def _thinking(tag, text=""):
+    return {"type": "thinking", "thinking": text, "signature": signature(tag)}
+
+
+def _with_thinking(message, tag, text=""):
+    block = _thinking(tag, text)
+    message = {**message, "reasoning_details": [block]}
+    if text:
+        message["reasoning"] = text
+    if message.get("tool_calls"):
+        call = message["tool_calls"][0]
+        message["anthropic_content_blocks"] = [
+            block,
+            {"type": "tool_use", "id": call["id"], "name": "terminal", "input": {}},
+        ]
+    return message
+
+
+def _thinking_conversation(end_with_tool_round=False):
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": TASK},
+        _with_thinking(_call("c1"), "a"),
+        {"role": "tool", "tool_call_id": "c1", "content": make_log(lines=400)},
+        _with_thinking({"role": "assistant", "content": NOTES * 3}, "b", "Rounding is the cause."),
+        {"role": "user", "content": "Keep going."},
+        _with_thinking(_call("c2", "pytest -q tests/test_refund.py"), "c"),
+        {"role": "tool", "tool_call_id": "c2", "content": make_log(lines=300)},
+        _with_thinking({"role": "assistant", "content": "Switching refund.py to Decimal."}, "d"),
+        {"role": "user", "content": "Now run everything once more."},
+    ]
+    if end_with_tool_round:
+        messages += [
+            _with_thinking(_call("c3"), "e"),
+            {"role": "tool", "tool_call_id": "c3", "content": make_log("suite", 400)},
+        ]
+    return messages
+
+
+def _signatures(messages):
+    return [
+        block["signature"]
+        for m in messages
+        for key in ("reasoning_details", "anthropic_content_blocks")
+        for block in m.get(key) or []
+        if block.get("signature")
+    ]
+
+
+def _replayed(messages):
+    """The signatures Hermes would replay: one carrier per message."""
+    return [
+        block["signature"]
+        for m in messages
+        for block in (m.get("anthropic_content_blocks") or m.get("reasoning_details") or [])
+        if block.get("signature")
+    ]
+
+
+def test_thinking_is_kept_when_nothing_changes():
+    engine = _engine(context_length=10**6)
+    messages = _thinking_conversation(end_with_tool_round=True)
+    out = engine.compress(messages)
+    assert all(a is b for a, b in zip(out, messages)) and len(out) == len(messages)
+    assert engine.last_fit.thinking_stripped == 0
+
+
+def test_thinking_after_the_first_change_is_removed_and_kept_before_it():
+    engine = _engine()
+    messages = _thinking_conversation()
+    before = copy.deepcopy(messages)
+    out = engine.compress(messages, current_tokens=_tokens(messages) + 500)
+    assert messages == before, "the input list and its dicts are not modified"
+    assert out[3]["content"] != messages[3]["content"]  # the first change
+    assert out[2] is messages[2]
+    # Kept before the change, removed after it: an unbroken run from the start.
+    assert _replayed(out) == [signature("a")]
+    assert _signatures(out) == [signature("a")] * 2  # in both of its carriers
+    assert "reasoning" not in out[4], "the readable copy goes with the signed block"
+    assert out[6]["tool_calls"] == messages[6]["tool_calls"]
+    assert out[6]["anthropic_content_blocks"] == messages[6]["anthropic_content_blocks"][1:]
+    assert _tool_pairs(out) == _tool_pairs(messages)
+    assert engine.last_fit.thinking_stripped == 4  # b, c in both of its carriers, d
+    assert "thinking block(s) removed" in engine.last_fit.summary()
+
+
+def test_mid_tool_round_the_earlier_history_waits_while_the_window_has_room():
+    messages = _thinking_conversation(end_with_tool_round=True)
+    # Far over the target, but the whole request still fits the window.
+    engine = _engine(context_length=_tokens(messages) + 1000, protect_last_n=2)
+    engine.target_percent = 0.5 * _tokens(messages[:-1]) / engine.context_length
+    out = engine.compress(messages)
+    assert all(a is b for a, b in zip(out[:-1], messages[:-1]))
+    assert count_tokens(out[-1]["content"]) < count_tokens(messages[-1]["content"])
+    assert _replayed(out) == [signature(t) for t in "abcde"]
+    fit = engine.last_fit
+    assert fit.kept_tool_round and not fit.fits and fit.thinking_stripped == 0
+    assert "wait for the open tool round" in fit.summary()
+
+
+def test_mid_tool_round_compacts_anyway_when_the_window_is_full():
+    engine = _engine(protect_last_n=2)
+    messages = _thinking_conversation(end_with_tool_round=True)
+    engine.context_length = _tokens(messages[:-1])
+    engine.target_percent = 0.3
+    out = engine.compress(messages)
+    assert not engine.last_fit.kept_tool_round
+    assert _replayed(out) == [signature("a")]
+
+
+def test_compaction_is_deterministic_and_replays_unchanged():
+    first = _engine().compress(_thinking_conversation())
+    assert [json.dumps(m) for m in _engine().compress(_thinking_conversation())] == [
+        json.dumps(m) for m in first
+    ]
+    engine = _engine()
+    out = engine.compress(_thinking_conversation())
+    again = engine.compress(out)
+    assert [json.dumps(m) for m in again] == [json.dumps(m) for m in out]
+
+
+def _describe(message):
+    rest = {
+        k: v
+        for k, v in message.items()
+        if k not in ("reasoning_details", "anthropic_content_blocks", "reasoning")
+    }
+    return json.dumps(rest, sort_keys=True), _replayed([message])
+
+
+def _session():
+    """Four user turns with two tool calls each; Hermes compresses before requests over the
+    threshold. Returns what Anthropic would reject, and the engine."""
+    binding = ThinkingBinding(_describe)
+    engine = _engine(protect_last_n=4)
+    history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    problems = []
+    for turn in range(4):
+        history.append({"role": "user", "content": f"Task {turn}: " + TASK})
+        for step in range(3):
+            if engine.should_compress(_tokens(history)):
+                history = engine.compress(history)
+            problems += binding.violations(history)
+            block = _thinking("x") | {"signature": binding.produce(history)}
+            if step < 2:
+                call_id = f"c{turn}{step}"
+                history.append({**_call(call_id), "reasoning_details": [block]})
+                history.append(
+                    {"role": "tool", "tool_call_id": call_id, "content": make_log(lines=150)}
+                )
+            else:
+                history.append(
+                    {"role": "assistant", "content": NOTES, "reasoning_details": [block]}
+                )
+    return problems, engine
+
+
+def test_a_session_never_replays_thinking_after_changed_history():
+    problems, engine = _session()
+    assert engine.compression_count >= 2
+    assert problems == []
+
+
+def test_without_the_fix_the_api_would_reject_the_session(monkeypatch):
+    monkeypatch.setattr(hermes_adapter, "_has_thinking", lambda message: False)
+    problems, _ = _session()
+    assert any("the history before it changed" in problem for problem in problems)
 
 
 class _Context:

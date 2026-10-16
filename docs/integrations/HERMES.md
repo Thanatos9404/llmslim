@@ -175,6 +175,19 @@ prose is compressed only as far as the budget requires.
   newer messages cannot make enough room, the earlier ones are compressed again.
 - **Focus.** `/compress <topic>` passes a focus topic; it is used as the query,
   so each message keeps the parts about that topic first.
+- **Claude thinking.** On Claude models with preserved thinking (Haiku 5.5,
+  Sonnet 5.5, Opus 5.5, Fable 5.1), a signed thinking block is bound to
+  everything before it, and Anthropic rejects it once an earlier message
+  changes (HTTP 400 for accounts created on or after 2026-08-31). So the signed
+  thinking (`reasoning_details`, `anthropic_content_blocks`) of the first
+  changed message and of every later assistant message is removed, together
+  with its readable copy in `reasoning`; thinking before the first change is
+  kept. While a tool round is unfinished and its assistant turns have signed
+  thinking, the messages up to the round's last thinking are left alone (only
+  the tool results after it may be compressed) as long as the request still
+  fits the context window; the earlier history is compacted at the next user
+  message. Request settings such as `anthropic-beta` and
+  `thinking.block_binding` are not touched.
 
 Hermes gives every agent its own copy of the engine (`copy.deepcopy`); the
 engine holds only plain data.

@@ -45,7 +45,10 @@ def make_openai_agents_input_filter(
 
     The SDK retains agent execution and tool ownership. Complex SDK input
     items fail closed because rewriting them could break call/result contracts.
-    SDK instructions are included in planning and returned unchanged.
+    That includes ``reasoning`` items (OpenAI's encrypted reasoning, or Claude
+    thinking passed through a model adapter), so the filter never changes the
+    history in front of reasoning that is replayed. SDK instructions are
+    included in planning and returned unchanged.
     """
 
     def filter_input(data: Any) -> Any:

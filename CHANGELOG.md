@@ -48,6 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `llmslim.server.create_app(memory, api_keys=...)` returns the ASGI app.
   - Guide: `docs/SERVER.md`.
 - The `mcp` and `server` extras now install `tiktoken`, so token budgets are exact.
+- **TypeScript client** (`clients/typescript`, npm package `llmslim`, not published yet).
+  - `LLMSlim` wraps every `llmslim serve` route. It has no dependencies and runs on Node 18+, Bun, Deno and edge
+    runtimes.
+  - `llmslim/ai-sdk` adds the Vercel AI SDK `memoryTools()` (`recall_memory`, `remember`) and a `memoryMiddleware()`
+    that saves turns.
+    - Neither changes the prompt, so prompt caches and Claude's preserved thinking stay valid.
+    - The scope comes from your code, never from the model.
+  - CI runs its tests against a real `llmslim serve`.
 
 ### Fixed
 - **Query matching across word forms.** Lexical selection stems the question

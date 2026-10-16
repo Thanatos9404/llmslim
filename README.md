@@ -506,6 +506,25 @@ result instead and reports why in `rewrite_metadata.failure_reasons`.
 
 ---
 
+## Memory for agents, with no LLM in the loop (on main, next release)
+
+`llmslim.memory` stores every turn verbatim and selects, at read time, the turns that answer a question within a
+token budget. There is no extraction model on the way in and no model call on the way out.
+
+```python
+from llmslim.memory import Memory
+
+memory = Memory("memory.db")  # SQLite, built into Python
+memory.add([{"role": "user", "content": "I'm allergic to peanuts."}], user_id="asha")
+context = memory.search("Am I allergic to anything?", user_id="asha", budget=1500)
+print(context.text)  # put it in the prompt as untrusted data
+```
+
+It runs the pipeline behind the round-3 benchmarks. On Mem0's own LongMemEval questions, that pipeline (with its
+reranker) answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0. Coming from Mem0?
+`from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names. See
+[docs/MEMORY.md](docs/MEMORY.md) for scopes, stores, evidence and limits, and the [1.0 roadmap](docs/roadmap/1.0.md).
+
 ## Use with LangChain / LlamaIndex / Haystack
 
 Each adapter runs `compress_documents` on the retrieved documents, with the same

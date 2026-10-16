@@ -5,6 +5,7 @@ Usage:
     llmslim input.txt --detect --mode quality
     llmslim input.txt --analyze
     cat prompt.txt | llmslim --ratio 0.4 --cost gpt-5
+    llmslim mcp --db memory.db          # memory and context tools for MCP clients
 """
 
 from __future__ import annotations
@@ -412,6 +413,10 @@ def main(argv=None) -> int:
         return _run_tools_command(arguments[1:])
     if arguments and arguments[0] == "plan":
         return _run_plan_command(arguments[1:])
+    if arguments and arguments[0] == "mcp":
+        from .mcp_server import main as run_mcp_server
+
+        return run_mcp_server(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
 

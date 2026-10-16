@@ -525,6 +525,22 @@ reranker) answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.8
 `from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names. See
 [docs/MEMORY.md](docs/MEMORY.md) for scopes, stores, evidence and limits, and the [1.0 roadmap](docs/roadmap/1.0.md).
 
+### In Claude, Cursor or any MCP client
+
+`llmslim mcp` serves this memory over MCP, with a `fit_context` tool for long text. It needs `pip install "llmslim[mcp]"`
+on Python 3.10+.
+
+```bash
+claude mcp add llmslim -- llmslim mcp
+```
+
+- **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
+- **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
+- **Storage:** a local SQLite file; the server makes no network calls.
+- **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
+
+<!-- mcp-name: io.github.thanatos9404/llmslim -->
+
 ## Use with LangChain / LlamaIndex / Haystack
 
 Each adapter runs `compress_documents` on the retrieved documents, with the same

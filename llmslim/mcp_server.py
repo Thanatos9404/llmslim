@@ -20,13 +20,11 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from .core import compress
+from ._fit import fit_text
 from .memory import Memory, MemoryItem
-from .tokens import count_tokens
 
 DEFAULT_DB = Path.home() / ".llmslim" / "memory.db"
 DEFAULT_USER = "default"
-_FIT_PASSES = 4
 _PREVIEW_CHARS = 200
 _ROLES = ("user", "assistant")
 
@@ -205,24 +203,6 @@ def build_server(
             raise ToolError(str(error)) from error
 
     return server
-
-
-def fit_text(text: str, budget: int, query: Optional[str] = None) -> str:
-    """``text`` compressed to at most about ``budget`` tokens (within 2%), focused on ``query`` when given."""
-    if budget <= 0:
-        raise ValueError("budget must be a positive number of tokens")
-    total = count_tokens(text)
-    if total <= budget:
-        return text
-    ratio = budget / total
-    fitted = text
-    for _ in range(_FIT_PASSES):
-        fitted = compress(text, target_ratio=min(ratio, 1.0), query=query or None).compressed_text
-        tokens = count_tokens(fitted)
-        if tokens <= budget * 1.02:
-            break
-        ratio *= budget / tokens * 0.98
-    return fitted
 
 
 def _preview(item: MemoryItem) -> str:

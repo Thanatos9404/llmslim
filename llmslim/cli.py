@@ -6,6 +6,7 @@ Usage:
     llmslim input.txt --analyze
     cat prompt.txt | llmslim --ratio 0.4 --cost gpt-5
     llmslim mcp --db memory.db          # memory and context tools for MCP clients
+    llmslim serve --db memory.db        # the same over HTTP, for apps in any language
 """
 
 from __future__ import annotations
@@ -417,6 +418,10 @@ def main(argv=None) -> int:
         from .mcp_server import main as run_mcp_server
 
         return run_mcp_server(arguments[1:])
+    if arguments and arguments[0] == "serve":
+        from .server import main as run_server
+
+        return run_server(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
 

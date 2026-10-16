@@ -34,6 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (read-only, destructive).
   - `llmslim.mcp_server.build_server(memory, user_id=...)` builds the same server from Python.
   - Guide: `docs/MCP.md`. `server.json` is ready for the MCP Registry once a release includes the server.
+- **`llmslim serve`: memory and context over HTTP** (`pip install "llmslim[server]"`, Python 3.9+).
+  - A JSON API over `llmslim.memory`:
+    - add, list, get, update and delete messages;
+    - delete a scope;
+    - search within a token budget;
+    - `POST /v1/context/fit` for long text.
+  - Bearer API keys (`--api-key` or `LLMSLIM_API_KEYS`) are compared in constant time and must be at least 16
+    characters. Without a key, the server refuses any interface other than loopback.
+  - Bodies are capped at 1 MB, budgets at 100,000 tokens and list pages at 1,000 items. Errors come back as JSON.
+  - A `Dockerfile` runs it as a non-root user with the SQLite file on a `/data` volume and a health check. CI builds
+    the image and checks that it refuses to start without a key and answers with one.
+  - `llmslim.server.create_app(memory, api_keys=...)` returns the ASGI app.
+  - Guide: `docs/SERVER.md`.
+- The `mcp` and `server` extras now install `tiktoken`, so token budgets are exact.
 
 ### Fixed
 - **Query matching across word forms.** Lexical selection stems the question

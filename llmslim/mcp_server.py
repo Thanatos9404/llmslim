@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-from typing import Any, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from .core import compress
 from .memory import Memory, MemoryItem
@@ -72,7 +72,7 @@ def build_server(
 
     from . import __version__
 
-    scope = {"user_id": user_id, "agent_id": agent_id}
+    scope: Dict[str, Optional[str]] = {"user_id": user_id, "agent_id": agent_id}
     default_budget = memory.budget if budget is None else budget
     server = MCPServer(
         name="llmslim",
@@ -94,10 +94,10 @@ def build_server(
     @server.tool(
         annotations=ToolAnnotations(
             title="Remember",
-            readOnlyHint=False,
-            destructiveHint=False,
-            idempotentHint=False,
-            openWorldHint=False,
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=False,
+            open_world_hint=False,
         )
     )
     def remember(text: str, role: str = "user", session: Optional[str] = None) -> str:
@@ -110,14 +110,19 @@ def build_server(
         """
         if role not in _ROLES:
             raise ToolError(f"role must be one of {', '.join(_ROLES)}")
-        items = memory.add([{"role": role, "content": text}], run_id=session or None, **scope)
+        items = memory.add(
+            [{"role": role, "content": text}],
+            user_id=user_id,
+            agent_id=agent_id,
+            run_id=session or None,
+        )
         if not items:
             return "Nothing stored: the message was empty."
         return f"Stored as {items[0].id}."
 
     @server.tool(
         annotations=ToolAnnotations(
-            title="Recall", readOnlyHint=True, idempotentHint=True, openWorldHint=False
+            title="Recall", read_only_hint=True, idempotent_hint=True, open_world_hint=False
         )
     )
     def recall(query: str, budget: int = default_budget, session: Optional[str] = None) -> str:
@@ -130,7 +135,9 @@ def build_server(
             session: Optional conversation id to search only that conversation.
         """
         try:
-            context = memory.search(query, budget=budget, run_id=session or None, **scope)
+            context = memory.search(
+                query, budget=budget, user_id=user_id, agent_id=agent_id, run_id=session or None
+            )
         except ValueError as error:  # an empty query or a budget below one token
             raise ToolError(str(error)) from error
         if not context.text:
@@ -140,7 +147,7 @@ def build_server(
 
     @server.tool(
         annotations=ToolAnnotations(
-            title="List memories", readOnlyHint=True, idempotentHint=True, openWorldHint=False
+            title="List memories", read_only_hint=True, idempotent_hint=True, open_world_hint=False
         )
     )
     def list_memories(limit: int = 20, session: Optional[str] = None) -> str:
@@ -150,7 +157,7 @@ def build_server(
             limit: How many to list, at most 100.
             session: Optional conversation id to list only that conversation.
         """
-        items = memory.get_all(run_id=session or None, **scope)
+        items = memory.get_all(user_id=user_id, agent_id=agent_id, run_id=session or None)
         items = sorted(items, key=lambda item: (item.created_at, item.seq), reverse=True)[
             : max(1, min(limit, 100))
         ]
@@ -161,10 +168,10 @@ def build_server(
     @server.tool(
         annotations=ToolAnnotations(
             title="Forget",
-            readOnlyHint=False,
-            destructiveHint=True,
-            idempotentHint=True,
-            openWorldHint=False,
+            read_only_hint=False,
+            destructive_hint=True,
+            idempotent_hint=True,
+            open_world_hint=False,
         )
     )
     def forget(memory_id: str) -> str:
@@ -180,7 +187,7 @@ def build_server(
 
     @server.tool(
         annotations=ToolAnnotations(
-            title="Fit context", readOnlyHint=True, idempotentHint=True, openWorldHint=False
+            title="Fit context", read_only_hint=True, idempotent_hint=True, open_world_hint=False
         )
     )
     def fit_context(text: str, budget: int = 2000, query: Optional[str] = None) -> str:

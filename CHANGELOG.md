@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The agent-history adapters broke Claude's preserved thinking.** On Claude
+  models with preserved thinking (Claude Haiku 5.5, Sonnet 5.5, Opus 5.5 and
+  Fable 5.1), each thinking block's signature is bound to everything sent
+  before it. The Pydantic AI history processor, the Hermes Agent context
+  engine, the gptme context provider and `compress_chat_messages` compressed
+  or dropped earlier turns but sent the later assistant turns back with their
+  thinking blocks unchanged. Anthropic then rejected the request with HTTP 400
+  ("Invalid `signature` in `thinking` block. The block is bound to a different
+  conversation"), the default for accounts created on or after 2026-08-31;
+  older accounts silently lost the reasoning. Now, once an adapter changes or
+  removes a message, it removes the signed thinking from that message and from
+  every later assistant message, and keeps the thinking before it, which
+  Anthropic allows (blocks may be removed from the end, never from the
+  middle). The result is a pure function of the history, so later requests
+  send the same bytes again. While a tool round is unfinished and its
+  assistant turns have thinking, the adapters first try to fit by shortening
+  only the tool output that came back after the round's last thinking, and
+  compact the earlier history at the next user message; only when that cannot
+  fit (`max_tokens` for Pydantic AI, the limit for gptme, the context window
+  for Hermes) does the round lose its thinking too. `compress_chat_messages`
+  keeps the thinking of an unfinished tool round and otherwise follows the
+  same rule; call it on the full history with the same options on every
+  request. A history that fits is passed through unchanged. Every removal is
+  logged and counted (`HistoryFit.thinking_stripped` from Pydantic AI's
+  `fit_messages` and Hermes's `last_fit`, a line in gptme's `limitations`).
+  Request settings such as `anthropic-beta` and `thinking.block_binding` are
+  never touched.
+- gptme: an assistant message with Claude thinking (gptme's inline `<think>`
+  block and its `think-sig` signature) could be compressed as text, cutting
+  the thinking or its signature. Only its visible text is compressed now.
+- Pydantic AI: only Claude thinking (a signed `ThinkingPart` from Anthropic or
+  Bedrock) is removed. OpenAI's encrypted reasoning and Gemini's thought
+  signatures have no such binding and are left as they are. The OpenAI Agents
+  SDK input filter already refuses `reasoning` items, so it never changes the
+  history in front of them; that is now documented and tested.
+
 ## [0.9.0] - 2026-10-15
 
 ### Added

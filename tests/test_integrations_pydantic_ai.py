@@ -18,6 +18,7 @@ from pydantic_ai.messages import (
     RetryPromptPart,
     SystemPromptPart,
     TextPart,
+    ThinkingPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -26,12 +27,21 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
 from llmslim import count_tokens
+from llmslim.integrations import pydantic_ai as adapter
 from llmslim.integrations.pydantic_ai import (
     fit_messages,
     history_tokens,
     llmslim_history_processor,
 )
-from tests._history_corpus import FAILURE, NOTES, SYSTEM_PROMPT, TASK, make_log
+from tests._history_corpus import (
+    FAILURE,
+    NOTES,
+    SYSTEM_PROMPT,
+    TASK,
+    ThinkingBinding,
+    make_log,
+    signature,
+)
 
 LATEST = "Now run the refund tests again."
 
@@ -266,3 +276,158 @@ def test_agent_run_with_test_model():
     messages = result.all_messages()
     calls, answers = _pairs(messages)
     assert calls == answers
+
+
+# Claude thinking: a signed ThinkingPart is bound to the history before it.
+
+
+def _thinking(tag, provider="anthropic"):
+    return ThinkingPart("", signature=signature(tag), provider_name=provider)
+
+
+def _thinking_history(end_with_tool_round=False):
+    """Thinking before the long tool log and after it; optionally ends mid tool round."""
+    messages = [
+        ModelRequest(parts=[SystemPromptPart(SYSTEM_PROMPT), UserPromptPart(TASK)]),
+        ModelResponse(
+            parts=[
+                _thinking("a"),
+                TextPart("Running the tests."),
+                ToolCallPart("run_tests", {"path": "tests"}, tool_call_id="t1"),
+            ]
+        ),
+        ModelRequest(parts=[ToolReturnPart("run_tests", make_log(lines=400), tool_call_id="t1")]),
+        ModelResponse(parts=[_thinking("b"), TextPart(NOTES * 2)]),
+        ModelRequest(parts=[UserPromptPart(LATEST)]),
+    ]
+    if end_with_tool_round:
+        messages += [
+            ModelResponse(
+                parts=[
+                    _thinking("c"),
+                    ToolCallPart("run_tests", {"path": "tests"}, tool_call_id="t3"),
+                ]
+            ),
+            ModelRequest(
+                parts=[ToolReturnPart("run_tests", make_log("tests", 400), tool_call_id="t3")]
+            ),
+        ]
+    return messages
+
+
+def _signatures(messages):
+    return [p.signature for m in messages for p in m.parts if isinstance(p, ThinkingPart)]
+
+
+def test_thinking_is_kept_when_nothing_changes():
+    messages = _thinking_history(end_with_tool_round=True)
+    out, fit = fit_messages(messages, 10**6)
+    assert all(a is b for a, b in zip(out, messages)) and len(out) == len(messages)
+    assert fit.thinking_stripped == 0 and not fit.changed
+
+
+def test_thinking_after_the_first_change_is_removed_and_kept_before_it():
+    messages = _thinking_history()
+    snapshot = copy.deepcopy(messages)
+    out, fit = fit_messages(messages, history_tokens(messages) // 2)
+    _assert_valid(out)
+    assert out[2].parts[0].content != messages[2].parts[0].content  # the old log changed
+    assert out[1] is messages[1]
+    # Kept before the change, removed after it: an unbroken run from the start.
+    assert _signatures(out) == [signature("a")]
+    assert [type(p) for p in out[3].parts] == [TextPart]
+    assert fit.thinking_stripped == 1 and "1 thinking block(s) removed" in fit.summary()
+    assert messages == snapshot
+
+
+def test_other_providers_reasoning_is_not_touched():
+    messages = _thinking_history()
+    messages[3] = ModelResponse(parts=[_thinking("b", provider="openai"), TextPart(NOTES * 2)])
+    out, fit = fit_messages(messages, history_tokens(messages) // 2)
+    assert _signatures(out) == [signature("a"), signature("b")]
+    assert fit.thinking_stripped == 0
+
+
+def test_mid_tool_round_the_earlier_history_waits():
+    messages = _thinking_history(end_with_tool_round=True)
+    # Room for everything except most of the newest tool result.
+    budget = history_tokens(messages[:-1]) + 150
+    out, fit = fit_messages(messages, budget)
+    _assert_valid(out, budget)
+    assert all(a is b for a, b in zip(out[:-1], messages[:-1]))
+    assert count_tokens(out[-1].parts[0].content) < count_tokens(messages[-1].parts[0].content)
+    assert _signatures(out) == [signature(t) for t in "abc"]
+    assert fit.kept_tool_round and fit.thinking_stripped == 0
+
+
+def test_mid_tool_round_compacts_anyway_when_the_history_would_not_fit():
+    messages = _thinking_history(end_with_tool_round=True)
+    budget = history_tokens(messages[:-1]) // 2
+    out, fit = fit_messages(messages, budget)
+    _assert_valid(out, budget)
+    assert not fit.kept_tool_round
+    assert _signatures(out) == [signature("a")]
+    assert fit.thinking_stripped == 2
+
+
+def test_fitting_is_deterministic_and_replays_unchanged():
+    messages = _thinking_history(end_with_tool_round=True)
+    budget = history_tokens(messages) // 2
+    first, fit = fit_messages(messages, budget)
+    again, _ = fit_messages(copy.deepcopy(messages), budget)
+    assert again == first
+    # Pydantic AI keeps the processed history: the next request sends it unchanged.
+    replay, refit = fit_messages(first, budget)
+    assert all(a is b for a, b in zip(replay, first)) and not refit.changed
+
+
+def _describe(message):
+    """A message without its Claude thinking, and the signatures of that thinking."""
+    rest = tuple(
+        (type(p).__name__, getattr(p, "content", None), getattr(p, "args", None))
+        for p in message.parts
+        if not isinstance(p, ThinkingPart)
+    )
+    return rest, [p.signature for p in message.parts if isinstance(p, ThinkingPart)]
+
+
+def _thinking_agent_run(budget):
+    """Two user turns of a Claude-like model that thinks before every response."""
+    binding = ThinkingBinding(_describe)
+    problems = []
+
+    def model(messages, info: AgentInfo) -> ModelResponse:
+        problems.extend(binding.violations(messages))
+        step = len(binding.bound)
+        thinking = ThinkingPart("", signature=binding.produce(messages), provider_name="anthropic")
+        # Two tool calls, then an answer, in each run.
+        if step % 3 != 2:
+            return ModelResponse(
+                parts=[thinking, ToolCallPart("run_tests", {"suite": f"s{step}"}, f"call{step}")]
+            )
+        return ModelResponse(parts=[thinking, TextPart(NOTES * 4)])
+
+    agent = _agent(FunctionModel(model), budget)
+    first = agent.run_sync(TASK)
+    agent.run_sync(LATEST, message_history=first.all_messages())
+    return problems
+
+
+@pytest.mark.parametrize(
+    "budget",
+    [
+        # Tight: thinking is removed at the second user prompt and, where the open tool round
+        # alone is over budget, mid round too.
+        800,
+        # Roomy: only the newest tool result is compressed, every thinking part is kept.
+        6000,
+    ],
+)
+def test_agent_never_replays_thinking_after_changed_history(budget):
+    assert _thinking_agent_run(budget) == []
+
+
+def test_without_the_fix_the_api_would_reject_the_agent_run(monkeypatch):
+    monkeypatch.setattr(adapter, "_bound_thinking", lambda part: False)
+    problems = _thinking_agent_run(6000)
+    assert any("the history before it changed" in problem for problem in problems)

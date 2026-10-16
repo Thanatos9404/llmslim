@@ -22,11 +22,30 @@ installed.
 
 Protected items are never changed and never dropped; recent items are never
 dropped. Token counts use :func:`llmslim.count_tokens`.
+
+Claude thinking: on Claude models with preserved thinking, each thinking block's
+signature is bound to everything sent before it (system prompt, tools and every
+earlier message). Replaying a block after an earlier message changed is rejected
+(HTTP 400, the default for Anthropic accounts created on or after 2026-08-31) or
+the reasoning is silently dropped. Blocks may be removed from the start or the
+end of the history, never from the middle. So each adapter:
+
+* removes the thinking from the first message a fit changed
+  (:func:`first_edited`) and from every later message, and keeps the thinking
+  before it, so the kept blocks are still an unbroken run from the start;
+* while a tool round whose model turns have thinking is unfinished
+  (:func:`open_tool_round`), first tries to fit the history with everything up
+  to the round's last thinking left as it is (:func:`protect_before`), so the
+  round goes back with its thinking. Compacting the earlier history then waits
+  for the next user message, unless the history would not fit at all.
+
+Both are pure functions of the history, so the same history gives the same
+output on every request.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from ..core import ContextCompressor, ContextRole
@@ -46,6 +65,13 @@ _KINDS = {
     ContextRole.ASSISTANT.value: "assistant message",
     ContextRole.USER.value: "user message",
 }
+
+# Message kinds for open_tool_round: a new user message, a model turn that calls tools, any other
+# model turn, and everything else (tool output, system messages).
+PROMPT = "prompt"
+CALL = "call"
+REPLY = "reply"
+OTHER = "other"
 
 
 @dataclass(frozen=True)
@@ -75,6 +101,10 @@ class HistoryFit:
 
     ``texts[i]`` is the new text of item ``i``: unchanged, compressed, a
     placeholder, or ``None`` when the item was dropped with ``drop="remove"``.
+    The adapters fill in the last two fields: ``thinking_stripped`` counts the
+    thinking blocks removed from the first changed message on, and
+    ``kept_tool_round`` is true when the earlier history was left as it is so
+    that an unfinished tool round keeps its thinking.
     """
 
     texts: List[Optional[str]]
@@ -84,6 +114,8 @@ class HistoryFit:
     protected_tokens: int = 0
     compressed: List[int] = field(default_factory=list)
     dropped: List[int] = field(default_factory=list)
+    thinking_stripped: int = 0
+    kept_tool_round: bool = False
 
     @property
     def fits(self) -> bool:
@@ -100,8 +132,16 @@ class HistoryFit:
         if self.budget is not None:
             parts.append(f"budget {self.budget:,}")
         parts.append(f"{len(self.compressed)} compressed, {len(self.dropped)} dropped")
+        if self.thinking_stripped:
+            parts.append(
+                f"{self.thinking_stripped} thinking block(s) removed after the first change"
+            )
         if self.budget is not None and not self.fits:
-            if self.protected_tokens > self.budget:
+            if self.kept_tool_round:
+                parts.append(
+                    "still over budget: earlier messages wait for the open tool round to end"
+                )
+            elif self.protected_tokens > self.budget:
                 parts.append(
                     f"still over budget: the protected messages alone use {self.protected_tokens:,}"
                 )
@@ -318,3 +358,67 @@ def fit_history(
         compressed=sorted(compressed),
         dropped=sorted(dropped),
     )
+
+
+def first_edited(fit: HistoryFit, owners: Sequence[int]) -> Optional[int]:
+    """The first message ``fit`` changed (compressed, replaced or removed), or ``None``.
+
+    ``owners[i]`` is the index of the message item ``i`` belongs to. Thinking in
+    that message and in every later one no longer matches what precedes it.
+    """
+    edited = [owners[i] for i in (*fit.compressed, *fit.dropped)]
+    return min(edited) if edited else None
+
+
+def open_tool_round(kinds: Sequence[str], thinking: Sequence[bool]) -> Optional[Tuple[int, int]]:
+    """The unfinished tool round at the end of the history, when it carries thinking.
+
+    A tool round is unfinished while the latest model turn calls tools and no
+    user message has come after it: the model has not answered the tool output
+    yet. Anthropic's guidance is never to compact in the middle of one, so that
+    the turn waiting on its tool results goes back with its thinking.
+
+    Args:
+        kinds: :data:`PROMPT`, :data:`CALL`, :data:`REPLY` or :data:`OTHER` for
+            each message, oldest first.
+        thinking: Whether each message carries thinking bound to what precedes it.
+
+    Returns:
+        ``(start, end)``: the round's first message (the one after the latest
+        user message) and the index just after its last message with thinking,
+        so that leaving the messages before ``end`` unchanged keeps all of the
+        round's thinking valid. ``None`` when no round is unfinished or none of
+        its turns has thinking.
+    """
+    turns = [i for i, kind in enumerate(kinds) if kind in (CALL, REPLY)]
+    prompts = [i for i, kind in enumerate(kinds) if kind == PROMPT]
+    if not turns or kinds[turns[-1]] != CALL or (prompts and prompts[-1] > turns[-1]):
+        return None
+    start = prompts[-1] + 1 if prompts else 0
+    with_thinking = [i for i in range(start, len(kinds)) if thinking[i]]
+    return (start, with_thinking[-1] + 1) if with_thinking else None
+
+
+def protect_before(
+    items: Sequence[HistoryItem], owners: Sequence[int], end: int
+) -> List[HistoryItem]:
+    """``items`` with every item of the messages before ``end`` protected."""
+    return [
+        replace(item, protected=True) if owner < end else item for item, owner in zip(items, owners)
+    ]
+
+
+def is_signed_thinking(block: Any) -> bool:
+    """Whether an Anthropic content block (a dict or an SDK object) is signed thinking.
+
+    ``thinking`` blocks carry their signature in ``signature``; for
+    ``redacted_thinking`` the encrypted ``data`` is the signature.
+    """
+    if isinstance(block, Mapping):
+        kind, signature, data = block.get("type"), block.get("signature"), block.get("data")
+    else:
+        kind = getattr(block, "type", None)
+        signature, data = getattr(block, "signature", None), getattr(block, "data", None)
+    if kind == "thinking":
+        return bool(signature)
+    return kind == "redacted_thinking" and bool(data)

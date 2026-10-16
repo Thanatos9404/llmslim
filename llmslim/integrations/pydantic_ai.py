@@ -20,6 +20,7 @@ Requires ``pip install "llmslim[pydantic-ai]"`` (Python 3.10+).
 from __future__ import annotations
 
 import dataclasses
+import logging
 from collections import Counter
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -31,6 +32,7 @@ try:
         RetryPromptPart,
         SystemPromptPart,
         TextPart,
+        ThinkingPart,
         ToolCallPart,
         ToolReturnPart,
         UserPromptPart,
@@ -43,13 +45,32 @@ except ImportError as exc:  # pragma: no cover - exercised only without the extr
 
 from ..core import ContextRole
 from ..tokens import count_tokens
-from ._history import HistoryFit, HistoryItem, fit_history, validate_history_options
+from ._history import (
+    CALL,
+    OTHER,
+    PROMPT,
+    REPLY,
+    HistoryFit,
+    HistoryItem,
+    first_edited,
+    fit_history,
+    open_tool_round,
+    protect_before,
+    validate_history_options,
+)
 
 __all__ = ["fit_messages", "history_tokens", "llmslim_history_processor"]
+
+logger = logging.getLogger(__name__)
 
 # Parts Pydantic AI needs to keep: the system prompt, rendered instructions, tool-availability
 # changes (deferred tools) and provider-side compaction markers.
 _KEEP_KINDS = frozenset({"system-prompt", "instruction", "tool-availability-delta", "compaction"})
+# Providers whose signed ThinkingParts are Claude thinking, bound to the conversation before them:
+# Anthropic's API (also through its Bedrock, Vertex AI and Foundry clients) and Bedrock's Converse
+# API. Other providers' signed reasoning (OpenAI encrypted reasoning, Gemini thought signatures)
+# has no such binding and is left alone.
+_BOUND_THINKING_PROVIDERS = frozenset({"anthropic", "bedrock"})
 
 HistoryProcessor = Callable[[List[ModelMessage]], List[ModelMessage]]
 
@@ -82,6 +103,16 @@ def llmslim_history_processor(
     call id with it, so tool calls and their returns always stay paired, and
     the result still alternates request, response, request. The turn holding
     the system prompt is never removed.
+
+    Claude thinking (signed ``ThinkingPart`` from Anthropic or Bedrock) is bound
+    to everything before it, so once a message is changed or removed, the
+    thinking parts of that message and of every later one are removed too;
+    the ones before it are kept. While a tool round is unfinished (the last
+    request returns tool results) and its responses have such thinking, the
+    processor first tries to fit by shortening only what comes after the
+    round's last thinking; the earlier history is compacted at the next user
+    prompt instead, unless the history cannot fit ``max_tokens`` that way.
+    Nothing changes while the history fits.
 
     Args:
         max_tokens: Budget for the text of all message parts, counted with
@@ -156,26 +187,46 @@ def fit_messages(
                 )
             )
             slots.append((mi, pi))
+    owners = [mi for mi, _ in slots]
+    options: Dict[str, Any] = {
+        "drop_order": _drop_order(messages, slots),
+        "drop": "remove",
+        "min_tokens": min_tokens,
+        "relevance": relevance,
+        "additional_compress_kwargs": additional_compress_kwargs,
+    }
 
-    fit = fit_history(
-        items,
-        max_tokens,
-        drop_order=_drop_order(messages, slots),
-        drop="remove",
-        min_tokens=min_tokens,
-        relevance=relevance,
-        additional_compress_kwargs=additional_compress_kwargs,
+    fit: Optional[HistoryFit] = None
+    tool_round = open_tool_round(
+        [_kind(message) for message in messages],
+        [any(_bound_thinking(part) for part in message.parts) for message in messages],
     )
+    if tool_round is not None:
+        # Mid tool round: shorten only what came back after the round's thinking, if that fits.
+        attempt = fit_history(protect_before(items, owners, tool_round[1]), max_tokens, **options)
+        if attempt.fits:
+            fit = attempt
+            fit.kept_tool_round = True
+    if fit is None:
+        fit = fit_history(items, max_tokens, **options)
     if not fit.changed:
         return messages, fit
 
+    first = first_edited(fit, owners)
     new_parts: Dict[int, List[Any]] = {mi: [] for mi in range(len(messages))}
     changed: Set[int] = set()
+    removed: Set[int] = set()
     for (mi, pi), new_text, item in zip(slots, fit.texts, items):
         # Any: the part types are a union that dataclasses.replace cannot be typed against.
         kept: Any = messages[mi].parts[pi]
         if new_text is None:
             changed.add(mi)
+            removed.add(mi)
+            continue
+        if first is not None and mi >= first and _bound_thinking(kept):
+            # Its signature covers history that has just changed: Anthropic would reject it.
+            changed.add(mi)
+            fit.thinking_stripped += 1
             continue
         if new_text != item.text:
             kept = dataclasses.replace(kept, content=new_text)
@@ -185,9 +236,18 @@ def fit_messages(
     for mi, message in enumerate(messages):
         if mi not in changed:
             processed.append(message)
-        elif new_parts[mi]:
+        elif new_parts[mi] or mi not in removed:
+            # A response left without parts is skipped by the Anthropic model, not sent empty.
             original: Any = message
             processed.append(dataclasses.replace(original, parts=new_parts[mi]))
+    if fit.thinking_stripped:
+        logger.info(
+            "LLMSlim removed %d Claude thinking part(s) from message %d on, where the history "
+            "changed: %s",
+            fit.thinking_stripped,
+            first,
+            fit.summary(),
+        )
     return processed, fit
 
 
@@ -216,6 +276,21 @@ def _describe(part: Any) -> Tuple[str, ContextRole, bool]:
 def _has_user_prompt(message: ModelMessage) -> bool:
     return isinstance(message, ModelRequest) and any(
         isinstance(part, UserPromptPart) for part in message.parts
+    )
+
+
+def _kind(message: ModelMessage) -> str:
+    if isinstance(message, ModelResponse):
+        return CALL if any(isinstance(part, ToolCallPart) for part in message.parts) else REPLY
+    return PROMPT if _has_user_prompt(message) else OTHER
+
+
+def _bound_thinking(part: Any) -> bool:
+    """Signed Claude thinking: Anthropic rejects it once the history before it changes."""
+    return (
+        isinstance(part, ThinkingPart)
+        and bool(getattr(part, "signature", None))
+        and getattr(part, "provider_name", None) in _BOUND_THINKING_PROVIDERS
     )
 
 

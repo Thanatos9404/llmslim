@@ -114,7 +114,11 @@ export function LogoCloud() {
   const y = useTransform(scrollYProgress, [0, 1], [48, -48])
   return <m.ul ref={list} className="logo-cloud" aria-label={`${startupPrograms.length} startup programs`} style={reduced ? undefined : { y }}>
     {startupPrograms.map((program, index) => <m.li key={program.id} className="logo-cloud-item"
-      initial={reduced ? undefined : { opacity: 0, filter: "blur(10px)" }} whileInView={reduced ? undefined : { opacity: 1, filter: "blur(0px)" }} viewport={{ once: true, amount: 0.6 }} transition={{ duration: 1.1, ease: EASE, delay: (index % 4) * 0.08 }}>
+      // As in Reveal: the HTML arrives hidden (the server cannot know the motion preference), so reduced-motion
+      // visitors get the visible state set on mount instead of no animation at all, which left the logos invisible.
+      {...(reduced
+        ? { initial: false, animate: { opacity: 1, filter: "blur(0px)" } }
+        : { initial: { opacity: 0, filter: "blur(10px)" }, whileInView: { opacity: 1, filter: "blur(0px)" }, viewport: { once: true, amount: 0.6 }, transition: { duration: 1.1, ease: EASE, delay: (index % 4) * 0.08 } })}>
       <a href={program.href} target="_blank" rel="noreferrer" aria-label={program.name} title={program.name} onClick={() => track("startup_program_clicked", { program: program.id })}>
         <ProgramLogo program={program} />
       </a>

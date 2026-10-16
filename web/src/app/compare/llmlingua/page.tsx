@@ -4,11 +4,11 @@ import { DocCodeBlock } from "@/components/docs/DocCodeBlock"
 import { Reveal } from "@/components/landing/Premium"
 import { siteConfig } from "@/config/site"
 import { LLMLINGUA_COMPARISON as page } from "@/data/comparisons"
-import { HEAD_TO_HEAD } from "@/data/live-benchmarks"
+import { HEAD_TO_HEAD, ROUND3_REPORT } from "@/data/live-benchmarks"
 import { breadcrumbJsonLd, constructMetadata, faqJsonLd, isoDate, jsonLdScript, techArticleJsonLd } from "@/lib/seo"
 
 const path = `/compare/${page.slug}`
-const ARTICLE = "/articles/llmslim-vs-llmlingua-2-vs-longllmlingua"
+const ROUND3 = `${siteConfig.github}/tree/main/benchmarks/live/round3`
 
 export const metadata = constructMetadata({
   title: page.title,
@@ -34,7 +34,7 @@ export default function LLMLinguaComparisonPage() {
       <p className="p-kicker">{page.kicker}</p>
       <h1>{page.heading[0]} <span>{page.heading[1]}</span></h1>
       <p className="bm-lede">{page.lede}</p>
-      <p className="cmp-meta"><span>Updated {page.lastUpdated}</span><span>LLMSlim Core 0.8</span><span>Reader: Claude Haiku 5.5</span></p>
+      <p className="cmp-meta"><span>Updated {page.lastUpdated}</span><span>LLMSlim Core 0.9</span><span>Reader: Claude Haiku 5.5</span></p>
       <p className="cmp-disclosure">{page.disclosure}</p>
     </header>
 
@@ -73,33 +73,43 @@ export default function LLMLinguaComparisonPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="h2h-title">
-      <Reveal className="p-head"><p className="p-kicker">Head to head</p><h2 id="h2h-title">NaturalQuestions, same reader. <span>Same budget, same cases.</span></h2>
-        <p className="p-body">20 retrieved passages per question, a 25% token budget for every compressor, and Claude Haiku 5.5 reading every compressed context. Accuracy is the share of cases where a gold answer appears in the response.</p></Reveal>
+      <Reveal className="p-head"><p className="p-kicker">Head to head</p><h2 id="h2h-title">Three benchmarks, same reader. <span>Same questions, same budget.</span></h2>
+        <p className="p-body">{page.headToHeadIntro}</p></Reveal>
       <div className="bm-table-wrap"><table className="bm-table bm-h2h">
-        <thead><tr><th scope="col">Compressor</th><th scope="col">Model it runs</th><th scope="col">{HEAD_TO_HEAD.columns[0]}</th><th scope="col">{HEAD_TO_HEAD.columns[1]}</th><th scope="col">{HEAD_TO_HEAD.columns[2]}</th><th scope="col">Tokens kept</th><th scope="col">Time per question</th></tr></thead>
+        <thead><tr><th scope="col">Compressor</th><th scope="col">Model it runs</th><th scope="col">{HEAD_TO_HEAD.columns[0]}</th><th scope="col">{HEAD_TO_HEAD.columns[1]}</th><th scope="col">{HEAD_TO_HEAD.columns[2]}</th><th scope="col">Cost per 1k</th><th scope="col">Time per question</th></tr></thead>
         <tbody>{HEAD_TO_HEAD.rows.map((row) => <tr key={row.system}>
           <th scope="row" className={row.best ? "is-best" : undefined}>{row.system}</th><td>{row.model}</td>
-          <td className={`num${row.best ? " is-best" : ""}`}>{row.scoreA}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreB}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreAll}</td>
-          <td className="num">{row.tokens}</td><td>{row.time}</td>
+          <td className={`num${row.best ? " is-best" : ""}`}>{row.scoreA}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreB}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreC}</td>
+          <td className="num">{row.cost}</td><td>{row.time}</td>
         </tr>)}</tbody>
       </table></div>
       <p className="bm-note">{HEAD_TO_HEAD.note}</p>
 
       <h3 className="cmp-subhead">Paired differences with 95% intervals</h3>
       <div className="bm-table-wrap"><table className="bm-table cmp-diffs">
-        <thead><tr><th scope="col">Comparison</th><th scope="col">Original (150 cases)</th><th scope="col">Fresh (150 cases)</th><th scope="col">All 300, by case</th><th scope="col">All 300, by question</th></tr></thead>
-        <tbody>{page.pairedDiffs.map((row) => <tr key={row.comparison}>
-          <th scope="row">{row.comparison}</th><td>{row.original}</td><td>{row.fresh}</td><td>{row.byCase}</td><td>{row.byQuestion}</td>
+        <thead><tr><th scope="col">Comparison</th><th scope="col">Benchmark (questions)</th><th scope="col">Difference (95% CI)</th><th scope="col">Reading</th></tr></thead>
+        <tbody>{page.pairedDiffs.map((row) => <tr key={`${row.benchmark}-${row.comparison}`}>
+          <th scope="row">{row.comparison}</th><td>{row.benchmark}</td><td>{row.difference}</td><td>{row.reading}</td>
         </tr>)}</tbody>
       </table></div>
       <p className="bm-note">{page.pairedNote}</p>
 
+      <h3 className="cmp-subhead">On every test question</h3>
+      <div className="bm-table-wrap"><table className="bm-table bm-h2h">
+        <thead><tr><th scope="col">System</th>{page.testSets.columns.map((column) => <th key={column} scope="col">{column}</th>)}</tr></thead>
+        <tbody>{page.testSets.rows.map((row) => <tr key={row.system}>
+          <th scope="row">{row.system}</th>{row.cells.map((value, index) => <td key={page.testSets.columns[index]} className="num">{value}</td>)}
+        </tr>)}</tbody>
+      </table></div>
+      <p className="bm-note">{page.testSets.note}</p>
+
       <h3 className="cmp-subhead">What this does not show</h3>
       <dl className="cmp-caveats">{page.caveats.map((caveat) => <div key={caveat.title}><dt>{caveat.title}</dt><dd>{caveat.body}</dd></div>)}</dl>
       <p className="cmp-links">
-        <Link className="text-link" href={ARTICLE}>Full methodology and error analysis <ArrowUpRight size={14} aria-hidden="true" /></Link>
+        <a className="text-link" href={ROUND3_REPORT} target="_blank" rel="noreferrer">Round 3 report and tables <ArrowUpRight size={14} aria-hidden="true" /></a>
+        <a className="text-link" href={ROUND3} target="_blank" rel="noreferrer">How the runs were kept honest <ArrowUpRight size={14} aria-hidden="true" /></a>
         <Link className="text-link" href="/benchmarks">Every benchmark <ArrowUpRight size={14} aria-hidden="true" /></Link>
-        <a className="text-link" href={`${siteConfig.github}/tree/main/benchmarks/live/results`} target="_blank" rel="noreferrer">Per-case results <ArrowUpRight size={14} aria-hidden="true" /></a>
+        <a className="text-link" href={`${ROUND3}/results`} target="_blank" rel="noreferrer">Per-question results <ArrowUpRight size={14} aria-hidden="true" /></a>
       </p>
     </section>
 
@@ -145,7 +155,7 @@ export default function LLMLinguaComparisonPage() {
       <div className="cmp-cta">
         <Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} aria-hidden="true" /></Link>
         <Link className="button button-outline" href="/integrations">Framework integrations</Link>
-        <Link className="button button-outline" href={ARTICLE}>Read the methodology</Link>
+        <Link className="button button-outline" href="/benchmarks">Every benchmark</Link>
       </div>
     </section>
   </div>

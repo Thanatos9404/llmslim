@@ -4,19 +4,19 @@ import { m, useMotionValueEvent, useReducedMotion, useScroll } from "framer-moti
 import { useEffect, useRef, useState } from "react"
 import { EASE, fmt } from "./Charts"
 
-/* One square is 100 tokens of a real LongMemEval history: 114,006 tokens in, 7,984 kept. */
-const TOTAL = 1140
-const KEPT = 80
-const TOKENS_IN = 114006
-const TOKENS_OUT = 7984
-const COST_IN = 90.72
-const COST_OUT = 1.45
+/* One square is 100 tokens of a LongMemEval history: 111,372 tokens in, 10,008 kept (round 3, Core 0.9, means over 180 questions). */
+const TOTAL = 1114
+const KEPT = 100
+const TOKENS_IN = 111372
+const TOKENS_OUT = 10008
+const COST_IN = 90.21
+const COST_OUT = 2.13
 
 const STEPS = [
-  { kicker: "The history", title: "Fifty chat sessions. 114,006 tokens.", body: "A real long-memory history. The question needs a few lines of it." },
-  { kicker: "The read", title: "Every round, scored against the question.", body: "Lexical ranking with no model at all, or a 22M-parameter reranker for a sharper read." },
-  { kicker: "The cut", title: "Seven percent stays, in its original order.", body: "Kept rounds go to the model whole, with their session headers. Everything else is left out." },
-  { kicker: "The answer", title: "76.7% right. The whole history scored 82.2%.", body: "At 1/62 of the cost at Haiku 5.5 list prices, with 14× fewer tokens. On a fresh sample it scored 76.7% against 72.2% for the whole history, within noise." },
+  { kicker: "The history", title: "Fifty chat sessions. 111,372 tokens.", body: "The size of an average LongMemEval history. The question needs a few lines of it." },
+  { kicker: "The read", title: "Every turn, scored against the question.", body: "Lexical ranking with no model at all, or a 22M-parameter reranker for a sharper read. A question stays with its answer." },
+  { kicker: "The cut", title: "Nine percent stays, in its original order.", body: "Kept turns go to the model whole, with their session dates. Everything else is left out." },
+  { kicker: "The answer", title: "77.8% right. So was the whole history.", body: "At 1/42 of the cost at Haiku 5.5 list prices, on 180 held-out questions. Dense retrieval over turns scored 80.6% at about twice LLMSlim's cost, within noise." },
 ]
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -32,11 +32,11 @@ function random(seed: number) {
   }
 }
 
-/** Relevance, fall speed and delay per square. Eight relevant rounds of ten squares each are the kept set. */
+/** Relevance, fall speed and delay per square. Ten relevant turns of ten squares each are the kept set. */
 function model() {
   const next = random(7)
   const kept = new Uint8Array(TOTAL)
-  const starts = [52, 171, 318, 402, 597, 731, 902, 1068]
+  const starts = [41, 150, 262, 371, 455, 598, 702, 806, 917, 1050]
   starts.forEach((start) => { for (let i = 0; i < 10; i++) kept[start + i] = 1 })
   const near = (i: number) => starts.some((start) => i >= start - 8 && i < start + 18)
   return Array.from({ length: TOTAL }, (_, i) => ({
@@ -167,7 +167,7 @@ export function Squeeze() {
         </ol>
       </div>
       <div className="rs-squeeze-stage">
-        <canvas ref={canvas} className="rs-squeeze-canvas" role="img" aria-label="1,140 squares, one per 100 tokens of chat history. Eighty relevant ones are kept and gathered into a small block; the rest fall away." />
+        <canvas ref={canvas} className="rs-squeeze-canvas" role="img" aria-label="1,114 squares, one per 100 tokens of chat history. A hundred relevant ones are kept and gathered into a small block; the rest fall away." />
         <dl className="rs-squeeze-meter">
           <div><dt>Context</dt><dd><span ref={tokens}>{fmt(reduced ? TOKENS_OUT : TOKENS_IN)}</span> tokens</dd></div>
           <div><dt>Per 1,000 questions</dt><dd><span ref={cost}>{`$${fmt(reduced ? COST_OUT : COST_IN, 2)}`}</span></dd></div>

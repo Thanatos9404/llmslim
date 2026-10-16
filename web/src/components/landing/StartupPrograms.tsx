@@ -7,7 +7,9 @@ import type { CSSProperties } from "react"
  * Logos are the companies' official artwork, unmodified. `logoDark` is the vendor's own variant
  * for dark backgrounds; MongoDB's is its reverse logo (white wordmark, green leaf), cut from the
  * official artwork. Neo4j publishes its white logo only as a PNG (media kit), so its dark variant is
- * that PNG beside the full-colour SVG from neo4j.com. Sources are in web/DESIGN_NOTES.md. Two treatments predate this list: "mask" tints a supplied single-colour
+ * that PNG beside the full-colour SVG from neo4j.com. Cartesia asks grant recipients to show the Cartesia Startups logo
+ * and publishes no file for it, so its lockup is Cartesia's own wordmark SVG beside "Startups" set in outlines, as on
+ * its grant card. Sources are in web/DESIGN_NOTES.md. Two treatments predate this list: "mask" tints a supplied single-colour
  * mark to the text colour, and "symbol" pairs an official symbol with the product name.
  */
 export type StartupProgram = {
@@ -43,6 +45,7 @@ export const startupPrograms: readonly StartupProgram[] = [
   { id: "honeycomb", name: "Honeycomb for Builders", href: "https://www.honeycomb.io/honeycomb-for-builders", logo: "/startups/honeycomb-light.svg", logoDark: "/startups/honeycomb-dark.svg", alt: "Honeycomb logo", width: 348, height: 102, display: 34 },
   { id: "exa", name: "Exa Startup Grants", href: "https://exa.ai/pricing", logo: "/startups/exa-blue.svg", logoDark: "/startups/exa-white.svg", alt: "Exa logo", width: 413, height: 129, display: 32 },
   { id: "neo4j", name: "Neo4j Startup Program", href: "https://neo4j.com/startup-program/", logo: "/startups/neo4j-full-color.svg", logoDark: "/startups/neo4j-white.png", alt: "Neo4j logo", width: 678, height: 242, display: 34 },
+  { id: "cartesia", name: "Cartesia Startups Grant Program", href: "https://cartesia.ai/startups", logo: "/startups/cartesia-startups-light.svg", logoDark: "/startups/cartesia-startups-dark.svg", alt: "Cartesia Startups logo", width: 901, height: 96, display: 22 },
   // Programs join this list only once acceptance is confirmed. Nebius AI Builder
   // (/startups/nebius.svg) is applied for and pending.
 ]

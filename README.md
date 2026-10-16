@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 11 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope and Pulumi" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 15 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j and Cartesia" width="100%">
 </a>
 
 <br/><br/>
@@ -9,8 +9,8 @@
 [![PyPI Version](https://img.shields.io/pypi/v/llmslim.svg?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=for-the-badge&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
 [![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=for-the-badge&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
-[![Tests Passing](https://img.shields.io/badge/Tests-678%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
-[![Coverage](https://img.shields.io/badge/Branch%20Coverage-90.21%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
+[![Tests Passing](https://img.shields.io/badge/Tests-1648%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
+[![Coverage](https://img.shields.io/badge/Branch%20Coverage-93.67%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
 [![License](https://img.shields.io/badge/License-MIT-94a3b8?style=for-the-badge)](LICENSE)
 [![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app)
 
@@ -142,7 +142,7 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 
 ## Startup programs
 
-LLMSlim is part of 14 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 15 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -161,6 +161,7 @@ none of them is an investor, and membership does not imply endorsement.
 | [Honeycomb for Builders](https://www.honeycomb.io/honeycomb-for-builders) | Honeycomb |
 | [Exa Startup Grants](https://exa.ai/pricing) | Exa |
 | [Neo4j Startup Program](https://neo4j.com/startup-program/) | Neo4j |
+| [Cartesia Startups Grant Program](https://cartesia.ai/startups) | Cartesia |
 
 Logos are trademarks of their owners and identify each program.
 
@@ -662,20 +663,50 @@ asyncio.run(main())
 
 Many libraries make unsubstantiated claims about 90% prompt compression. At LLMSlim, we practice **Radical Benchmark Transparency**:
 
-### Real-model results: Claude Haiku 5.5, Core 0.8.0
+### Round 3: Core 0.9.0 against memory systems and compressors, cost first
 
-Same model and prompt for every configuration; only the context changes. Truncation gets exactly LLMSlim's token
-count. Tuning used separate development questions only, and every suite was rerun once on a fresh sample after the
-code was frozen. Full tables, confidence intervals, weak spots, head-to-head runs of LLMLingua-2 and LongLLMLingua,
-the harness and raw per-question results: [benchmarks/live](benchmarks/live/README.md).
+Measured 13-15 October 2026 on held-out test questions. Every system is read by Claude Haiku 5.5 with the same
+answer prompt and judges. Mem0 and Zep ran through their own benchmark harnesses, and LLMLingua-2 and LongLLMLingua
+(LLaMA-2-7B in float16) with their published settings. Every compressor's context was built in public Kaggle
+notebooks pinned to a commit. Each cell is accuracy and what 1,000 questions cost end to end at list prices: the
+answer call, Mem0's and Zep's memory-building calls, and each system's compute. Full tables, confidence intervals,
+weak spots and every answer: [benchmarks/live/round3](benchmarks/live/round3/RESULTS.md).
+
+| Benchmark | LLMSlim 0.9 + reranker | LLMSlim 0.9 (no model) | Mem0 | Zep | LongLLMLingua | LLMLingua-2 | Retrieval baseline* | Full context |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| LoCoMo, 1,307 q, ~2,500 tokens | **93.0% · $0.95** | 91.7% · $0.89 | 91.0% · $2.66 | 74.4% · $6.24 | 73.3% · $7.01 (300 q) | 34.1% · $0.43 | 85.2% · $0.90 | 95.1% · $0.83 cached |
+| LongMemEval-S, 180 q, ~10,000 tokens | 74.4% · $2.21 | **77.8% · $2.13** | | | not run | 15.6% · $8.43 | 80.6% · $4.45 | 77.8% · $90.21 |
+| LongMemEval-S, Mem0's 60 q, ~2,500 tokens | **78.3% · $1.04** | 71.7% · $0.96 | 76.7% · $220.88 | | | | 80.0% · $3.36 | 78.3% · $90.20 |
+| LongMemEval-S, Zep's 24 q, ~2,500 tokens | 87.5% · $1.01 | **87.5% · $0.94** | 87.5% · $219.48 | 58.3% · $697.56 | | | 83.3% · $3.28 | 91.7% · $90.22 |
+| NaturalQuestions, 2,255 q, 25% of tokens | **73.5% · $0.33** | 60.6% · $0.30 | | | 70.5% · $1.32 (1,000 q) | 52.5% · $0.87 | 73.9% · $0.30 | 78.4% · $0.65 |
+| HotpotQA, 2,000 q, 40% of tokens (exact match) | 52.2% · $0.15 | **52.4% · $0.13** | | | 50.4% · $0.77 (1,000 q) | 46.7% · $0.47 | 50.5% · $0.13 | 58.0% · $0.24 |
+
+\* Dense retrieval over turns (Qwen3-Embedding-0.6B) on LoCoMo and LongMemEval; a plain reranker on NaturalQuestions
+and HotpotQA. Mem0 is its top 50 memories, except top 200 on Mem0's own sample. LongLLMLingua ran on pre-registered
+samples; on the same questions LLMSlim with its reranker scores 93.3% on LoCoMo (+20.0, 95% CI +15.0 to +25.0) and
+72.7% on NaturalQuestions, and the default LLMSlim 53.3% on HotpotQA. A cached full history costs $4.48 per 1,000
+LoCoMo questions when the cache misses.
+
+**Where LLMSlim loses:**
+- **NaturalQuestions without the reranker.** The default lexical mode scores 60.6% against 73.9% for a plain
+  reranker: paraphrased questions need semantic matching, so use the reranker for open-domain retrieval.
+- **Dense retrieval on LongMemEval.** 80.6% to LLMSlim's 77.8% at 10,000 tokens and 76.1% to 74.4% at 2,500, at
+  about twice the cost. Neither gap is significant on 180 questions, but both point the same way. A fix that
+  narrowed it on development questions did not hold up on test, so it is not in 0.9.0.
+- **Multi-hop and temporal questions at 1,000 tokens.** Mem0's top 20 memories beat the default LLMSlim on LoCoMo's
+  multi-hop (88.7% vs 80.3%) and temporal (93.4% vs 85.7%) questions. With its reranker LLMSlim is ahead overall
+  (90.5% vs 88.7%).
+- **A cached full history.** When a conversation's questions come back to back, the cached history (95.1% for
+  $0.83) beats every compressed context on LoCoMo.
+
+### Long documents and agents: round 2, Core 0.8.0
+
+Same model and prompt for every configuration; truncation gets exactly LLMSlim's token count, and every suite was
+rerun once on a fresh sample after the code was frozen ([benchmarks/live](benchmarks/live/README.md)). 0.9.0 changes
+only how plain-text chat transcripts are selected.
 
 | Benchmark | Full context | LLMSlim 0.8 + reranker | LLMSlim 0.8 (no model) | Truncate, same budget | Tokens (full → LLMSlim) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| LongMemEval-S, 90 q (accuracy) | 82.2 | **76.7** | 68.9 | 14.4 | 114,006 → 7,985 |
-| … fresh 90 q | 72.2 | **76.7** | 67.8 | 14.4 | |
-| NaturalQuestions 20 docs, 300 cases: 100 q × 3 answer positions (accuracy) | 86.3 | **75.0** | 65.7 | 52.0 | 2,889 → 668 |
-| … fresh 300 cases | 88.0 | **75.7** | 67.3 | 48.3 | |
-| HotpotQA, 200 q (F1) | 74.9 | **69.4** | 67.5 | 49.5 | 2,179 → 939 |
 | LongBench v1, 210 samples (macro) | 54.9 | 54.2 | **54.9** | 45.2 | 15,532 → 5,232 |
 | … fresh 210 samples | 55.1 | **55.4** | 55.0 | 46.8 | |
 | LongBench v2, 180 q (accuracy) | 60.0 | **55.6** | 53.9 | 48.3 | 30,493 → 8,469 |
@@ -726,7 +757,7 @@ llmslim document.txt --stats
 
 ## 📋 Changelog
 
-Release notes for every version, including 0.7.0 and 0.7.1, are in
+Release notes for every version, including 0.9.0, are in
 [CHANGELOG.md](CHANGELOG.md) and on
 [GitHub Releases](https://github.com/Thanatos9404/llmslim/releases).
 

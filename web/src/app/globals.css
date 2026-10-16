@@ -258,6 +258,8 @@
 /* Zero-specificity defaults so per-brand rules (zoho, mongodb) keep precedence. */
 :where(.startup-artwork) { display:flex; align-items:center; justify-content:center; max-width:160px; }
 :where(.startup-artwork) img { max-width:160px; object-fit:contain; }
+/* Cartesia's lockup is a wide wordmark plus "Startups": at 160px its letters would be too small to read. */
+.cartesia-brand, .cartesia-brand img { max-width:210px; }
 @media (max-width:600px) {
   .mongodb-brand { width:145px; }
   .mongodb-brand img { height:44px; }
@@ -268,6 +270,7 @@
   .sarvam-brand .startup-ai-symbol { width:32px; height:32px; }
   .startup-wordmark { width:99px; height:25px; }
   :where(.startup-artwork), :where(.startup-artwork) img { max-width:130px; }
+  .cartesia-brand, .cartesia-brand img { max-width:180px; }
 }
 
 /* Core and Platform positioning. */
@@ -771,6 +774,14 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
 .rb-score { font:500 14px var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
 .rb-track { height:6px; overflow:hidden; border-radius:1px; background:color-mix(in srgb,var(--ink) 7%,transparent); }
 .rb-bar { display:block; height:100%; border-radius:1px; background:color-mix(in srgb,var(--ink) 34%,transparent); }
+/* Bars grow as they scroll into view: a scroll-driven animation on the compositor, with no script. Browsers without
+   animation-timeline (and reduced motion) show the bars at full length. */
+@keyframes rb-grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .rb-bar { transform-origin:left; animation:rb-grow linear both; animation-timeline:view(); animation-range:entry 0% cover 30%; }
+  }
+}
 .rb-row.is-llmslim .rb-bar { background:var(--brand); }
 .rb-row.is-llmslim .rb-name { font-weight:600; }
 .rb-row.is-full .rb-bar { background:color-mix(in srgb,var(--ink) 62%,transparent); }

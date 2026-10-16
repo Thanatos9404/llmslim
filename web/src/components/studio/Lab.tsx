@@ -4,6 +4,7 @@ import { AnimatePresence, m, useReducedMotion, useScroll, useTransform } from "f
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react"
 import { ArrowRight, Check, CircleHelp, LoaderCircle, RotateCcw, X } from "lucide-react"
 import { PRESETS, type Preset } from "@/data/studio-presets"
+import { siteConfig } from "@/config/site"
 import { PixelField } from "@/components/results/PixelField"
 import { SarvamAnswer, useSarvamReadiness } from "./SarvamAnswer"
 import { Tour, useTour } from "./Tour"
@@ -118,7 +119,7 @@ export function StudioLab() {
     <section ref={hero} className="lab-hero" aria-labelledby="studio-title">
       <m.div className="lab-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></m.div>
       <m.div className="lab-hero-copy" style={reduced ? undefined : { y: copyY }}>
-        <p className="lab-kicker">Studio, running LLMSlim Core {result?.version ?? "0.8"}</p>
+        <p className="lab-kicker">Studio, running LLMSlim Core {result?.version ?? siteConfig.coreVersion}</p>
         <h1 id="studio-title">See what your agent <em>actually needs.</em></h1>
         <p className="lab-lede">Pick a scenario, ask a question and watch LLMSlim cut the context down to what answers it. Then see what plain truncation would have kept instead.</p>
         <button type="button" className="lab-tour-button" onClick={tour.start}><CircleHelp size={15} /> Take the 30-second tour</button>

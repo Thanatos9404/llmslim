@@ -35,10 +35,11 @@ from llmslim.hosted import (
 from llmslim.tokens import count_tokens
 
 ROOT = Path(__file__).resolve().parents[1]
-# Production runs PyPI llmslim 0.8.1; CI imports the repository's Core. The endpoint must be safe
-# under both, so tests that depend on llmslim.hosted's own accounting branch on what it can do:
+# Production runs PyPI llmslim 0.9.0; CI imports the repository's Core. Both have the two behaviours
+# below. The endpoint must also stay safe on an older Core (0.8.x), so tests that depend on
+# llmslim.hosted's own accounting branch on what it can do:
 # - EXACT_BOUND: hosted reserves an exact UTF-8 byte bound of the messages it sends and refuses
-#   (413) anything above max_input_tokens. 0.8.1 reserves min(max_input_tokens, planned x multiplier),
+#   (413) anything above max_input_tokens. 0.8.x reserves min(max_input_tokens, planned x multiplier),
 #   which the endpoint pins to its own (larger) byte bound.
 # - RELEASES_UNBILLED: hosted releases the reservation for errors Sarvam returns without billing.
 EXACT_BOUND = hasattr(hosted_module, "sarvam_prompt_token_bound")
@@ -539,7 +540,7 @@ def test_public_result_reports_what_reached_sarvam() -> None:
 def test_the_ledger_reserves_the_byte_bound_which_covers_any_bill(
     ready_env: pytest.MonkeyPatch, harness: Harness, call
 ) -> None:
-    # 2,000 emoji: 0.8.1 without tiktoken counts ~500 tokens; a byte-level tokenizer can bill 8,000.
+    # 2,000 emoji: Core without tiktoken counts ~500 tokens; a byte-level tokenizer can bill 8,000.
     context = "Card goes to Koregaon Park. " + "😀" * 2_000
     status, _, payload, _ = call("POST", answer_body(context=context))
     assert status == 200, payload
@@ -628,11 +629,11 @@ def test_a_prompt_larger_than_the_reservation_is_never_sent(
     status, _, payload, _ = call("POST", answer_body(context="word " * 400))
     assert harness.sdk.calls == []
     if EXACT_BOUND:
-        # The repository's Core measures the exact messages and refuses before reserving.
+        # 0.9.0 measures the exact messages and refuses before reserving.
         assert (status, payload["error"]["code"]) == (413, "input_too_large")
         assert harness.store.reservations() == []
     else:
-        # 0.8.1 would send it; the endpoint's last check refuses instead, and the conservative
+        # 0.8.x would send it; the endpoint's last check refuses instead, and the conservative
         # reservation stays charged although nothing was billed.
         assert (status, payload["error"]["code"]) == (502, "provider_unavailable")
         assert any(isinstance(error, api.PromptBoundExceeded) for _, error, _ in reports)
@@ -923,8 +924,8 @@ class ApiError(Exception):
         # May have been billed: the conservative reservation stays charged.
         (RuntimeError(SECRET_KEY), (None, None)),
         (TimeoutError(MONGODB_URI), (None, None)),
-        # Sarvam refused without doing any work: a Core that knows this releases the
-        # reservation; PyPI 0.8.1 keeps it charged in every case.
+        # Sarvam refused without doing any work: 0.9.0 releases the reservation; 0.8.x keeps
+        # it charged in every case.
         (ApiError(f"bad key {SECRET_KEY}", 403), (0, 0) if RELEASES_UNBILLED else (None, None)),
         (ApiError("insufficient credit", 402), (0, 0) if RELEASES_UNBILLED else (None, None)),
     ],
@@ -1118,4 +1119,4 @@ def test_production_installs_the_hosted_extras_from_pypi() -> None:
     lines = (ROOT / "web" / "requirements.txt").read_text(encoding="utf-8").splitlines()
     pinned = next(line for line in lines if line.startswith("llmslim"))
     assert pinned.startswith("llmslim[") and "sarvam" in pinned and "mongodb" in pinned
-    assert pinned.endswith("==0.8.1")
+    assert pinned.endswith("==0.9.0")

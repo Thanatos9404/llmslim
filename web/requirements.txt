@@ -2,6 +2,6 @@
 # The sarvam and mongodb extras serve the Studio's optional "Answer with Sarvam" step (api/sarvam_answer.py).
 numpy>=1.21
 scikit-learn>=1.0
-llmslim[sarvam,mongodb]==0.8.1
+llmslim[sarvam,mongodb]==0.9.0
 # Server-side error reporting (api/_sentry.py); it stays inactive unless SENTRY_DSN is set.
 sentry-sdk==2.71.0

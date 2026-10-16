@@ -12,8 +12,10 @@ import {
   LlamaIndex,
   Vercel,
   Exa,
+  HermesAgent,
+  PydanticAI,
 } from "@lobehub/icons";
-import { Building2, Code, Cpu, Database, Layers, Network, Server, Workflow } from "lucide-react";
+import { Building2, Code, Cpu, Database, Layers, Network, Server, SquareTerminal, Workflow } from "lucide-react";
 
 export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: string; className?: string }) {
   switch (iconKey) {
@@ -46,6 +48,13 @@ export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: s
     case "haystack":
       // No official Haystack mark in @lobehub/icons; a pipeline glyph stands in.
       return <Workflow className={`${className} text-teal-500`} />;
+    case "gptme":
+      // No gptme mark in @lobehub/icons; a terminal glyph stands in for the terminal agent.
+      return <SquareTerminal className={`${className} text-sky-400`} />;
+    case "hermes-agent":
+      return <HermesAgent className={className} size={32} />;
+    case "pydantic-ai":
+      return <PydanticAI className={className} size={32} />;
     case "vercel":
       return <Vercel className={className} size={32} />;
     case "fastapi":

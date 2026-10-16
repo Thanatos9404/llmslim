@@ -37,6 +37,24 @@ Downloaded with curl from each company's own site, checked as untrusted SVG (no 
   is `Logo/png/logo-white-RGB-transBG.png` from the newsroom's logo kit (https://media.neo4j.com/Neo4j-Logo.zip,
   linked from https://neo4j.com/newsroom/), which has no white SVG of the same logo.
 
+### Cartesia Startups logo, added on 15 October 2026
+
+Cartesia's grant email (14 October 2026) asks recipients to "include the Cartesia Startups logo on your website".
+It attaches no logo file, and https://cartesia.ai/startups has no badge or brand kit. The only Cartesia Startups
+artwork it sends is the lockup on its "Grant recipient" card: the Cartesia wordmark, a hairline divider and
+"Startups" in a serif. At the founder's direction the lockup was rebuilt as SVG instead of being cropped from that
+raster card:
+
+- The mark and letters are the wordmark SVG from the header of https://cartesia.ai (viewBox `0 0 579 83`), with the
+  path data unchanged and only the fill colours set.
+- "Startups" is Instrument Serif Regular (SIL OFL, `public/fonts/`) converted to outlines, at the wordmark's cap
+  height and baseline. Cartesia's own serif is not public, so this is close to the card but not the same.
+- `cartesia-startups-light.svg` uses the card's colours: forest `#1a6b2e` for the wordmark, and carbon `#1e1c1a`
+  for the divider and "Startups". `cartesia-startups-dark.svg` uses Cartesia's verdant `#309d4b` for the mark and its
+  page colour `#f4f4f1` for everything else. These are the brand colours named in the email's own stylesheet.
+- Both files are self-contained: no fonts, scripts or external references. They come from a scratch script,
+  `cartesia_lockup.py`, which is not committed, and are about 10 KB each.
+
 ## Generation prompts
 
 Both artwork variants were generated using the built-in image-generation tool, then encoded as WebP using Sharp. No image-generation API key or runtime image generation is required by the website.

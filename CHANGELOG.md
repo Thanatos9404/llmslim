@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`llmslim.memory`: agent memory with no LLM in the loop.**
+  - `Memory.add` stores turns verbatim. There is no extraction model, so writes cost nothing and a turn can never
+    become a wrong "fact".
+  - `Memory.search(query, user_id=..., budget=...)` selects the turns that answer the question at read time, within a
+    token budget.
+  - Each session (a `run_id`, or a calendar day) is shown under one date stamp.
+  - Scopes follow Mem0 (`user_id`, `agent_id`, `run_id`), and at least one is required.
+  - Stores: `InMemoryStore` and `SQLiteStore` (Python's built-in `sqlite3`, no extra dependency).
+  - `llmslim.memory.compat.Mem0Memory` has Mem0 2.x's methods and return shapes, so switching is one import.
+  - With the round-3 benchmark's date format, `Memory.search` reproduced the benchmark builder's contexts byte for
+    byte on 120 of 120 LongMemEval-S development contexts. Its measured results therefore apply to it.
+  - Guide: `docs/MEMORY.md`. Example: `examples/memory_quickstart.py`. Roadmap: `docs/roadmap/1.0.md`.
+
 ## [0.9.0] - 2026-10-15
 
 ### Added

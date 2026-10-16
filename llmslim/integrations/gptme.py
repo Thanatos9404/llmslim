@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+import re
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 try:
     from gptme.message import Message
@@ -46,7 +47,19 @@ except ImportError as exc:  # pragma: no cover - exercised only without the extr
 
 from ..core import ContextRole
 from ..tokens import count_tokens
-from ._history import HistoryItem, fit_history, validate_history_options
+from ._history import (
+    CALL,
+    OTHER,
+    PROMPT,
+    REPLY,
+    HistoryFit,
+    HistoryItem,
+    first_edited,
+    fit_history,
+    open_tool_round,
+    protect_before,
+    validate_history_options,
+)
 
 __all__ = ["LLMSlimContextProvider", "PROVIDER_NAME", "source_digest"]
 
@@ -58,6 +71,10 @@ _DEFAULT_LIMIT_FRACTION = 0.8
 # gptme stores tool output as system messages; only the leading ones are the system prompt.
 _ROLES = {"system": ContextRole.TOOL, "assistant": ContextRole.ASSISTANT, "user": ContextRole.USER}
 _OPTIONS = ("keep_recent", "min_tokens", "relevance", "additional_compress_kwargs")
+# gptme keeps Claude's thinking inline in the assistant message, with its signature in a comment:
+# "<think>...<!-- think-sig: ... --></think>". It sends only signed blocks back as thinking.
+_THINK_BLOCK = re.compile(r"<(think|thinking)>.*?</\1>\s*", re.DOTALL)
+_THINK_SIGNATURE = re.compile(r"<!-- think-sig: (.*?) -->", re.DOTALL)
 
 
 class LLMSlimContextProvider(ContextProvider):
@@ -82,6 +99,17 @@ class LLMSlimContextProvider(ContextProvider):
     other fields are kept, so tool results stay next to their calls. gptme
     creates the provider with no arguments; options are class attributes, set
     with keyword arguments or :meth:`configured`.
+
+    Claude thinking (gptme's signed ``<think>`` blocks) is bound to everything
+    before it. It is never compressed as text (that would break the
+    signature): only the visible text of an assistant message is counted and
+    compressed. Once a message is changed, the signed thinking of that message
+    and of every later one is removed; the thinking before it is kept. While a
+    tool round is unfinished and its
+    assistant messages have such thinking, the provider first tries to fit by
+    shortening only the tool output after the round's last thinking; the
+    earlier history is compacted after the next user message instead, unless
+    the conversation cannot fit the limit that way.
     """
 
     keep_recent: int = 6
@@ -156,17 +184,36 @@ class LLMSlimContextProvider(ContextProvider):
     def compress(self, messages: List[Message], config: CompressionConfig) -> CompactionResult:
         """Return the compacted messages; ``covered_through`` is the last message."""
         messages = list(messages)
-        fit = fit_history(
-            self._items(messages, config),
-            _resolve_limit(config),
-            min_tokens=self.min_tokens,
-            relevance=self.relevance,
-            additional_compress_kwargs=self.additional_compress_kwargs,
+        items = self._items(messages, config)
+        limit = _resolve_limit(config)
+        options: Dict[str, Any] = {
+            "min_tokens": self.min_tokens,
+            "relevance": self.relevance,
+            "additional_compress_kwargs": self.additional_compress_kwargs,
+        }
+        owners = range(len(messages))
+        fit: Optional[HistoryFit] = None
+        tool_round = open_tool_round(
+            [_kind(message) for message in messages], [_has_thinking(m) for m in messages]
         )
+        if tool_round is not None:
+            # Mid tool round: shorten only the tool output after its thinking, if that fits.
+            attempt = fit_history(protect_before(items, owners, tool_round[1]), limit, **options)
+            if attempt.fits:
+                fit = attempt
+                fit.kept_tool_round = True
+        if fit is None:
+            fit = fit_history(items, limit, **options)
+        first = first_edited(fit, owners)
         keep_head = _keep_head(config)
         compacted: List[Message] = []
-        for i, (message, text) in enumerate(zip(messages, fit.texts)):
-            if text is not None and text != message.content:
+        for i, (message, text, item) in enumerate(zip(messages, fit.texts, items)):
+            if first is not None and i >= first and _has_thinking(message):
+                # Its signature covers history that has just changed: Anthropic would reject it.
+                content, removed = _without_thinking(message.content)
+                message = message.replace(content=content)
+                fit.thinking_stripped += removed
+            if text is not None and text != item.text:
                 message = message.replace(content=text)
             # Like gptme's own compaction: pin the protected head so a later
             # limit_log cannot drop it.
@@ -180,6 +227,11 @@ class LLMSlimContextProvider(ContextProvider):
         if fit.dropped:
             limitations.append(
                 f"{len(fit.dropped)} older message(s) replaced by a placeholder to fit the limit"
+            )
+        if fit.thinking_stripped:
+            limitations.append(
+                f"Claude thinking removed from message {first} on ({fit.thinking_stripped} "
+                "block(s)): its signature covered history that changed"
             )
         return CompactionResult(
             messages=compacted,
@@ -199,6 +251,10 @@ class LLMSlimContextProvider(ContextProvider):
         items: List[HistoryItem] = []
         for i, message in enumerate(messages):
             content = message.content if isinstance(message.content, str) else str(message.content)
+            if _has_thinking(message):
+                # Only the visible text is counted and compressed: rewriting signed thinking
+                # would break its signature, and a changed message loses its thinking anyway.
+                content = _without_thinking(content)[0]
             tool_output = message.role == "system"
             recent = i >= recent_start
             fixed = i < protected_until or bool(message.pinned) or _contains_tool_use(message)
@@ -238,6 +294,40 @@ def _contains_tool_use(message: Message) -> bool:
     if "```" in message.content:
         return True
     return bool(message_contains_tool_use(message))
+
+
+def _kind(message: Message) -> str:
+    if message.role == "assistant":
+        return CALL if _contains_tool_use(message) else REPLY
+    return PROMPT if message.role == "user" else OTHER
+
+
+def _signed(block: str) -> bool:
+    match = _THINK_SIGNATURE.search(block)
+    return match is not None and bool(match.group(1).strip())
+
+
+def _has_thinking(message: Message) -> bool:
+    """Whether an assistant message carries thinking that gptme sends back signed."""
+    return (
+        message.role == "assistant"
+        and isinstance(message.content, str)
+        and any(_signed(match.group(0)) for match in _THINK_BLOCK.finditer(message.content))
+    )
+
+
+def _without_thinking(content: str) -> Tuple[str, int]:
+    """``content`` without its signed thinking blocks, and how many were removed."""
+    removed = 0
+
+    def drop(match: re.Match[str]) -> str:
+        nonlocal removed
+        if not _signed(match.group(0)):
+            return match.group(0)
+        removed += 1
+        return ""
+
+    return _THINK_BLOCK.sub(drop, content), removed
 
 
 def _resolve_limit(config: CompressionConfig) -> Optional[int]:

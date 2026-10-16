@@ -33,7 +33,7 @@ from llmslim.integrations import gptme as adapter
 from llmslim.integrations import gptme_plugin
 from llmslim.integrations.gptme import LLMSlimContextProvider, source_digest
 from llmslim.integrations.gptme_plugin import init_plugin
-from tests._history_corpus import FAILURE, NOTES, SYSTEM_PROMPT, TASK, make_log
+from tests._history_corpus import FAILURE, NOTES, SYSTEM_PROMPT, TASK, make_log, signature
 
 START = datetime(2026, 10, 13, 9, 0, 0)
 
@@ -242,3 +242,123 @@ def test_gptme_autocompact_hook_uses_llmslim(tmp_path):
     assert count_tokens(compacted[3].content) < count_tokens(messages[3].content) // 10
     assert FAILURE in compacted[3].content
     assert [m.content for m in compacted[:3]] == [m.content for m in messages[:3]]
+
+
+# Claude thinking: gptme keeps it inline, "<think>...<!-- think-sig: ... --></think>".
+
+
+def _think(tag, text=""):
+    """A thinking block the way gptme's Anthropic provider stores it."""
+    return f"<think>\n{text}\n<!-- think-sig: {signature(tag)} -->\n</think>\n\n"
+
+
+def _thinking_conversation(end_with_tool_round=False):
+    texts = [
+        ("system", SYSTEM_PROMPT),
+        ("user", TASK),
+        ("assistant", _think("a") + "Running the test suite.\n```shell\npytest -q\n```"),
+        ("system", "Ran command: `pytest -q`\n" + make_log(lines=400)),
+        ("assistant", _think("b", "The rounding test fails.") + NOTES * 3),
+        ("user", "Keep going."),
+    ]
+    if end_with_tool_round:
+        texts += [
+            ("assistant", _think("c") + "Running them again.\n```shell\npytest -q tests\n```"),
+            ("system", "Ran command: `pytest -q tests`\n" + make_log("tests", 400)),
+        ]
+    else:
+        texts += [
+            ("assistant", _think("c") + "Switching refund.py to Decimal."),
+            ("user", "Add the changelog entry too."),
+        ]
+    return [
+        Message(role, text, timestamp=START + timedelta(seconds=i), pinned=i == 0)
+        for i, (role, text) in enumerate(texts)
+    ]
+
+
+def _signatures(messages):
+    return [s for m in messages for s in adapter._THINK_SIGNATURE.findall(m.content)]
+
+
+def _assert_thinking_intact(compacted, messages):
+    """Thinking is either sent back exactly as it was produced or not at all."""
+    for new, old in zip(compacted, messages):
+        if "<think" in new.content:
+            assert new.content == old.content
+
+
+def test_thinking_is_kept_when_nothing_changes():
+    messages = _thinking_conversation(end_with_tool_round=True)
+    config = CompressionConfig(limit=10**6, max_tool_result_tokens=10**6)
+    result = LLMSlimContextProvider().compress(messages, config)
+    assert [m.content for m in result.messages] == [m.content for m in messages]
+    assert not any("thinking" in note.lower() for note in result.limitations)
+
+
+def test_thinking_after_the_first_change_is_removed_and_kept_before_it():
+    messages = _thinking_conversation()
+    config = CompressionConfig(limit=_tokens(messages) // 3, keep_head=2)
+    result = LLMSlimContextProvider(keep_recent=2).compress(messages, config)
+    compacted = result.messages
+    assert compacted[3].content != messages[3].content  # the tool output changed
+    assert _signatures(compacted) == [signature("a")]
+    assert compacted[2].content == messages[2].content
+    _assert_thinking_intact(compacted, messages)
+    assert "think" not in compacted[4].content
+    assert any("Claude thinking removed from message 3 on" in note for note in result.limitations)
+
+
+def test_only_the_visible_text_of_a_thinking_message_is_compressed():
+    messages = [
+        Message("system", SYSTEM_PROMPT),
+        Message("user", TASK),
+        Message("assistant", _think("b", "The rounding test fails.") + NOTES * 6),
+        Message("user", "Next."),
+    ]
+    config = CompressionConfig(limit=_tokens(messages) // 3)
+    compacted = LLMSlimContextProvider(keep_recent=1, min_tokens=50).compress(messages, config)
+    notes = compacted.messages[2].content
+    assert "think" not in notes and "rounding test fails" not in notes
+    assert count_tokens(notes) < count_tokens(NOTES * 6)
+    assert "Decimal with ROUND_HALF_UP" in notes
+
+
+def test_mid_tool_round_the_earlier_history_waits():
+    messages = _thinking_conversation(end_with_tool_round=True)
+    config = CompressionConfig(limit=_tokens(messages[:-1]) + 300, keep_head=2)
+    result = LLMSlimContextProvider(keep_recent=2).compress(messages, config)
+    compacted = result.messages
+    assert [m.content for m in compacted[:-1]] == [m.content for m in messages[:-1]]
+    assert count_tokens(compacted[-1].content) < count_tokens(messages[-1].content)
+    assert _signatures(compacted) == [signature(t) for t in "abc"]
+    assert not any("thinking" in note.lower() for note in result.limitations)
+
+
+def test_mid_tool_round_compacts_anyway_when_the_history_would_not_fit():
+    messages = _thinking_conversation(end_with_tool_round=True)
+    config = CompressionConfig(limit=_tokens(messages[:-1]) // 2, keep_head=2)
+    compacted = LLMSlimContextProvider(keep_recent=2).compress(messages, config).messages
+    assert _signatures(compacted) == [signature("a")]
+    _assert_thinking_intact(compacted, messages)
+
+
+def test_compaction_is_deterministic_and_replays_unchanged():
+    messages = _thinking_conversation()
+    config = CompressionConfig(limit=_tokens(messages) // 3, keep_head=2)
+    provider = LLMSlimContextProvider(keep_recent=2)
+    first = provider.compress(messages, config).messages
+    again = provider.compress(_thinking_conversation(), config).messages
+    assert [m.content for m in again] == [m.content for m in first]
+    replay = provider.compress(first, config).messages
+    assert [m.content for m in replay] == [m.content for m in first]
+
+
+def test_gptme_sends_back_only_the_kept_thinking():
+    llm_anthropic = pytest.importorskip("gptme.llm.llm_anthropic")
+    messages = _thinking_conversation()
+    config = CompressionConfig(limit=_tokens(messages) // 3, keep_head=2)
+    compacted = LLMSlimContextProvider(keep_recent=2).compress(messages, config).messages
+    replayed = [llm_anthropic._extract_thinking_content(m.content)[0] for m in compacted]
+    assert replayed[2] == [("", signature("a"))]
+    assert all(blocks == [] for i, blocks in enumerate(replayed) if i != 2)

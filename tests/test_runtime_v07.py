@@ -274,7 +274,8 @@ def test_session_is_created_outside_a_loop_and_reused_across_event_loops():
     assert "My customer is Acme" in second.plan.final_context
 
 
-def test_openai_agents_input_filter_uses_real_hook_shape_without_execution(monkeypatch):
+def _agents_model_input_data(monkeypatch):
+    """A stand-in for agents.run.ModelInputData, so no Agents SDK code runs."""
     package = types.ModuleType("agents")
     run_module = types.ModuleType("agents.run")
 
@@ -286,6 +287,11 @@ def test_openai_agents_input_filter_uses_real_hook_shape_without_execution(monke
     run_module.ModelInputData = ModelInputData
     monkeypatch.setitem(sys.modules, "agents", package)
     monkeypatch.setitem(sys.modules, "agents.run", run_module)
+    return ModelInputData
+
+
+def test_openai_agents_input_filter_uses_real_hook_shape_without_execution(monkeypatch):
+    ModelInputData = _agents_model_input_data(monkeypatch)
     hook = make_openai_agents_input_filter(_runtime())
     data = types.SimpleNamespace(
         model_data=ModelInputData(
@@ -298,6 +304,23 @@ def test_openai_agents_input_filter_uses_real_hook_shape_without_execution(monke
     data.model_data.input.append({"type": "function_call", "name": "unsafe"})
     with pytest.raises(ValueError, match="text messages only"):
         hook(data)
+
+
+def test_openai_agents_input_filter_never_edits_history_before_reasoning(monkeypatch):
+    # Reasoning items carry encrypted reasoning (OpenAI's, or Claude thinking through LiteLLM);
+    # the filter refuses them instead of rewriting the history they follow.
+    ModelInputData = _agents_model_input_data(monkeypatch)
+    prepared = []
+    hook = make_openai_agents_input_filter(_runtime(), on_prepared=prepared.append)
+    reasoning = {"type": "reasoning", "id": "rs_1", "summary": [], "encrypted_content": "gAAAA"}
+    data = types.SimpleNamespace(
+        model_data=ModelInputData(
+            input=[{"role": "user", "content": "When?"}, reasoning], instructions=None
+        )
+    )
+    with pytest.raises(ValueError, match="text messages only"):
+        hook(data)
+    assert prepared == [] and data.model_data.input[1] is reasoning
 
 
 def test_context_cli_exposes_safe_machine_readable_views(tmp_path, capsys):

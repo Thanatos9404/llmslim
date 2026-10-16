@@ -8,10 +8,14 @@ pipeline.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from typing import Dict, List, Optional, Union
+import logging
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any, Dict, List, Optional, Union
 
 from .core import CompressionResult, ContextRole, compress
+from .integrations._history import CALL, OTHER, PROMPT, REPLY, is_signed_thinking, open_tool_round
+
+logger = logging.getLogger(__name__)
 
 # Roles whose content is typically long, free-form, and safe to compress.
 # System prompts are left untouched by default since they often contain
@@ -72,6 +76,18 @@ def compress_chat_messages(
         A new list of message dicts with ``content`` replaced by
         compressed text where applicable. The input list is not mutated.
 
+    Claude thinking: only string content is compressed, so Anthropic content
+    block lists (assistant turns with ``thinking`` blocks, tool results) pass
+    through. A thinking block's signature is bound to everything before it,
+    so once a message is changed, the signed ``thinking`` and
+    ``redacted_thinking`` blocks of every later assistant message are removed
+    (the ones before it are kept). An unfinished tool round at the end (the
+    latest assistant turn calls tools and no user message follows) keeps its
+    thinking: Anthropic expects it back. The output is a pure function of the
+    input, so call this on the full history with the same options on every
+    request; the messages the thinking was produced after are then sent the
+    same way each time.
+
     Example:
         >>> from llmslim import compress_chat_messages
         >>> compressed = compress_chat_messages(conversation_history, target_ratio=0.5)
@@ -79,8 +95,9 @@ def compress_chat_messages(
     """
     compressible_roles = set(compressible_roles)
     out: List[Dict[str, str]] = []
+    first_edit: Optional[int] = None
 
-    for message in messages:
+    for index, message in enumerate(messages):
         role = message.get("role")
         content = message.get("content", "")
 
@@ -95,11 +112,68 @@ def compress_chat_messages(
             result = compress(content, target_ratio=target_ratio, **call_kwargs)
             new_message = dict(message)
             new_message["content"] = result.compressed_text
+            if first_edit is None and result.compressed_text != content:
+                first_edit = index
             out.append(new_message)
         else:
             out.append(dict(message))
 
+    if first_edit is not None:
+        _strip_thinking_after(out, first_edit)
     return out
+
+
+def _strip_thinking_after(messages: List[Dict[str, Any]], first_edit: int) -> None:
+    """Remove signed thinking from the assistant messages after ``first_edit``, in place.
+
+    Messages in an unfinished tool round at the end keep theirs. Only the
+    copies made by :func:`compress_chat_messages` are changed; each new
+    content list is a new list.
+    """
+    tool_round = open_tool_round(
+        [_chat_kind(message) for message in messages],
+        [_has_thinking(message) for message in messages],
+    )
+    keep = range(*tool_round) if tool_round is not None else range(0)
+    removed = 0
+    for index in range(first_edit + 1, len(messages)):
+        message = messages[index]
+        if index in keep or not _has_thinking(message):
+            continue
+        content = message["content"]
+        message["content"] = [block for block in content if not is_signed_thinking(block)]
+        removed += len(content) - len(message["content"])
+    if removed:
+        logger.debug(
+            "compress_chat_messages removed %d thinking block(s) after message %d, which changed",
+            removed,
+            first_edit,
+        )
+
+
+def _chat_kind(message: Mapping[str, Any]) -> str:
+    """The message's kind for open_tool_round, in OpenAI or Anthropic chat format."""
+    role, content = message.get("role"), message.get("content")
+    blocks = content if isinstance(content, list) else []
+    if role == "assistant":
+        calls = message.get("tool_calls") or any(_block_type(b) == "tool_use" for b in blocks)
+        return CALL if calls else REPLY
+    if role == "user" and not any(_block_type(b) == "tool_result" for b in blocks):
+        return PROMPT
+    return OTHER
+
+
+def _has_thinking(message: Mapping[str, Any]) -> bool:
+    content = message.get("content")
+    return (
+        message.get("role") == "assistant"
+        and isinstance(content, list)
+        and any(is_signed_thinking(block) for block in content)
+    )
+
+
+def _block_type(block: Any) -> Any:
+    return block.get("type") if isinstance(block, Mapping) else getattr(block, "type", None)
 
 
 def compress_documents(

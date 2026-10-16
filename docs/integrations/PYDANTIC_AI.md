@@ -128,6 +128,20 @@ the history still alternates request, response, request. Messages that do not
 change are passed through as the same objects; the input list is not
 modified.
 
+Claude thinking: a `ThinkingPart` signed by Anthropic (or Bedrock) is bound to
+everything before it. On Claude models with preserved thinking (Haiku 5.5,
+Sonnet 5.5, Opus 5.5, Fable 5.1), Anthropic rejects it once an earlier message
+changes (HTTP 400 for accounts created on or after 2026-08-31), or drops the
+reasoning. So once the processor changes or removes a message, the thinking
+parts of that message and of every later one are removed (logged at INFO and
+counted in `thinking_stripped` of the fit `fit_messages` returns); thinking
+before it is kept. While a tool round is unfinished and its responses have
+such thinking, the processor first tries to fit by shortening only the tool
+results after the round's last thinking, and compacts the earlier history at
+the next user prompt instead, unless the history cannot fit `max_tokens` that
+way. Other providers' signed reasoning (OpenAI, Gemini) is left alone, and your
+`anthropic_thinking` settings, including `block_binding`, are not touched.
+
 `max_tokens` counts the text of all message parts with `llmslim.count_tokens`
 (`history_tokens(messages)` gives the same count). The instructions and tool
 definitions Pydantic AI adds to each request are not part of the history and

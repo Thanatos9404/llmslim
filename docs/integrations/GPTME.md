@@ -131,6 +131,17 @@ model still sees which command ran.
 - Messages are never removed or reordered; role, timestamp, `call_id` and the
   other fields are kept. `source_digest` is computed the way gptme computes it,
   and `covered_through` is the last message.
+- Claude thinking, which gptme stores inline as `<think>` blocks with a
+  `think-sig` signature, is never compressed as text: only the visible text of
+  an assistant message is counted and compressed. On Claude models with
+  preserved thinking (Haiku 5.5, Sonnet 5.5, Opus 5.5, Fable 5.1) a signed block
+  is bound to everything before it, and Anthropic rejects it once an earlier
+  message changes (HTTP 400 for accounts created on or after 2026-08-31). So
+  from the first changed message on, signed thinking is removed, and
+  `limitations` says so; the thinking before it is kept. While a tool round is
+  unfinished and its assistant messages have signed thinking, only the tool
+  output after the round's last thinking is shortened, if that fits the limit;
+  the earlier history is compacted after the next user message instead.
 
 Token counts use `llmslim.count_tokens` (tiktoken when installed).
 

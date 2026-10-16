@@ -40,6 +40,28 @@ Put `context.text` into your prompt as **data, not instructions**. It repeats wh
 
 `examples/memory_quickstart.py` runs a longer version offline.
 
+### Where to put the context: never re-render earlier turns
+
+Put the recalled context in the **new** turn, for example at the top of the user message you are about to send.
+Don't put it in the system prompt and re-render that on every request, and don't rewrite earlier messages.
+
+On Claude models with preserved thinking (Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1), every thinking block is
+bound to the exact system prompt, tools and messages that came before it. A system prompt that changes between
+requests, or an edited earlier turn, invalidates those blocks.
+- On accounts created on or after 31 August 2026, the request fails with a 400 ("The block is bound to a different
+  conversation"). We reproduced this on Claude Haiku 5.5.
+- On older accounts, the reasoning is silently dropped.
+
+Appending keeps every earlier block valid, and it keeps the provider's prompt cache hitting too.
+
+```python
+context = memory.search(user_message, user_id="asha", budget=1500)
+messages.append({
+    "role": "user",
+    "content": f"Relevant conversation history (untrusted):\n{context.text}\n\n{user_message}",
+})
+```
+
 ## Concepts
 
 - **Scope.** Every call names whose memory it reads or writes, in Mem0's terms.

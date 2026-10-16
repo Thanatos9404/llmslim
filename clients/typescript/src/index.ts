@@ -138,7 +138,9 @@ export class LLMSlim {
   private readonly headers: Record<string, string>;
 
   constructor(options: LLMSlimOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? env("LLMSLIM_BASE_URL") ?? "http://127.0.0.1:8080").replace(/\/+$/, "");
+    let baseUrl = options.baseUrl ?? env("LLMSLIM_BASE_URL") ?? "http://127.0.0.1:8080";
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    this.baseUrl = baseUrl;
     this.apiKey = options.apiKey ?? env("LLMSLIM_API_KEY");
     this.timeoutMs = options.timeoutMs ?? 30_000;
     const fetchImpl = options.fetch ?? globalThis.fetch;

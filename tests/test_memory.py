@@ -168,7 +168,7 @@ def test_search_selects_the_answer_from_a_long_history(memory):
         "Thanks, I have noted your new address in Koregaon Park.",
     )
     memory.add(messages, user_id="u1", timestamp=when)
-    context = memory.search("What is my new address?", user_id="u1", budget=200)
+    context = memory.search("Where did I move to?", user_id="u1", budget=200)
     assert context.compressed and context.history_tokens > 200
     assert context.tokens <= 200 * 1.02
     assert "Koregaon Park" in context.text

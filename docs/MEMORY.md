@@ -127,7 +127,7 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 
 ## Limits
 
-- **Lexical mode matches words, not meanings.** A question phrased in different words from the stored turn can miss it, e.g. "allergy" against "allergic", or "move" against "moved". A stemming fix is being validated for 1.0. Until then, use `relevance="semantic"` where users paraphrase.
+- **Lexical mode matches words, not meanings.** Forms of the same word match ("move", "moved" and "moving"), but a question phrased in different words from the stored turn can miss it, e.g. "allergy" against "allergic", or "home" against "apartment". Use `relevance="semantic"` where users paraphrase.
 - **Nothing is reconciled.** When a fact changes ("I moved to Pune"), both turns stay, each under its date, and the model sees which is newer. Delete or `update` a turn to correct it.
 - **`score` is for display and ordering.** It is a lexical overlap from 0 to 1. Selection itself ranks whole sessions and turns with LLMSlim's focus engine.
 - **Scale.** `search` reads the whole scope on every call. A LongMemEval history (about 500 turns, 111k tokens) takes about half a second on a CPU. Keep scopes per user or per agent.

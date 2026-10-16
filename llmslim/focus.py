@@ -60,17 +60,34 @@ _SUFFIXES = (
     "ly",
     "s",
 )
+_UNDOUBLE = frozenset(("ings", "ing", "edly", "ed"))
 
 
 @lru_cache(maxsize=1 << 16)
 def _stem(word: str) -> str:
+    """Light suffix stripping that brings a word's inflected forms to one stem: move, moves, moved and moving all
+    become "mov"; shop and shopping "shop"; class and classes "class"."""
     if len(word) <= 3 or word[0].isdigit():
         return word
     for suffix in _SUFFIXES:
         if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            # "class" and "status" are not plurals.
+            if suffix == "s" and word.endswith(("ss", "us")):
+                break
+            # "agreed" -> "agree", while "speed" and "breed" stay whole.
+            if suffix == "ed" and word.endswith("eed"):
+                word = word[:-1] if len(word) >= 6 else word
+                break
             word = word[: -len(suffix)] + ("y" if suffix in ("ies", "ied") else "")
+            # "classes" -> "class"; "businesses" -> "business" -> "busi".
+            if suffix == "es" and word.endswith("ss"):
+                return _stem(word)
+            # "shopping" -> "shop", "planned" -> "plan"; "called", "kissed" and "buzzed" keep their double letter.
+            if suffix in _UNDOUBLE and len(word) > 3 and word[-1] == word[-2]:
+                word = word[:-1] if word[-1] not in "aeiouylsz" else word
             break
-    return word[:-1] if len(word) > 4 and word.endswith("e") else word
+    # A final "e" goes whenever three letters remain, so "move" meets "moved" and "time" meets "times".
+    return word[:-1] if len(word) > 3 and word.endswith("e") else word
 
 
 def terms(text: str) -> List[str]:

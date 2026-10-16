@@ -35,6 +35,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `llmslim.mcp_server.build_server(memory, user_id=...)` builds the same server from Python.
   - Guide: `docs/MCP.md`. `server.json` is ready for the MCP Registry once a release includes the server.
 
+### Fixed
+- **Query matching across word forms.** Lexical selection stems the question
+  and the context so that different forms of a word match. Some common forms
+  did not:
+  - Four-letter words ending in "e" kept the "e", while their other forms lost
+    it: "move" did not match "moved", nor "time" "times", nor "live" "living".
+    A question like "Where did I move to?" could miss the turn "I moved to
+    Pune".
+  - A doubled consonant stayed after "-ing" and "-ed", so "shopping" did not
+    match "shop", nor "planned" "plan".
+  - Words ending in "ss" or "us" lost their final "s" as if plural, so "class"
+    did not match "classes", nor "status" "statuses".
+
+  All of these now share one stem. On the round-3 development splits, measured
+  offline with no model calls, the share of answer-bearing text kept changed by:
+  - LoCoMo: +0.9 points at 1,000 tokens and +1.1 points at 2,500;
+  - LongMemEval-S: -0.3 points at 2,500 tokens and 0.0 at 10,000;
+  - NQ: -0.5 points;
+  - HotpotQA: +0.3 points.
+
+  None of these changes is statistically significant. The held-out test
+  splits were not run. Other derived forms such as "allergy" and "allergic"
+  still don't match; `relevance="semantic"` covers them.
+
 ## [0.9.0] - 2026-10-15
 
 ### Added

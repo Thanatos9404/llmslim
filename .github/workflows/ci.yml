@@ -27,6 +27,28 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  server-image:
+    name: Server image builds and answers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image
+        run: docker build -t llmslim-server .
+      - name: Refuse to start on a public interface without an API key
+        run: |
+          if docker run --rm llmslim-server; then echo "the server started without an API key"; exit 1; fi
+      - name: Store and recall over HTTP with a key
+        run: |
+          KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+          docker run -d --name llmslim -p 8080:8080 -e LLMSLIM_API_KEYS="$KEY" llmslim-server
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/healthz && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/info)" = 401
+          curl -fsS -H "Authorization: Bearer $KEY" -H 'content-type: application/json'             -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8080/v1/memories
+          curl -fsS -H "Authorization: Bearer $KEY" -H 'content-type: application/json'             -d '{"user_id": "ci", "query": "Where did I move to?"}' http://127.0.0.1:8080/v1/memories/search | grep -q Pune
+      - name: Server log
+        if: always()
+        run: docker logs llmslim || true
+
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

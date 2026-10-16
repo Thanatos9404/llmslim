@@ -541,6 +541,18 @@ claude mcp add llmslim -- llmslim mcp
 
 <!-- mcp-name: io.github.thanatos9404/llmslim -->
 
+### Over HTTP, from any language
+
+`llmslim serve` puts the same memory and a context-fitting endpoint behind a small JSON API. It runs as one process with
+one SQLite file and no model calls. Install it with `pip install "llmslim[server]"`, or build the `Dockerfile`.
+
+```bash
+curl -s localhost:8080/v1/memories/search -H 'content-type: application/json'   -d '{"user_id": "asha", "query": "Where did I move to?", "budget": 1500}'
+```
+
+It needs a bearer API key to listen beyond localhost. The routes, limits and Docker setup are in
+[docs/SERVER.md](docs/SERVER.md).
+
 ## Use with LangChain / LlamaIndex / Haystack
 
 Each adapter runs `compress_documents` on the retrieved documents, with the same

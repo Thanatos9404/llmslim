@@ -78,6 +78,8 @@ class LLMSlimToolOutputMiddleware(AgentMiddleware):
         min_keep: Never shorten a result below this many tokens.
         only: Only these tools' results are shortened. ``None`` (the default) means every tool's.
         never: Tools whose results are never shortened, for example one that returns file contents the agent edits.
+        compress_json: Whether JSON results are shortened too. Off by default: agents given shortened JSON spent
+            extra turns fetching the fields that were cut.
 
     Example:
         >>> from langchain.agents import create_agent
@@ -97,6 +99,7 @@ class LLMSlimToolOutputMiddleware(AgentMiddleware):
         min_keep: int = 1000,
         only: Optional[Iterable[str]] = None,
         never: Iterable[str] = (),
+        compress_json: bool = False,
     ) -> None:
         super().__init__()
         if min_tokens < 1 or min_keep < 1:
@@ -109,6 +112,7 @@ class LLMSlimToolOutputMiddleware(AgentMiddleware):
         # Not self.tools: AgentMiddleware uses that for tools a middleware adds to the agent.
         self._only: Optional[FrozenSet[str]] = frozenset(only) if only is not None else None
         self._never: FrozenSet[str] = frozenset(never)
+        self.compress_json = compress_json
 
     def before_model(self, state: Any, runtime: Any) -> Optional[Dict[str, Any]]:
         return self._shorten(state["messages"])
@@ -153,6 +157,7 @@ class LLMSlimToolOutputMiddleware(AgentMiddleware):
                 keep_ratio=self.keep_ratio,
                 min_keep=self.min_keep,
                 hint=TOOL_HINT,
+                compress_json=self.compress_json,
             )
             if result is None:
                 continue

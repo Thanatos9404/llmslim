@@ -138,8 +138,10 @@ prompt cache misses. Here nothing the model has already seen ever changes:
 | `min_keep` | 1000 | Never shorten a result below this many tokens. |
 | `only` | every tool | Shorten only these tools' results. |
 | `never` | none | Never shorten these tools' results, e.g. ones that return file contents to edit. |
+| `compress_json` | `False` | Also shorten JSON results (llmslim 0.11.1 or newer; before that, JSON was always shortened). Off by default: in our Claude Code benchmark, an agent given a shortened JSON list spent extra turns fetching the fields that were cut. |
 
 **Never touched:**
+- JSON results, unless `compress_json=True`;
 - results the model has already seen;
 - results with images or files;
 - results at or below `min_tokens`.

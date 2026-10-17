@@ -285,6 +285,7 @@ def test_wrap_runs_the_agent_through_a_live_proxy(tmp_path, monkeypatch, capsys)
 
     def runner(command, env):
         seen["command"], seen["base"] = command, env["ANTHROPIC_BASE_URL"]
+        seen["tool_search"] = env.get("ENABLE_TOOL_SEARCH")
         # The proxy is up while the agent runs; the upstream here is unreachable, so it answers 502.
         seen["status"] = httpx.get(env["ANTHROPIC_BASE_URL"] + "/v1/models").status_code
         return 7
@@ -303,6 +304,8 @@ def test_wrap_runs_the_agent_through_a_live_proxy(tmp_path, monkeypatch, capsys)
     )
     assert code == 7 and seen["command"] == ["/usr/bin/claude", "--continue"]
     assert seen["base"].startswith("http://127.0.0.1:") and seen["status"] == 502
+    # Claude Code keeps deferring tools behind tool search, as it does against the API directly.
+    assert seen["tool_search"] == "true"
 
 
 def test_proxy_refuses_remote_binding_and_stats_print(tmp_path, capsys):
@@ -324,3 +327,58 @@ def test_proxy_refuses_remote_binding_and_stats_print(tmp_path, capsys):
     assert main(["stats", "--db", str(tmp_path / "p.db"), "--price-per-mtok", "3"]) == 0
     out = capsys.readouterr().out
     assert "Tokens not sent:    0" in out and "At $3/MTok" in out
+
+
+def test_wrap_keeps_the_users_tool_search_choice(tmp_path, monkeypatch):
+    from llmslim.proxy.cli import wrap
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setenv("ENABLE_TOOL_SEARCH", "false")
+    seen = {}
+
+    def runner(command, env):
+        seen["tool_search"] = env.get("ENABLE_TOOL_SEARCH")
+        return 0
+
+    wrap(
+        ["claude", "--upstream", "http://127.0.0.1:9", "--db", str(tmp_path / "p.db")],
+        runner=runner,
+    )
+    assert seen["tool_search"] == "false"
+
+
+def test_print_mode_runs_keep_the_default_permission_mode(tmp_path):
+    from llmslim.proxy.cli import claude_arguments
+
+    config, project = tmp_path / "config", tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    config.mkdir()
+
+    def args(*rest):
+        return claude_arguments(list(rest), cwd=project, config_dir=config)
+
+    # Through a proxy, `claude -p` would start in auto mode; keep it in default.
+    assert args("-p", "fix it") == ["--permission-mode", "default", "-p", "fix it"]
+    assert args("--print", "fix it")[:2] == ["--permission-mode", "default"]
+    # Interactive sessions, and runs where the user chose a mode, are left alone.
+    assert args("--continue") == ["--continue"]
+    assert args("-p", "x", "--permission-mode", "plan") == ["-p", "x", "--permission-mode", "plan"]
+    assert args("-p", "x", "--permission-mode=acceptEdits")[:1] == ["-p"]
+    assert args("-p", "x", "--dangerously-skip-permissions")[:1] == ["-p"]
+    assert args("-p", "x", "--settings", "s.json")[:1] == ["-p"]
+    assert args("--", "-p")[:1] == ["--"]  # after --, "-p" is the prompt
+    # A defaultMode in the user's settings decides, as it would without the proxy.
+    (config / "settings.json").write_text(
+        '{"permissions": {"defaultMode": "acceptEdits"}}', encoding="utf-8"
+    )
+    assert args("-p", "x") == ["-p", "x"]
+    (config / "settings.json").unlink()
+    # Claude Code ignores auto in project settings, so it doesn't count.
+    (project / ".claude" / "settings.json").write_text(
+        '{"permissions": {"defaultMode": "auto"}}', encoding="utf-8"
+    )
+    assert args("-p", "x")[:2] == ["--permission-mode", "default"]
+    (project / ".claude" / "settings.local.json").write_text(
+        '{"permissions": {"defaultMode": "plan"}}', encoding="utf-8"
+    )
+    assert args("-p", "x") == ["-p", "x"]

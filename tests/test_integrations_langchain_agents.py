@@ -175,3 +175,22 @@ def test_options_are_validated():
         LLMSlimToolOutputMiddleware(keep_ratio=0)
     with pytest.raises(ValueError):
         LLMSlimToolOutputMiddleware(min_tokens=0)
+
+
+def test_json_results_are_left_alone_unless_asked():
+    import json
+
+    rows = [
+        {"id": i, "title": f"Issue {i}", "body": "Steps to reproduce: run it twice. " * 4}
+        for i in range(120)
+    ]
+    messages = [
+        HumanMessage("List the issues."),
+        AIMessage("", tool_calls=[{"id": "c1", "name": "list_issues", "args": {}}]),
+        ToolMessage(json.dumps(rows, indent=2), tool_call_id="c1", name="list_issues", id="m1"),
+    ]
+    assert LLMSlimToolOutputMiddleware().before_model({"messages": messages}, None) is None
+    update = LLMSlimToolOutputMiddleware(compress_json=True).before_model(
+        {"messages": messages}, None
+    )
+    assert update is not None and "JSON list" in update["messages"][0].content

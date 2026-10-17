@@ -12,7 +12,7 @@ ever changes:
   the API reject the request.
 
 ```bash
-pip install "llmslim[proxy]"   # llmslim 0.11.0 or newer
+pip install "llmslim[proxy]"   # llmslim 0.11.1 or newer
 llmslim wrap claude                 # interactive, as usual
 llmslim wrap claude -- -p "Run the tests and fix what fails" --model claude-sonnet-5-5
 llmslim proxy stats                 # what it has saved so far
@@ -29,8 +29,10 @@ No model is called, and nothing leaves your machine except the requests Claude C
   - LLMSlim's line-aware selection keeps errors, failures and tracebacks, plus the lines most related to the call
     (the shell command or search pattern).
   - Runs of near-identical lines collapse into one line with a count, and omitted spans are marked.
-  - JSON with a list (`gh ... --json`, `curl`, `kubectl -o json`) keeps every item as one compact line with its
-    identifying fields. Items related to the call stay whole.
+  - JSON (`gh ... --json`, `curl`, `kubectl -o json`) is left as it is unless you pass `--json`. In our benchmark,
+    an agent given a shortened issue list spent extra turns fetching the fields that were cut, and the run cost more.
+    With `--json`, a list keeps every item as one compact line with its identifying fields, and items related to the
+    call stay whole.
   - A one-line note tells the model the output was shortened, and to run a narrower command to see more.
 - **Never touched:**
   - `Read`, `Edit` and `Write` output, and any tool not listed above. File contents the agent edits from stay exact,
@@ -55,7 +57,33 @@ tests/test_api.py::test_endpoint_699 PASSED [116%]
 === 1 failed, 700 passed in 41.27s ===
 ```
 
-## Measured
+## What it does to a Claude Code bill
+
+We measured billed dollars, with cache reads and writes priced separately, on real Claude Code 2.1.296 with Claude
+Haiku 5.5. There were 8 tasks and 10 runs per arm per task, each run starting from a fresh project and config, and
+every run is published in [benchmarks/claude_code_cost](../benchmarks/claude_code_cost/README.md):
+
+| Task | Change in billed cost |
+|---|---|
+| Find the cause of a failing CI run in about 12 KB of log | **-26% to -32%** |
+| Fix 3 lint errors among about 260 warnings | **-17% to -21%** |
+| Fix 1-5 bugs, running `pytest -v` after each fix | -2% to -15% (the agent already trims test output with `tail`) |
+| Read files, rename across files (nothing to compress) | within about 10% either way |
+| Pooled over 8 tasks (0.11.0 compression, JSON included) | -5% to +5% |
+
+The ranges cover the two permission modes we ran both arms in.
+
+What this means:
+- **It saves money on long logs** whose useful line isn't at the end: CI runs, linters, builds.
+- **It does little for test runs**, where agents already trim the output themselves.
+- **Shortened JSON made one task cost about twice as much**, because the agent spent turns fetching the issue text
+  that was cut. JSON is therefore left alone by default since 0.11.1.
+- **On real sessions, tool output is a small part of the bill.** In 444 real Claude Code sessions (48,911 requests,
+  Opus 5.5), cache reads were 75.6% of the bill. If all shell, search and web output had cost nothing, the bill would
+  have been 13.8% lower. Long context is the bigger cost: re-reading context beyond 150k tokens was 41% of it. Claude
+  Code's `/autocompact` and `autoCompactWindow` setting control when it compacts.
+
+## Why the byte-for-byte replay matters
 
 All runs used Claude Haiku 5.5 with adaptive thinking, through the Anthropic API.
 
@@ -81,8 +109,16 @@ All runs used Claude Haiku 5.5 with adaptive thinking, through the Anthropic API
 - **Keep `~/.llmslim/proxy.db` for as long as a session lasts.** If you delete it mid-session, the proxy sends the
   original output again for earlier turns. The API then rejects the earlier thinking, and Claude Code strips it and
   retries. Entries are kept for 30 days after their last use.
-- **Claude Code features with a custom base URL:** Remote Control is turned off, and MCP tool search is off by default
-  (set `ENABLE_TOOL_SEARCH=true`; the proxy forwards those blocks unchanged).
+- **Claude Code features with a custom base URL:** Remote Control is turned off. Claude Code also turns tool search
+  off for custom base URLs, which sends every tool definition on every request: about 7,100 more tokens per request on
+  Claude Code 2.1.296. `llmslim wrap claude` sets `ENABLE_TOOL_SEARCH=true` unless you set it yourself, since the proxy
+  forwards those blocks unchanged. Set it yourself when you run `llmslim proxy` on its own.
+- **Permission mode:** through a proxy, Claude Code can't fetch its feature flags, and `claude -p` then starts in
+  auto permission mode instead of default. In auto mode, commands outside `--allowedTools` go to a classifier instead
+  of being refused. Since 0.11.1, `llmslim wrap claude` starts print-mode runs with `--permission-mode default`
+  unless you pass a mode or set `permissions.defaultMode` in your settings. Interactive sessions are unchanged.
+- **Organization settings:** with a custom `ANTHROPIC_BASE_URL`, Claude Code skips the server-managed settings of a
+  Team or Enterprise organization. Don't use the proxy where those settings must apply.
 - **Only the Anthropic Messages API is supported.** Codex and other OpenAI-format agents are planned.
 
 ## Security

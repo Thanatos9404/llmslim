@@ -17,7 +17,7 @@
 <br/>
 
 **The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.11.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+*This repository is **LLMSlim Core** (v0.11.1, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
@@ -54,7 +54,7 @@ print(result.compressed_text)
 print(f"{result.original_tokens} -> {result.compressed_tokens} tokens ({result.reduction_percent:.1f}% fewer)")
 ```
 
-**3. What you should see** (llmslim 0.11.0, base install):
+**3. What you should see** (llmslim 0.11.1, base install):
 
 ```text
 Hi team, I hope you are all doing well and had a good weekend. I am writing about invoice INV-2291, which charged us $480 instead of $240. We upgraded to the Pro plan on 3 September, but the old Basic plan was billed as well. Please refund the duplicate $240 charge to the card ending 4417.
@@ -79,7 +79,7 @@ If LLMSlim is useful, consider starring the repo or opening an issue with feedba
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
-| Version | 0.11.0 | 0.9.1 beta |
+| Version | 0.11.1 | 0.9.1 beta |
 | License | MIT, this repository | Proprietary, private beta |
 | Install | `pip install llmslim` | By invitation; not published to PyPI |
 | What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
@@ -523,14 +523,19 @@ llmslim wrap claude
 llmslim proxy stats
 ```
 
-**Measured on Claude Haiku 5.5 with thinking:**
-- **Compression:** a 10,545-token pytest log reached the model as 156 tokens, with the failing test and its assertion
-  kept.
-- **Over the session:** cache reads grew every turn, and 62,334 input tokens were never sent across seven requests.
-- **Control:** the same final request sent without the proxy's byte-for-byte replay was rejected with HTTP 400.
-- **Real Claude Code:** a 6,045-token log went to the model as 156 tokens, and the answer was correct.
+**What it does to the bill, measured** on real Claude Code with Claude Haiku 5.5. We counted billed dollars, with cache
+reads priced separately, and published all 572 runs in
+[benchmarks/claude_code_cost](benchmarks/claude_code_cost/README.md):
+- **Long logs:** a failing CI run cost 26-32% less, and a lint run with three errors among 260 warnings 17-21% less.
+- **Test runs:** -2% to -15%. Agents already trim test output with `tail`.
+- **Over 8 tasks:** between -5% and +5% overall. Shortened JSON made one task cost about twice as much, so JSON is
+  left alone by default since 0.11.1.
+- **Real sessions:** tool output is a small part of a Claude Code bill. Re-reading long context is the big part, and
+  Claude Code's `/autocompact` setting controls it.
 
-See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the limits and security.
+Without the byte-for-byte replay, an edited history gets the request rejected with HTTP 400 once Claude's thinking is
+in it; with it, cache reads keep growing every turn. See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the
+limits and security.
 
 **As a Claude Code plugin.** The plugin adds LLMSlim's memory server (below) and two commands:
 - `/llmslim:wrap-claude` walks you through starting Claude Code through the proxy;
@@ -846,7 +851,7 @@ llmslim document.txt --stats
 
 ## 📋 Changelog
 
-Release notes for every version, including 0.11.0, are in
+Release notes for every version, including 0.11.1, are in
 [CHANGELOG.md](CHANGELOG.md) and on
 [GitHub Releases](https://github.com/Thanatos9404/llmslim/releases).
 

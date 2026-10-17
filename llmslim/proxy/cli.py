@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import shutil
@@ -22,6 +23,28 @@ from .store import ProxyStore
 DEFAULT_DB = Path.home() / ".llmslim" / "proxy.db"
 DEFAULT_PORT = 8787
 AGENTS = {"claude": "ANTHROPIC_BASE_URL"}
+# With a custom base URL, Claude Code stops deferring tools behind tool search and sends every tool definition on every
+# request: about 7,100 more tokens per request on Claude Code 2.1.296. The proxy forwards tool_reference blocks
+# unchanged, so keep tool search on unless the user chose otherwise.
+AGENT_ENV = {"claude": {"ENABLE_TOOL_SEARCH": "true"}}
+# Through a proxy, Claude Code can't fetch its feature flags, and `claude -p` then starts in auto permission mode
+# instead of default: commands outside --allowedTools go to a classifier instead of being refused. Print-mode runs keep
+# the default mode unless the user chose one, on the command line or in a settings file.
+_MODE_CHOICES = (
+    "--permission-mode",
+    "--dangerously-skip-permissions",
+    "--allow-dangerously-skip-permissions",
+    "--settings",
+)
+_PROJECT_IGNORED_MODES = {
+    "auto",
+    "bypassPermissions",
+}  # Claude Code ignores these in project and local settings
+_MANAGED_SETTINGS = (
+    Path("C:/Program Files/ClaudeCode/managed-settings.json"),
+    Path("/Library/Application Support/ClaudeCode/managed-settings.json"),
+    Path("/etc/claude-code/managed-settings.json"),
+)
 
 
 def _policy_arguments(parser: argparse.ArgumentParser) -> None:
@@ -67,6 +90,12 @@ def _policy_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Also compress every MCP tool's output (off by default; or add data tools one by one with --tool).",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Also compress JSON output (off by default: agents given shortened JSON spent extra turns fetching "
+        "the fields that were cut).",
+    )
 
 
 def _policy(args: argparse.Namespace) -> Policy:
@@ -77,6 +106,7 @@ def _policy(args: argparse.Namespace) -> Policy:
         tools=COMPRESSIBLE_TOOLS | frozenset(args.tool),
         mcp=args.mcp,
         never=frozenset(args.never),
+        compress_json=args.json,
     )
 
 
@@ -228,6 +258,45 @@ class _BackgroundProxy:
         self.thread.join(timeout=10)
 
 
+def _default_mode(path: Path) -> Optional[str]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    permissions = data.get("permissions") if isinstance(data, dict) else None
+    mode = permissions.get("defaultMode") if isinstance(permissions, dict) else None
+    return mode if isinstance(mode, str) and mode else None
+
+
+def _mode_configured(cwd: Path, config_dir: Path) -> bool:
+    """Whether a settings file Claude Code reads sets ``permissions.defaultMode``."""
+    if any(_default_mode(path) for path in (*_MANAGED_SETTINGS, config_dir / "settings.json")):
+        return True
+    for name in ("settings.json", "settings.local.json"):
+        mode = _default_mode(cwd / ".claude" / name)
+        if mode and mode not in _PROJECT_IGNORED_MODES:
+            return True
+    return False
+
+
+def claude_arguments(
+    rest: Sequence[str], cwd: Optional[Path] = None, config_dir: Optional[Path] = None
+) -> List[str]:
+    """The arguments to start Claude Code with: ``rest``, plus ``--permission-mode default`` for a print-mode run whose
+    user chose no mode, so the proxy doesn't move it from default to auto."""
+    arguments = list(rest)
+    options = arguments[: arguments.index("--")] if "--" in arguments else arguments
+    if "-p" not in options and "--print" not in options:
+        return arguments
+    if any(a == flag or a.startswith(flag + "=") for a in options for flag in _MODE_CHOICES):
+        return arguments
+    cwd = cwd or Path.cwd()
+    config_dir = config_dir or Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    if _mode_configured(cwd, config_dir):
+        return arguments
+    return ["--permission-mode", "default", *arguments]
+
+
 def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call) -> int:
     """``llmslim wrap claude [claude arguments...]``: run the agent with its API traffic through the proxy."""
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -252,7 +321,11 @@ def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call)
     app = create_proxy_app(store=store, upstream=_upstream(args.upstream), policy=_policy(args))
     with _BackgroundProxy(app) as proxy:
         env = dict(os.environ)
+        for name, value in AGENT_ENV.get(args.agent, {}).items():
+            env.setdefault(name, value)
         env[AGENTS[args.agent]] = f"http://127.0.0.1:{proxy.port}"
+        if args.agent == "claude":
+            rest = claude_arguments(rest)
         code = int(runner([executable, *rest], env=env))
     stats = store.stats(started)
     store.close()

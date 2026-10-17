@@ -1,7 +1,9 @@
 """Shorten one long tool output, the way the proxy and the agent middleware do: once, deterministically, with a note.
 
 Shared by :mod:`llmslim.proxy` (coding agents) and :mod:`llmslim.integrations.langchain_agents` (LangChain agents).
-JSON with a list keeps every item, compactly (see :mod:`llmslim._json_output`). Other text keeps errors, failures and
+JSON is left as it is unless asked for: in our Claude Code benchmark, agents given shortened JSON spent extra turns
+fetching the fields that were cut, and the run cost more. When asked for, JSON with a list keeps every item, compactly
+(see :mod:`llmslim._json_output`). Other text keeps errors, failures and
 tracebacks first, then the lines most related to the call; runs of similar lines collapse into one line and a count,
 and omitted spans are marked. Nothing here calls a model.
 """
@@ -11,7 +13,7 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 from ._fit import fit_text
-from ._json_output import shorten_json
+from ._json_output import is_json, shorten_json
 from .tokens import count_tokens
 
 SHELL_HINT = "Run a narrower command to see more."
@@ -26,11 +28,13 @@ def shorten_tool_output(
     keep_ratio: float = 0.35,
     min_keep: int = 1000,
     hint: str = SHELL_HINT,
+    compress_json: bool = False,
 ) -> Optional[Tuple[str, int, int]]:
     """``(new_text, tokens_before, tokens_after)``, or ``None`` when ``text`` should be left as it is.
 
     Output at or below ``min_tokens`` is left alone. Longer output keeps about ``keep_ratio`` of its tokens, and never
-    fewer than ``min_keep``, focused on ``query`` (the command or request that produced it) when given.
+    fewer than ``min_keep``, focused on ``query`` (the command or request that produced it) when given. JSON is left alone
+    unless ``compress_json`` is true.
     """
     before = count_tokens(text)
     if before <= min_tokens:
@@ -38,7 +42,10 @@ def shorten_tool_output(
     budget = max(min_keep, int(before * keep_ratio))
     if budget >= before:
         return None
-    body = shorten_json(text, budget, query)
+    json_text = is_json(text)
+    if json_text and not compress_json:
+        return None
+    body = shorten_json(text, budget, query) if json_text else None
     if body is not None:
         kept = "every list item with its short fields, and the items related to the call whole"
     else:

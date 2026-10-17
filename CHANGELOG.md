@@ -9,7 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-17
+
+We measured what `llmslim wrap claude` does to a real Claude Code bill: billed dollars, with cache reads and writes
+priced separately, over 572 published runs (`benchmarks/claude_code_cost/`). The benchmark found three problems in
+0.11.0, fixed here.
+
+### Fixed
+- **`llmslim wrap claude` no longer makes every request about 7,100 tokens longer.** Claude Code turns tool search off
+  when `ANTHROPIC_BASE_URL` points anywhere but Anthropic, and then sends every tool definition on every request.
+  - `wrap` now sets `ENABLE_TOOL_SEARCH=true` unless you set it yourself. The proxy forwards tool search blocks
+    unchanged.
+  - Measured on Claude Code 2.1.296 with Claude Haiku 5.5, with the same prompt:
+    - the first request was 26,885 tokens through the 0.11.0 proxy;
+    - it is 19,716 with this fix, against 19,712 without the proxy;
+    - a tool search through the proxy loaded WebFetch from its `tool_reference` block.
+- **Print-mode runs keep the default permission mode.** Through a proxy, Claude Code can't fetch its feature flags,
+  and `claude -p` then starts in auto mode, where commands outside `--allowedTools` go to a classifier instead of
+  being refused.
+  - `wrap` now starts print-mode runs with `--permission-mode default`, unless you pass a mode or set
+    `permissions.defaultMode` in your settings.
+  - Interactive sessions are unchanged.
+
+### Changed
+- **JSON tool output is left as it is by default**, in `llmslim proxy` and `LLMSlimToolOutputMiddleware`. In the
+  benchmark, an agent given a shortened 90-issue JSON list spent 12 turns fetching the issue text that was cut,
+  instead of 4, and the run cost about twice as much. `--json` (proxy) or `compress_json=True` (middleware) turns it
+  back on.
+
 ### Added
+- **`benchmarks/claude_code_cost/`:** the billed-cost benchmark, with its protocols written before each run and every
+  run's result.
+  - Long CI and lint logs cost 17-32% less.
+  - Test runs cost -2% to -15%: agents already trim them with `tail`.
+  - Pooled over 8 tasks, the change was -5% to +5%.
+  - Replaying 444 real sessions shows tool output is a small part of a Claude Code bill: if all shell, search and web
+    output had cost nothing, the bill would have been 13.8% lower.
 - **A Claude Code plugin marketplace in this repo.** `/plugin marketplace add Thanatos9404/llmslim`, then
   `/plugin install llmslim@llmslim`.
   - The plugin starts LLMSlim's memory server with `uvx`.
@@ -17,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `/llmslim:savings` runs `llmslim proxy stats`.
   - Both commands run only when you type them.
 - `glama.json`, so the maintainer can claim the Glama listing.
+
+### Known limitation
+- With a custom `ANTHROPIC_BASE_URL`, Claude Code skips the server-managed settings of a Team or Enterprise
+  organization (documented by Claude Code). Don't use the proxy where those settings must apply.
 
 ## [0.11.0] - 2026-10-17
 

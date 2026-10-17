@@ -8,18 +8,18 @@
     "source": "github"
   },
   "websiteUrl": "https://llmslim.app",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "llmslim",
-      "version": "0.10.1",
+      "version": "0.11.0",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {
           "type": "named",
           "name": "--from",
-          "value": "llmslim[mcp]==0.10.1"
+          "value": "llmslim[mcp]==0.11.0"
         }
       ],
       "packageArguments": [

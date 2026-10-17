@@ -210,3 +210,20 @@ Measurement 4 checks that the three 0.11.1 fixes work as users run them, before 
   4. llmslim passes at least as many checks as plain, less one run per task.
 
 Otherwise nothing is released, and the result is reported as is.
+
+## Measurement 4 results: release conditions met
+
+| Task | Change in mean billed cost with llmslim 0.11.1 | Passed (plain / llmslim) |
+|---|---|---|
+| ci-log | **-29.7%** (-$0.0023 to -$0.0012 per run) | 10/10 / 10/10 |
+| json-issues | +0.9% (-$0.0003 to +$0.0004; JSON left alone, 4 turns in both arms) | 10/10 / 10/10 |
+| one-bug | -8.0% (-$0.0007 to +$0.0001, n.s.) | 10/10 / 10/10 |
+
+All four conditions held:
+1. every llmslim run recorded `permissionMode: "default"` with no pinning (30/30), as every plain run did;
+2. json-issues shows no regression;
+3. ci-log still saves, with an interval that excludes zero;
+4. pass rates are equal.
+
+These three tasks were chosen to test the fixes, so their pooled number is not a summary of the proxy. Measurement 3
+is.

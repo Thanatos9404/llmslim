@@ -54,7 +54,7 @@ print(result.compressed_text)
 print(f"{result.original_tokens} -> {result.compressed_tokens} tokens ({result.reduction_percent:.1f}% fewer)")
 ```
 
-**3. What you should see** (llmslim 0.11.0, base install):
+**3. What you should see** (llmslim 0.11.1, base install):
 
 ```text
 Hi team, I hope you are all doing well and had a good weekend. I am writing about invoice INV-2291, which charged us $480 instead of $240. We upgraded to the Pro plan on 3 September, but the old Basic plan was billed as well. Please refund the duplicate $240 charge to the card ending 4417.

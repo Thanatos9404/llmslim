@@ -10,6 +10,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **JSON tool results keep every item.** When `llmslim proxy` or `LLMSlimToolOutputMiddleware` shortens a JSON
+  result with a list, it keeps every item, one compact line each, instead of a window of lines.
+  - Each item shows its short identifying fields: ids, names, titles, states and dates.
+  - Items related to the call stay whole.
+  - Long text is cut, and nesting is summarized as `[n items]`.
+  - Envelopes such as `{"total_count": ..., "items": [...]}` keep their other fields.
+  - Items are dropped only if even identity fields don't fit. They come from the middle, never related ones, and a
+    line names them.
+  - An 80-issue GitHub list went from 12,247 to 3,108 tokens with every issue listed and the related one whole.
+- **`LLMSlimToolOutputMiddleware` for LangChain 1.x agents** (`pip install "llmslim[langchain-agents]"`).
+  - It shortens a long tool result the first time the model is about to see it, and writes it back into the agent's
+    state under the same id. Later calls send the same bytes, so prompt caches and Claude's thinking stay valid.
+  - Unlike `ContextEditingMiddleware`'s `[cleared]`, it keeps errors and the lines related to the call.
+  - Options: `only` and `never` tool filters. Each shortened message records its token counts in
+    `response_metadata["llmslim"]`.
+  - Measured with Claude Haiku 5.5 and adaptive thinking: a 7,545-token log reached the model as 160 tokens, and a
+    second turn with thinking in the history answered correctly.
+  - The shortening itself moved to `llmslim._tool_output`, shared with `llmslim proxy`.
+- **`llmslim wrap claude` and `llmslim proxy`: lean context for coding agents** (`pip install "llmslim[proxy]"`).
+  - A local proxy for the Anthropic Messages API. It compresses long tool output (shell, search and web tools; MCP
+    tools opt-in) the first time the model is about to see it.
+  - It stores each decision under the tool call id and the text, and replays the same bytes on every later request.
+    So the prompt cache keeps hitting and Claude's thinking blocks stay valid.
+  - `Read`, `Edit`, `Write` and unknown tools are never touched, nor is output seen before the proxy started.
+  - Headers, `cache_control` and streamed responses pass through. A failed rewrite forwards the original request.
+  - The proxy listens on loopback only. Credentials are forwarded and never stored.
+  - **Measured on Claude Haiku 5.5 with adaptive thinking:**
+    - a 10,545-token pytest log went out as 156 tokens;
+    - cache reads grew every turn;
+    - 62,334 input tokens were not sent across seven requests;
+    - the same request without the replay was rejected with HTTP 400.
+  - Real Claude Code 2.1.296 through `llmslim wrap claude` sent a 6,045-token log as 156 tokens and answered
+    correctly.
+  - `llmslim proxy stats` reports tokens not sent. Guide: `docs/PROXY.md`.
 - **`PostgresStore` for `llmslim.memory`** (`pip install "llmslim[postgres]"`, psycopg 3).
   - `Memory("postgresql://...")`, `llmslim serve --db postgresql://...` and `llmslim mcp --db postgresql://...` use
     it. Several processes or machines can share one memory on Postgres 12+: self-hosted, Supabase, Neon or RDS.

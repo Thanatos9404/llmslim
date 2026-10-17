@@ -95,3 +95,54 @@ documents' `page_content`:
 | `context_role` | `"rag"` | Retrieved text is untrusted: imperative wording in it is never force-kept. |
 | `record_token_counts` | `True` | Adds `llmslim_original_tokens` and `llmslim_compressed_tokens` to the metadata. |
 | `additional_compress_kwargs` | `{}` | Other `llmslim.compress_documents` arguments, for example `mode`. |
+
+## Agents: shorten long tool output (LangChain 1.x)
+
+`LLMSlimToolOutputMiddleware` is middleware for `create_agent`. It needs `pip install "llmslim[langchain-agents]"`
+(Python 3.10+).
+
+How it works:
+- It shortens a long tool result once, the first time the model is about to see it.
+- It writes the shorter text back into the agent's state under the same message id, so every later model call sends
+  exactly those bytes.
+- It keeps errors, failures and tracebacks first, then the lines most related to the call. Runs of similar lines
+  collapse into one line and a count, and a note tells the model the output was shortened. No model is called.
+
+```python
+from langchain.agents import create_agent
+from llmslim.integrations.langchain_agents import LLMSlimToolOutputMiddleware
+
+agent = create_agent(
+    "anthropic:claude-haiku-5-5",
+    tools=[run_tests, search_logs, read_file],
+    middleware=[LLMSlimToolOutputMiddleware(never={"read_file"})],  # keep file contents exact
+)
+```
+
+**Why it beats clearing old results.** LangChain's `ContextEditingMiddleware` replaces old tool results with
+`[cleared]`. That throws away the content, and it changes the prompt prefix each time it clears, so the provider's
+prompt cache misses. Here nothing the model has already seen ever changes:
+- caches keep hitting;
+- Claude's thinking stays valid. Thinking is bound to everything before it, and editing earlier turns gets the
+  request rejected.
+
+**Measured** with Claude Haiku 5.5, adaptive thinking and `langchain-anthropic` 1.7.6:
+- A 7,545-token pytest log reached the model as 160 tokens.
+- The answer named the failing test and its assertion.
+- A second turn on the same thread, with thinking in the history, answered correctly with no error.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `min_tokens` | 1500 | Leave results at or below this many tokens alone. |
+| `keep_ratio` | 0.35 | Fraction of a long result's tokens to keep. |
+| `min_keep` | 1000 | Never shorten a result below this many tokens. |
+| `only` | every tool | Shorten only these tools' results. |
+| `never` | none | Never shorten these tools' results, e.g. ones that return file contents to edit. |
+
+**Never touched:**
+- results the model has already seen;
+- results with images or files;
+- results at or below `min_tokens`.
+
+Each shortened message records `tokens_before` and `tokens_after` in `response_metadata["llmslim"]`.
+

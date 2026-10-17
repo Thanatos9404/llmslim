@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`LLMSlimToolOutputMiddleware` for LangChain 1.x agents** (`pip install "llmslim[langchain-agents]"`).
+  - It shortens a long tool result the first time the model is about to see it, and writes it back into the agent's
+    state under the same id. Later calls send the same bytes, so prompt caches and Claude's thinking stay valid.
+  - Unlike `ContextEditingMiddleware`'s `[cleared]`, it keeps errors and the lines related to the call.
+  - Options: `only` and `never` tool filters. Each shortened message records its token counts in
+    `response_metadata["llmslim"]`.
+  - Measured with Claude Haiku 5.5 and adaptive thinking: a 7,545-token log reached the model as 160 tokens, and a
+    second turn with thinking in the history answered correctly.
+  - The shortening itself moved to `llmslim._tool_output`, shared with `llmslim proxy`.
 - **`llmslim wrap claude` and `llmslim proxy`: lean context for coding agents** (`pip install "llmslim[proxy]"`).
   - A local proxy for the Anthropic Messages API. It compresses long tool output (shell, search and web tools; MCP
     tools opt-in) the first time the model is about to see it.

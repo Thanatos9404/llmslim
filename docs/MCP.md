@@ -21,6 +21,14 @@ The server speaks MCP over stdio. Each client starts it as a command.
 claude mcp add llmslim -- llmslim mcp
 ```
 
+Or install the LLMSlim plugin, which runs the server with `uvx` (so it needs [uv](https://docs.astral.sh/uv/)) and adds
+the `/llmslim:wrap-claude` and `/llmslim:savings` commands for the [proxy](PROXY.md):
+
+```text
+/plugin marketplace add Thanatos9404/llmslim
+/plugin install llmslim@llmslim
+```
+
 **Claude Desktop** (`claude_desktop_config.json`) and **Cursor** (`~/.cursor/mcp.json`):
 
 ```json

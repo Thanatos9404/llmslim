@@ -41,6 +41,8 @@ This checklist outlines the mandatory verification steps required before publish
 ### 6. Version Bump & Distribution Build
 - [ ] Bump version in `pyproject.toml` (`version = "X.Y.Z"`).
 - [ ] Bump version in `llmslim/__init__.py` (`__version__ = "X.Y.Z"`).
+- [ ] Bump `version` in `server.json` (both places, and the `llmslim[mcp]==X.Y.Z` pin) and in
+  `plugins/llmslim/.claude-plugin/plugin.json`. `tests/test_claude_plugin.py` checks they match.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

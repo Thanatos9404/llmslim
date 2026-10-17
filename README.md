@@ -532,6 +532,18 @@ llmslim proxy stats
 
 See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the limits and security.
 
+**As a Claude Code plugin.** The plugin adds LLMSlim's memory server (below) and two commands:
+- `/llmslim:wrap-claude` walks you through starting Claude Code through the proxy;
+- `/llmslim:savings` shows what the proxy kept out of your requests.
+
+```text
+/plugin marketplace add Thanatos9404/llmslim
+/plugin install llmslim@llmslim
+```
+
+On Claude Code 2.1.275 or later, `/plugin install llmslim --marketplace Thanatos9404/llmslim` does both in one step.
+The memory server runs with `uvx`, so it needs [uv](https://docs.astral.sh/uv/).
+
 ## Memory for agents, with no LLM in the loop
 
 `llmslim.memory` stores every turn verbatim and selects, at read time, the turns that answer a question within a

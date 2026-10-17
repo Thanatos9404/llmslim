@@ -1,0 +1,23 @@
+{
+  "name": "llmslim",
+  "owner": {
+    "name": "Yashvardhan Thanvi",
+    "url": "https://github.com/Thanatos9404"
+  },
+  "description": "LLMSlim for Claude Code: long-term memory with no LLM in the loop, and a local proxy that keeps long tool output out of your context.",
+  "plugins": [
+    {
+      "name": "llmslim",
+      "source": "./plugins/llmslim",
+      "description": "Memory that persists across sessions (stored word for word in local SQLite, recalled within a token budget), plus setup and savings commands for llmslim wrap claude.",
+      "category": "productivity",
+      "tags": [
+        "memory",
+        "context",
+        "tokens",
+        "proxy",
+        "mcp"
+      ]
+    }
+  ]
+}

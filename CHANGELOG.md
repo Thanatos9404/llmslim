@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A Claude Code plugin marketplace in this repo.** `/plugin marketplace add Thanatos9404/llmslim`, then
+  `/plugin install llmslim@llmslim`.
+  - The plugin starts LLMSlim's memory server with `uvx`.
+  - `/llmslim:wrap-claude` walks through starting Claude Code through the proxy.
+  - `/llmslim:savings` runs `llmslim proxy stats`.
+  - Both commands run only when you type them.
+- `glama.json`, so the maintainer can claim the Glama listing.
+
 ## [0.11.0] - 2026-10-17
 
 ### Added

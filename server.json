@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.thanatos9404/llmslim",
+  "name": "io.github.Thanatos9404/llmslim",
   "title": "LLMSlim memory",
   "description": "Long-term memory and context fitting for agents, with no LLM in the loop. Local SQLite.",
   "repository": {
@@ -8,18 +8,18 @@
     "source": "github"
   },
   "websiteUrl": "https://llmslim.app",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "llmslim",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {
           "type": "named",
           "name": "--from",
-          "value": "llmslim[mcp]==0.10.0"
+          "value": "llmslim[mcp]==0.10.1"
         }
       ],
       "packageArguments": [

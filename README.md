@@ -565,7 +565,7 @@ claude mcp add llmslim -- llmslim mcp
 - **Storage:** a local SQLite file; the server makes no network calls.
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
 
-<!-- mcp-name: io.github.thanatos9404/llmslim -->
+<!-- mcp-name: io.github.Thanatos9404/llmslim -->
 
 ### Over HTTP, from any language
 

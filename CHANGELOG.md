@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Times are `TIMESTAMPTZ` and come back in UTC. Concurrent writers keep every turn and one order.
   - CI runs the whole memory suite against a Postgres 17 service.
 
+## [0.10.1] - 2026-10-17
+
+### Fixed
+- **The MCP Registry name now matches the GitHub account's casing.** It is `io.github.Thanatos9404/llmslim` in
+  `server.json` and in the README's `mcp-name` marker. The registry grants namespaces with the exact GitHub login and
+  checks the marker on PyPI, so 0.10.0's lowercase name could not be published. No code changes.
+
 ## [0.10.0] - 2026-10-17
 
 ### Added

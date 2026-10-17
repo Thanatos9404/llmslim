@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`llmslim wrap claude` no longer makes every request about 7,100 tokens longer.** Claude Code turns tool search off
+  when `ANTHROPIC_BASE_URL` points anywhere but Anthropic, and then sends every tool definition on every request.
+  - `wrap` now sets `ENABLE_TOOL_SEARCH=true` unless you set it yourself. The proxy forwards tool search blocks
+    unchanged.
+  - Measured on Claude Code 2.1.296 with Claude Haiku 5.5, same prompt: the first request was 26,885 tokens through
+    the 0.11.0 proxy, 19,716 with this fix, and 19,712 without the proxy. A tool search through the proxy loaded
+    WebFetch from its `tool_reference` block.
+  - Our billed-cost benchmark found it: in 0.11.0 the extra definitions cancelled out what the compression saved.
+
 ### Added
 - **A Claude Code plugin marketplace in this repo.** `/plugin marketplace add Thanatos9404/llmslim`, then
   `/plugin install llmslim@llmslim`.

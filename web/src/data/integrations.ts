@@ -1055,7 +1055,7 @@ tests/test_api.py::test_endpoint_699 PASSED [116%]
     limitations: [
       "Claude Code already saves output over about 30 KB to a file and shows the model a 2 KB preview; the proxy works on the output that reaches the model in full, plus web results and the MCP tools you opt in.",
       "Anthropic Messages API only for now; Codex and other OpenAI-format agents are planned.",
-      "With a custom base URL, Claude Code turns off Remote Control and, by default, MCP tool search (set ENABLE_TOOL_SEARCH=true).",
+      "With a custom base URL, Claude Code turns off Remote Control. It also turns off tool search, which adds about 7,100 tokens to every request; llmslim wrap claude turns it back on (ENABLE_TOOL_SEARCH=true), and you should set it yourself if you run llmslim proxy on its own.",
     ],
     faqs: [
       { question: "Does it break prompt caching?", answer: "No. Nothing the model has already seen changes: each shortened output is replayed byte for byte, so the cached prefix stays the same. In our run on Claude Haiku 5.5, cache reads grew on every turn." },

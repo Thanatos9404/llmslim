@@ -22,6 +22,10 @@ from .store import ProxyStore
 DEFAULT_DB = Path.home() / ".llmslim" / "proxy.db"
 DEFAULT_PORT = 8787
 AGENTS = {"claude": "ANTHROPIC_BASE_URL"}
+# With a custom base URL, Claude Code stops deferring tools behind tool search and sends every tool definition on every
+# request: about 7,100 more tokens per request on Claude Code 2.1.296. The proxy forwards tool_reference blocks
+# unchanged, so keep tool search on unless the user chose otherwise.
+AGENT_ENV = {"claude": {"ENABLE_TOOL_SEARCH": "true"}}
 
 
 def _policy_arguments(parser: argparse.ArgumentParser) -> None:
@@ -252,6 +256,8 @@ def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call)
     app = create_proxy_app(store=store, upstream=_upstream(args.upstream), policy=_policy(args))
     with _BackgroundProxy(app) as proxy:
         env = dict(os.environ)
+        for name, value in AGENT_ENV.get(args.agent, {}).items():
+            env.setdefault(name, value)
         env[AGENTS[args.agent]] = f"http://127.0.0.1:{proxy.port}"
         code = int(runner([executable, *rest], env=env))
     stats = store.stats(started)

@@ -81,8 +81,10 @@ All runs used Claude Haiku 5.5 with adaptive thinking, through the Anthropic API
 - **Keep `~/.llmslim/proxy.db` for as long as a session lasts.** If you delete it mid-session, the proxy sends the
   original output again for earlier turns. The API then rejects the earlier thinking, and Claude Code strips it and
   retries. Entries are kept for 30 days after their last use.
-- **Claude Code features with a custom base URL:** Remote Control is turned off, and MCP tool search is off by default
-  (set `ENABLE_TOOL_SEARCH=true`; the proxy forwards those blocks unchanged).
+- **Claude Code features with a custom base URL:** Remote Control is turned off. Claude Code also turns tool search
+  off for custom base URLs, which sends every tool definition on every request: about 7,100 more tokens per request on
+  Claude Code 2.1.296. `llmslim wrap claude` sets `ENABLE_TOOL_SEARCH=true` unless you set it yourself, since the proxy
+  forwards those blocks unchanged. Set it yourself when you run `llmslim proxy` on its own.
 - **Only the Anthropic Messages API is supported.** Codex and other OpenAI-format agents are planned.
 
 ## Security

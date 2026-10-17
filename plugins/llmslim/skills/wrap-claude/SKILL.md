@@ -33,8 +33,8 @@ Help the user start Claude Code through the LLMSlim proxy. Work through these st
    - Read, Edit and Write output is never changed, and neither is anything the model saw before the proxy started.
    - Each shortened output is replayed byte for byte on later turns, so prompt caching and thinking keep working.
    - MCP tools are left alone unless the user adds them with `--tool mcp__server__tool` or `--mcp`.
-5. Mention the two side effects of a custom base URL in Claude Code: Remote Control is off, and MCP tool search is off
-   unless `ENABLE_TOOL_SEARCH=true` is set.
+5. Mention that Remote Control is off while Claude Code uses a custom base URL. `llmslim wrap claude` keeps tool search
+   on (`ENABLE_TOOL_SEARCH=true`); if the user runs `llmslim proxy` on its own instead, they should set it themselves.
 6. After a session through the proxy, `/llmslim:savings` shows what it kept out of the requests.
 
 Full guide: https://github.com/Thanatos9404/llmslim/blob/main/docs/PROXY.md

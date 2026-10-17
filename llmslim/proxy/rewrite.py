@@ -10,7 +10,7 @@ and then sends exactly the same bytes on every later request:
 - The result is stored under a key made from the tool call id and the text. Whenever that block comes back in a
   later request, the stored text is sent instead, byte for byte. So the prompt prefix stays identical (prompt caches
   keep hitting), and Claude's thinking blocks, which are bound to what preceded them, stay valid.
-- Only output from shell, search and web tools (and MCP tools) is compressed. File reads the agent edits from, and
+- Only output from shell, search and web tools (and MCP tools you opt in) is compressed. File reads the agent edits from, and
   any tool not on the list, are never touched, and neither is anything the proxy did not compress the first time it
   saw it.
 
@@ -52,7 +52,9 @@ class Policy:
         keep_ratio: Fraction of the tokens to keep when output is compressed.
         min_keep: Never shrink output below this many tokens.
         tools: Built-in tools whose output may be compressed. Output from any other tool is never touched.
-        mcp: Whether MCP tools' output (``mcp__server__tool``) may be compressed too.
+        mcp: Whether every MCP tool's output (``mcp__server__tool``) may be compressed too. Off by default: some MCP
+            tools return live state the agent acts on, such as a browser page snapshot whose element refs it clicks.
+            Add data tools one by one in ``tools`` instead, e.g. ``mcp__github__list_issues``.
         never: Tools whose output is never compressed, even if listed above.
     """
 
@@ -60,7 +62,7 @@ class Policy:
     keep_ratio: float = 0.35
     min_keep: int = 1000
     tools: FrozenSet[str] = COMPRESSIBLE_TOOLS
-    mcp: bool = True
+    mcp: bool = False
     never: FrozenSet[str] = frozenset()
 
     def __post_init__(self) -> None:

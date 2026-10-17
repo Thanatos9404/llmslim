@@ -168,7 +168,7 @@ def test_list_content_keeps_images_and_cache_control(store):
     assert report.compressed == 1
 
 
-def test_mcp_tools_are_compressed_and_policy_limits_apply(store):
+def test_mcp_tools_are_opt_in(store):
     call = {
         "role": "assistant",
         "content": [
@@ -181,11 +181,19 @@ def test_mcp_tools_are_compressed_and_policy_limits_apply(store):
         ],
     }
     body = request(call, result("m1", make_log()))
-    assert rewrite_request(body, store)[1].compressed == 1
+    assert not rewrite_request(body, store)[
+        1
+    ].changed  # MCP tools may return live state: off by default
+    assert (
+        rewrite_request(
+            body, ProxyStore(), Policy(tools=COMPRESSIBLE_TOOLS | {"mcp__github__list_issues"})
+        )[1].compressed
+        == 1
+    )
+    assert rewrite_request(body, ProxyStore(), Policy(mcp=True))[1].compressed == 1
     assert not rewrite_request(
-        body, ProxyStore(), Policy(never=frozenset({"mcp__github__list_issues"}))
+        body, ProxyStore(), Policy(mcp=True, never=frozenset({"mcp__github__list_issues"}))
     )[1].changed
-    assert not rewrite_request(body, ProxyStore(), Policy(mcp=False))[1].changed
     assert {"Bash", "PowerShell", "Grep"} <= COMPRESSIBLE_TOOLS and "Read" not in COMPRESSIBLE_TOOLS
 
 

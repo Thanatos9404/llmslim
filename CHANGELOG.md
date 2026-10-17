@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     second turn with thinking in the history answered correctly.
   - The shortening itself moved to `llmslim._tool_output`, shared with `llmslim proxy`.
 - **`llmslim wrap claude` and `llmslim proxy`: lean context for coding agents** (`pip install "llmslim[proxy]"`).
-  - A local proxy for the Anthropic Messages API. It compresses long tool output (shell, search, web and MCP tools)
-    the first time the model is about to see it.
+  - A local proxy for the Anthropic Messages API. It compresses long tool output (shell, search and web tools; MCP
+    tools opt-in) the first time the model is about to see it.
   - It stores each decision under the tool call id and the text, and replays the same bytes on every later request.
     So the prompt cache keeps hitting and Claude's thinking blocks stay valid.
   - `Read`, `Edit`, `Write` and unknown tools are never touched, nor is output seen before the proxy started.

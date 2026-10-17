@@ -22,8 +22,10 @@ No model is called, and nothing leaves your machine except the requests Claude C
 
 ## What it changes, and what it never touches
 
-- **Compressed:** output from `Bash`, `PowerShell`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Monitor` and MCP tools
-  (`mcp__server__tool`), when it is longer than 1,500 tokens. It keeps about 35% of the tokens, at least 1,000.
+- **Compressed:** output from `Bash`, `PowerShell`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Monitor` when it is
+  longer than 1,500 tokens. MCP tools are opt-in, because some return live state the agent acts on, such as a browser
+  snapshot whose element refs it clicks. Add data tools one by one (`--tool mcp__github__list_issues`), or all of
+  them (`--mcp`). It keeps about 35% of the tokens, at least 1,000.
   - LLMSlim's line-aware selection keeps errors, failures and tracebacks, plus the lines most related to the call
     (the shell command or search pattern).
   - Runs of near-identical lines collapse into one line with a count, and omitted spans are marked.
@@ -71,7 +73,7 @@ All runs used Claude Haiku 5.5 with adaptive thinking, through the Anthropic API
 
 - **Claude Code already handles very long output itself.** Output over about 30 KB is saved to a file, and the model
   gets the first 2 KB as a preview. The proxy sees only that preview, so it works on the output that reaches the
-  model in full (roughly 1,500 to 7,500 tokens) and on MCP and web results.
+  model in full (roughly 1,500 to 7,500 tokens), on web results, and on MCP results you opt in.
 - **Compressed output is shorter.** The model can always rerun a narrower command, and file reads are never
   compressed. Use `--never TOOL` to exempt a tool, or `--tool TOOL` to add one.
 - **Keep `~/.llmslim/proxy.db` for as long as a session lasts.** If you delete it mid-session, the proxy sends the
@@ -105,6 +107,6 @@ llmslim proxy stats --days 7 --price-per-mtok 3
 | `--keep-ratio` | 0.35 | Fraction of a long output to keep. |
 | `--min-keep` | 1000 | Never shrink output below this. |
 | `--tool` / `--never` | | Add a tool to compress, or exempt one (repeatable). |
-| `--no-mcp` | | Leave MCP tools' output alone. |
+| `--mcp` | off | Also compress every MCP tool's output. |
 | `--db` | `~/.llmslim/proxy.db` | Where decisions and savings are kept (`LLMSLIM_PROXY_DB`). |
 | `--upstream` | `$ANTHROPIC_BASE_URL` or `https://api.anthropic.com` | Where requests go (`LLMSLIM_PROXY_UPSTREAM`). |

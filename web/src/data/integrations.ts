@@ -1005,4 +1005,71 @@ const result = await generateText({
       { label: "AI SDK memory docs", href: "https://ai-sdk.dev/docs/agents/memory" },
     ],
   },
+  "claude-code": {
+    slug: "claude-code", name: "Claude Code", iconKey: "anthropic", category: "Local & Edge", badgeText: "Coding agent proxy",
+    tagline: "Run Claude Code through a local proxy that shrinks long tool output once and resends the same bytes every turn, so prompt caching and thinking keep working.",
+    description: "Claude Code resends the whole conversation on every turn, so a long test log or search result is paid for again and again and fills the context window until Claude Code compacts. llmslim wrap claude starts a local proxy and runs Claude Code through it. The first time the model is about to see a long shell, search or web result, LLMSlim shortens it, keeping errors, failures and the lines related to the command. It stores that version and sends exactly the same bytes on every later request, so nothing the model has already seen ever changes. File reads and edits are never touched.",
+    installation: { packageManager: "pip", command: `pip install "llmslim[proxy]"   # llmslim 0.11.0 or newer` },
+    installNote: "No model is called and nothing new leaves your machine: Claude Code sends the same requests it always did, only shorter. Your API key or Claude login is forwarded to Anthropic as usual and never stored.",
+    setup: [
+      { caption: "Run Claude Code through the proxy, then see what it saved:", language: "bash", filename: "terminal", code: `llmslim wrap claude
+llmslim proxy stats` },
+    ],
+    architectureFlow: [
+      "llmslim wrap claude starts the proxy on a free localhost port and runs Claude Code with ANTHROPIC_BASE_URL pointing at it. Every request is forwarded to Anthropic with its headers; responses stream back untouched.",
+      "Tool output the model has not seen yet (everything after its last turn) from Bash, PowerShell, Grep, Glob, WebFetch, WebSearch or Monitor, over 1,500 tokens, is shortened once: errors and the lines related to the command stay, runs of similar lines collapse into one line and a count, and JSON lists keep every item.",
+      "The decision is stored under the tool call id and the text. Whenever Claude Code resends that output, the stored text goes out instead, byte for byte, so the cached prefix and Claude's thinking signatures stay valid.",
+      "Read, Edit and Write output, unknown tools and anything seen before the proxy started are never changed. MCP tools are opt-in, because some return live state such as a browser snapshot.",
+    ],
+    codeExample: { language: "bash", filename: "terminal", code: `llmslim wrap claude -- -p "Run the tests and tell me what fails"` },
+    output: {
+      caption: "What Claude receives for a 10,545-token pytest log (156 tokens):",
+      text: `[LLMSlim shortened this tool output from 10,545 to about 117 tokens, keeping errors and the lines most related to the call. Run a narrower command to see more.]
+tests/test_api.py::test_endpoint_0 PASSED [0%]
+... [410 similar lines]
+tests/test_api.py::test_endpoint_411 PASSED [68%]
+tests/billing/test_refund.py::test_rounding_half_even FAILED - AssertionError: Decimal('10.05') != Decimal('10.04')
+tests/test_api.py::test_endpoint_412 PASSED [68%]
+... [286 similar lines]
+tests/test_api.py::test_endpoint_699 PASSED [116%]
+=== 1 failed, 700 passed in 41.27s ===`,
+      explanation: "The failing test, its assertion and the summary line stay; 698 passing lines collapse into two counts. If the model needs more, it can run a narrower command.",
+    },
+    options: [
+      { name: "--min-tokens", defaultValue: "1500", meaning: "Leave output at or below this many tokens alone." },
+      { name: "--keep-ratio", defaultValue: "0.35", meaning: "Fraction of a long output to keep (never below --min-keep, 1000 tokens)." },
+      { name: "--tool / --never", defaultValue: "", meaning: "Add a tool to compress, or exempt one. Repeatable." },
+      { name: "--mcp", defaultValue: "off", meaning: "Also compress every MCP tool's output." },
+    ],
+    deploymentGuide: "Install llmslim[proxy] in any Python 3.9+ environment and start Claude Code with llmslim wrap claude instead of claude. Keep ~/.llmslim/proxy.db for as long as a session lasts: it holds the bytes the proxy replays. llmslim proxy stats shows the tokens it kept out of your requests.",
+    optimizationTips: [
+      "Leave the defaults on first: they only touch long shell, search and web output.",
+      "Exempt a tool with --never if you rely on its exact output, for example a custom script whose output you copy from.",
+      "Opt data-only MCP tools in one by one, for example --tool mcp__github__list_issues.",
+    ],
+    benchmarks: [
+      { metric: "pytest log, 701 lines (Claude Haiku 5.5)", uncompressed: "10,545 tokens", compressed: "156 tokens", impact: "Failing test, assertion and summary kept" },
+      { metric: "Seven-request agent loop with thinking", uncompressed: "63,270 tokens of tool output sent", compressed: "936", impact: "62,334 input tokens not sent; cache reads grew every turn" },
+      { metric: "Final request of that loop", uncompressed: "Original output resent: HTTP 400", compressed: "Proxy's version resent: HTTP 200", impact: "Thinking is bound to what the model saw; the replay keeps it valid" },
+    ],
+    limitations: [
+      "Claude Code already saves output over about 30 KB to a file and shows the model a 2 KB preview; the proxy works on the output that reaches the model in full, plus web results and the MCP tools you opt in.",
+      "Anthropic Messages API only for now; Codex and other OpenAI-format agents are planned.",
+      "With a custom base URL, Claude Code turns off Remote Control and, by default, MCP tool search (set ENABLE_TOOL_SEARCH=true).",
+    ],
+    faqs: [
+      { question: "Does it break prompt caching?", answer: "No. Nothing the model has already seen changes: each shortened output is replayed byte for byte, so the cached prefix stays the same. In our run on Claude Haiku 5.5, cache reads grew on every turn." },
+      { question: "Does it break Claude's thinking?", answer: "No, that is what the replay is for. Thinking blocks are bound to everything before them; sending the original output instead of the version the model saw gets the request rejected with HTTP 400, which we reproduced. The proxy always resends the version the model saw." },
+      { question: "Does it work with a Claude subscription?", answer: "It should. Claude Code's gateway docs say a saved claude.ai login is sent through a custom base URL, and the proxy forwards every header to Anthropic unchanged and never stores credentials. Our own runs used an API key; tell us if your login behaves differently." },
+    ],
+    troubleshooting: [
+      { issue: "claude was not found on PATH", solution: "Install Claude Code first, or run the proxy yourself with llmslim proxy and point ANTHROPIC_BASE_URL at it." },
+      { issue: "A 400 about thinking after deleting ~/.llmslim/proxy.db mid-session", solution: "The proxy can no longer replay what the model saw. Claude Code strips the old thinking and retries; start a new session to avoid it." },
+    ],
+    links: [
+      { label: "Proxy guide on GitHub", href: `${siteConfig.github}/blob/main/docs/PROXY.md` },
+      { label: "Source: llmslim/proxy", href: `${siteConfig.github}/tree/main/llmslim/proxy` },
+      { label: "Claude Code LLM gateway docs", href: "https://code.claude.com/docs/en/llm-gateway-protocol" },
+    ],
+  },
 };

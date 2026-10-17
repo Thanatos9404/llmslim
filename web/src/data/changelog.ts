@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.11.0",
+    date: "17 Oct 2026",
+    theme: "Claude Code, without the bloat.",
+    summary: "llmslim wrap claude runs Claude Code through a local proxy that shrinks long test logs, build output and search results the first time the model sees them, then sends the same bytes on every later turn, so prompt caching and Claude's thinking keep working. LangChain agents get the same as middleware, JSON lists keep every item, and memory can live in Postgres.",
+    metrics: ["10,545-token pytest log sent as 156 tokens", "Cache reads kept growing every turn", "Postgres for shared memory"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.11.0",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "llmslim wrap claude", body: "A local proxy for Claude Code. Long shell, search and web output is shortened once, keeping errors and the lines related to the command, and replayed byte for byte afterwards. File reads and edits are never touched. On Claude Haiku 5.5 with thinking, 62,334 input tokens were not sent over seven requests, and the same request without the replay was rejected." },
+      { label: "Added", icon: Wrench, title: "LangChain middleware and JSON that keeps every item", body: "LLMSlimToolOutputMiddleware does the same for LangChain create_agent and writes the short version back into the agent's state. JSON lists keep every item as one compact line, so an 80-issue list stays an 80-issue list." },
+      { label: "Added", icon: CheckCircle2, title: "Postgres store and the npm client", body: "PostgresStore lets several servers share one memory (Supabase, Neon, RDS). The TypeScript client and Vercel AI SDK tools are on npm as llmslim." },
+      { label: "Boundary", icon: ShieldCheck, title: "Nothing the model has seen changes", body: "Each shortened output is stored under its call id and text and resent exactly, so earlier turns never change. The proxy listens on localhost only and never stores your API key." },
+    ],
+  },
+  {
     version: "v0.10.0",
     date: "17 Oct 2026",
     theme: "Memory for agents, with no LLM in the loop.",

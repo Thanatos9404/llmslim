@@ -4,10 +4,10 @@
 long text into a token budget. There is no model call inside: memory is stored word for word and selected at read time
 by [`llmslim.memory`](MEMORY.md).
 
-It needs Python 3.10 or newer and the `mcp` extra. Until the next release, install from `main`:
+It needs Python 3.10 or newer and the `mcp` extra (llmslim 0.10.0 or newer):
 
 ```bash
-pip install "llmslim[mcp] @ git+https://github.com/Thanatos9404/llmslim"
+pip install "llmslim[mcp]"
 llmslim mcp --help
 ```
 
@@ -34,7 +34,7 @@ claude mcp add llmslim -- llmslim mcp
 }
 ```
 
-If `llmslim` isn't on the client's `PATH`, give the full path to it, or use `uvx` once a release includes the server:
+If `llmslim` isn't on the client's `PATH`, give the full path to it, or let `uvx` run it:
 `"command": "uvx", "args": ["--from", "llmslim[mcp]", "llmslim", "mcp"]`.
 
 ## Tools

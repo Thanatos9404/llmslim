@@ -24,7 +24,8 @@ async function freePort(): Promise<number> {
   });
 }
 
-describe.skipIf(!python)("against llmslim serve", () => {
+// Each test talks to a real server process: allow for a slow, busy CI machine.
+describe.skipIf(!python)("against llmslim serve", { timeout: 20_000 }, () => {
   let server: ChildProcess;
   let directory: string;
   let client: LLMSlim;

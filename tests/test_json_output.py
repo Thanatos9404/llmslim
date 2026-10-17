@@ -115,7 +115,9 @@ def test_scalar_lists_and_determinism():
 
 
 def test_the_tool_output_note_says_what_was_kept():
-    new_text, before, after = shorten_tool_output(json.dumps(issues(), indent=2), "refund rounding")
+    new_text, before, after = shorten_tool_output(
+        json.dumps(issues(), indent=2), "refund rounding", compress_json=True
+    )
     assert (
         new_text.startswith("[LLMSlim shortened this tool output from")
         and "every list item" in new_text
@@ -126,10 +128,8 @@ def test_the_tool_output_note_says_what_was_kept():
     assert "errors and the lines most related" in text and "ERROR: disk full" in text
 
 
-def test_bash_printing_json_goes_through_the_json_path():
-    from llmslim.proxy import ProxyStore, rewrite_request
-
-    body = {
+def _issue_listing_request() -> dict:
+    return {
         "messages": [
             {"role": "user", "content": "List the open issues."},
             {
@@ -155,6 +155,32 @@ def test_bash_printing_json_goes_through_the_json_path():
             },
         ]
     }
-    new_body, report = rewrite_request(body, ProxyStore())
+
+
+def test_bash_printing_json_goes_through_the_json_path_when_asked():
+    from llmslim.proxy import Policy, ProxyStore, rewrite_request
+
+    new_body, report = rewrite_request(
+        _issue_listing_request(), ProxyStore(), Policy(compress_json=True)
+    )
     text = new_body["messages"][-1]["content"][0]["content"]
     assert report.compressed == 1 and "JSON list at (top level): 80 items" in text
+
+
+def test_json_is_left_alone_by_default():
+    # In our Claude Code benchmark, agents given shortened JSON spent extra turns fetching the fields that were cut.
+    from llmslim.proxy import ProxyStore, rewrite_request
+
+    body = _issue_listing_request()
+    new_body, report = rewrite_request(body, ProxyStore())
+    assert new_body is body and report.compressed == 0
+    text = json.dumps(issues(), indent=2)
+    assert shorten_tool_output(text, "gh issue list --json number,title,body") is None
+
+
+def test_text_that_only_starts_like_json_is_still_shortened():
+    log = "[10:00:00] start\n" + "\n".join(
+        f"[worker {i}] processed batch {i} ok" for i in range(900)
+    )
+    result = shorten_tool_output(log, "worker")
+    assert result is not None and result[2] < result[1]

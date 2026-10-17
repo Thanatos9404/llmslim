@@ -340,5 +340,45 @@ def test_wrap_keeps_the_users_tool_search_choice(tmp_path, monkeypatch):
         seen["tool_search"] = env.get("ENABLE_TOOL_SEARCH")
         return 0
 
-    wrap(["claude", "--upstream", "http://127.0.0.1:9", "--db", str(tmp_path / "p.db")], runner=runner)
+    wrap(
+        ["claude", "--upstream", "http://127.0.0.1:9", "--db", str(tmp_path / "p.db")],
+        runner=runner,
+    )
     assert seen["tool_search"] == "false"
+
+
+def test_print_mode_runs_keep_the_default_permission_mode(tmp_path):
+    from llmslim.proxy.cli import claude_arguments
+
+    config, project = tmp_path / "config", tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    config.mkdir()
+
+    def args(*rest):
+        return claude_arguments(list(rest), cwd=project, config_dir=config)
+
+    # Through a proxy, `claude -p` would start in auto mode; keep it in default.
+    assert args("-p", "fix it") == ["--permission-mode", "default", "-p", "fix it"]
+    assert args("--print", "fix it")[:2] == ["--permission-mode", "default"]
+    # Interactive sessions, and runs where the user chose a mode, are left alone.
+    assert args("--continue") == ["--continue"]
+    assert args("-p", "x", "--permission-mode", "plan") == ["-p", "x", "--permission-mode", "plan"]
+    assert args("-p", "x", "--permission-mode=acceptEdits")[:1] == ["-p"]
+    assert args("-p", "x", "--dangerously-skip-permissions")[:1] == ["-p"]
+    assert args("-p", "x", "--settings", "s.json")[:1] == ["-p"]
+    assert args("--", "-p")[:1] == ["--"]  # after --, "-p" is the prompt
+    # A defaultMode in the user's settings decides, as it would without the proxy.
+    (config / "settings.json").write_text(
+        '{"permissions": {"defaultMode": "acceptEdits"}}', encoding="utf-8"
+    )
+    assert args("-p", "x") == ["-p", "x"]
+    (config / "settings.json").unlink()
+    # Claude Code ignores auto in project settings, so it doesn't count.
+    (project / ".claude" / "settings.json").write_text(
+        '{"permissions": {"defaultMode": "auto"}}', encoding="utf-8"
+    )
+    assert args("-p", "x")[:2] == ["--permission-mode", "default"]
+    (project / ".claude" / "settings.local.json").write_text(
+        '{"permissions": {"defaultMode": "plan"}}', encoding="utf-8"
+    )
+    assert args("-p", "x") == ["-p", "x"]

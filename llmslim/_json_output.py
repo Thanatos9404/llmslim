@@ -118,6 +118,18 @@ def _largest_list(
     return best
 
 
+def is_json(text: str) -> bool:
+    """Whether ``text`` is a JSON object or array."""
+    stripped = text.strip()
+    if not stripped or stripped[0] not in "[{":
+        return False
+    try:
+        json.loads(stripped)
+    except ValueError:
+        return False
+    return True
+
+
 def shorten_json(text: str, budget: int, query: Optional[str] = None) -> Optional[str]:
     """``text`` (JSON) shortened to about ``budget`` tokens, or ``None`` when it isn't JSON with a list worth shortening."""
     stripped = text.strip()

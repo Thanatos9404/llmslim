@@ -56,6 +56,8 @@ class Policy:
             tools return live state the agent acts on, such as a browser page snapshot whose element refs it clicks.
             Add data tools one by one in ``tools`` instead, e.g. ``mcp__github__list_issues``.
         never: Tools whose output is never compressed, even if listed above.
+        compress_json: Whether JSON output is compressed too. Off by default: agents given shortened JSON spent extra
+            turns fetching the fields that were cut, and the run cost more.
     """
 
     min_tokens: int = 1500
@@ -64,6 +66,7 @@ class Policy:
     tools: FrozenSet[str] = COMPRESSIBLE_TOOLS
     mcp: bool = False
     never: FrozenSet[str] = frozenset()
+    compress_json: bool = False
 
     def __post_init__(self) -> None:
         if self.min_tokens < 1 or self.min_keep < 1:
@@ -155,6 +158,7 @@ def compress_output(
         min_tokens=policy.min_tokens,
         keep_ratio=policy.keep_ratio,
         min_keep=policy.min_keep,
+        compress_json=policy.compress_json,
     )
 
 

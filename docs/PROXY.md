@@ -29,6 +29,8 @@ No model is called, and nothing leaves your machine except the requests Claude C
   - LLMSlim's line-aware selection keeps errors, failures and tracebacks, plus the lines most related to the call
     (the shell command or search pattern).
   - Runs of near-identical lines collapse into one line with a count, and omitted spans are marked.
+  - JSON with a list (`gh ... --json`, `curl`, `kubectl -o json`) keeps every item as one compact line with its
+    identifying fields. Items related to the call stay whole.
   - A one-line note tells the model the output was shortened, and to run a narrower command to see more.
 - **Never touched:**
   - `Read`, `Edit` and `Write` output, and any tool not listed above. File contents the agent edits from stay exact,

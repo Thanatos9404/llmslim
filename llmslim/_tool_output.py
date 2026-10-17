@@ -1,8 +1,9 @@
 """Shorten one long tool output, the way the proxy and the agent middleware do: once, deterministically, with a note.
 
 Shared by :mod:`llmslim.proxy` (coding agents) and :mod:`llmslim.integrations.langchain_agents` (LangChain agents).
-Errors, failures and tracebacks are kept first, then the lines most related to the call; runs of similar lines
-collapse into one line and a count, and omitted spans are marked. Nothing here calls a model.
+JSON with a list keeps every item, compactly (see :mod:`llmslim._json_output`). Other text keeps errors, failures and
+tracebacks first, then the lines most related to the call; runs of similar lines collapse into one line and a count,
+and omitted spans are marked. Nothing here calls a model.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 from ._fit import fit_text
+from ._json_output import shorten_json
 from .tokens import count_tokens
 
 SHELL_HINT = "Run a narrower command to see more."
@@ -36,10 +38,15 @@ def shorten_tool_output(
     budget = max(min_keep, int(before * keep_ratio))
     if budget >= before:
         return None
-    body = fit_text(text, budget, query)
+    body = shorten_json(text, budget, query)
+    if body is not None:
+        kept = "every list item with its short fields, and the items related to the call whole"
+    else:
+        body = fit_text(text, budget, query)
+        kept = "errors and the lines most related to the call"
     note = (
-        f"[LLMSlim shortened this tool output from {before:,} to about {count_tokens(body):,} tokens, keeping errors "
-        f"and the lines most related to the call. {hint}]\n"
+        f"[LLMSlim shortened this tool output from {before:,} to about {count_tokens(body):,} tokens, keeping {kept}. "
+        f"{hint}]\n"
     )
     new_text = note + body
     after = count_tokens(new_text)

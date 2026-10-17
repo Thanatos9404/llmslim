@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **JSON tool results keep every item.** When `llmslim proxy` or `LLMSlimToolOutputMiddleware` shortens a JSON
+  result with a list, it keeps every item, one compact line each, instead of a window of lines.
+  - Each item shows its short identifying fields: ids, names, titles, states and dates.
+  - Items related to the call stay whole.
+  - Long text is cut, and nesting is summarized as `[n items]`.
+  - Envelopes such as `{"total_count": ..., "items": [...]}` keep their other fields.
+  - Items are dropped only if even identity fields don't fit. They come from the middle, never related ones, and a
+    line names them.
+  - An 80-issue GitHub list went from 12,247 to 3,108 tokens with every issue listed and the related one whole.
 - **`LLMSlimToolOutputMiddleware` for LangChain 1.x agents** (`pip install "llmslim[langchain-agents]"`).
   - It shortens a long tool result the first time the model is about to see it, and writes it back into the agent's
     state under the same id. Later calls send the same bytes, so prompt caches and Claude's thinking stay valid.

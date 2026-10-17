@@ -579,8 +579,8 @@ curl -s localhost:8080/v1/memories/search -H 'content-type: application/json'   
 It needs a bearer API key to listen beyond localhost. The routes, limits and Docker setup are in
 [docs/SERVER.md](docs/SERVER.md).
 
-The TypeScript client in [clients/typescript](clients/typescript) wraps this API with no dependencies. It also gives
-the Vercel AI SDK `recall_memory` and `remember` tools and a middleware that saves turns. None of them changes your
+The TypeScript client, `npm install llmslim` ([clients/typescript](clients/typescript)), wraps this API with no
+dependencies. It also gives the Vercel AI SDK `recall_memory` and `remember` tools and a middleware that saves turns. None of them changes your
 prompt, so prompt caches keep hitting and Claude's preserved thinking stays valid.
 
 ## Use with LangChain / LlamaIndex / Haystack

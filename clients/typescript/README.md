@@ -1,5 +1,7 @@
 # llmslim for TypeScript
 
+[![npm](https://img.shields.io/npm/v/llmslim)](https://www.npmjs.com/package/llmslim)
+
 Long-term memory and context fitting for AI agents, with no LLM in the loop. This is the client for an
 [`llmslim serve`](https://github.com/Thanatos9404/llmslim/blob/main/docs/SERVER.md) server:
 - messages are stored word for word;

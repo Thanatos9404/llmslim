@@ -940,4 +940,69 @@ asyncio.run(main())` },
       { label: "Benchmarks", href: "/benchmarks" },
     ],
   },
+  "vercel-ai-sdk": {
+    slug: "vercel-ai-sdk", name: "Vercel AI SDK", iconKey: "vercel", category: "Framework", badgeText: "Memory tools",
+    tagline: "Long-term memory for AI SDK agents as tools, with no LLM writing your memory and nothing injected into the prompt.",
+    description: "The llmslim npm package is a client for an llmslim serve server. Its llmslim/ai-sdk entry gives the model recall_memory and remember tools, and a middleware that saves each user message and reply. Messages are stored word for word and selected at read time within a token budget, so nothing is summarized or extracted into a wrong fact. Recalled memory reaches the model as a tool result, which your app keeps in its history like any other message.",
+    installation: { packageManager: "npm", command: `npm install llmslim ai   # ai 7; the client alone has no dependencies` },
+    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file or Postgres). Call it from your backend: an API key gives access to every user's memory.",
+    setup: [
+      { caption: "Start the memory server:", language: "bash", filename: "terminal", code: `pip install "llmslim[server]"
+llmslim serve          # http://127.0.0.1:8080; set LLMSLIM_API_KEYS to serve beyond localhost` },
+    ],
+    architectureFlow: [
+      "memoryMiddleware wraps your model. After each call it saves the newest user message and the model's text reply to llmslim serve; in a tool loop the user message is saved once. It never changes the prompt.",
+      "memoryTools gives the model recall_memory and remember. The user, agent and run ids come from your code, never from a tool argument, so a model steered by injected text can't read another user's memory.",
+      "recall_memory returns the stored messages that answer the query, whole and under their dates, within a token budget, labelled as data, not instructions.",
+      "Because memory arrives as a tool result, the history your app resends is exactly what the model saw before: prompt caches keep hitting and Claude's preserved thinking stays valid.",
+    ],
+    codeExample: { language: "typescript", filename: "agent.ts", code: `import { generateText, stepCountIs, wrapLanguageModel } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
+import { LLMSlim } from "llmslim";
+import { memoryMiddleware, memoryTools } from "llmslim/ai-sdk";
+
+const client = new LLMSlim(); // LLMSLIM_BASE_URL and LLMSLIM_API_KEY, or pass baseUrl and apiKey
+const model = wrapLanguageModel({
+  model: anthropic("claude-haiku-5-5"),
+  middleware: memoryMiddleware({ client, userId: session.userId }), // saves each user message and reply
+});
+
+const result = await generateText({
+  model,
+  tools: memoryTools({ client, userId: session.userId }), // recall_memory and remember
+  stopWhen: stepCountIs(5),
+  messages,
+});` },
+    options: [
+      { name: "client", defaultValue: "required", meaning: "An LLMSlim client: new LLMSlim({ baseUrl, apiKey }), defaults from LLMSLIM_BASE_URL and LLMSLIM_API_KEY." },
+      { name: "userId / agentId / runId", defaultValue: "one required", meaning: "Whose memory the tools and middleware read and write." },
+      { name: "budget", defaultValue: "the server's", meaning: "Most tokens recall_memory returns (memoryTools only)." },
+      { name: "onError", defaultValue: "console.warn", meaning: "Called when saving fails; the model's answer is returned either way (memoryMiddleware only)." },
+    ],
+    deploymentGuide: "Run llmslim serve next to your app (Docker image or pip), with an API key and Postgres when several instances share one memory. Create the client on your server, map your signed-in user to userId, and pass memoryTools and memoryMiddleware to generateText or streamText.",
+    optimizationTips: [
+      "Let the model call recall_memory before answering anything that may depend on earlier conversations; the tool description says so.",
+      "Keep the user's own words: remember stores text verbatim, and recall matches on words.",
+      "Use runId to keep one conversation's memory separate when that matters.",
+    ],
+    benchmarks: [],
+    limitations: [
+      "Lexical recall matches words, not meanings: forms of a word match (move, moved), but a paraphrase such as allergy against allergic can miss. The server's semantic mode (llmslim[semantic]) covers paraphrases.",
+      "The client needs fetch: Node 18 or newer, Bun, Deno or an edge runtime. The ai-sdk entry needs ai 7 (Node 22).",
+    ],
+    faqs: [
+      { question: "Why tools instead of adding memory to the system prompt?", answer: "Your app resends its own stored history on every turn. Memory injected into the system prompt or the latest user message isn't in that history, so the next request differs from what the model saw before: prompt caches miss, and on Claude models with preserved thinking the request is rejected or the reasoning is dropped. A tool result is part of the history, so nothing changes." },
+      { question: "Does it call a model to build memory?", answer: "No. Messages are stored word for word and selected at read time; writes cost nothing and nothing becomes a wrong extracted fact." },
+    ],
+    troubleshooting: [
+      { issue: "LLMSlimError with status 0 and type unreachable", solution: "The client could not reach llmslim serve. Check baseUrl (or LLMSLIM_BASE_URL) and that the server is running." },
+      { issue: "401 unauthorized", solution: "Pass the server's API key as apiKey (or set LLMSLIM_API_KEY). Keys are required whenever the server listens beyond localhost." },
+    ],
+    links: [
+      { label: "npm: llmslim", href: "https://www.npmjs.com/package/llmslim" },
+      { label: "TypeScript client on GitHub", href: `${siteConfig.github}/tree/main/clients/typescript` },
+      { label: "llmslim serve guide", href: `${siteConfig.github}/blob/main/docs/SERVER.md` },
+      { label: "AI SDK memory docs", href: "https://ai-sdk.dev/docs/agents/memory" },
+    ],
+  },
 };

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The TypeScript client is on npm:** `npm install llmslim` (0.1.0). It includes the `llmslim/ai-sdk` tools and
+  middleware for the Vercel AI SDK.
 - **JSON tool results keep every item.** When `llmslim proxy` or `LLMSlimToolOutputMiddleware` shortens a JSON
   result with a list, it keeps every item, one compact line each, instead of a window of lines.
   - Each item shows its short identifying fields: ids, names, titles, states and dates.

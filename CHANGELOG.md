@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.11.1] - 2026-10-17
 
 We measured what `llmslim wrap claude` does to a real Claude Code bill: billed dollars, with cache reads and writes
-priced separately, over 512 published runs (`benchmarks/claude_code_cost/`). The benchmark found three problems in
+priced separately, over 572 published runs (`benchmarks/claude_code_cost/`). The benchmark found three problems in
 0.11.0, fixed here.
 
 ### Fixed

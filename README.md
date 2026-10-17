@@ -524,7 +524,7 @@ llmslim proxy stats
 ```
 
 **What it does to the bill, measured** on real Claude Code with Claude Haiku 5.5. We counted billed dollars, with cache
-reads priced separately, and published all 512 runs in
+reads priced separately, and published all 572 runs in
 [benchmarks/claude_code_cost](benchmarks/claude_code_cost/README.md):
 - **Long logs:** a failing CI run cost 26-32% less, and a lint run with three errors among 260 warnings 17-21% less.
 - **Test runs:** -2% to -15%. Agents already trim test output with `tail`.

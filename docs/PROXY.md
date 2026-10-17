@@ -12,7 +12,7 @@ ever changes:
   the API reject the request.
 
 ```bash
-pip install "llmslim[proxy]"
+pip install "llmslim[proxy]"   # llmslim 0.11.0 or newer
 llmslim wrap claude                 # interactive, as usual
 llmslim wrap claude -- -p "Run the tests and fix what fails" --model claude-sonnet-5-5
 llmslim proxy stats                 # what it has saved so far

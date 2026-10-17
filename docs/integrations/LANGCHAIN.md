@@ -98,7 +98,7 @@ documents' `page_content`:
 
 ## Agents: shorten long tool output (LangChain 1.x)
 
-`LLMSlimToolOutputMiddleware` is middleware for `create_agent`. It needs `pip install "llmslim[langchain-agents]"`
+`LLMSlimToolOutputMiddleware` is middleware for `create_agent`, in llmslim 0.11.0 or newer. It needs `pip install "llmslim[langchain-agents]"`
 (Python 3.10+).
 
 How it works:

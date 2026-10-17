@@ -17,7 +17,7 @@
 <br/>
 
 **The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.10.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+*This repository is **LLMSlim Core** (v0.11.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 <br/>
 
@@ -54,7 +54,7 @@ print(result.compressed_text)
 print(f"{result.original_tokens} -> {result.compressed_tokens} tokens ({result.reduction_percent:.1f}% fewer)")
 ```
 
-**3. What you should see** (llmslim 0.10.0, base install):
+**3. What you should see** (llmslim 0.11.0, base install):
 
 ```text
 Hi team, I hope you are all doing well and had a good weekend. I am writing about invoice INV-2291, which charged us $480 instead of $240. We upgraded to the Pro plan on 3 September, but the old Basic plan was billed as well. Please refund the duplicate $240 charge to the card ending 4417.
@@ -79,7 +79,7 @@ If LLMSlim is useful, consider starring the repo or opening an issue with feedba
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
-| Version | 0.10.0 | 0.9.1 beta |
+| Version | 0.11.0 | 0.9.1 beta |
 | License | MIT, this repository | Proprietary, private beta |
 | Install | `pip install llmslim` | By invitation; not published to PyPI |
 | What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
@@ -834,7 +834,7 @@ llmslim document.txt --stats
 
 ## 📋 Changelog
 
-Release notes for every version, including 0.10.0, are in
+Release notes for every version, including 0.11.0, are in
 [CHANGELOG.md](CHANGELOG.md) and on
 [GitHub Releases](https://github.com/Thanatos9404/llmslim/releases).
 

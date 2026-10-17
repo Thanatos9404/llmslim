@@ -79,6 +79,8 @@ structured = ["pyyaml>=6.0"]
 # 0.14.17 dropped 3.9, and on 3.9 the last 3.9 release fails to import (its "banks" dependency
 # uses 3.10-only syntax).
 langchain = ["langchain-core>=0.3"]
+# LLMSlimToolOutputMiddleware for LangChain 1.x agents (create_agent).
+langchain-agents = ["langchain>=1.0,<2; python_version >= '3.10'"]
 llamaindex = ["llama-index-core>=0.12; python_version >= '3.10'"]
 haystack = ["haystack-ai>=2.0"]
 # Agent-framework adapters. gptme and Pydantic AI need Python 3.10+ (pydantic-ai-slim 2.55 needs
@@ -106,6 +108,7 @@ all = [
     "nltk>=3.8",
     "pyyaml>=6.0",
     "langchain-core>=0.3",
+    "langchain>=1.0,<2; python_version >= '3.10'",
     "llama-index-core>=0.12; python_version >= '3.10'",
     "haystack-ai>=2.0",
     "neo4j>=5.20,<7",
@@ -159,6 +162,7 @@ omit = [
     "tests/*",
     "benchmarks/*",
     "llmslim/integrations/langchain.py",
+    "llmslim/integrations/langchain_agents.py",
     "llmslim/integrations/llama_index.py",
     "llmslim/integrations/haystack.py",
     "llmslim/integrations/gptme.py",

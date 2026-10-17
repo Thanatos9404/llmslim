@@ -25,8 +25,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Protocol, Tuple
 
-from .._fit import fit_text
-from ..tokens import count_tokens
+from .._tool_output import shorten_tool_output
 
 __all__ = [
     "COMPRESSIBLE_TOOLS",
@@ -148,22 +147,13 @@ def compress_output(
     text: str, query: Optional[str], policy: Policy
 ) -> Optional[Tuple[str, int, int]]:
     """``(new_text, tokens_before, tokens_after)``, or ``None`` when the output should be left as it is."""
-    before = count_tokens(text)
-    if before <= policy.min_tokens:
-        return None
-    budget = max(policy.min_keep, int(before * policy.keep_ratio))
-    if budget >= before:
-        return None
-    body = fit_text(text, budget, query)
-    note = (
-        f"[LLMSlim shortened this tool output from {before:,} to about {count_tokens(body):,} tokens, keeping errors "
-        "and the lines most related to the call. Run a narrower command to see more.]\n"
+    return shorten_tool_output(
+        text,
+        query,
+        min_tokens=policy.min_tokens,
+        keep_ratio=policy.keep_ratio,
+        min_keep=policy.min_keep,
     )
-    new_text = note + body
-    after = count_tokens(new_text)
-    if after >= before:
-        return None
-    return new_text, before, after
 
 
 def rewrite_request(

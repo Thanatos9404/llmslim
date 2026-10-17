@@ -84,9 +84,20 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
     spec.write(work)
     tests_before = digest(work / "tests") if (work / "tests").exists() else None
 
-    env = dict(os.environ, CLAUDE_CONFIG_DIR=str(config), CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
+    env = dict(
+        os.environ, CLAUDE_CONFIG_DIR=str(config), CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
+    )
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
-    claude_args = ["-p", spec.prompt, "--model", MODEL, "--output-format", "json", "--max-turns", str(args.max_turns)]
+    claude_args = [
+        "-p",
+        spec.prompt,
+        "--model",
+        MODEL,
+        "--output-format",
+        "json",
+        "--max-turns",
+        str(args.max_turns),
+    ]
     if args.permission_mode:
         claude_args += ["--permission-mode", args.permission_mode]
     claude_args += ["--allowedTools", *spec.allowed_tools()]
@@ -112,7 +123,10 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
         exit_code, stdout = proc.returncode, proc.stdout
     except subprocess.TimeoutExpired as exc:
         out = exc.stdout or ""
-        exit_code, stdout = "timeout", out if isinstance(out, str) else out.decode("utf-8", "replace")
+        exit_code, stdout = (
+            "timeout",
+            out if isinstance(out, str) else out.decode("utf-8", "replace"),
+        )
     seconds = round(time.time() - started, 1)
     result = last_json(stdout)
 
@@ -162,13 +176,17 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
     elif result.get("usage"):
         record["billed_usd"] = round(billed_usd(result["usage"]), 6)
     if arm == "llmslim" and db.exists():
-        stats = subprocess.run([args.llmslim, "proxy", "stats", "--db", str(db)], capture_output=True, text=True)
+        stats = subprocess.run(
+            [args.llmslim, "proxy", "stats", "--db", str(db)], capture_output=True, text=True
+        )
         record["proxy_stats"] = stats.stdout.strip()
     return record
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--task", choices=sorted(TASKS), required=True)
     parser.add_argument("--runs", type=int, default=6)
     parser.add_argument("--out", required=True)
@@ -183,12 +201,19 @@ def main() -> int:
     )
     parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument("--timeout", type=int, default=900)
-    parser.add_argument("--cap-usd", type=float, default=10.0, help="Stop once the runs so far were billed this much.")
+    parser.add_argument(
+        "--cap-usd",
+        type=float,
+        default=10.0,
+        help="Stop once the runs so far were billed this much.",
+    )
     args = parser.parse_args()
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise SystemExit("set ANTHROPIC_API_KEY first")
 
-    version = subprocess.run([args.claude, "--version"], capture_output=True, text=True).stdout.strip()
+    version = subprocess.run(
+        [args.claude, "--version"], capture_output=True, text=True
+    ).stdout.strip()
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     spent = 0.0

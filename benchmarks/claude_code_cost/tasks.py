@@ -26,7 +26,9 @@ class Task:
     prompt: str
     write: Callable[[Path], None]
     check: Callable[[Path], bool]
-    commands: List[str] = field(default_factory=list)  # extra Bash/PowerShell prefixes the agent may run
+    commands: List[str] = field(
+        default_factory=list
+    )  # extra Bash/PowerShell prefixes the agent may run
 
     def allowed_tools(self) -> List[str]:
         rules = list(BASE_TOOLS)
@@ -36,7 +38,9 @@ class Task:
 
 
 def _run(dest: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, *args], cwd=dest, capture_output=True, text=True, timeout=300)
+    return subprocess.run(
+        [sys.executable, *args], cwd=dest, capture_output=True, text=True, timeout=300
+    )
 
 
 def _tests_pass(dest: Path) -> bool:
@@ -56,7 +60,7 @@ DISCOUNT_BUGGY = '''def discount_cents(total_cents: int, percent: int) -> int:
     """Discount on a total, in cents, for a whole-number percent; never more than the total."""
     return total_cents * percent // 10
 '''
-DISCOUNT_TEST = '''from billing.discount import discount_cents
+DISCOUNT_TEST = """from billing.discount import discount_cents
 
 
 def test_ten_percent():
@@ -65,13 +69,13 @@ def test_ten_percent():
 
 def test_capped_at_total():
     assert discount_cents(500, 150) == 500
-'''
+"""
 LATE_FEE_BUGGY = '''def late_fee_cents(balance_cents: int, days_late: int) -> int:
     """1% of the balance per full week late, from the first full week."""
     weeks = days_late // 7
     return balance_cents * weeks // 10
 '''
-LATE_FEE_TEST = '''from billing.late_fee import late_fee_cents
+LATE_FEE_TEST = """from billing.late_fee import late_fee_cents
 
 
 def test_under_a_week_is_free():
@@ -80,7 +84,7 @@ def test_under_a_week_is_free():
 
 def test_two_weeks():
     assert late_fee_cents(10_000, 14) == 200
-'''
+"""
 
 
 def write_five_bugs(dest: Path) -> None:
@@ -158,9 +162,13 @@ CI_GRAPH = [
 def write_ci_log(dest: Path) -> None:
     make_fixture.write(dest, "one-bug")
     (dest / "billing/money.py").write_text(
-        make_fixture.MONEY.replace("ROUND_HALF_UP", "ROUND_HALF_EVEN"), encoding="utf-8", newline="\n"
+        make_fixture.MONEY.replace("ROUND_HALF_UP", "ROUND_HALF_EVEN"),
+        encoding="utf-8",
+        newline="\n",
     )
-    _write_files(dest, {"ci.py": CI_SCRIPT, "migrations/graph.json": json.dumps(CI_GRAPH, indent=2) + "\n"})
+    _write_files(
+        dest, {"ci.py": CI_SCRIPT, "migrations/graph.json": json.dumps(CI_GRAPH, indent=2) + "\n"}
+    )
 
 
 def check_ci_log(dest: Path) -> bool:
@@ -233,12 +241,21 @@ def _issues() -> List[dict]:
         )
     # Refund reports: only the body says "refund", and only some are open and labelled billing.
     for n, (issue_id, state, labels) in enumerate(
-        [(4117, "open", ["billing"]), (4142, "open", ["billing", "payments"]), (4163, "closed", ["billing"]),
-         (4178, "open", ["support"]), (4186, "open", ["billing"])]
+        [
+            (4117, "open", ["billing"]),
+            (4142, "open", ["billing", "payments"]),
+            (4163, "closed", ["billing"]),
+            (4178, "open", ["support"]),
+            (4186, "open", ["billing"]),
+        ]
     ):
         issue = next(i for i in issues if i["id"] == issue_id)
-        issue.update(state=state, labels=labels, title=f"Customer balance looks wrong ({issue_id})",
-                     body=REFUND_BODIES[n % 3] + " " + issue["body"])
+        issue.update(
+            state=state,
+            labels=labels,
+            title=f"Customer balance looks wrong ({issue_id})",
+            body=REFUND_BODIES[n % 3] + " " + issue["body"],
+        )
     return issues
 
 
@@ -246,7 +263,9 @@ ISSUES_EXPECTED = ["4117", "4142", "4186"]
 
 
 def write_json_issues(dest: Path) -> None:
-    _write_files(dest, {"issues.py": ISSUES_CLI, "data/issues.json": json.dumps(_issues(), indent=1) + "\n"})
+    _write_files(
+        dest, {"issues.py": ISSUES_CLI, "data/issues.json": json.dumps(_issues(), indent=1) + "\n"}
+    )
 
 
 def check_json_issues(dest: Path) -> bool:
@@ -295,11 +314,17 @@ def write_lint_fix(dest: Path) -> None:
     for n in range(24):
         lines = [f"def handler_{n}(request, settings):"]
         for k in range(10):
-            lines.append(f"    value_{k} = request.get('field_{k}', settings.get('default_{k}', None))  # keep")
+            lines.append(
+                f"    value_{k} = request.get('field_{k}', settings.get('default_{k}', None))  # keep"
+            )
         lines.append("    return value_0")
         files[f"app/handlers_{n:02d}.py"] = "\n".join(lines) + "\n"
-    files["app/handlers_07.py"] = files["app/handlers_07.py"].replace("return value_0", "return valeu_0")
-    files["app/handlers_15.py"] = files["app/handlers_15.py"].replace("return value_0", "return request_id")
+    files["app/handlers_07.py"] = files["app/handlers_07.py"].replace(
+        "return value_0", "return valeu_0"
+    )
+    files["app/handlers_15.py"] = files["app/handlers_15.py"].replace(
+        "return value_0", "return request_id"
+    )
     files["app/handlers_21.py"] = files["app/handlers_21.py"].replace(
         "    return value_0", "    total = value_0 + offest\n    return total"
     )
@@ -331,10 +356,12 @@ def write_rename(dest: Path) -> None:
     files["tests/test_totals.py"] = (
         "from shop.totals import calc_total\n\n\ndef test_calc_total():\n    assert calc_total([1, 2, 3]) == 6\n"
     )
-    files["tests/test_reports.py"] = "".join(
-        f"from shop.report_{n:02d} import report_{n}\n" for n in range(18)
-    ) + "\n\ndef test_reports():\n" + "".join(
-        f"    assert report_{n}([[1, 2], [3]]) == {{'count': 2, 'sum': 6}}\n" for n in range(18)
+    files["tests/test_reports.py"] = (
+        "".join(f"from shop.report_{n:02d} import report_{n}\n" for n in range(18))
+        + "\n\ndef test_reports():\n"
+        + "".join(
+            f"    assert report_{n}([[1, 2], [3]]) == {{'count': 2, 'sum': 6}}\n" for n in range(18)
+        )
     )
     _write_files(dest, files)
 
@@ -360,7 +387,9 @@ def check_explore(dest: Path) -> bool:
     if not path.exists():
         return False
     text = path.read_text(encoding="utf-8").lower()
-    return all(name in text for name in ("money", "refund", "invoice", "tax", "periods", "currency"))
+    return all(
+        name in text for name in ("money", "refund", "invoice", "tax", "periods", "currency")
+    )
 
 
 TASKS: Dict[str, Task] = {

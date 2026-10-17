@@ -191,3 +191,22 @@ per-run difference, or of the pooled change. n.s. means the interval includes ze
   - two `rename` runs (one per arm in 3b) renamed `calc_total` whole-word, so `test_calc_total` kept its name and the
     check's substring test failed;
   - none involved compressed output.
+
+## Measurement 4 protocol: the 0.11.1 release candidate (written before the runs)
+
+Measurement 4 checks that the three 0.11.1 fixes work as users run them, before release:
+- tool search stays on;
+- print-mode runs keep the default permission mode;
+- JSON is left alone.
+
+- **Build:** a wheel built from the release commit and installed in a clean virtual environment.
+- **Permission mode:** **not** pinned. Both arms run as users would, so `wrap`'s own handling is what gets tested.
+- **Tasks:** `json-issues` and `ci-log` (the regression and the win from measurement 3), plus `one-bug`. 10 runs per
+  arm per task, alternating.
+- **Release only if all of these hold:**
+  1. every llmslim run records `permissionMode: "default"`, as every plain run does;
+  2. `json-issues`: the 95% interval of the cost difference includes zero or favours llmslim;
+  3. `ci-log`: the saving's 95% interval excludes zero;
+  4. llmslim passes at least as many checks as plain, less one run per task.
+
+Otherwise nothing is released, and the result is reported as is.

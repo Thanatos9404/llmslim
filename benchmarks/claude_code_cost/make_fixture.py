@@ -70,10 +70,11 @@ def convert(cents: int, source: str, target: str) -> int:
 '''
 
 CURRENCY_OK = CURRENCY_BUGGY.replace(
-    '    rate = RATES_PPM[(source, target)]', '    if source == target:\n        return cents\n    rate = RATES_PPM[(source, target)]'
+    "    rate = RATES_PPM[(source, target)]",
+    "    if source == target:\n        return cents\n    rate = RATES_PPM[(source, target)]",
 )
 
-TEST_REFUND = '''from decimal import Decimal
+TEST_REFUND = """from decimal import Decimal
 
 import pytest
 
@@ -92,9 +93,9 @@ def test_half_cent_rounds_to_even():
 def test_days_out_of_range():
     with pytest.raises(ValueError):
         prorated_refund(Decimal("10.00"), 5, 4)
-'''
+"""
 
-TEST_INVOICE = '''import pytest
+TEST_INVOICE = """import pytest
 
 from billing.invoice import invoice_total, line_total
 
@@ -107,9 +108,9 @@ def test_line_total(case):
 
 def test_invoice_total():
     assert invoice_total([(2, 500), (1, 250)]) == 1250
-'''
+"""
 
-TEST_TAX = '''import pytest
+TEST_TAX = """import pytest
 
 from billing.tax import tax_cents
 
@@ -122,9 +123,9 @@ def test_whole_cent_tax(case):
 
 def test_rounds_half_up():
     assert tax_cents(1_000, 825) == 83
-'''
+"""
 
-TEST_CURRENCY = '''import pytest
+TEST_CURRENCY = """import pytest
 
 from billing.currency import convert
 
@@ -137,9 +138,9 @@ def test_usd_to_eur(case):
 
 def test_same_currency_is_unchanged():
     assert convert(500, "EUR", "EUR") == 500
-'''
+"""
 
-TEST_PERIODS = '''from datetime import date
+TEST_PERIODS = """from datetime import date
 
 from billing.periods import days_in_period
 
@@ -150,7 +151,7 @@ def test_one_day_period():
 
 def test_whole_month():
     assert days_in_period(date(2026, 3, 1), date(2026, 3, 31)) == 31
-'''
+"""
 
 
 def write(dest: Path, task: str) -> None:

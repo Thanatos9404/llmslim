@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`llmslim wrap claude` and `llmslim proxy`: lean context for coding agents** (`pip install "llmslim[proxy]"`).
+  - A local proxy for the Anthropic Messages API. It compresses long tool output (shell, search and web tools; MCP
+    tools opt-in) the first time the model is about to see it.
+  - It stores each decision under the tool call id and the text, and replays the same bytes on every later request.
+    So the prompt cache keeps hitting and Claude's thinking blocks stay valid.
+  - `Read`, `Edit`, `Write` and unknown tools are never touched, nor is output seen before the proxy started.
+  - Headers, `cache_control` and streamed responses pass through. A failed rewrite forwards the original request.
+  - The proxy listens on loopback only. Credentials are forwarded and never stored.
+  - **Measured on Claude Haiku 5.5 with adaptive thinking:**
+    - a 10,545-token pytest log went out as 156 tokens;
+    - cache reads grew every turn;
+    - 62,334 input tokens were not sent across seven requests;
+    - the same request without the replay was rejected with HTTP 400.
+  - Real Claude Code 2.1.296 through `llmslim wrap claude` sent a 6,045-token log as 156 tokens and answered
+    correctly.
+  - `llmslim proxy stats` reports tokens not sent. Guide: `docs/PROXY.md`.
 - **`PostgresStore` for `llmslim.memory`** (`pip install "llmslim[postgres]"`, psycopg 3).
   - `Memory("postgresql://...")`, `llmslim serve --db postgresql://...` and `llmslim mcp --db postgresql://...` use
     it. Several processes or machines can share one memory on Postgres 12+: self-hosted, Supabase, Neon or RDS.

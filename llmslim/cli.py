@@ -7,6 +7,7 @@ Usage:
     cat prompt.txt | llmslim --ratio 0.4 --cost gpt-5
     llmslim mcp --db memory.db          # memory and context tools for MCP clients
     llmslim serve --db memory.db        # the same over HTTP, for apps in any language
+    llmslim wrap claude                 # run Claude Code with long tool output compressed, cache-safe
 """
 
 from __future__ import annotations
@@ -422,6 +423,14 @@ def main(argv=None) -> int:
         from .server import main as run_server
 
         return run_server(arguments[1:])
+    if arguments and arguments[0] == "proxy":
+        from .proxy.cli import main as run_proxy
+
+        return run_proxy(arguments[1:])
+    if arguments and arguments[0] == "wrap":
+        from .proxy.cli import wrap
+
+        return wrap(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
 

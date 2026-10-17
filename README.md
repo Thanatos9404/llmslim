@@ -506,6 +506,32 @@ result instead and reports why in `rewrite_metadata.failure_reasons`.
 
 ---
 
+## Coding agents: `llmslim wrap claude`
+
+Claude Code resends the whole conversation on every turn. So long test logs, build output, search results and web
+pages get paid for again and again, and they fill the context window until it compacts.
+
+`llmslim wrap claude` runs Claude Code through a local proxy:
+- It shrinks such output the first time the model sees it, keeping errors and the lines related to the command.
+- It sends exactly the same bytes on every later request, so the prompt cache keeps hitting and Claude's thinking
+  stays valid.
+- File reads and edits are never touched.
+
+```bash
+pip install "llmslim[proxy]"
+llmslim wrap claude
+llmslim proxy stats
+```
+
+**Measured on Claude Haiku 5.5 with thinking:**
+- **Compression:** a 10,545-token pytest log reached the model as 156 tokens, with the failing test and its assertion
+  kept.
+- **Over the session:** cache reads grew every turn, and 62,334 input tokens were never sent across seven requests.
+- **Control:** the same final request sent without the proxy's byte-for-byte replay was rejected with HTTP 400.
+- **Real Claude Code:** a 6,045-token log went to the model as 156 tokens, and the answer was correct.
+
+See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the limits and security.
+
 ## Memory for agents, with no LLM in the loop
 
 `llmslim.memory` stores every turn verbatim and selects, at read time, the turns that answer a question within a

@@ -10,6 +10,10 @@ import sys
 from collections import defaultdict
 
 
+# Tasks whose instructions require editing the tests (rename changes the test imports and calls).
+EDITS_TESTS = {"rename"}
+
+
 def bootstrap_mean_difference(a, b, rounds=10_000, seed=0):
     rng = random.Random(seed)
     diffs = sorted(
@@ -34,7 +38,7 @@ def main(paths):
             if not rows:
                 continue
             costs = [r["billed_usd"] or 0 for r in rows]
-            passed = sum(1 for r in rows if r["tests_pass"] and r["tests_unchanged"])
+            passed = sum(1 for r in rows if r["tests_pass"] and (r["tests_unchanged"] or task in EDITS_TESTS))
             turns = statistics.median(r["num_turns"] or 0 for r in rows)
             saved = "n/a"
             if arm == "llmslim":

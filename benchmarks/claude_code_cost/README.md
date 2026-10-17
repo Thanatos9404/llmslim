@@ -120,3 +120,40 @@ The ceiling for any tool-output compressor, assuming the same turns:
     no task's success rate lower by more than one run;
   - we would call it **worth paying for** only at 20% or more.
 - **Reporting:** every run is reported, as in measurement 1.
+
+## Measurement 2 result, and why it can't be claimed
+
+Measurement 2 ran 160 runs, all passing their checks. The pooled change was **-22.2%** (95% interval -24.5% to -19.6%),
+but two tasks gave it away:
+- `rename`: -70%;
+- `explore`: -18%.
+
+The proxy shortened **nothing** in either task, so the difference had to come from somewhere else. It did. Claude
+Code recorded `permissionMode: "default"` in every plain run and `"auto"` in every llmslim run, and so did measurement
+1. We checked the cause with one-line requests, all with Claude Code 2.1.296 and a clean environment:
+
+| Setup | Permission mode |
+|---|---|
+| Plain `claude` | default |
+| `ANTHROPIC_BASE_URL=https://api.anthropic.com` | default |
+| `ANTHROPIC_BASE_URL` pointing at a standalone `llmslim proxy` | auto |
+| `llmslim wrap claude` | auto |
+
+The proxy forwarded the single `/v1/messages` request and nothing else. So Claude Code chooses a different default
+permission mode when its base URL is a local proxy.
+
+In auto mode, commands outside the allow-list were approved by Claude Code's classifier. In `rename`, the agent did the
+whole rename with one `grep -rl ... | xargs sed -i` in 4 turns. In plain mode the same command was refused, so it made
+20 separate edits in about 48 turns. Two things follow:
+- The -22.2% mixes compression with a change in what the agent is allowed to do. It is not a result for the proxy.
+- `llmslim wrap claude` changes the user's permission mode. That has to be fixed or clearly disclosed before any
+  release.
+
+## Measurement 3 protocol (amendment, written before the runs)
+
+The same as measurement 2, except that both arms get the same `--permission-mode`, which `run.py` records per run:
+- **3a**, `--permission-mode default` in both arms. This is the primary result, and the measurement 2 decision rule
+  applies to it.
+- **3b**, `--permission-mode auto` in both arms. A robustness check, reported next to 3a.
+
+There are 160 runs each, with 3a and 3b running at the same time with four workers each. Every run is reported.

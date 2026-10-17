@@ -62,6 +62,18 @@ def last_json(text: str) -> dict:
     return {}
 
 
+def permission_mode(config: Path):
+    """The permission mode Claude Code recorded for the session, from its transcript."""
+    for path in (config / "projects").rglob("*.jsonl"):
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if '"permissionMode"' in line:
+                try:
+                    return json.loads(line).get("permissionMode")
+                except json.JSONDecodeError:
+                    continue
+    return None
+
+
 def run_once(task: str, arm: str, index: int, args) -> dict:
     root = Path(args.workdir).resolve()
     work = root / f"{task}-{index}-{arm}" / "project"
@@ -75,6 +87,8 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
     env = dict(os.environ, CLAUDE_CONFIG_DIR=str(config), CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
     claude_args = ["-p", spec.prompt, "--model", MODEL, "--output-format", "json", "--max-turns", str(args.max_turns)]
+    if args.permission_mode:
+        claude_args += ["--permission-mode", args.permission_mode]
     claude_args += ["--allowedTools", *spec.allowed_tools()]
     db = config / "proxy.db"
     if arm == "llmslim":
@@ -119,6 +133,7 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
         "usage": result.get("usage"),
         "model_usage": result.get("modelUsage"),
         "claude_code_cost_usd": result.get("total_cost_usd"),
+        "permission_mode": permission_mode(config),
         "billed_usd": None,
         "other_models": [],
         "tests_pass": passed,
@@ -160,6 +175,12 @@ def main() -> int:
     parser.add_argument("--workdir", default=str(HERE / "work"))
     parser.add_argument("--claude", default=shutil.which("claude") or "claude")
     parser.add_argument("--llmslim", default=shutil.which("llmslim") or "llmslim")
+    parser.add_argument(
+        "--permission-mode",
+        help="Pass the same --permission-mode to Claude Code in both arms. Claude Code picks a different default "
+        "when ANTHROPIC_BASE_URL points at a local proxy (auto instead of default on our account), which changes what "
+        "the agent may run.",
+    )
     parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--cap-usd", type=float, default=10.0, help="Stop once the runs so far were billed this much.")

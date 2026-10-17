@@ -157,3 +157,37 @@ The same as measurement 2, except that both arms get the same `--permission-mode
 - **3b**, `--permission-mode auto` in both arms. A robustness check, reported next to 3a.
 
 There are 160 runs each, with 3a and 3b running at the same time with four workers each. Every run is reported.
+
+## Measurement 3 results
+
+Every run recorded the permission mode it was given (`default` 160/160 in 3a, `auto` 160/160 in 3b).
+
+| Task | 3a: default mode | 3b: auto mode |
+|---|---|---|
+| ci-log | **-32.4%** (-$0.0023 to -$0.0017) | **-25.6%** (-$0.0013 to -$0.0009) |
+| lint-fix | **-20.6%** (-$0.0017 to -$0.0006) | **-17.0%** (-$0.0012 to -$0.0005) |
+| three-bugs | -4.2% (n.s.) | **-14.9%** |
+| five-bugs | -4.8% (n.s.) | **-11.1%** |
+| one-bug | -4.2% (n.s.) | -1.9% (n.s.) |
+| explore (nothing compressed) | -9.4% | +10.2% |
+| rename (nothing compressed) | +3.5% (n.s.) | +10.3% (n.s.) |
+| json-issues | **+114.2%** | +8.8% |
+| **Pooled over 8 tasks** | **+5.3%** (+1.5% to +9.4%) | **-5.1%** (-8.1% to -1.9%) |
+
+Percentages are the change in mean billed cost with llmslim. The intervals are 95% bootstrap intervals of the
+per-run difference, or of the pooled change. n.s. means the interval includes zero.
+
+**Decision rule: not met in either measurement.** In detail:
+- The proxy clearly lowers the bill when an agent reads a long log it can't usefully cut itself: the simulated CI
+  run, and lint output with three errors among 260 warnings.
+- On test runs the agent already pipes through `tail`, so the change is small.
+- On JSON it costs more. The proxy kept every issue but cut the `body` field, and the refund reports were only in the
+  bodies. Its guess of which items mattered could use nothing but the command. The agent saw it was missing data,
+  re-ran the command, looked for flags, then read the raw file: 12 turns instead of 4.
+- `explore` and `rename`, where the proxy changed nothing, still moved by about 10%. Differences of that size on a
+  single task can't be credited to compression.
+- **Check failures (4 of 640 runs):**
+  - `explore` once wrote NOTES.md inside `billing/`;
+  - two `rename` runs (one per arm in 3b) renamed `calc_total` whole-word, so `test_calc_total` kept its name and the
+    check's substring test failed;
+  - none involved compressed output.

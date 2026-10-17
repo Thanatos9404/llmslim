@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.11.1",
+    date: "17 Oct 2026",
+    theme: "What the proxy really does to a Claude Code bill.",
+    summary: "We measured llmslim wrap claude on real Claude Code in billed dollars, with cache reads priced separately, over 572 published runs. Long CI and lint logs cost 17-32% less; test runs changed little, because agents already trim them; shortened JSON cost more. The benchmark also found three problems in 0.11.0, fixed here.",
+    metrics: ["Failing CI log: 26-32% cheaper", "Tool search kept on: 7,100 fewer tokens per request", "JSON left alone by default"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.11.1",
+    items: [
+      { label: "Fixed", icon: Wrench, title: "Tool search stays on", body: "With a custom base URL, Claude Code turns tool search off and sends every tool definition, about 7,100 more tokens on every request. wrap now sets ENABLE_TOOL_SEARCH=true: the first request is 19,716 tokens, against 19,712 without the proxy." },
+      { label: "Fixed", icon: ShieldCheck, title: "Print-mode runs keep the default permission mode", body: "Through a proxy, claude -p starts in auto mode, where commands outside --allowedTools go to a classifier. wrap now starts print-mode runs in default mode unless you choose one. Interactive sessions are unchanged." },
+      { label: "Changed", icon: Wrench, title: "JSON is left alone by default", body: "An agent given a shortened 90-issue JSON list spent 12 turns fetching the issue text that was cut, instead of 4, and the run cost about twice as much. --json (proxy) or compress_json=True (LangChain middleware) turns it back on." },
+      { label: "Added", icon: CheckCircle2, title: "A billed-cost benchmark, every run published", body: "benchmarks/claude_code_cost: eight tasks, real Claude Code 2.1.296 on Claude Haiku 5.5, protocols written before each run. A replay of 444 real sessions also shows tool output is a small part of a Claude Code bill; re-reading long context is the big part." },
+    ],
+  },
+  {
     version: "v0.11.0",
     date: "17 Oct 2026",
     theme: "Claude Code, without the bloat.",

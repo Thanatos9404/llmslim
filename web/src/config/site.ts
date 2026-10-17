@@ -13,7 +13,7 @@ export const siteConfig = {
   publisher: "LLMSlim Core Team",
   category: "Developer Tools & AI Infrastructure",
   /** Public, MIT-licensed `llmslim` package on PyPI. */
-  coreVersion: "0.11.0",
+  coreVersion: "0.11.1",
   /** Private LLMSlim Platform beta. Versioned independently of Core; never published to PyPI. */
   platformVersion: "0.9.1",
   github: "https://github.com/Thanatos9404/llmslim",

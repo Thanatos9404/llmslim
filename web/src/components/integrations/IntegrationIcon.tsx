@@ -61,6 +61,8 @@ export function IntegrationIcon({ iconKey, className = "w-8 h-8" }: { iconKey: s
       return <Server className={`${className} text-emerald-400`} />;
     case "crewai":
       return <Cpu className={`${className} text-cyan-400`} />;
+    case "mcp":
+      return <Network className={`${className} text-emerald-400`} />;
     case "mastra":
       return <Layers className={`${className} text-emerald-400`} />;
     default:

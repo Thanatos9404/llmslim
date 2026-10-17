@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.10.0",
+    date: "17 Oct 2026",
+    theme: "Memory for agents, with no LLM in the loop.",
+    summary: "llmslim.memory stores every turn word for word and, at read time, selects the turns that answer a question within a token budget, with Mem0-compatible method names. llmslim mcp serves that memory to Claude, Cursor and other MCP clients. llmslim serve puts it behind an HTTP API with a Docker image, and a TypeScript client brings it to the Vercel AI SDK. The agent-history adapters now keep Claude's preserved thinking valid.",
+    metrics: ["No model call to store or recall", "MCP server, HTTP API, TypeScript client", "Fixes HTTP 400s with Claude thinking"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.10.0",
+    items: [
+      { label: "Added", icon: CheckCircle2, title: "Memory without extraction", body: "Memory.add keeps each turn verbatim, so writes cost nothing and nothing becomes a wrong extracted fact. Memory.search returns the turns that answer a question, whole and under their dates, within a token budget. It stores to SQLite or memory, and Mem0Memory keeps Mem0's method names." },
+      { label: "Added", icon: Wrench, title: "MCP server, HTTP API and TypeScript client", body: "llmslim mcp gives MCP clients remember, recall, forget and fit_context tools. llmslim serve is a JSON API with API keys and a Dockerfile. The TypeScript client adds recall_memory and remember tools for the Vercel AI SDK. Recalled memory arrives as a tool result, so prompt caches keep hitting." },
+      { label: "Fixed", icon: Wrench, title: "Claude's preserved thinking", body: "The gptme, Hermes Agent and Pydantic AI adapters and compress_chat_messages kept thinking blocks after changing earlier turns. On Claude 5.5 models, Anthropic rejects such requests with HTTP 400. Thinking after the first changed message is now removed, and an unfinished tool round keeps its own." },
+      { label: "Boundary", icon: ShieldCheck, title: "The model never picks whose memory it reads", body: "The user and agent ids come from the server or your code, never from a tool argument, so injected text cannot read or delete another user's memory. Recalled text is labelled as data, not instructions." },
+    ],
+  },
+  {
     version: "v0.9.0",
     date: "15 Oct 2026",
     theme: "Chat history, selected turn by turn.",

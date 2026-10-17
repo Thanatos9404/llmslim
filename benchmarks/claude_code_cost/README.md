@@ -186,8 +186,8 @@ per-run difference, or of the pooled change. n.s. means the interval includes ze
   re-ran the command, looked for flags, then read the raw file: 12 turns instead of 4.
 - `explore` and `rename`, where the proxy changed nothing, still moved by about 10%. Differences of that size on a
   single task can't be credited to compression.
-- **Check failures (4 of 640 runs):**
-  - `explore` once wrote NOTES.md inside `billing/`;
+- **Check failures (3 of 320 runs: plain 159/160, llmslim 158/160):**
+  - `explore` once wrote NOTES.md inside `billing/` (3a, llmslim);
   - two `rename` runs (one per arm in 3b) renamed `calc_total` whole-word, so `test_calc_total` kept its name and the
     check's substring test failed;
   - none involved compressed output.

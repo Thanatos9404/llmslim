@@ -34,9 +34,15 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" -v llmslim-data:/data l
 |---|---|---|
 | `--host` | `LLMSLIM_HOST` | `127.0.0.1` (`0.0.0.0` in the image) |
 | `--port` | `LLMSLIM_PORT` | `8080` |
-| `--db` | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` (`/data/memory.db` in the image) |
+| `--db` (a SQLite path or a `postgresql://` URL) | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` (`/data/memory.db` in the image) |
 | `--api-key` (repeatable) | `LLMSLIM_API_KEYS` (comma-separated) | none |
 | `--budget` | | `2000` tokens for search |
+
+To run several server processes or machines on one memory, point `--db` at Postgres. It needs `pip install "llmslim[server,postgres]"`:
+
+```bash
+LLMSLIM_MEMORY_DB="postgresql://llmslim:<password>@db.example.com:5432/llmslim" llmslim serve --host 0.0.0.0
+```
 
 ## API
 

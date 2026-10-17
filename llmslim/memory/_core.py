@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Seque
 from ..planning.scoring import lexical_relevance
 from ..tokens import count_tokens
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
+from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
 Message = Union[str, Mapping[str, Any]]
@@ -98,6 +99,15 @@ def _squash(text: str) -> str:
     return " ".join(text.split())
 
 
+def storage_target(db: str) -> Union[str, Path]:
+    """What ``Memory`` should open for a ``--db`` value: a Postgres URL as it is, or a SQLite path whose folder exists."""
+    if is_postgres_url(db):
+        return db
+    path = Path(db).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 class Memory:
     """Long-term memory for an agent that keeps every turn verbatim and selects at read time.
 
@@ -138,6 +148,8 @@ class Memory:
             raise ValueError("budget must be a positive number of tokens")
         if store is None:
             self.store: MemoryStore = InMemoryStore()
+        elif is_postgres_url(store):
+            self.store = PostgresStore(store)
         elif isinstance(store, (str, Path)):
             self.store = SQLiteStore(store)
         else:

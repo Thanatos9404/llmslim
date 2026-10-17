@@ -76,6 +76,35 @@ jobs:
           LLMSLIM_E2E_PYTHON: python
       - run: npm run build
 
+  postgres-store:
+    name: Memory on Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: llmslim
+          POSTGRES_PASSWORD: llmslim
+          POSTGRES_DB: llmslim_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U llmslim"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install llmslim with the postgres and server extras
+        run: pip install -e ".[postgres,server]" pytest
+      - name: Memory tests against Postgres
+        env:
+          LLMSLIM_TEST_POSTGRES_URL: postgresql://llmslim:llmslim@127.0.0.1:5432/llmslim_test
+        run: pytest tests/test_memory.py tests/test_memory_postgres.py -o addopts="" -q -rs
+
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -36,7 +36,7 @@ Hermes finds the engine in either of two ways:
   version: 1.0.0
   description: Local context compression with LLMSlim (no LLM call)
   python_dependencies:
-    - "llmslim>=0.9.0,<1"
+    - "llmslim>=0.10.0,<1"
   ```
 
   `__init__.py`
@@ -45,7 +45,8 @@ Hermes finds the engine in either of two ways:
   from llmslim.integrations.hermes import register  # noqa: F401
   ```
 
-  llmslim 0.9.0 is the first release with this engine.
+  llmslim 0.9.0 is the first release with this engine. Use 0.10.0 or newer with Claude thinking models: earlier
+  releases could send thinking blocks that Anthropic rejects after compaction.
 
 Then enable the plugin and select the engine in `~/.hermes/config.yaml`:
 

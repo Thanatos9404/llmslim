@@ -11,7 +11,7 @@ pip install "llmslim[server]"
 llmslim serve                      # http://127.0.0.1:8080, no key needed on loopback
 ```
 
-Until the next release, install from `main` with `pip install "llmslim[server] @ git+https://github.com/Thanatos9404/llmslim"`.
+It needs llmslim 0.10.0 or newer.
 
 ## Run it for other machines
 

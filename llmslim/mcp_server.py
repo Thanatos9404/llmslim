@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from ._fit import fit_text
 from .memory import Memory, MemoryItem
+from .memory._core import storage_target
 
 DEFAULT_DB = Path.home() / ".llmslim" / "memory.db"
 DEFAULT_USER = "default"
@@ -221,7 +222,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file or postgresql:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--user-id",
@@ -243,9 +244,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(list(argv) if argv is not None else None)
     if args.budget <= 0:
         raise SystemExit("--budget must be a positive number of tokens")
-    path = Path(args.db).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    memory = Memory(path, budget=args.budget)
+    memory = Memory(storage_target(args.db), budget=args.budget)
     server = build_server(memory, user_id=args.user_id, agent_id=args.agent_id)
     server.run("stdio")
     return 0

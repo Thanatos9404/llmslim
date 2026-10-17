@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`PostgresStore` for `llmslim.memory`** (`pip install "llmslim[postgres]"`, psycopg 3).
+  - `Memory("postgresql://...")`, `llmslim serve --db postgresql://...` and `llmslim mcp --db postgresql://...` use
+    it. Several processes or machines can share one memory on Postgres 12+: self-hosted, Supabase, Neon or RDS.
+  - It creates its table and a version table under an advisory lock, so several processes can start at once. A table
+    written by a newer llmslim is refused.
+  - It takes a URL (it opens its own pool), a `psycopg_pool.ConnectionPool` or an autocommit connection.
+  - Times are `TIMESTAMPTZ` and come back in UTC. Concurrent writers keep every turn and one order.
+  - CI runs the whole memory suite against a Postgres 17 service.
+
 ## [0.10.0] - 2026-10-17
 
 ### Added

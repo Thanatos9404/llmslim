@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
+  - the lint task has 240 warnings, not 260;
+  - the JSON task's command returned 74 open issues (the fixture holds 90);
+  - the replay of real sessions priced Claude Opus 5.5 cache reads at 0.1x input; Opus 5.5 reads at 0.05x. At the
+    right rates cache reads are 60.9% of that bill, not 75.6%, and the compression ceiling is 13.4%, not 13.8%;
+  - "444 real sessions" is 32 sessions plus the 412 subagent runs they started;
+  - pooled and test-run results now lead with the primary (default permission mode) measurement instead of a range
+    across two modes;
+  - interactive sessions through the proxy were not tested for their permission mode.
+
 ## [0.11.1] - 2026-10-17
 
 We measured what `llmslim wrap claude` does to a real Claude Code bill: billed dollars, with cache reads and writes
@@ -29,22 +40,27 @@ priced separately, over 572 published runs (`benchmarks/claude_code_cost/`). The
   being refused.
   - `wrap` now starts print-mode runs with `--permission-mode default`, unless you pass a mode or set
     `permissions.defaultMode` in your settings.
-  - Interactive sessions are unchanged.
+  - Interactive sessions get no added flag. We measured the switch to auto mode only in print mode, so pass
+    `--permission-mode` yourself if an interactive session must stay in default mode.
 
 ### Changed
 - **JSON tool output is left as it is by default**, in `llmslim proxy` and `LLMSlimToolOutputMiddleware`. In the
-  benchmark, an agent given a shortened 90-issue JSON list spent 12 turns fetching the issue text that was cut,
-  instead of 4, and the run cost about twice as much. `--json` (proxy) or `compress_json=True` (middleware) turns it
+  benchmark (default permission mode), an agent given a shortened JSON list of 74 open issues went back for the issue
+  text that was cut and took a median of 12 turns instead of 4, and the run cost about twice as much. This applies when
+  the whole output is one JSON document; JSON Lines or JSON mixed with other text is still shortened as text. `--json` (proxy) or `compress_json=True` (middleware) turns it
   back on.
 
 ### Added
 - **`benchmarks/claude_code_cost/`:** the billed-cost benchmark, with its protocols written before each run and every
   run's result.
   - Long CI and lint logs cost 17-32% less.
-  - Test runs cost -2% to -15%: agents already trim them with `tail`.
-  - Pooled over 8 tasks, the change was -5% to +5%.
-  - Replaying 444 real sessions shows tool output is a small part of a Claude Code bill: if all shell, search and web
-    output had cost nothing, the bill would have been 13.8% lower.
+  - Test runs cost about 4% less in default permission mode (within noise) and 2-15% less in auto mode: agents
+    already trim them with `tail`.
+  - Pooled over 8 tasks: +5.3% in default mode (the primary result, mostly from the JSON task) and -5.1% in auto
+    mode.
+  - Replaying the maintainer's transcripts (32 sessions and 412 subagent runs) shows tool output is a small part of a
+    Claude Code bill: with the same turns, all shell, search and web output costing nothing would have cut it by
+    13.4%.
 - **A Claude Code plugin marketplace in this repo.** `/plugin marketplace add Thanatos9404/llmslim`, then
   `/plugin install llmslim@llmslim`.
   - The plugin starts LLMSlim's memory server with `uvx`.

@@ -79,24 +79,30 @@ definition on every request. That overhead cancelled what the compression saved.
 
 ## Where a real Claude Code bill goes (offline, no API calls)
 
-We replayed 444 real Claude Code sessions from the maintainer's machine: 48,911 requests, almost all Claude Opus
-5.5, from day-to-day agentic work. We used the usage recorded on each request, priced in units of the base input price
-(cache reads 0.1x, writes 1.25x or 2x for the 1-hour cache, output 5x):
+Corrected on 18 October 2026 (see Corrections at the end): the first version priced Claude Opus 5.5 cache reads at 0.1x
+input, but Opus 5.5 reads cache at 0.05x.
+
+We replayed the maintainer's own Claude Code transcripts offline: 32 sessions and the 412 subagent runs they started,
+48,891 requests (all requests logged before 17 October 2026, 14:28 UTC), almost all Claude Opus 5.5, from day-to-day
+agentic work. Each request is priced from its recorded usage at its model's list rates: Opus 5.5 at $4 input and $20
+output per million tokens, cache reads at 0.05x input, 5-minute cache writes at 1.25x and 1-hour writes at 2x.
 
 | Share of the bill | |
 |---|---|
-| Cache reads (the conversation re-read every turn) | 75.6% |
-| Cache writes | 18.7% |
-| Output, including thinking | 5.6% |
+| Cache reads (the conversation re-read every turn) | 60.9% |
+| Cache writes | 30.1% |
+| Output, including thinking | 9.0% |
 | Uncached input | 0.0% |
 
 The ceiling for any tool-output compressor, assuming the same turns:
 - If the output of Bash, PowerShell, Grep, Glob, WebFetch, WebSearch and Monitor cost **nothing at all**, the bill
-  would be **13.8%** lower.
-- If every tool's output cost nothing, file reads included, it would be **19.2%** lower.
-- The fixed proxy's own compression, replayed over the same sessions, removes **4.3%** of the bill. The median
-  session is 5.5%, the top tenth 11.4% or more, and the best session 25.6%. This replay can't show extra turns, which
-  would lower these numbers.
+  would be **13.4%** lower.
+- If every tool's output cost nothing, file reads included, it would be **18.7%** lower.
+- 0.11.1's compression (JSON left alone), replayed over the same sessions, removes **4.1%** of the bill. This replay
+  can't show extra turns, which would lower these numbers.
+
+By the request's prompt size, 49.8% of the bill came from requests of 400k tokens or more, and re-reading context
+beyond 150k tokens was 33.3% of it (41.6% beyond 100k, 26.8% beyond 200k).
 
 ## Measurement 2 protocol (written before the runs)
 
@@ -179,7 +185,7 @@ per-run difference, or of the pooled change. n.s. means the interval includes ze
 
 **Decision rule: not met in either measurement.** In detail:
 - The proxy clearly lowers the bill when an agent reads a long log it can't usefully cut itself: the simulated CI
-  run, and lint output with three errors among 260 warnings.
+  run, and lint output with three errors among 240 warnings.
 - On test runs the agent already pipes through `tail`, so the change is small.
 - On JSON it costs more. The proxy kept every issue but cut the `body` field, and the refund reports were only in the
   bodies. Its guess of which items mattered could use nothing but the command. The agent saw it was missing data,
@@ -227,3 +233,29 @@ All four conditions held:
 
 These three tasks were chosen to test the fixes, so their pooled number is not a summary of the proxy. Measurement 3
 is.
+
+## Corrections (18 October 2026)
+
+A claim-by-claim check of the published figures against the raw runs found these errors. The pre-registered protocol
+text above is left as it was written; the results sections are corrected in place.
+
+- **Lint task:** the fixture prints exactly 240 warnings (24 files with 10 long lines each), not "about 260".
+- **JSON task:** the fixture holds 90 issues, but the command the agent runs (`python issues.py list --json`) returns
+  only the 74 open ones, about 27 KB. The proxy shortened that 74-issue list.
+- **Real-session replay:**
+  - It priced Claude Opus 5.5 cache reads at 0.1x input; Opus 5.5 reads cache at 0.05x.
+  - With each model's own rates: cache reads 60.9% of the bill (not 75.6%), cache writes 30.1% (not 18.7%), output
+    9.0% (not 5.6%).
+  - Ceilings: 13.4% for compressible tools (not 13.8%), 18.7% for all tools (not 19.2%).
+  - Re-reading beyond 150k: 33.3% (not 41.4%).
+  - The proxy's replayed saving with 0.11.1's defaults is 4.1%. The earlier 4.3% used 0.11.0's JSON compression and
+    the old rate.
+  - "444 sessions" counted every transcript: 32 sessions plus the 412 subagent runs they started.
+- **Ranges across permission modes:** the first summaries quoted ranges such as "-5% to +5%" that joined the
+  primary result (default mode) with the robustness check (auto mode). Summaries now give the primary result
+  first: pooled +5.3% in default mode, -5.1% in auto mode.
+- **Environment:** every run inherited `DISABLE_MICROCOMPACT=1` from the shell that launched the harness, in both arms.
+  Microcompaction only acts near the context limit, and these sessions stayed under about 40k tokens, so no result
+  depends on it. A probe confirmed the runs used Claude Code's default effort (medium), although the shell also set
+  `CLAUDE_EFFORT=xhigh`.
+

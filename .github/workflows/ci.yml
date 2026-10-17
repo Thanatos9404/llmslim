@@ -49,6 +49,33 @@ jobs:
         if: always()
         run: docker logs llmslim || true
 
+  typescript-client:
+    name: TypeScript client against the server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install llmslim serve for the end-to-end tests
+        working-directory: .
+        run: pip install -e ".[server]"
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Unit and end-to-end tests
+        run: npm test
+        env:
+          LLMSLIM_E2E_PYTHON: python
+      - run: npm run build
+
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

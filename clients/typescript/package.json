@@ -1,0 +1,65 @@
+{
+  "name": "llmslim",
+  "version": "0.1.0",
+  "description": "Long-term memory and context fitting for AI agents, with no LLM in the loop: the client for llmslim serve, with Vercel AI SDK tools.",
+  "license": "MIT",
+  "author": "Yashvardhan Thanvi",
+  "homepage": "https://llmslim.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Thanatos9404/llmslim.git",
+    "directory": "clients/typescript"
+  },
+  "bugs": "https://github.com/Thanatos9404/llmslim/issues",
+  "keywords": [
+    "llm",
+    "memory",
+    "agents",
+    "context",
+    "ai-sdk",
+    "mem0",
+    "claude",
+    "openai"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ai-sdk": {
+      "types": "./dist/ai-sdk.d.ts",
+      "import": "./dist/ai-sdk.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "peerDependencies": {
+    "ai": ">=7.0.0 <8"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ai-sdk/provider": "4.0.29",
+    "@types/node": "22.20.5",
+    "ai": "7.0.143",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "zod": "4.1.8"
+  }
+}

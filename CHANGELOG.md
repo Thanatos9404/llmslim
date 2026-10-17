@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-17
+
 ### Added
 - **`llmslim.memory`: agent memory with no LLM in the loop.**
   - `Memory.add` stores turns verbatim. There is no extraction model, so writes cost nothing and a turn can never

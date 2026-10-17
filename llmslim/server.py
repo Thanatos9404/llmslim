@@ -33,6 +33,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequ
 
 from ._fit import fit_text
 from .memory import Memory
+from .memory._core import storage_target
 from .tokens import count_tokens
 
 logger = logging.getLogger("llmslim.server")
@@ -354,7 +355,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file or postgresql:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--api-key",
@@ -393,9 +394,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         import uvicorn
     except ImportError as error:  # pragma: no cover - exercised only without the extra
         raise _missing_server_extra() from error
-    path = Path(args.db).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    app = create_app(Memory(path, budget=args.budget), api_keys=keys)
+    app = create_app(Memory(storage_target(args.db), budget=args.budget), api_keys=keys)
     if not keys:
         logger.warning("no API key set: serving %s:%s without authentication", args.host, args.port)
     uvicorn.run(app, host=args.host, port=args.port)

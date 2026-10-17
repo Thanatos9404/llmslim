@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from llmslim.memory import InMemoryStore, Memory, MemoryItem, Scope, SQLiteStore
+from llmslim.memory import InMemoryStore, Memory, MemoryItem, PostgresStore, Scope, SQLiteStore
 from llmslim.memory.compat import Mem0Memory
 from llmslim.tokens import count_tokens
 
@@ -18,9 +20,29 @@ def clock():
     return T0
 
 
-@pytest.fixture(params=["memory", "sqlite"])
+POSTGRES_URL = os.environ.get("LLMSLIM_TEST_POSTGRES_URL")
+STORES = ["memory", "sqlite"] + (["postgres"] if POSTGRES_URL else [])
+
+
+@pytest.fixture
+def postgres_table():
+    """A fresh table name in the test database, dropped afterwards."""
+    psycopg = pytest.importorskip("psycopg")
+    table = f"llmslim_test_{uuid.uuid4().hex[:12]}"
+    yield table
+    with psycopg.connect(POSTGRES_URL, autocommit=True) as conn:
+        conn.execute(f"DROP TABLE IF EXISTS {table}, {table}_meta")
+
+
+@pytest.fixture(params=STORES)
 def memory(request, tmp_path):
-    store = InMemoryStore() if request.param == "memory" else SQLiteStore(tmp_path / "memory.db")
+    if request.param == "memory":
+        return Memory(InMemoryStore(), clock=clock)
+    if request.param == "sqlite":
+        return Memory(SQLiteStore(tmp_path / "memory.db"), clock=clock)
+    table = request.getfixturevalue("postgres_table")
+    store = PostgresStore(POSTGRES_URL, table=table, max_size=2)
+    request.addfinalizer(store.close)
     return Memory(store, clock=clock)
 
 

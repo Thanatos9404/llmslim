@@ -62,7 +62,11 @@ def _policy_arguments(parser: argparse.ArgumentParser) -> None:
         metavar="TOOL",
         help="Never compress this tool's output (repeatable).",
     )
-    parser.add_argument("--no-mcp", action="store_true", help="Leave MCP tools' output alone.")
+    parser.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Also compress every MCP tool's output (off by default; or add data tools one by one with --tool).",
+    )
 
 
 def _policy(args: argparse.Namespace) -> Policy:
@@ -71,7 +75,7 @@ def _policy(args: argparse.Namespace) -> Policy:
         keep_ratio=args.keep_ratio,
         min_keep=args.min_keep,
         tools=COMPRESSIBLE_TOOLS | frozenset(args.tool),
-        mcp=not args.no_mcp,
+        mcp=args.mcp,
         never=frozenset(args.never),
     )
 

@@ -508,8 +508,8 @@ result instead and reports why in `rewrite_metadata.failure_reasons`.
 
 ## Coding agents: `llmslim wrap claude`
 
-Claude Code resends the whole conversation on every turn. So long test logs, build output, search results and MCP
-responses get paid for again and again, and they fill the context window until it compacts.
+Claude Code resends the whole conversation on every turn. So long test logs, build output, search results and web
+pages get paid for again and again, and they fill the context window until it compacts.
 
 `llmslim wrap claude` runs Claude Code through a local proxy:
 - It shrinks such output the first time the model sees it, keeping errors and the lines related to the command.

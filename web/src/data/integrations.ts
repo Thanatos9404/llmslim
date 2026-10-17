@@ -462,7 +462,7 @@ You can return any item within 30 days of delivery for a full refund. Refunds go
     slug: "gptme", name: "gptme", iconKey: "gptme", badgeText: "Context provider",
     tagline: "A gptme context provider for automatic compaction and /compact trim. Older tool output is compressed instead of being replaced by a stub.",
     description: "LLMSlimContextProvider is a gptme context provider backed by LLMSlim. It keeps the system prompt, the first messages, pinned messages, tool calls and the latest turns exactly as they are, and compresses older tool output and history until the conversation fits gptme's limit. Tool output keeps its failures, tracebacks and line structure. It runs locally, with no model call. Python 3.10+.",
-    installation: { packageManager: "pip", command: `pip install "llmslim[gptme]"   # gptme 0.34 or newer, Python 3.10+; needs llmslim 0.9.0 or newer` },
+    installation: { packageManager: "pip", command: `pip install "llmslim[gptme]"   # gptme 0.34 or newer, Python 3.10+; needs llmslim 0.9.0 or newer (0.10.0 or newer with Claude thinking models)` },
     installNote: "The extra installs gptme 0.34 or newer and needs Python 3.10 or newer. Installing llmslim registers two gptme entry points, so there is nothing to import or register yourself. gptme pins mcp<2, while llmslim[mcp] and llmslim[agents] need mcp>=2, so they cannot share an environment; that is also why llmslim[all] does not include gptme.",
     setup: [
       {
@@ -572,7 +572,7 @@ tests/test_api.py::test_case_299 PASSED`,
     tagline: "A Hermes Agent context engine that compresses older turns locally instead of asking a model for a summary, so prompt caches keep hitting.",
     description: "LLMSlimContextEngine is a Hermes Agent ContextEngine that a plugin puts in place of the built-in context compressor. When the prompt nears the context window it compresses older tool results and turns locally instead of asking a model for a summary. There is no LLM call, the output is deterministic, and the start of the prompt is sent byte for byte the same, so the provider's prompt cache keeps hitting.",
     installation: { packageManager: "pip", command: `# No extra: install llmslim into the Python environment Hermes runs in.
-# Needs llmslim 0.9.0 or newer.
+# Needs llmslim 0.9.0 or newer; 0.10.0 or newer with Claude thinking models.
 uv pip install --python <hermes venv>/bin/python llmslim` },
     installNote: "There is no llmslim[hermes] extra: current Hermes releases are installed with Hermes's installer, Docker image or Nix (the hermes-agent package on PyPI is an old 0.19 release), and the engine needs nothing beyond llmslim. With llmslim in Hermes's environment (with uv as shown, or Nix extraPythonPackages), Hermes discovers llmslim's hermes_agent.plugins entry point. A managed Hermes install may rebuild its environment on hermes update and drop packages installed by hand.",
     setup: [
@@ -582,7 +582,7 @@ uv pip install --python <hermes venv>/bin/python llmslim` },
 version: 1.0.0
 description: Local context compression with LLMSlim (no LLM call)
 python_dependencies:
-  - "llmslim>=0.9.0,<1"`,
+  - "llmslim>=0.10.0,<1"`,
       },
       {
         caption: "__init__.py, in the same directory:",
@@ -729,7 +729,7 @@ api/test_api.py::test_case_299 PASSED`,
     slug: "pydantic-ai", name: "Pydantic AI", iconKey: "pydantic-ai", badgeText: "History processor",
     tagline: "A Pydantic AI history processor that fits the message history into a token budget before every model request. Tool calls and returns stay paired.",
     description: "llmslim_history_processor(max_tokens=...) returns a Pydantic AI history processor. Before every model request it fits the message history into a token budget: older text is compressed by LLMSlim first, and older tool exchanges and turns are removed only when that is not enough. Tool calls and their returns are always kept or removed together, so the provider never sees an unpaired call or return. It runs locally, with no model call. Python 3.10+.",
-    installation: { packageManager: "pip", command: `pip install "llmslim[pydantic-ai]"   # pydantic-ai-slim 1.0 or newer, Python 3.10+; needs llmslim 0.9.0 or newer` },
+    installation: { packageManager: "pip", command: `pip install "llmslim[pydantic-ai]"   # pydantic-ai-slim 1.0 or newer, Python 3.10+; needs llmslim 0.9.0 or newer (0.10.0 or newer with Claude thinking models)` },
     installNote: "The extra installs pydantic-ai-slim 1.0 or newer and needs Python 3.10 or newer. llmslim[all] includes it.",
     setup: [
       {

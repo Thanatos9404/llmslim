@@ -60,6 +60,63 @@ python run.py --task three-bugs --runs 8 --out results/three-bugs.jsonl
 python summarize.py results/*.jsonl
 ```
 
-## Results
+## Measurement 1: llmslim 0.11.0 as released
 
-Not run yet.
+| Task | Arm | Runs | Passed | Median turns | Median billed | Mean billed | Tokens not sent (median) |
+|---|---|---|---|---|---|---|---|
+| one-bug | plain | 8 | 8/8 | 8 | $0.00416 | $0.00425 | n/a |
+| one-bug | llmslim | 8 | 8/8 | 9 | $0.00440 | $0.00437 | 8,040 |
+| three-bugs | plain | 8 | 8/8 | 11 | $0.00538 | $0.00533 | n/a |
+| three-bugs | llmslim | 8 | 8/8 | 11 | $0.00530 | $0.00529 | 10,428 |
+
+- one-bug: mean billed cost +2.9% with llmslim (95% bootstrap interval of the difference: -$0.00031 to +$0.00052).
+- three-bugs: -0.7% (-$0.00043 to +$0.00038).
+
+**No measurable saving.** Reading the transcripts showed why. Through the 0.11.0 proxy, Claude Code's first request was
+26,923 tokens instead of 19,795. With a custom base URL, Claude Code turns tool search off and sends every tool
+definition on every request. That overhead cancelled what the compression saved. The fix (`wrap` sets
+`ENABLE_TOOL_SEARCH=true`) brings the first request to 19,716 tokens against 19,712 without the proxy.
+
+## Where a real Claude Code bill goes (offline, no API calls)
+
+We replayed 444 real Claude Code sessions from the maintainer's machine: 48,911 requests, almost all Claude Opus
+5.5, from day-to-day agentic work. We used the usage recorded on each request, priced in units of the base input price
+(cache reads 0.1x, writes 1.25x or 2x for the 1-hour cache, output 5x):
+
+| Share of the bill | |
+|---|---|
+| Cache reads (the conversation re-read every turn) | 75.6% |
+| Cache writes | 18.7% |
+| Output, including thinking | 5.6% |
+| Uncached input | 0.0% |
+
+The ceiling for any tool-output compressor, assuming the same turns:
+- If the output of Bash, PowerShell, Grep, Glob, WebFetch, WebSearch and Monitor cost **nothing at all**, the bill
+  would be **13.8%** lower.
+- If every tool's output cost nothing, file reads included, it would be **19.2%** lower.
+- The fixed proxy's own compression, replayed over the same sessions, removes **4.3%** of the bill. The median
+  session is 5.5%, the top tenth 11.4% or more, and the best session 25.6%. This replay can't show extra turns, which
+  would lower these numbers.
+
+## Measurement 2 protocol (written before the runs)
+
+- **Proxy:** the fixed `wrap` from commit `52a612858301`, installed from git; otherwise default options. Plain Claude
+  Code as the control.
+- **Tasks** (`tasks.py`):
+  - `one-bug`, `three-bugs` and `five-bugs`: fix failing tests, running `pytest -v` after each fix;
+  - `ci-log`: a failing simulated CI run, about 12 KB of log, whose cause sits in the middle;
+  - `json-issues`: 90 issues as JSON, about 27 KB, where the refund reports are mentioned only in issue bodies;
+  - `lint-fix`: 3 errors among about 260 warnings;
+  - `rename`: rename a function across 20 files;
+  - `explore`: write notes on a package, almost only file reads, which the proxy never changes.
+
+  Each task has a check that runs after the agent finishes. An untouched fixture fails it and a reference fix
+  passes it; we verified both for all eight before the runs.
+- **Runs:** 10 per arm per task, 160 in total, with arms alternating within each task. Four tasks run in parallel.
+- **Primary result:** the pooled change in mean billed cost. That is the mean over tasks of (llmslim mean / plain
+  mean - 1), with a 95% bootstrap interval that resamples runs within each task.
+- **Decision rule, fixed now:**
+  - we call the saving **significant** only if the pooled saving is at least 10% and its interval excludes zero, with
+    no task's success rate lower by more than one run;
+  - we would call it **worth paying for** only at 20% or more.
+- **Reporting:** every run is reported, as in measurement 1.

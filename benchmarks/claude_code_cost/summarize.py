@@ -60,6 +60,29 @@ def main(paths):
                 f"(difference ${statistics.fmean(slim) - statistics.fmean(plain):+.5f} per run, "
                 f"95% bootstrap interval ${low:+.5f} to ${high:+.5f})"
             )
+    if len({task for task, _ in runs}) > 1:
+        change, low, high, n = pooled_change(runs)
+        print()
+        print(
+            f"Pooled over {n} tasks: mean billed cost {change:+.1%} with llmslim "
+            f"(95% interval {low:+.1%} to {high:+.1%})"
+        )
+
+
+def pooled_change(runs, rounds=10_000, seed=0):
+    """Mean over tasks of (llmslim mean / plain mean - 1), with a 95% interval from resampling runs within each task."""
+    tasks = sorted({task for task, _ in runs if (task, "plain") in runs and (task, "llmslim") in runs})
+    costs = {t: ([r["billed_usd"] or 0 for r in runs[(t, "plain")]], [r["billed_usd"] or 0 for r in runs[(t, "llmslim")]]) for t in tasks}
+
+    def change(sample):
+        return statistics.fmean(statistics.fmean(s) / statistics.fmean(p) - 1 for p, s in sample.values())
+
+    rng = random.Random(seed)
+    draws = sorted(
+        change({t: (rng.choices(p, k=len(p)), rng.choices(s, k=len(s))) for t, (p, s) in costs.items()})
+        for _ in range(rounds)
+    )
+    return change(costs), draws[int(rounds * 0.025)], draws[int(rounds * 0.975)], len(tasks)
 
 
 if __name__ == "__main__":

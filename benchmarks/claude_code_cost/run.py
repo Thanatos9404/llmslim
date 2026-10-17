@@ -17,35 +17,15 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 HERE = Path(__file__).resolve().parent
 MODEL = "claude-haiku-5-5"
 # Claude Haiku 5.5 list prices in USD per million tokens, for prompts up to 100K tokens: input $0.10, output $0.50.
 # Cache reads cost 0.1x input; cache writes 1.25x (5-minute) or 2x (1-hour).
 PRICE_IN, PRICE_OUT = 0.10, 0.50
 
-PROMPTS = {
-    "one-bug": (
-        "The test suite is failing. Run `pytest -v` to see the failures, fix the bug in the source code (don't change "
-        "the tests), then run `pytest -v` again to confirm everything passes. Reply with one sentence on what you "
-        "changed."
-    ),
-    "three-bugs": (
-        "Some tests are failing. Run `pytest -v`, then fix the failures one at a time by changing the source code, not "
-        "the tests. Run `pytest -v` after each fix. Reply with one line per fix."
-    ),
-}
-ALLOWED_TOOLS = [
-    "Read",
-    "Edit",
-    "Write",
-    "Grep",
-    "Glob",
-    "Bash(pytest:*)",
-    "Bash(python -m pytest:*)",
-    "Bash(ls:*)",
-    "Bash(cat:*)",
-    "PowerShell(pytest:*)",
-]
+from tasks import TASKS  # noqa: E402
 
 
 def digest(folder: Path) -> str:
@@ -88,13 +68,14 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
     config = work.parent / "claude-config"
     shutil.rmtree(work.parent, ignore_errors=True)
     config.mkdir(parents=True)
-    subprocess.run([sys.executable, str(HERE / "make_fixture.py"), task, str(work)], check=True)
-    tests_before = digest(work / "tests")
+    spec = TASKS[task]
+    spec.write(work)
+    tests_before = digest(work / "tests") if (work / "tests").exists() else None
 
     env = dict(os.environ, CLAUDE_CONFIG_DIR=str(config), CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
-    claude_args = ["-p", PROMPTS[task], "--model", MODEL, "--output-format", "json", "--max-turns", str(args.max_turns)]
-    claude_args += ["--allowedTools", *ALLOWED_TOOLS]
+    claude_args = ["-p", spec.prompt, "--model", MODEL, "--output-format", "json", "--max-turns", str(args.max_turns)]
+    claude_args += ["--allowedTools", *spec.allowed_tools()]
     db = config / "proxy.db"
     if arm == "llmslim":
         command = [args.llmslim, "wrap", "--db", str(db), "claude", "--", *claude_args]
@@ -121,9 +102,11 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
     seconds = round(time.time() - started, 1)
     result = last_json(stdout)
 
-    check = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], cwd=work, capture_output=True, text=True
-    )
+    try:
+        passed = bool(spec.check(work))
+    except Exception as exc:  # a crashed check is a failed run
+        passed = False
+        print(f"check failed with {exc!r}", flush=True)
     record = {
         "task": task,
         "arm": arm,
@@ -138,8 +121,8 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
         "claude_code_cost_usd": result.get("total_cost_usd"),
         "billed_usd": None,
         "other_models": [],
-        "tests_pass": check.returncode == 0,
-        "tests_unchanged": digest(work / "tests") == tests_before,
+        "tests_pass": passed,
+        "tests_unchanged": tests_before is None or digest(work / "tests") == tests_before,
         "final_reply": (result.get("result") or "")[:400],
         "proxy_stats": None,
     }
@@ -171,7 +154,7 @@ def run_once(task: str, arm: str, index: int, args) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--task", choices=sorted(PROMPTS), required=True)
+    parser.add_argument("--task", choices=sorted(TASKS), required=True)
     parser.add_argument("--runs", type=int, default=6)
     parser.add_argument("--out", required=True)
     parser.add_argument("--workdir", default=str(HERE / "work"))

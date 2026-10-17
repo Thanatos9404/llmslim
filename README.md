@@ -509,13 +509,15 @@ result instead and reports why in `rewrite_metadata.failure_reasons`.
 ## Coding agents: `llmslim wrap claude`
 
 Claude Code resends the whole conversation on every turn. So long test logs, build output, search results and web
-pages get paid for again and again, and they fill the context window until it compacts.
+pages get paid for again and again, and they add to the context that Claude Code eventually compacts.
 
 `llmslim wrap claude` runs Claude Code through a local proxy:
-- It shrinks such output the first time the model sees it, keeping errors and the lines related to the command.
+- It shrinks such output the first time the model sees it. Lines that look like errors, failures or warnings come
+  first, then the lines related to the command.
 - It sends exactly the same bytes on every later request, so the prompt cache keeps hitting and Claude's thinking
   stays valid.
-- File reads and edits are never touched.
+- Output of Claude Code's own `Read`, `Edit` and `Write` tools is never touched. A file printed through the shell
+  (`cat`, `head`) counts as shell output.
 
 ```bash
 pip install "llmslim[proxy]"
@@ -523,23 +525,31 @@ llmslim wrap claude
 llmslim proxy stats
 ```
 
-**What it does to the bill, measured** on real Claude Code with Claude Haiku 5.5. We counted billed dollars, with cache
-reads priced separately, and published all 572 runs in
-[benchmarks/claude_code_cost](benchmarks/claude_code_cost/README.md):
-- **Long logs:** a failing CI run cost 26-32% less, and a lint run with three errors among 260 warnings 17-21% less.
-- **Test runs:** -2% to -15%. Agents already trim test output with `tail`.
-- **Over 8 tasks:** between -5% and +5% overall. Shortened JSON made one task cost about twice as much, so JSON is
-  left alone by default since 0.11.1.
-- **Real sessions:** tool output is a small part of a Claude Code bill. Re-reading long context is the big part, and
-  Claude Code's `/autocompact` setting controls it.
+**What it does to the bill, measured** on real Claude Code 2.1.296 with Claude Haiku 5.5, on eight small synthetic
+tasks. We counted list-price dollars from the API's usage, with cache reads priced separately, and published all 572
+runs in [benchmarks/claude_code_cost](benchmarks/claude_code_cost/README.md). The primary result has both arms in
+Claude Code's default permission mode; a second run has both in auto mode.
+- **Long logs:** a simulated failing CI run (about 12 KB of log, the cause in the middle) cost 26-32% less, and a lint
+  run with three errors among 240 warnings 17-21% less.
+- **Test runs:** about 4% less in default mode, within noise for every task; 2-15% less in auto mode. Agents already
+  trim test output with `tail`.
+- **Over 8 tasks:** +5.3% in default mode (95% interval +1.5% to +9.4%), mostly from one task where shortened JSON
+  cost about twice as much; -5.1% in auto mode. JSON is left alone by default since 0.11.1.
+- **Real sessions:** in an offline replay of the maintainer's own transcripts (32 sessions and the 412 subagent runs
+  they started, almost all Claude Opus 5.5, at list prices), tool output was a small part of the bill: with the same
+  turns, all shell, search and web output costing nothing would have cut it by 13.4%. Re-reading long context was the
+  big part. Claude Code's `/autocompact` setting decides when it compacts; what that does to cost is not measured
+  here.
 
-Without the byte-for-byte replay, an edited history gets the request rejected with HTTP 400 once Claude's thinking is
-in it; with it, cache reads keep growing every turn. See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the
+Without the byte-for-byte replay, an edited history invalidates Claude's thinking: in our API check on Claude Haiku
+5.5 the request was rejected with HTTP 400, the default for accounts created on or after 31 August 2026. With the
+replay, cache reads grew on every request of a 7-request API test. See [docs/PROXY.md](docs/PROXY.md) for what is compressed, the
 limits and security.
 
 **As a Claude Code plugin.** The plugin adds LLMSlim's memory server (below) and two commands:
 - `/llmslim:wrap-claude` walks you through starting Claude Code through the proxy;
-- `/llmslim:savings` shows what the proxy kept out of your requests.
+- `/llmslim:savings` shows how many tool-output tokens the proxy kept out of your requests: an estimate counted
+  before prompt-cache discounts, not dollars saved.
 
 ```text
 /plugin marketplace add Thanatos9404/llmslim

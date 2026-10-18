@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Memory: standing requests.** When a history does not fit, `Memory.search` puts the user's explicit standing
+  requests in their own section at the top ("Requests the user made earlier:"), the most relevant first, within 15%
+  of the budget.
+  - **What counts:** a request opens with its directive ("Always ...", "From now on ..."), asks the assistant
+    directly ("I'd like you to never ..."), or says when it applies ("... when I ask about X"). It is kept even when
+    it shares no word with the question.
+  - **What does not:** a pattern word in passing ("I want to make sure my site is fast"), and assistant turns.
+  - **Shape:** each request is cut to about 100 tokens. The matching turns are returned in `MemoryContext.requests`.
+  - **Controls:** `Memory(standing_requests=...)` and `search(standing_requests=...)`.
+- **Memory: overview questions.** A summary, recap or ordering question ("summarize what we discussed", "in what
+  order did I ...") is answered from a digest: the opening of each user turn and each reply, without code, plus the
+  reply's outline (its headings and bold list leads). Many more exchanges fit in the budget than as whole turns.
+  - **Controls:** `Memory(coverage="auto" | "always" | "never")` and `search(coverage=...)`.
+  - Every other question is answered exactly as before.
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;

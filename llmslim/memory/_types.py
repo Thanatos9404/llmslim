@@ -120,6 +120,9 @@ class MemoryContext:
     sessions_total: int
     sessions_kept: int
     elapsed_ms: float = 0.0
+    # Standing requests the user made earlier ("always ...", "from now on ...") that bear on the question, shown in
+    # their own section at the top of ``text``. Only user turns can appear here.
+    requests: Tuple[RecalledTurn, ...] = ()
 
     @property
     def compressed(self) -> bool:
@@ -142,5 +145,9 @@ class MemoryContext:
             "turns": [
                 {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
                 for turn in self.turns
+            ],
+            "requests": [
+                {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
+                for turn in self.requests
             ],
         }

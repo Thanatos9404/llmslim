@@ -13,6 +13,7 @@
 [![Coverage](https://img.shields.io/badge/Branch%20Coverage-93.67%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
 [![License](https://img.shields.io/badge/License-MIT-94a3b8?style=for-the-badge)](LICENSE)
 [![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app)
+[![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/score.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 
 <br/>
 
@@ -591,6 +592,8 @@ claude mcp add llmslim -- llmslim mcp
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
 - **Storage:** a local SQLite file; the server makes no network calls.
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
+
+[![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/card.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 
 <!-- mcp-name: io.github.Thanatos9404/llmslim -->
 

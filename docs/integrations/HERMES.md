@@ -16,7 +16,19 @@ Install llmslim into the Python environment Hermes runs in. There is no
 installer, Docker image or Nix (the `hermes-agent` package on PyPI is an old
 0.19 release), and the engine needs nothing beyond llmslim.
 
-Hermes finds the engine in either of two ways:
+The shortest way is the ready-made plugin in [`plugins/hermes`](../../plugins/hermes/)
+(Hermes 0.21.7 and newer). Hermes installs it, asks before adding its one
+dependency (`llmslim==0.11.1` from PyPI), and keeps that dependency across
+updates:
+
+```bash
+hermes plugins install Thanatos9404/llmslim/plugins/hermes --enable
+hermes config set context.engine llmslim
+```
+
+Its [README](../../plugins/hermes/README.md) lists its settings and what it
+does and does not do. To set things up by hand instead, Hermes finds the
+engine in either of two ways:
 
 - **Entry point.** With llmslim installed in Hermes's environment (for example
   `uv pip install --python <hermes venv>/bin/python llmslim`, or Nix

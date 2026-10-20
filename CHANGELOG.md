@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Packaging
+- **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
+  Claude plugin directory blocks a version range as an unpinned uvx launcher.
+- **The plugin has a README** (`plugins/llmslim/README.md`): what it runs, what it stores and what reaches the
+  network. The directory requires one.
+- **A Gemini CLI extension manifest** (`gemini-extension.json` at the repo root) runs the same pinned server, so
+  `gemini extensions install https://github.com/Thanatos9404/llmslim` works and the extensions gallery can index the
+  repo.
+- **One-click install links** in the README for VS Code, Cursor, LM Studio, Goose and Kiro.
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;

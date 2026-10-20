@@ -43,6 +43,10 @@ This checklist outlines the mandatory verification steps required before publish
 - [ ] Bump version in `llmslim/__init__.py` (`__version__ = "X.Y.Z"`).
 - [ ] Bump `version` in `server.json` (both places, and the `llmslim[mcp]==X.Y.Z` pin) and in
   `plugins/llmslim/.claude-plugin/plugin.json`. `tests/test_claude_plugin.py` checks they match.
+- [ ] Bump the `llmslim[mcp]==X.Y.Z` pin in `plugins/llmslim/.mcp.json` and `plugins/llmslim/README.md`, `version`
+  and the pin in `gemini-extension.json`, and the five one-click install links in the README's MCP section (Cursor
+  and LM Studio carry the config base64-encoded). Directories reject a version range, so these stay exact.
+  `tests/test_claude_plugin.py` checks them too.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

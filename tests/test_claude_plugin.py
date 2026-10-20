@@ -1,7 +1,10 @@
-"""The Claude Code plugin marketplace in this repo: valid manifests, versions in step with the package."""
+"""The Claude Code plugin, Gemini CLI extension and install links: valid, in step with the package."""
 
+import base64
 import json
+import re
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import llmslim
 
@@ -27,14 +30,57 @@ def test_versions_match_the_package():
     server = _json(ROOT / "server.json")
     assert server["version"] == llmslim.__version__
     assert server["packages"][0]["version"] == llmslim.__version__
+    assert _json(ROOT / "gemini-extension.json")["version"] == llmslim.__version__
 
 
 def test_mcp_server_runs_the_published_package():
-    server = _json(PLUGIN / ".mcp.json")["mcpServers"]["llmslim"]
-    assert server["command"] == "uvx"
-    assert server["args"][0] == "--from"
-    assert server["args"][1].startswith("llmslim[mcp]")
-    assert server["args"][2:] == ["llmslim", "mcp"]
+    # Directories reject a version range ("unpinned uvx launcher"), so the package is pinned to this release.
+    expected = {
+        "command": "uvx",
+        "args": ["--from", f"llmslim[mcp]=={llmslim.__version__}", "llmslim", "mcp"],
+    }
+    assert _json(PLUGIN / ".mcp.json")["mcpServers"] == {"llmslim": expected}
+    assert _json(ROOT / "gemini-extension.json")["mcpServers"] == {"llmslim": expected}
+
+
+def test_gemini_extension_manifest():
+    extension = _json(ROOT / "gemini-extension.json")
+    assert extension["name"] == "llmslim"
+    assert extension["description"]
+
+
+def test_plugin_readme_is_long_enough_for_the_directory():
+    # The Claude plugin directory needs a README of at least 40 words, not counting code blocks.
+    text = (PLUGIN / "README.md").read_text(encoding="utf-8")
+    prose = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    assert len(prose.split()) >= 40
+    assert f"llmslim[mcp]=={llmslim.__version__}" in text
+
+
+def test_readme_install_links_run_this_release():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    hosts = {"vscode.dev", "cursor.com", "lmstudio.ai", "goose-docs.ai", "kiro.dev"}
+    links = [
+        link
+        for link in re.findall(r"\)\]\((https://[^)\s]+)\)", readme)
+        if urlsplit(link).hostname in hosts
+    ]
+    assert {urlsplit(link).hostname for link in links} == hosts
+    for link in links:
+        query = parse_qs(urlsplit(link).query)
+        if "cmd" in query:  # Goose passes the command as cmd and arg parameters
+            command = [query["cmd"][0], *query["arg"]]
+        else:  # JSON, or base64 JSON for Cursor and LM Studio
+            raw = query["config"][0]
+            config = json.loads(raw if raw.startswith("{") else base64.b64decode(raw))
+            command = [config["command"], *config["args"]]
+        assert command == [
+            "uvx",
+            "--from",
+            f"llmslim[mcp]=={llmslim.__version__}",
+            "llmslim",
+            "mcp",
+        ]
 
 
 def test_skills_have_a_description():

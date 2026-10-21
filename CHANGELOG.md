@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
+  `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
+  declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;

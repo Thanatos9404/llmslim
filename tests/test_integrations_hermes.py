@@ -13,6 +13,8 @@ import importlib
 import importlib.metadata
 import json
 import os
+import pathlib
+import shutil
 import sys
 import textwrap
 
@@ -472,3 +474,33 @@ def test_hermes_loads_a_directory_plugin(tmp_path, monkeypatch):
     engine = _discover()
     assert isinstance(engine, LLMSlimContextEngine)
     assert engine.protect_first_n == 1
+
+
+def test_the_catalog_plugin_is_selected_by_context_engine(tmp_path, monkeypatch):
+    """plugins/hermes is the directory `hermes plugins install llmslim` puts in the plugins dir.
+
+    Setting context.engine selects it even when it is not in plugins.enabled.
+    """
+    loader = pytest.importorskip("plugins.context_engine")
+    home = tmp_path / "hermes-home"
+    shutil.copytree(
+        pathlib.Path(__file__).resolve().parent.parent / "plugins" / "hermes",
+        home / "plugins" / "llmslim",
+    )
+    (home / "config.yaml").write_text(
+        textwrap.dedent(
+            """\
+            plugins:
+              entries:
+                llmslim:
+                  settings: {"protect_last_n": 2}
+            context:
+              engine: llmslim
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HERMES_HOME", str(home))
+    engine = loader.load_context_engine("llmslim")
+    assert isinstance(engine, LLMSlimContextEngine)
+    assert engine.name == "llmslim" and engine.protect_last_n == 2

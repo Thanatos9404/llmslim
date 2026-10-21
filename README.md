@@ -591,7 +591,7 @@ claude mcp add llmslim -- llmslim mcp
 
 - **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
-- **Storage:** a local SQLite file; the server makes no network calls.
+- **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
 
 **One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`, so it needs

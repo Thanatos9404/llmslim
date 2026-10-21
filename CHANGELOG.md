@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
+  `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
+  declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
+
 ### Packaging
 - **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
   Claude plugin directory blocks a version range as an unpinned uvx launcher.

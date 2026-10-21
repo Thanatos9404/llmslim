@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The plugin folder has its own LICENSE and SECURITY.md**, its two skills declare a `name`, and the marketplace
   declares `"strict": true`. The HOL plugin scanner that the awesome-ai-plugins and awesome-codex-plugins lists run
   checks for all of these.
+- **The Codex plugin has an icon** (`plugins/llmslim/assets/icon.png`), which the awesome-codex-plugins list requires.
+- **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
+  noreply address, which receives no mail.
 
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:

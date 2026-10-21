@@ -18,7 +18,7 @@ uvx --from "llmslim[mcp]==0.11.1" llmslim mcp
 | Tool | What it does | Changes data |
 |---|---|---|
 | `remember` | Stores a message word for word and returns its id. | Adds |
-| `recall` | Returns the stored messages that answer a question, whole and under their dates, within a token budget. | No |
+| `recall` | Returns the stored messages that answer a question, under their dates and whole where they fit, within a token budget. | No |
 | `list_memories` | Lists recent messages with their ids, newest first. | No |
 | `forget` | Deletes one message. It can't be undone. | Deletes |
 | `fit_context` | Shrinks a long text to a token budget, keeping what answers a query, in order. | No |

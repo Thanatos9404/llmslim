@@ -90,7 +90,7 @@ depth.
 
 Please report potential vulnerabilities privately rather than opening a public issue.
 
-- **Email:** thanatos9404@users.noreply.github.com with subject `[SECURITY] Potential vulnerability in llmslim`.
+- **Email:** support@llmslim.app with subject `[SECURITY] Potential vulnerability in llmslim`.
 - **Private advisory:** [GitHub Security Advisories](https://github.com/Thanatos9404/llmslim/security/advisories/new).
 
 Include a description, impact, reproduction steps or proof of concept, and affected versions/environments.

@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "LLMSlim",
     "shortDescription": "Local long-term memory with no LLM in the loop",
-    "longDescription": "Runs the LLMSlim MCP server on your machine with uvx, pinned to one release. It stores messages word for word in a local SQLite file and returns the stored messages that answer a question, whole and under their dates, within a token budget. It can also shrink a long text to a token budget, keeping what answers a query. No LLM, no embedding API and no API key.",
+    "longDescription": "Runs the LLMSlim MCP server on your machine with uvx, pinned to one release. It stores messages word for word in a local SQLite file and returns the stored messages that answer a question, under their dates and whole where they fit, within a token budget. It can also shrink a long text to a token budget, keeping what answers a query. No LLM, no embedding API and no API key.",
     "developerName": "Yashvardhan Thanvi",
     "category": "Productivity",
     "capabilities": [
@@ -28,6 +28,7 @@
       "Write"
     ],
     "websiteURL": "https://llmslim.app",
-    "privacyPolicyURL": "https://llmslim.app/privacy"
+    "privacyPolicyURL": "https://llmslim.app/privacy",
+    "composerIcon": "./assets/icon.png"
   }
 }

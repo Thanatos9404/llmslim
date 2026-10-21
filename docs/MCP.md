@@ -50,7 +50,7 @@ If `llmslim` isn't on the client's `PATH`, give the full path to it, or let `uvx
 | Tool | What it does | Changes data |
 |---|---|---|
 | `remember(text, role="user", session=None)` | Stores a message word for word and returns its id. | Adds |
-| `recall(query, budget=2000, session=None)` | Returns the stored messages that answer the question, whole and under their dates, within the budget. | No |
+| `recall(query, budget=2000, session=None)` | Returns the stored messages that answer the question, under their dates and whole where they fit, within the budget. | No |
 | `list_memories(limit=20, session=None)` | Lists recent messages with their ids, newest first. | No |
 | `forget(memory_id)` | Deletes one message. It can't be undone. | Deletes |
 | `fit_context(text, budget=2000, query=None)` | Shrinks a long text to the budget, keeping what answers the query, in order. | No |

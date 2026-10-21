@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
   declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
 
+### Packaging
+- **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
+  Claude plugin directory blocks a version range as an unpinned uvx launcher.
+- **The plugin has a README** (`plugins/llmslim/README.md`): what it runs, what it stores and what reaches the
+  network. The directory requires one.
+- **A Gemini CLI extension manifest** (`gemini-extension.json` at the repo root) runs the same pinned server, so
+  `gemini extensions install https://github.com/Thanatos9404/llmslim` works and the extensions gallery can index the
+  repo.
+- **One-click install links** in the README for VS Code, Cursor, LM Studio, Goose and Kiro.
+- **A Codex plugin manifest** (`plugins/llmslim/.codex-plugin/plugin.json`) starts the same pinned server from the
+  plugin's `.mcp.json`, for Codex and the awesome-codex-plugins list.
+- **The plugin folder has its own LICENSE and SECURITY.md**, its two skills declare a `name`, and the marketplace
+  declares `"strict": true`. The HOL plugin scanner that the awesome-ai-plugins and awesome-codex-plugins lists run
+  checks for all of these.
+- **The Codex plugin has an icon** (`plugins/llmslim/assets/icon.png`), which the awesome-codex-plugins list requires.
+- **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
+  noreply address, which receives no mail.
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;

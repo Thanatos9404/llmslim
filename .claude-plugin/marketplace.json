@@ -5,6 +5,7 @@
     "url": "https://github.com/Thanatos9404"
   },
   "description": "LLMSlim for Claude Code: long-term memory with no LLM in the loop, and a local proxy that keeps long tool output out of your context.",
+  "strict": true,
   "plugins": [
     {
       "name": "llmslim",
@@ -17,7 +18,8 @@
         "tokens",
         "proxy",
         "mcp"
-      ]
+      ],
+      "strict": true
     }
   ]
 }

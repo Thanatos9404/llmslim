@@ -591,8 +591,19 @@ claude mcp add llmslim -- llmslim mcp
 
 - **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
-- **Storage:** a local SQLite file; the server makes no network calls.
+- **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
+
+**One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`, so it needs
+[uv](https://docs.astral.sh/uv/) and Python 3.10 or newer.
+
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMSIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMSIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.11.1&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
+[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+
+In Gemini CLI, `gemini extensions install https://github.com/Thanatos9404/llmslim` adds the same server.
 
 [![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/card.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 

@@ -49,6 +49,8 @@ This checklist outlines the mandatory verification steps required before publish
   `tests/test_claude_plugin.py` checks them too.
 - [ ] Bump `version` in the Codex manifest, `plugins/llmslim/.codex-plugin/plugin.json`. It starts the server from
   `plugins/llmslim/.mcp.json`, so its pin moves with the one above. `tests/test_claude_plugin.py` checks both.
+- [ ] Bump `version` in `plugins/llmslim/plugin.json` and the pin in `plugins/llmslim/mcp.json` (the Agent Plugins
+  files Copilot CLI reads). awesome-copilot pins a commit, so resubmit its external plugin entry after a release.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

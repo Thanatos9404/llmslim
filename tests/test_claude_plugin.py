@@ -1,4 +1,4 @@
-"""The Claude Code and Codex plugins, Gemini CLI extension and install links: valid, in step with the package."""
+"""The Claude Code, Codex and Agent Plugins manifests, Gemini CLI extension and install links: in step with the package."""
 
 import base64
 import json
@@ -35,6 +35,7 @@ def test_versions_match_the_package():
     assert server["version"] == llmslim.__version__
     assert server["packages"][0]["version"] == llmslim.__version__
     assert _json(ROOT / "gemini-extension.json")["version"] == llmslim.__version__
+    assert _json(PLUGIN / "plugin.json")["version"] == llmslim.__version__
 
 
 def test_mcp_server_runs_the_published_package():
@@ -47,6 +48,8 @@ def test_mcp_server_runs_the_published_package():
     assert _json(ROOT / "gemini-extension.json")["mcpServers"] == {"llmslim": expected}
     # The Codex manifest starts the same pinned server from the same file.
     assert _json(PLUGIN / ".codex-plugin" / "plugin.json")["mcpServers"] == "./.mcp.json"
+    # Copilot CLI and awesome-copilot read the Agent Plugins files, plugin.json and mcp.json.
+    assert _json(PLUGIN / "mcp.json")["mcpServers"] == {"llmslim": {"type": "stdio", **expected}}
 
 
 def test_codex_plugin_manifest():
@@ -57,6 +60,29 @@ def test_codex_plugin_manifest():
         assert manifest[field]
     assert manifest["interface"]["displayName"]
     assert manifest["interface"]["shortDescription"]
+
+
+def test_agent_plugins_manifest():
+    # The Agent Plugins 1.0.0 schema allows only these top-level fields; awesome-copilot checks the version.
+    manifest = _json(PLUGIN / "plugin.json")
+    assert manifest["$schema"] == "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+    allowed = {
+        "$schema",
+        "name",
+        "version",
+        "description",
+        "author",
+        "homepage",
+        "repository",
+        "license",
+        "keywords",
+    }
+    assert set(manifest) <= allowed
+    assert manifest["name"] == "llmslim"
+    assert (
+        _json(PLUGIN / "mcp.json")["$schema"]
+        == "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+    )
 
 
 def test_plugin_ships_its_license_and_security_policy():

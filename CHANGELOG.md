@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declares `"strict": true`. The HOL plugin scanner that the awesome-ai-plugins and awesome-codex-plugins lists run
   checks for all of these.
 - **The Codex plugin has an icon** (`plugins/llmslim/assets/icon.png`), which the awesome-codex-plugins list requires.
+- **Agent Plugins manifests for Copilot CLI** (`plugins/llmslim/plugin.json` and `mcp.json`, schema 1.0.0) start the
+  same pinned server. Copilot CLI already read the Claude layout; the awesome-copilot list checks only these files.
 - **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
   noreply address, which receives no mail.
 

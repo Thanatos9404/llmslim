@@ -1,4 +1,4 @@
-"""The Claude Code plugin, Gemini CLI extension and install links: valid, in step with the package."""
+"""The Claude Code and Codex plugins, Gemini CLI extension and install links: valid, in step with the package."""
 
 import base64
 import json
@@ -23,10 +23,14 @@ def test_marketplace_lists_the_plugin():
     (entry,) = marketplace["plugins"]
     assert entry["name"] == "llmslim"
     assert (ROOT / entry["source"]).resolve() == PLUGIN
+    # Claude Code reads "strict" per entry. The HOL plugin scanner looks for it at the top level.
+    assert entry["strict"] is True
+    assert marketplace["strict"] is True
 
 
 def test_versions_match_the_package():
     assert _json(PLUGIN / ".claude-plugin" / "plugin.json")["version"] == llmslim.__version__
+    assert _json(PLUGIN / ".codex-plugin" / "plugin.json")["version"] == llmslim.__version__
     server = _json(ROOT / "server.json")
     assert server["version"] == llmslim.__version__
     assert server["packages"][0]["version"] == llmslim.__version__
@@ -41,6 +45,24 @@ def test_mcp_server_runs_the_published_package():
     }
     assert _json(PLUGIN / ".mcp.json")["mcpServers"] == {"llmslim": expected}
     assert _json(ROOT / "gemini-extension.json")["mcpServers"] == {"llmslim": expected}
+    # The Codex manifest starts the same pinned server from the same file.
+    assert _json(PLUGIN / ".codex-plugin" / "plugin.json")["mcpServers"] == "./.mcp.json"
+
+
+def test_codex_plugin_manifest():
+    # Fields the awesome-codex-plugins validator requires.
+    manifest = _json(PLUGIN / ".codex-plugin" / "plugin.json")
+    assert manifest["name"] == "llmslim"
+    for field in ("description", "repository", "license"):
+        assert manifest[field]
+    assert manifest["interface"]["displayName"]
+    assert manifest["interface"]["shortDescription"]
+
+
+def test_plugin_ships_its_license_and_security_policy():
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert (PLUGIN / "LICENSE").read_text(encoding="utf-8") == license_text
+    assert "## Reporting a vulnerability" in (PLUGIN / "SECURITY.md").read_text(encoding="utf-8")
 
 
 def test_gemini_extension_manifest():
@@ -83,11 +105,12 @@ def test_readme_install_links_run_this_release():
         ]
 
 
-def test_skills_have_a_description():
+def test_skills_have_a_name_and_description():
     skills = sorted((PLUGIN / "skills").glob("*/SKILL.md"))
     assert [path.parent.name for path in skills] == ["savings", "wrap-claude"]
     for path in skills:
         text = path.read_text(encoding="utf-8")
         assert text.startswith("---\n")
         frontmatter = text.split("---\n", 2)[1]
+        assert f"\nname: {path.parent.name}\n" in "\n" + frontmatter
         assert "\ndescription: " in "\n" + frontmatter

@@ -47,6 +47,8 @@ This checklist outlines the mandatory verification steps required before publish
   and the pin in `gemini-extension.json`, and the five one-click install links in the README's MCP section (Cursor
   and LM Studio carry the config base64-encoded). Directories reject a version range, so these stay exact.
   `tests/test_claude_plugin.py` checks them too.
+- [ ] Bump `version` in the Codex manifest, `plugins/llmslim/.codex-plugin/plugin.json`. It starts the server from
+  `plugins/llmslim/.mcp.json`, so its pin moves with the one above. `tests/test_claude_plugin.py` checks both.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

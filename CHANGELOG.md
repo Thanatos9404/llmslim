@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gemini extensions install https://github.com/Thanatos9404/llmslim` works and the extensions gallery can index the
   repo.
 - **One-click install links** in the README for VS Code, Cursor, LM Studio, Goose and Kiro.
+- **A Codex plugin manifest** (`plugins/llmslim/.codex-plugin/plugin.json`) starts the same pinned server from the
+  plugin's `.mcp.json`, for Codex and the awesome-codex-plugins list.
+- **The plugin folder has its own LICENSE and SECURITY.md**, its two skills declare a `name`, and the marketplace
+  declares `"strict": true`. The HOL plugin scanner that the awesome-ai-plugins and awesome-codex-plugins lists run
+  checks for all of these.
 
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:

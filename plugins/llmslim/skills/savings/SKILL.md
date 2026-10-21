@@ -1,4 +1,5 @@
 ---
+name: savings
 description: Show how many input tokens the LLMSlim proxy kept out of Claude Code's requests.
 disable-model-invocation: true
 argument-hint: "[days]"

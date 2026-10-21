@@ -1,4 +1,5 @@
 ---
+name: wrap-claude
 description: Set up llmslim wrap claude, which runs Claude Code through a local proxy that shortens long test logs, build output and search results the first time the model sees them and resends the same bytes on every later turn.
 disable-model-invocation: true
 allowed-tools: Bash(llmslim proxy --help), Bash(uvx --from llmslim[proxy] llmslim proxy --help)

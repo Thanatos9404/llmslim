@@ -123,6 +123,9 @@ class MemoryContext:
     # Standing requests the user made earlier ("always ...", "from now on ...") that bear on the question, shown in
     # their own section at the top of ``text``. Only user turns can appear here.
     requests: Tuple[RecalledTurn, ...] = ()
+    # Preferences the user stated earlier ("I prefer ...", "I'd rather ...") that bear on a request for advice, shown
+    # in their own section at the top of ``text``, after the requests. Only user turns can appear here.
+    preferences: Tuple[RecalledTurn, ...] = ()
 
     @property
     def compressed(self) -> bool:
@@ -149,5 +152,9 @@ class MemoryContext:
             "requests": [
                 {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
                 for turn in self.requests
+            ],
+            "preferences": [
+                {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
+                for turn in self.preferences
             ],
         }

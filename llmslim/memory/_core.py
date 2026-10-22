@@ -6,11 +6,16 @@ import re
 import time
 import uuid
 from datetime import datetime, timezone, tzinfo
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
+from ..focus import Unit, rank
 from ..planning.scoring import lexical_relevance
+from ..rerank import resolve_relevance
 from ..tokens import count_tokens
+from . import _turns
+from ._routing import ADVICE, OTHER, OVERVIEW, PREFERENCE, ordering, route
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
 from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
@@ -31,10 +36,6 @@ _ROLE_ALIASES = {
 }
 _TEXT_PARTS = ("text", "input_text", "output_text")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
-# Fitting the rendered text to the budget: as in LLMSlim's benchmark builders, a few passes that shrink the ratio by
-# the overshoot. Selection is deterministic, so the same history and question always give the same context.
-_FIT_PASSES = 4
-_FIT_SLACK = 1.02
 # A standing request: a user sentence that sets how later answers should be ("Always include ...", "From now on ...").
 # Such a sentence often shares few words with the question it governs, so relevance ranking alone tends to drop it.
 _STANDING = re.compile(
@@ -58,17 +59,65 @@ _EXPLICIT = re.compile(
 _STANDING_HEADER = "Requests the user made earlier:"
 _STANDING_SHARE = 0.15  # most of the budget the requests section may take
 _REQUEST_TOKENS = 100  # a longer request sentence is cut short
-# An overview question (a summary or recap, or the order in which things came up) asks about the whole story, which
-# the opening of each turn carries: what the user asked, and what the reply set out to do. The rest is mostly code and
-# detail, so an overview is answered from those openings and many more exchanges fit.
-_OVERVIEW = re.compile(
-    r"\b(summar(?:y|ies|ise|ize|ised|ized|ising|izing)|recap|overview|"
-    r"(?:what|everything) (?:have|did) (?:we|i|you) (?:discuss|discussed|cover|covered|talk|talked)|"
-    r"key (?:points|takeaways)|main (?:points|topics)|"
-    r"order in which|in (?:what|which) order|chronolog\w*|timeline|sequence of)\b",
+_REQUEST_LIMIT = 3  # at most this many requests are shown: the ones that best match the question
+# What a standing request asks the answer to carry ("Always include the number of team members when I ask about
+# ...": "the number of team members"). Those facts are fetched too: they are added to the retrieval query.
+_REQUEST_OBJECT = re.compile(
+    r"\b(?:include|including|provide|give|add|mention|list|show|state|specify|cite|note|highlight|report|"
+    r"track|compare|break down|reference|share|quote)\s+(?P<obj>.+?)"
+    r"(?=\s+(?:when(?:ever)?|if|any ?time|each time|every time|whenever)\s+(?:i|we|you)\b|[.!?]?\s*$)",
     re.IGNORECASE,
 )
+# Words that say how to present an answer, not what it is about: they are not added to the retrieval query.
+_FORMAT_WORDS = frozenset(
+    """a an the all any each every my our your their its of for to in on with and or by as at from about clear
+    clearly concise brief short detailed detail details step steps stepwise step-by-step by-step breakdown
+    explanation explanations example examples table tables summary summaries list lists bullet bullets point points
+    format formatted formatting style chart charts graph graphs diagram diagrams checklist checklists section
+    sections heading headings code snippet snippets comment comments note notes always never answer answers
+    response responses reply replies including include specific specifically relevant related information""".split()
+)
+_EXPAND_TERMS = 12  # at most this many words of a request's object are added to the query
+_CONTEXT_WORDS = (
+    12  # a long sentence is shown from this many words before what made it a request or preference
+)
+_PREFERENCE_HEADER = "Preferences the user stated earlier:"
+_PREFERENCE_SHARE = 0.10  # most of the budget the preferences section may take
+_PREFERENCE_TOKENS = 80  # a longer preference sentence is cut short
+_PREFERENCE_LIMIT = 8  # at most this many preferences are shown
+_SECTION_RERANK = (
+    60  # statements the reranker reads for a section (the strongest lexical candidates)
+)
 _COVERAGE_MODES = ("auto", "always", "never")
+# The routes on which each section is shown (see llmslim.memory._routing).
+_REQUEST_ROUTES = (ADVICE, OTHER)
+_PREFERENCE_ROUTES = (ADVICE,)
+# A reply's opening pleasantry ("Great question!", "Absolutely, ...", "I'm glad that helped.") says nothing about its
+# content; an overview skips it and keeps the sentence after it.
+_PLEASANTRY = re.compile(
+    r"^\W*(?:great|good|excellent|fantastic|wonderful|awesome|perfect|nice|lovely|amazing|brilliant|"
+    r"absolutely|certainly|of course|sure(?:\s+thing)?|definitely|indeed|yes|okay|ok|alright|no problem|"
+    r"thanks?(?: you)?(?: so much)?(?: for)?|thank you|you'?re welcome|congratulations|congrats|well done|"
+    r"glad|i'?m glad|i am glad|happy to help|i'?m happy|i'?d be (?:happy|glad)|i understand|i hear you|"
+    r"that'?s (?:great|good|wonderful|fantastic|awesome|a great|a good|an excellent|understandable|exciting)|"
+    r"it'?s (?:great|wonderful|fantastic|good) (?:to|that)|what a|how exciting|sounds (?:great|good|like)|"
+    r"got it|understood|i see)\b",
+    re.IGNORECASE,
+)
+_PLEASANTRY_MAX_WORDS = 25  # a longer opening sentence carries content even when it starts kindly
+_DIGEST_USER_SHARE = 0.5  # share of an overview's budget reserved for the openings of user turns
+_ORDER_USER_SHARE = (
+    0.8  # the same for a question about the order or progression of what the user brought up
+)
+_OVERVIEW_DETAIL_SHARE = (
+    0.3  # share of a summary's budget for the most relevant reply windows, kept whole
+)
+_OVERVIEW_DETAIL_MIN = (
+    5000  # ... only when the budget is at least this large (a small one needs the coverage)
+)
+_DIGEST_DEDUP = (
+    1.01  # above 1: openings are never left out as near-duplicates (an opening is short)
+)
 _CODE_BLOCK = re.compile(r"```.*?(?:```|\Z)", re.DOTALL)
 _LEAD_TOKENS = {"user": 80, "assistant": 30}  # how much of each turn's opening an overview keeps
 _OUTLINE_TOKENS = 30  # and how much of a reply's outline
@@ -103,6 +152,87 @@ def _lead(text: str, limit: int) -> str:
             kept.append(" ".join(words[: max(1, len(words) * room // cost)]) + " ...")
         break
     return " ".join(kept)
+
+
+def _around(sentence: str, start: int, limit: int) -> str:
+    """``sentence`` within about ``limit`` tokens, around the character offset ``start`` (where the pattern that
+    picked it matched): a long run-on sentence shows the words near that point, with cuts marked."""
+    if count_tokens(sentence) <= limit:
+        return sentence
+    words = sentence.split()
+    offset, at = 0, 0
+    for k, word in enumerate(words):
+        offset = sentence.find(word, offset) + len(word)
+        if offset > start:
+            at = k
+            break
+    first = max(0, at - _CONTEXT_WORDS)
+    kept: List[str] = []
+    for word in words[first:]:
+        if count_tokens(" ".join([*kept, word])) > limit - 4:
+            break
+        kept.append(word)
+    text = " ".join(kept) or words[at]
+    return ("... " if first else "") + text + (" ..." if first + len(kept) < len(words) else "")
+
+
+@lru_cache(maxsize=1 << 14)
+def _requests_in(content: str) -> str:
+    """The sentences of a user turn that make an explicit standing request (see ``_EXPLICIT``), each shown around
+    its directive and cut to about ``_REQUEST_TOKENS``; empty when there is none."""
+    made = [
+        _around(s, m.start(), _REQUEST_TOKENS)
+        for s in (s.strip() for s in _SENTENCE.split(content))
+        for m in [_EXPLICIT.search(s)]
+        if s and m and _STANDING.search(s)
+    ]
+    return " ".join(made)
+
+
+@lru_cache(maxsize=1 << 14)
+def _preferences_in(content: str) -> str:
+    """The sentences of a user turn that state a preference (see ``_routing.PREFERENCE``) and are not requests,
+    each shown around what states it and cut to about ``_PREFERENCE_TOKENS``; empty when there is none."""
+    stated = [
+        _around(s, m.start(), _PREFERENCE_TOKENS)
+        for s in (s.strip() for s in _SENTENCE.split(content))
+        for m in [PREFERENCE.search(s)]
+        if s and m and not _EXPLICIT.search(s)
+    ]
+    return " ".join(stated)
+
+
+@lru_cache(maxsize=64)
+def _document_tokens(document: str) -> int:
+    return count_tokens(document)
+
+
+def _reply_lead(text: str, limit: int) -> str:
+    """A reply's opening for an overview: its first sentences within about ``limit`` tokens, skipping opening
+    pleasantries ("Great question!", "Absolutely, let's ...") that say nothing about what the reply covers."""
+    prose = " ".join(_CODE_BLOCK.sub(" ", text).split())
+    sentences = _SENTENCE.split(prose)
+    skip = 0
+    while (
+        skip < len(sentences) - 1
+        and _PLEASANTRY.match(sentences[skip])
+        and len(sentences[skip].split()) <= _PLEASANTRY_MAX_WORDS
+    ):
+        skip += 1
+    return _lead(" ".join(sentences[skip:]), limit)
+
+
+def _request_terms(request: str) -> str:
+    """What a standing request asks the answer to include, as query words (see ``_REQUEST_OBJECT``); empty when it
+    asks only for a format ("step-by-step explanations", "a summary table")."""
+    found = _REQUEST_OBJECT.search(request)
+    if not found:
+        return ""
+    picked: List[str] = []
+    for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9'%$.-]*", found.group("obj")):
+        if word.casefold().strip(".") not in _FORMAT_WORDS and word.casefold() not in picked:
+            picked.append(word.casefold().strip("."))
+    return " ".join(picked[:_EXPAND_TERMS])
 
 
 def _outline(text: str, limit: int) -> str:
@@ -197,9 +327,10 @@ class Memory:
     """Long-term memory for an agent that keeps every turn verbatim and selects at read time.
 
     Nothing is summarized or extracted on the way in, so writes cost no model call and a stored turn never turns into
-    a wrong "fact". On the way out, :meth:`search` ranks the whole history against the question with LLMSlim's
-    query-focused selection (the same engine and layout as its LongMemEval and LoCoMo benchmarks) and returns the most
-    relevant turns, whole and in date order, within a token budget.
+    a wrong "fact". On the way out, :meth:`search` ranks the stored turns against the question and returns what
+    answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the
+    replies, one labelled and dated block per turn, in date order. No model is called to write or to read, and the
+    same history and question always give the same text.
 
     Args:
         store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, or ``None`` for an
@@ -209,15 +340,22 @@ class Memory:
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
         tz: Time zone for the session dates shown to the model. Defaults to UTC.
         stamp_format: strftime format of those dates. The default reads like 2026-10-17 (Sat) 14:05.
+        date_format: strftime format of the shorter date on the other kept turns of a session when a long history is
+            selected from (the first kept turn of each session shows ``stamp_format``). The default reads like
+            2026-10-17. Pass ``stamp_format`` again to show the full stamp on every turn.
         clock: Returns "now" for turns added without a timestamp. For tests.
-        standing_requests: When the history does not fit, show the user's earlier explicit standing requests
-            ("Always ...", "From now on ...", "I'd like you to never ...", "... when I ask about X") in their own
-            section at the top, within part of the budget, the most relevant first, even when they share no word with
-            the question. Only user turns qualify. Detection is a fixed pattern, with no model call.
+        standing_requests: When the history does not fit and the question asks for help or is not a plain lookup of
+            a past fact, show the user's earlier explicit standing requests ("Always ...", "From now on ...", "I'd
+            like you to never ...", "... when I ask about X") that best match it (at most three) in their own section
+            at the top, even when they share no word with the question, and fetch what the best one asks the answer
+            to include. Only user turns qualify. Detection is a fixed pattern, with no model call.
         coverage: ``"auto"`` (default) answers overview questions ("summarize what we discussed", "in what order did I
-            bring up ...") from the opening of each turn, without code: what the user asked and what the reply set out
-            to do. Many more exchanges fit than as whole turns. ``"always"`` does so for every question, ``"never"``
-            never.
+            bring up ...", "how did my plan develop?") from the opening of each turn, without code: what the user
+            asked and what the reply set out to do. Many more exchanges fit than as whole turns. ``"always"`` does so
+            for every question, ``"never"`` never.
+        preferences: When the history does not fit and the question asks for advice, a recommendation or help, show
+            the user's earlier statements of preference ("I prefer ...", "I'd rather ...", "I usually ...", "I don't
+            like ...") that best match it in their own section at the top. Only user turns qualify.
 
     Example:
         >>> from llmslim.memory import Memory
@@ -235,9 +373,11 @@ class Memory:
         relevance: Any = "lexical",
         tz: tzinfo = timezone.utc,
         stamp_format: str = "%Y-%m-%d (%a) %H:%M",
+        date_format: str = "%Y-%m-%d",
         clock: Callable[[], datetime] = _utcnow,
         standing_requests: bool = True,
         coverage: str = "auto",
+        preferences: bool = True,
     ) -> None:
         if budget <= 0:
             raise ValueError("budget must be a positive number of tokens")
@@ -255,9 +395,11 @@ class Memory:
         self.relevance = relevance
         self.tz = tz
         self.stamp_format = stamp_format
+        self.date_format = date_format
         self._clock = clock
         self.standing_requests = standing_requests
         self.coverage = coverage
+        self.preferences = preferences
 
     # ------------------------------------------------------------------ writes
 
@@ -365,15 +507,17 @@ class Memory:
         until: Any = None,
         standing_requests: Optional[bool] = None,
         coverage: Optional[str] = None,
+        preferences: Optional[bool] = None,
     ) -> MemoryContext:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
-        If the whole history fits, all of it is returned. Otherwise each session (a ``run_id``, or a calendar day) is
-        rendered as ``[date] role: content`` lines and LLMSlim selects across all sessions with one shared budget:
-        the most relevant turns stay whole, a question stays with its reply, and the session date is kept as a header.
-        Standing requests the user made earlier that bear on the question come first, in their own section, and an
-        overview question is answered from the opening of each turn (see ``standing_requests`` and ``coverage`` on
-        :class:`Memory`, which these arguments override for one call).
+        If the whole history fits, all of it is returned. Otherwise the stored turns are ranked against the question
+        and the budget is filled with the user's turns (a reserved share, whole where they fit) and the most relevant
+        parts of the replies, each kept turn rendered as one ``[date] role: text`` block, in date order. The kind of
+        question decides the rest (see ``llmslim.memory._routing``): a plain lookup gets the whole budget; a request
+        for help also gets the standing requests and stated preferences that bear on it, in their own sections at the
+        top; an overview question is answered from the opening of many turns (see ``standing_requests``,
+        ``coverage`` and ``preferences`` on :class:`Memory`, which these arguments override for one call).
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -383,42 +527,63 @@ class Memory:
         relevance = self.relevance if relevance is None else relevance
         standing = self.standing_requests if standing_requests is None else standing_requests
         coverage = self.coverage if coverage is None else coverage
+        stated = self.preferences if preferences is None else preferences
         if coverage not in _COVERAGE_MODES:
             raise ValueError(f"coverage must be one of {_COVERAGE_MODES}")
         started = time.perf_counter()
         items = self.store.list(Scope(user_id, agent_id, run_id), **self._window(since, until))
         sessions = self._sessions(items)
         documents = [self._render(session) for session in sessions]
-        history_tokens = sum(count_tokens(document) for document in documents)
-        lane, requests = "", ()
+        history_tokens = sum(_document_tokens(document) for document in documents)
+        requests: Tuple[RecalledTurn, ...] = ()
+        liked: Tuple[RecalledTurn, ...] = ()
         if history_tokens <= budget:
+            turns: List[RecalledTurn] = []
+            for session, part in zip(sessions, documents):
+                turns.extend(self._recalled(session, part, query))
+            text = "\n\n".join(part for part in documents if part)
             kept = documents
+            tokens = count_tokens(text) if text else 0
         else:
-            if standing:
-                lane, requests = self._standing_requests(items, query, budget, relevance)
-            room = budget - (count_tokens(lane + "\n\n") if lane else 0)
-            overview = coverage == "always" or (
-                coverage == "auto" and bool(_OVERVIEW.search(query))
-            )
+            scorer = resolve_relevance(relevance)
+            kind = route(query)
+            overview = coverage == "always" or (coverage == "auto" and kind == OVERVIEW)
+            sections: List[str] = []
+            expansion = ""
+            if standing and kind in _REQUEST_ROUTES:
+                lane, requests, expansion = self._standing_requests(items, query, budget, scorer)
+                sections.append(lane)
+            if stated and kind in _PREFERENCE_ROUTES:
+                left = budget - (count_tokens(sections[0] + "\n\n") if any(sections) else 0)
+                lane, liked = self._preferences(
+                    items, query, budget, scorer, {t.item.id for t in requests}, left
+                )
+                sections.append(lane)
+            prefix = "\n\n".join(part for part in sections if part)
+            room = budget - (count_tokens(prefix + "\n\n") if prefix else 0)
+            units = _turns.build_turns(sessions, self._stamp, self._date)
             if overview:
-                kept = self._digest(sessions, query, room, relevance)
+                chosen = self._digest(units, query, room, scorer)
             else:
-                kept = self._select(documents, query, room, history_tokens, relevance)
-        turns: List[RecalledTurn] = []
-        for session, text in zip(sessions, kept):
-            turns.extend(self._recalled(session, text, query))
-        text = "\n\n".join(part for part in [lane, *kept] if part)
+                chosen = _turns.select_turns(units, query, room, scorer, expansion=expansion)
+            kept, recalled, tokens = _turns.fit(chosen, budget, prefix)
+            turns = [
+                RecalledTurn(item, round(lexical_relevance(query, item.content), 4), partial)
+                for item, partial in _turns.as_items(units, recalled)
+            ]
+            text = "\n\n".join(part for part in [prefix, *kept] if part)
         return MemoryContext(
             query=query,
             text=text,
             turns=tuple(turns),
-            tokens=count_tokens(text) if text else 0,
+            tokens=tokens,
             budget=budget,
             history_tokens=history_tokens,
             sessions_total=len(sessions),
             sessions_kept=sum(1 for part in kept if part),
             elapsed_ms=round((time.perf_counter() - started) * 1000, 2),
             requests=requests,
+            preferences=liked,
         )
 
     # ------------------------------------------------------------------ internals
@@ -446,110 +611,193 @@ class Memory:
         stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
         return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
 
-    def _standing_requests(
-        self, items: Sequence[MemoryItem], query: str, budget: int, relevance: Any
-    ) -> Tuple[str, Tuple[RecalledTurn, ...]]:
-        """The user's explicit standing requests (see ``_EXPLICIT``), as a section of at most ``_STANDING_SHARE`` of the
-        budget: the most relevant first (by ``relevance``) until the section is full, then shown in date order (the
-        latest last, so an update reads after what it replaces). Only the sentences that make the request are shown,
-        each cut to about ``_REQUEST_TOKENS``."""
-        from ..rerank import resolve_relevance
+    def _stamp(self, item: MemoryItem) -> str:
+        return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
 
-        cap = int(budget * _STANDING_SHARE)
-        candidates = []
-        for item in items:
-            if item.role != "user":
-                continue
-            sentences = [s.strip() for s in _SENTENCE.split(item.content) if s.strip()]
-            made = [
-                _lead(s, _REQUEST_TOKENS)
-                for s in sentences
-                if _STANDING.search(s) and _EXPLICIT.search(s)
-            ]
-            if made:
-                said = " ".join(made)
-                candidates.append((lexical_relevance(query, said), item, said))
-        scorer = resolve_relevance(relevance)
-        ranks = (
-            scorer(query, [c[2] for c in candidates])
-            if scorer and candidates
-            else [c[0] for c in candidates]
-        )
+    def _date(self, item: MemoryItem) -> str:
+        return item.created_at.astimezone(self.tz).strftime(self.date_format)
+
+    def _section(
+        self,
+        header: str,
+        candidates: Sequence[Tuple[MemoryItem, str]],
+        query: str,
+        budget: int,
+        scorer: Any,
+        share: float,
+        limit: int,
+        room: Optional[int] = None,
+    ) -> Tuple[str, Tuple[RecalledTurn, ...], List[Tuple[MemoryItem, str]]]:
+        """A section of user statements (requests or preferences): the ones that best match ``query`` (LLMSlim's
+        lexical ranking, then the reranker over the strongest candidates when one is set), at most ``limit`` and
+        within ``share`` of the budget (and of ``room``, what the sections above left of it), shown in date order
+        (the latest last, so an update reads after what it replaces). Returns (text, recalled turns, chosen in rank
+        order)."""
+        if not candidates:
+            return "", (), []
+        units = [
+            Unit(k, k, said, count_tokens(said), "", "\n") for k, (_, said) in enumerate(candidates)
+        ]
+        scores = rank(units, query, scorer, candidates=_SECTION_RERANK)
         order = sorted(
             range(len(candidates)),
-            key=lambda i: (-ranks[i], candidates[i][1].created_at, candidates[i][1].seq),
+            key=lambda k: (-scores[k], candidates[k][0].created_at, candidates[k][0].seq, k),
         )
-        used = count_tokens(_STANDING_HEADER)
-        chosen = []
-        for score, item, said in (candidates[i] for i in order):
-            stamp = item.created_at.astimezone(self.tz).strftime(self.stamp_format)
-            line = f"- [{stamp}] {said}"
+        room = budget if room is None else room
+        cap = min(int(budget * share), room)
+        used = count_tokens(header)
+        chosen: List[Tuple[MemoryItem, str, str]] = []
+        for k in order:
+            if len(chosen) >= limit:
+                break
+            item, said = candidates[k]
+            line = f"- [{self._stamp(item)}] {said}"
             cost = count_tokens(line)
-            # The most relevant request always gets in if it takes at most half the budget, so a small budget does
-            # not lose it to the share; the others must fit within the share.
-            limit = max(cap, budget // 2) if not chosen else cap
-            if used + cost > limit:
+            # The best match always gets in if it takes at most half of the room, so a small budget does not lose it
+            # to the share; the others must fit within the share.
+            if used + cost > (max(cap, room // 2) if not chosen else cap):
                 continue
-            chosen.append((item, line, score, said))
+            chosen.append((item, line, said))
             used += cost
         if not chosen:
-            return "", ()
+            return "", (), []
+        ranked = [(item, said) for item, _, said in chosen]
         chosen.sort(key=lambda c: (c[0].created_at, c[0].seq))
-        lane = "\n".join([_STANDING_HEADER] + [line for _, line, _, _ in chosen])
-        requests = tuple(
-            RecalledTurn(item, round(score, 4), _squash(said) != _squash(item.content))
-            for item, _, score, said in chosen
+        text = "\n".join([header] + [line for _, line, _ in chosen])
+        recalled = tuple(
+            RecalledTurn(
+                item,
+                round(lexical_relevance(query, said), 4),
+                _squash(said) != _squash(item.content),
+            )
+            for item, _, said in chosen
         )
-        return lane, requests
+        return text, recalled, ranked
+
+    def _standing_requests(
+        self,
+        items: Sequence[MemoryItem],
+        query: str,
+        budget: int,
+        scorer: Any,
+    ) -> Tuple[str, Tuple[RecalledTurn, ...], str]:
+        """The user's explicit standing requests (see ``_EXPLICIT``) that best match the question, at most
+        ``_REQUEST_LIMIT`` within ``_STANDING_SHARE`` of the budget. Only the sentences that make the request are
+        shown, each cut to about ``_REQUEST_TOKENS``. Also returns what the best match asks the answer to include,
+        as words for the retrieval query (see ``_request_terms``)."""
+        candidates = [
+            (item, said)
+            for item in items
+            if item.role == "user"
+            for said in [_requests_in(item.content)]
+            if said
+        ]
+        text, recalled, ranked = self._section(
+            _STANDING_HEADER,
+            candidates,
+            query,
+            budget,
+            scorer,
+            _STANDING_SHARE,
+            _REQUEST_LIMIT,
+        )
+        expansion = _request_terms(ranked[0][1]) if ranked else ""
+        return text, recalled, expansion
+
+    def _preferences(
+        self,
+        items: Sequence[MemoryItem],
+        query: str,
+        budget: int,
+        scorer: Any,
+        skip: Iterable[str],
+        room: int,
+    ) -> Tuple[str, Tuple[RecalledTurn, ...]]:
+        """The user's statements of preference (see ``_routing.PREFERENCE``) that best match the question, at most
+        ``_PREFERENCE_LIMIT`` within ``_PREFERENCE_SHARE`` of the budget; only the sentences that state them, each
+        cut to about ``_PREFERENCE_TOKENS``. Turns already shown as standing requests are left out."""
+        skipped = set(skip)
+        candidates = [
+            (item, said)
+            for item in items
+            if item.role == "user" and item.id not in skipped
+            for said in [_preferences_in(item.content)]
+            if said
+        ]
+        text, recalled, _ = self._section(
+            _PREFERENCE_HEADER,
+            candidates,
+            query,
+            budget,
+            scorer,
+            _PREFERENCE_SHARE,
+            _PREFERENCE_LIMIT,
+            room,
+        )
+        return text, recalled
 
     def _digest(
-        self, sessions: Sequence[Sequence[MemoryItem]], query: str, budget: int, relevance: Any
-    ) -> List[str]:
-        """For an overview question: the opening of each user turn and each reply (see ``_LEAD_TOKENS``), with the
-        reply's outline (see ``_outline``), all of them if they fit, else the most relevant ones, each session under
-        its date. One entry per session (empty when nothing of it is kept)."""
-        documents = []
-        for session in sessions:
-            stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
-            lines = []
-            for turn in session:
-                if turn.role not in _LEAD_TOKENS:
-                    continue
-                said = _lead(turn.content, _LEAD_TOKENS[turn.role])
-                points = _outline(turn.content, _OUTLINE_TOKENS) if turn.role == "assistant" else ""
+        self, units: Sequence[_turns.Turn], query: str, budget: int, scorer: Any
+    ) -> _turns.Selection:
+        """For an overview question: the opening of each user turn and each reply (see ``_LEAD_TOKENS``; a reply's
+        opening pleasantry is skipped), with the reply's outline (see ``_outline``). All of them if they fit; else
+        the most relevant ones, user openings first up to ``_DIGEST_USER_SHARE`` of the budget, or
+        ``_ORDER_USER_SHARE`` for a question about the order of what the user brought up (see ``_turns.fill``).
+        Shown in date order."""
+        user: List[_turns.Piece] = []
+        other: List[_turns.Piece] = []
+        for k, turn in enumerate(units):
+            role = turn.item.role
+            if role not in _LEAD_TOKENS:
+                continue
+            if role == "user":
+                said = _lead(turn.item.content, _LEAD_TOKENS[role])
+            else:
+                said = _reply_lead(turn.item.content, _LEAD_TOKENS[role])
+                points = _outline(turn.item.content, _OUTLINE_TOKENS)
                 said = f"{said} Outline: {points}" if said and points else said or points
-                if said:
-                    lines.append(f"[{stamp}] {turn.role}: {said}")
-            documents.append("\n".join(lines))
-        tokens = sum(count_tokens(d) for d in documents if d)
-        if tokens <= budget:
-            return documents
-        present = [i for i, d in enumerate(documents) if d]
-        chosen = self._select([documents[i] for i in present], query, budget, tokens, relevance)
-        kept = [""] * len(documents)
-        for i, part in zip(present, chosen):
-            kept[i] = part
-        return kept
-
-    @staticmethod
-    def _select(
-        documents: List[str], query: str, budget: int, history_tokens: int, relevance: Any
-    ) -> List[str]:
-        from ..pipelines import compress_documents
-
-        options: Dict[str, Any] = {} if relevance == "lexical" else {"relevance": relevance}
-        ratio = budget / history_tokens
-        kept: List[str] = documents
-        for _ in range(_FIT_PASSES):
-            results = compress_documents(
-                documents, query=query, target_ratio=min(ratio, 1.0), **options
+            if not said:
+                continue
+            turn.parts = 1
+            piece = _turns.Piece(k, 0, [_turns.Segment(said)], said, count_tokens(said))
+            piece.trimmed = _squash(said) != _squash(turn.item.content)
+            (user if role == "user" else other).append(piece)
+        chosen = _turns.Selection(units, budget, query, dedup=_DIGEST_DEDUP)
+        detail = int(budget * _OVERVIEW_DETAIL_SHARE)
+        if ordering(query) or budget < _OVERVIEW_DETAIL_MIN:
+            detail = 0
+        if detail >= 100:
+            _, windows = _turns.pools(units, budget)
+            scores = _turns.score_pool(
+                windows, units, query, scorer, _turns.RERANK_REPLY, _turns.REPLY_GROUP
             )
-            kept = [result.compressed_text.strip() for result in results]
-            tokens = count_tokens("\n\n".join(part for part in kept if part))
-            if tokens <= budget * _FIT_SLACK:
-                break
-            ratio *= budget / tokens * 0.98
-        return kept
+            for piece, value in zip(windows, scores):
+                piece.score = value
+            for piece in sorted(windows, key=lambda p: (-p.score, p.turn, p.part)):
+                if detail - chosen.used < 8:
+                    break
+                chosen.take(piece, detail)
+            user = [p for p in user if p.turn not in chosen.kept]
+            other = [p for p in other if p.turn not in chosen.kept]
+            for piece in user + other:
+                units[piece.turn].parts = 1
+        pieces = sorted(user + other, key=lambda p: p.turn)
+        sessions = {units[p.turn].session: p.turn for p in reversed(pieces)}
+        whole = sum(p.tokens + _turns.tokens_of(chosen.label(p.turn, False)) + 1 for p in pieces)
+        whole += sum(_turns.tokens_of(chosen.label(turn)) for turn in sessions.values())
+        if whole <= budget - chosen.used:
+            for piece in pieces:
+                chosen.take(piece, budget)
+            return chosen
+        for pool in (user, other):
+            for piece, value in zip(
+                pool,
+                _turns.score_pool(pool, units, query, scorer, _turns.RERANK_REPLY, False),
+            ):
+                piece.score = value
+        share = _ORDER_USER_SHARE if ordering(query) else _DIGEST_USER_SHARE
+        _turns.fill(chosen, user, other, budget, share, scorer is None)
+        return chosen
 
     @staticmethod
     def _recalled(session: Sequence[MemoryItem], text: str, query: str) -> List[RecalledTurn]:

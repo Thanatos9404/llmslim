@@ -1,4 +1,5 @@
-"""The Claude Code, Codex and Agent Plugins manifests, Gemini CLI extension and install links: in step with the package."""
+"""The Claude Code, Codex and Agent Plugins manifests, Gemini CLI and VS Code extensions and install links: in step with
+the package."""
 
 import base64
 import json
@@ -50,6 +51,23 @@ def test_mcp_server_runs_the_published_package():
     assert _json(PLUGIN / ".codex-plugin" / "plugin.json")["mcpServers"] == "./.mcp.json"
     # Copilot CLI and awesome-copilot read the Agent Plugins files, plugin.json and mcp.json.
     assert _json(PLUGIN / "mcp.json")["mcpServers"] == {"llmslim": {"type": "stdio", **expected}}
+
+
+def test_vscode_extension_runs_this_release():
+    # plugins/vscode starts `uvx --from "llmslim[mcp]==X.Y.Z" llmslim mcp`; the pin lives in its source.
+    extension = ROOT / "plugins" / "vscode"
+    source = (extension / "src" / "command.ts").read_text(encoding="utf-8")
+    assert f'export const LLMSLIM_VERSION = "{llmslim.__version__}";' in source
+    assert 'export const MEMORY_DB_ENV = "LLMSLIM_MEMORY_DB";' in source
+    readme = (extension / "README.md").read_text(encoding="utf-8")
+    assert f"llmslim[mcp]=={llmslim.__version__}" in readme
+    # The provider id registered in code must be the one package.json contributes.
+    (provider,) = _json(extension / "package.json")["contributes"]["mcpServerDefinitionProviders"]
+    code = (extension / "src" / "extension.ts").read_text(encoding="utf-8")
+    assert f'const PROVIDER_ID = "{provider["id"]}";' in code
+    assert "registerMcpServerDefinitionProvider(PROVIDER_ID," in code
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert (extension / "LICENSE").read_text(encoding="utf-8") == license_text
 
 
 def test_codex_plugin_manifest():

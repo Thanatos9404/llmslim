@@ -1,0 +1,33 @@
+name: VS Code extension
+
+# Builds, tests and packages plugins/vscode on pull requests. It publishes nothing and uses no secrets.
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - "plugins/vscode/**"
+      - ".github/workflows/vscode-extension.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Typecheck, test and package the extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/vscode
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: plugins/vscode/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Package the .vsix
+        run: npx vsce package --no-dependencies

@@ -350,12 +350,13 @@ class Selection:
     """Greedy fill of one budget from ranked pieces, with per-turn label costs and near-duplicate removal."""
 
     def __init__(
-        self, turns: Sequence[Turn], budget: int, query: str, dedup: float = DEDUP_OVERLAP
+        self, turns: Sequence[Turn], budget: int, query: str, dedup: Optional[float] = None
     ):
         self.turns = turns
         self.budget = budget
         self.query = query
-        self.dedup = dedup
+        # Read at call time (not as a default argument), so the module setting can be tuned.
+        self.dedup = DEDUP_OVERLAP if dedup is None else dedup
         self.used = 0
         self.kept: Dict[int, Dict[int, Tuple[List[Tuple[str, bool]], float, bool]]] = {}
         self.seen: Set[Tuple[str, ...]] = set()

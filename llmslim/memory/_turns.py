@@ -59,7 +59,11 @@ Scorer = Callable[[str, Sequence[str]], Sequence[float]]
 # ------------------------------------------------------------------ text shapes
 
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
-_CODE_SPAN = re.compile(r"(?P<fence>`{3,}|~{3,}).*?(?:(?P<close>(?P=fence))|\Z)", re.DOTALL)
+# A fenced code block, opening wherever its fence starts; a fence followed by a word (an info string such as
+# "```bash") opens a block and never closes one, as in CommonMark.
+_CODE_SPAN = re.compile(
+    r"(?P<fence>`{3,}|~{3,}).*?(?:(?P<close>(?P=fence))(?![\w-])|\Z)", re.DOTALL
+)
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 # What a turn's own label looks like at the start of a line ("[2026-01-05 (Mon) 09:30] user: ..."). Text inside a

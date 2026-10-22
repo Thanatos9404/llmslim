@@ -176,15 +176,27 @@ def _around(sentence: str, start: int, limit: int) -> str:
     return ("... " if first else "") + text + (" ..." if first + len(kept) < len(words) else "")
 
 
+def _sentences(content: str) -> List[str]:
+    """A turn's sentences for the sections: split at sentence ends and line breaks, whitespace squashed, so each
+    shows on one line."""
+    out = []
+    for line in content.splitlines():
+        for sentence in _SENTENCE.split(line):
+            sentence = " ".join(sentence.split())
+            if sentence:
+                out.append(sentence)
+    return out
+
+
 @lru_cache(maxsize=1 << 14)
 def _requests_in(content: str) -> str:
     """The sentences of a user turn that make an explicit standing request (see ``_EXPLICIT``), each shown around
     its directive and cut to about ``_REQUEST_TOKENS``; empty when there is none."""
     made = [
         _around(s, m.start(), _REQUEST_TOKENS)
-        for s in (s.strip() for s in _SENTENCE.split(content))
+        for s in _sentences(content)
         for m in [_EXPLICIT.search(s)]
-        if s and m and _STANDING.search(s)
+        if m and _STANDING.search(s)
     ]
     return " ".join(made)
 
@@ -195,9 +207,9 @@ def _preferences_in(content: str) -> str:
     each shown around what states it and cut to about ``_PREFERENCE_TOKENS``; empty when there is none."""
     stated = [
         _around(s, m.start(), _PREFERENCE_TOKENS)
-        for s in (s.strip() for s in _SENTENCE.split(content))
+        for s in _sentences(content)
         for m in [PREFERENCE.search(s)]
-        if s and m and not _EXPLICIT.search(s)
+        if m and not _EXPLICIT.search(s)
     ]
     return " ".join(stated)
 

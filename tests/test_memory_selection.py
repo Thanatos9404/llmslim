@@ -728,3 +728,31 @@ def test_fit_drops_the_weakest_then_cuts_the_last_piece():
     assert tokens <= 12 * 1.02 and (not recalled or recalled[0][1])
     texts, recalled, tokens = _turns.fit(chosen, 3, "header text that is long enough")
     assert recalled == [] and texts == [""]
+
+
+def test_a_fence_with_an_info_string_opens_a_block_and_never_closes_one():
+    doc = "Docs:\n```markdown\n# Title\nRun this:\n```bash\npip install x\n```\nDone.\n```\nAfter."
+    segs = _turns.segments(doc)
+    assert segs[0].text == "Docs:" and segs[1].block
+    assert segs[1].text.startswith("```markdown\n# Title") and "```bash" in segs[1].text
+    assert segs[-1].text.endswith("After.") or "After." in segs[-1].text
+
+
+def test_section_lines_are_single_lines(memory):
+    filler(memory, days=25)
+    say(
+        memory,
+        3,
+        "## Notes\n\nI prefer short morning runs\nbecause the park is quiet then.\n\nAlways log the distance\n"
+        "when I ask about running.",
+        "Okay.",
+        minutes=5,
+    )
+    context = memory.search("Can you suggest a running plan for me?", user_id="u1", budget=600)
+    sections = [
+        p for p in context.text.split("\n\n") if p.startswith(("Requests the", "Preferences the"))
+    ]
+    assert sections
+    for section in sections:
+        lines = section.split("\n")
+        assert all(line.startswith("- [") for line in lines[1:]), lines

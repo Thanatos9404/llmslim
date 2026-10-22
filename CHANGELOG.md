@@ -9,21 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Memory: a long history is read turn by turn.** When the history does not fit the budget, `Memory.search` now
+  ranks the stored turns themselves instead of rendered session text. When the whole history fits, the output is
+  unchanged.
+  - **User turns are their own pool**, ranked by the same relevance as the rest (lexical, then the reranker over the
+    160 strongest candidates when one is set), with 55% of the budget reserved for them. A user turn is kept whole
+    when it fits its cap (a tenth of the budget, between 120 and 400 tokens); a longer one keeps its most relevant
+    sentences and is marked `partial`.
+  - **Replies are cut into windows** of a few sentences (about a thirty-second of the budget, 60 to 200 tokens; code
+    blocks and tables stay whole), ranked in a second pool, and fill the rest of the budget.
+  - **Near-duplicates are left out:** a candidate whose word 5-grams are mostly in the text already kept is skipped.
+  - **One labelled, dated block per turn:** `[date] role: text`. Prose stays on the label's line; code blocks and
+    tables follow it, fenced. Markdown headings are folded into the sentence they head, so no heading stands alone,
+    and a label never starts in the middle of a line. A stored line that looks like a turn label is indented, so
+    stored text can't pass for another turn. Kept turns are in date order, with a blank line between sessions.
+  - **Dates:** the first kept turn of each session shows the full stamp (`stamp_format`), the others the date
+    (`date_format`, new, default `%Y-%m-%d`).
+- **Memory: the kind of question decides the sections** (fixed English patterns, no model; see
+  `llmslim/memory/_routing.py`):
+  - a plain lookup of a past fact or a history check ("What is my salary?", "When did I say ...?", "Have I ever
+    ...?") gets no section, so the whole budget goes to the turns that answer it;
+  - a request for help, advice or a plan gets the standing requests and the stated preferences that best match it;
+  - other questions get the standing requests that best match them;
+  - a summary, recap, ordering or "how did it develop" question is answered from the digest.
+
 ### Added
 - **Memory: standing requests.** When a history does not fit, `Memory.search` puts the user's explicit standing
-  requests in their own section at the top ("Requests the user made earlier:"), the most relevant first, within 15%
-  of the budget.
+  requests that best match the question (at most three) in their own section at the top ("Requests the user made
+  earlier:"), within 15% of the budget.
   - **What counts:** a request opens with its directive ("Always ...", "From now on ..."), asks the assistant
     directly ("I'd like you to never ..."), or says when it applies ("... when I ask about X"). It is kept even when
     it shares no word with the question.
   - **What does not:** a pattern word in passing ("I want to make sure my site is fast"), and assistant turns.
-  - **Shape:** each request is cut to about 100 tokens. The matching turns are returned in `MemoryContext.requests`.
+  - **Shape:** each request is cut to about 100 tokens, around its directive. The matching turns are returned in
+    `MemoryContext.requests`.
+  - **What it asks for is fetched too:** when the best-matching request says what an answer should include ("Always
+    include the number of writers when I ask about my team"), those words are added to the retrieval query. Words
+    that only describe a format ("step-by-step", "a table") are not.
   - **Controls:** `Memory(standing_requests=...)` and `search(standing_requests=...)`.
+- **Memory: preferences.** For a request for advice, a recommendation or help, `Memory.search` shows the user's
+  earlier statements of preference ("I prefer ...", "I'd rather ...", "I usually ...", "I don't like ...") that best
+  match it, in their own section after the requests ("Preferences the user stated earlier:"), at most 8 within 10% of
+  the budget. A long sentence is shown around the words that state the preference. The matching turns are returned
+  in `MemoryContext.preferences`.
+  - **Controls:** `Memory(preferences=...)` and `search(preferences=...)`.
 - **Memory: overview questions.** A summary, recap or ordering question ("summarize what we discussed", "in what
-  order did I ...") is answered from a digest: the opening of each user turn and each reply, without code, plus the
-  reply's outline (its headings and bold list leads). Many more exchanges fit in the budget than as whole turns.
+  order did I ...", "how did my plan develop?") is answered from a digest: the opening of each user turn and each
+  reply, without code and without the reply's opening pleasantry ("Great question!"), plus the reply's outline (its
+  headings and bold list leads). Many more exchanges fit in the budget than as whole turns.
+  - User openings get half of the digest, or 80% for a question about the order of what the user brought up.
+  - With a budget of 5,000 tokens or more, a summary also keeps the most relevant reply passages whole, in 30% of
+    the budget.
   - **Controls:** `Memory(coverage="auto" | "always" | "never")` and `search(coverage=...)`.
-  - Every other question is answered exactly as before.
+- `llmslim.focus.rank` takes an optional `candidates`: how many of the strongest lexical candidates the reranker
+  reads.
 
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:

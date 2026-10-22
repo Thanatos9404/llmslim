@@ -4,7 +4,7 @@
 
 **How it works**
 - **On the way in:** every turn is stored verbatim. Nothing is summarized or extracted.
-- **On the way out:** `search` ranks the whole history against the question with LLMSlim's query-focused selection. It returns the turns that answer it, whole and in date order, within a token budget.
+- **On the way out:** `search` ranks the stored turns against the question and returns what answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the replies, one labelled and dated block per turn, in date order.
 
 **What that means for you**
 - Writes cost nothing.
@@ -32,7 +32,7 @@ memory.add(
 )
 
 context = memory.search("Am I allergic to anything?", user_id="asha", budget=1500)
-print(context.text)  # the selected turns, under their session dates
+print(context.text)  # the selected turns, one "[date] role: text" block each
 print(context.tokens, "of", context.history_tokens, "tokens")
 ```
 
@@ -70,7 +70,7 @@ messages.append({
   - Reads treat a missing id as "any": `search(..., user_id="asha")` covers all of Asha's sessions with every agent.
 - **Sessions.**
   - Turns with the same `run_id` form one session; turns without one are grouped by calendar day (in `tz`, UTC by default).
-  - Each session is shown under one date stamp, e.g. `[2026-10-17 (Sat) 14:05]`. That is how the model can answer "when" questions and tell newer turns from older ones.
+  - Every kept turn is shown with its own date stamp, e.g. `[2026-10-17 (Sat) 14:05] user: ...`, with a blank line between sessions. That is how the model can answer "when" questions and tell newer turns from older ones. When the whole history fits, each session's turns carry the session's first stamp, as before.
 - **Budget.** `search(..., budget=N)` returns at most about N tokens (counted with tiktoken's `cl100k_base`), within 2%.
   - If the whole history fits, all of it is returned and `context.compressed` is false.
   - The default budget is set on `Memory(budget=...)` and starts at 2,000.
@@ -78,9 +78,20 @@ messages.append({
   - `"lexical"` (the default) matches words and runs no model.
   - `"semantic"` rescoring uses LLMSlim's optional 22M-parameter cross-encoder (`pip install "llmslim[semantic]"`). Use it when users paraphrase.
   - Any `scorer(query, texts) -> scores` callable works too, such as your own embedding model.
+- **How a long history is read.** When the history does not fit the budget:
+  - **User turns are units of their own.** What a user said (a name, a date, an amount, a preference) is short and stated once, while the replies around it are long and repeat the user's words. So user turns are ranked in their own pool, with 55% of the budget reserved for them, kept whole where they fit; a long one keeps its most relevant sentences and is marked `partial`.
+  - **Replies are cut into windows** of a few sentences (code blocks and tables stay whole) and fill the rest of the budget by relevance.
+  - **Repeated text is left out**: a candidate whose words are mostly in what is already kept adds nothing.
+  - **Each kept turn is one block**: `[date] role: text`, prose on that line, code blocks and tables below it, fenced. Markdown headings are folded into the sentence they head. A stored line that looks like a turn label is indented, so stored text can't pass for another turn.
+- **The kind of question decides the rest** (fixed English patterns, no model):
+  - a plain lookup of a past fact ("What is my salary?", "When did I say ...?", "Have I ever ...?") gets the whole budget;
+  - a request for help, advice or a plan ("Can you suggest ...", "How should I ...") also gets, at the top, the user's standing requests that best match it (at most three, `standing_requests`) and the preferences they stated earlier ("I prefer ...", "I'd rather ...", "I usually ...", `preferences`). What the best-matching request asks the answer to include is fetched too;
+  - other questions get the best-matching standing requests;
+  - a summary, recap or "in what order" / "how did it develop" question is answered from the opening of many turns (`coverage`), skipping replies' opening pleasantries; with a budget of 5,000 tokens or more, a summary also keeps the most relevant reply passages whole.
 - **What you get back** (`MemoryContext`):
   - `text`, ready for the prompt;
-  - `turns`: each kept turn with its id, role, timestamp, metadata, a lexical overlap `score` and `partial` (true when only the turn's most relevant sentences were kept);
+  - `turns`: each kept turn with its id, role, timestamp, metadata, a lexical overlap `score` and `partial` (true when only part of the turn was kept);
+  - `requests` and `preferences`: the user turns shown in those sections;
   - token counts.
 
 ## Stores
@@ -119,11 +130,9 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 
 ## Evidence
 
-**The same pipeline as the benchmarks.**
-- `Memory.search` runs LLMSlim's round-3 benchmark pipeline: one document per session, `[date] role: content` lines, and one shared budget.
-- With the benchmark's date format (`Memory(stamp_format="%Y/%m/%d (%a) %H:%M")`), its output was **byte-identical** to the benchmark builder on 120 of 120 LongMemEval-S development contexts. That was 60 histories at 2,500 and 10,000 tokens.
+**The figures below were measured with the 0.11 read path**, which ranked rendered session text (one document per session, `[date] role: content` lines, one shared budget); with the benchmark's date format its output was byte-identical to the benchmark builder on 120 of 120 LongMemEval-S development contexts. The current read path (user turns as their own pool, per-turn blocks, question routing) selects differently and has not been re-measured on these benchmarks yet.
 
-**What that pipeline measured on held-out test questions** (Claude Haiku 5.5 reader, cost per 1,000 questions end to end; [full report](../benchmarks/live/round3/RESULTS.md)):
+**What the 0.11 pipeline measured on held-out test questions** (Claude Haiku 5.5 reader, cost per 1,000 questions end to end; [full report](../benchmarks/live/round3/RESULTS.md)):
 - **LongMemEval-S, on the 60 questions Mem0 was run on:**
   - LLMSlim with its reranker at 2,500 tokens answered 78.3% for $1.04;
   - Mem0's top 200 memories answered 76.7% for $220.88, almost all of it Mem0's extraction calls;
@@ -135,5 +144,6 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 
 - **Lexical mode matches words, not meanings.** Forms of the same word match ("move", "moved" and "moving"), but a question phrased in different words from the stored turn can miss it, e.g. "allergy" against "allergic", or "home" against "apartment". Use `relevance="semantic"` where users paraphrase.
 - **Nothing is reconciled.** When a fact changes ("I moved to Pune"), both turns stay, each under its date, and the model sees which is newer. Delete or `update` a turn to correct it.
-- **`score` is for display and ordering.** It is a lexical overlap from 0 to 1. Selection itself ranks whole sessions and turns with LLMSlim's focus engine.
+- **`score` is for display and ordering.** It is a lexical overlap from 0 to 1. Selection itself ranks user turns and reply windows with LLMSlim's focus engine (and the reranker when `relevance="semantic"`).
+- **Question routing is a fixed English pattern.** A question phrased unusually can get the wrong sections; the turns that answer it are still ranked by relevance. Lexical matching reads Latin-script words, so a question in another script relies on the reranker or on shared words.
 - **Scale.** `search` reads the whole scope on every call. A LongMemEval history (about 500 turns, 111k tokens) takes about half a second on a CPU. Keep scopes per user or per agent.

@@ -95,6 +95,12 @@ def terms(text: str) -> List[str]:
     return [_stem(w) for w in _WORD.findall(text.lower()) if w not in _STOP]
 
 
+@lru_cache(maxsize=1 << 15)
+def _cached_terms(text: str) -> Tuple[str, ...]:
+    """``terms`` of a unit's text, kept between calls (the same stored text is ranked again on every search)."""
+    return tuple(terms(text))
+
+
 class BM25:
     """Okapi BM25 over a small in-memory collection."""
 
@@ -429,6 +435,11 @@ def _joined(words: Sequence[str]) -> List[str]:
     ]
 
 
+@lru_cache(maxsize=1 << 15)
+def _joined_words(text: str) -> Tuple[str, ...]:
+    return tuple(_joined(_WORD.findall(text.lower())))
+
+
 def _with_compounds(
     query: str, query_terms: List[str], units: Sequence[Unit], unit_terms: List[List[str]]
 ) -> List[str]:
@@ -440,22 +451,29 @@ def _with_compounds(
         j for j in _joined(_WORD.findall(query.lower())) if j in vocab and j not in wanted
     ]
     for i, u in enumerate(units):
-        extra = [j for j in _joined(_WORD.findall(u.text.lower())) if j in wanted]
+        extra = [j for j in _joined_words(u.text) if j in wanted]
         if extra:
             unit_terms[i] = unit_terms[i] + extra
     return query_terms + joined_query
 
 
-def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> List[float]:
+def rank(
+    units: Sequence[Unit],
+    query: str,
+    scorer: Optional[Scorer] = None,
+    candidates: Optional[int] = None,
+) -> List[float]:
     """BM25 of the query against each unit (headers count), one round of pseudo-relevance feedback,
     and small bonuses for numbers and word pairs shared with the query. With a ``scorer`` (a reranking
-    model), the strongest lexical candidates are rescored by the model."""
+    model), the strongest lexical candidates (``candidates``, default ``RERANK_CANDIDATES``) are rescored
+    by the model."""
     query_terms = _query_terms(query)
     if not units or not query_terms:
         return [0.0] * len(units)
     # Headers (titles, section names) count twice: they say what a unit is about.
     unit_terms = [
-        terms((u.header + " " + u.header + " " + u.text) if u.header else u.text) for u in units
+        list(_cached_terms((u.header + " " + u.header + " " + u.text) if u.header else u.text))
+        for u in units
     ]
     query_terms = _with_compounds(query, query_terms, units, unit_terms)
     bm25 = BM25(unit_terms)
@@ -506,7 +524,7 @@ def rank(units: Sequence[Unit], query: str, scorer: Optional[Scorer] = None) -> 
             bonus += 0.08 * min(3, len(query_pairs & pairs))
         scores[i] += bonus * top
     if scorer is not None:
-        return _rerank(units, query, scores, scorer)
+        return _rerank(units, query, scores, scorer, candidates)
     return scores
 
 
@@ -515,12 +533,20 @@ RERANK_LEXICAL = 0.5  # weight of the lexical score next to the model's, both sc
 RERANK_QUERY_WORDS = 64  # a longer query is cut to its last words for the model
 
 
-def _rerank(units: Sequence[Unit], query: str, lexical: List[float], scorer: Scorer) -> List[float]:
+def _rerank(
+    units: Sequence[Unit],
+    query: str,
+    lexical: List[float],
+    scorer: Scorer,
+    limit: Optional[int] = None,
+) -> List[float]:
     """Model score plus a share of the lexical score for the top lexical candidates; the rest keep only
     their (scaled) lexical share, so they rank below the candidates the model liked."""
     top = max(lexical) if lexical else 0.0
     lex = [s / top if top > 0 else 0.0 for s in lexical]
-    candidates = sorted(range(len(units)), key=lambda i: (-lexical[i], i))[:RERANK_CANDIDATES]
+    candidates = sorted(range(len(units)), key=lambda i: (-lexical[i], i))[
+        : RERANK_CANDIDATES if limit is None else limit
+    ]
     texts = [
         units[i].text
         if not units[i].header or units[i].text.startswith(units[i].header)

@@ -44,6 +44,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - pooled and test-run results now lead with the primary (default permission mode) measurement instead of a range
     across two modes;
   - interactive sessions through the proxy were not tested for their permission mode.
+- **A shorter first screen in the README**: what LLMSlim does in one line, setup commands for Claude Code, Codex,
+  Copilot CLI, Gemini CLI, Hermes Agent, Python and TypeScript, and a recorded session with llmslim 0.11.1 from PyPI
+  (`docs/assets/llmslim-memory-demo.svg`). Every earlier section is still there, below it.
+- **Runnable examples with tests** in `examples/`: Claude Code memory over MCP, LangChain and Pydantic AI agents with
+  memory, fitting a long log into a budget, and the TypeScript client against `llmslim serve`. They run offline with
+  fake or test models; `tests/test_examples.py` and the TypeScript client CI job run them.
 
 ## [0.11.1] - 2026-10-17
 

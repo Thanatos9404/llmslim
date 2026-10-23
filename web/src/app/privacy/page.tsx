@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
 
 export default function PrivacyPage() {
   return <div className="slim-site"><SiteHeader /><main id="main-content" className="site-width privacy-page">
-    <span className="eyebrow">LAST UPDATED 12 OCTOBER 2026</span>
+    <span className="eyebrow">LAST UPDATED 24 OCTOBER 2026</span>
     <h1>Privacy</h1>
     <p>This page covers the llmslim.app website and Studio. The open-source <code>llmslim</code> package sends nothing to us.</p>
 
@@ -41,6 +41,14 @@ export default function PrivacyPage() {
 
     <h2>In your browser</h2>
     <p>We store your light or dark theme preference, and whether you have finished the Studio tour, in local storage. If you use Answer with Sarvam, the server also sets one HttpOnly cookie holding a random session ID for 24 hours, used only for that step’s rate limits. Nothing else.</p>
+
+    <h2>The llmslim package, MCP server and plugins</h2>
+    <p>The open-source library, the <code>llmslim mcp</code> memory server and the plugins for Claude Code and other MCP clients run on your machine. They send nothing to us and include no telemetry.</p>
+    <ul>
+      <li><strong>What is stored.</strong> The memory server stores the messages you or your agent ask it to remember, word for word, in a SQLite file on your machine (by default <code>~/.llmslim/memory.db</code>) or in a Postgres database you configure. The <code>forget</code> tool deletes one memory, and deleting the file removes all of them.</li>
+      <li><strong>No model calls.</strong> Storing, recalling and fitting context call no model provider.</li>
+      <li><strong>What reaches the network.</strong> Running through <code>uvx</code> downloads the package from PyPI the first time. The tokenizer downloads one encoding file the first time and caches it. Only if you run <code>llmslim wrap claude</code> or <code>llmslim proxy</code>, a local proxy forwards Claude Code’s own requests to Anthropic’s API.</li>
+    </ul>
 
     <h2>Questions</h2>
     <p>Contact the maintainer through <a className="text-link" href={siteConfig.github + "/security/policy"} target="_blank" rel="noreferrer">the project’s security policy</a> for anything privacy-related.</p>

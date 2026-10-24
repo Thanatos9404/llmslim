@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
+  from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
+  showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and

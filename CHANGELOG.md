@@ -24,6 +24,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
   from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
   showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
+  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
+  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
+  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
+  contexts do not change.
+- **`Memory.search` (and the MCP `recall` tool) no longer return more tokens than the budget.** A pass of the
+  selection was accepted up to 2% over, and selection does not charge the `...` it puts between kept turns or, for
+  very small budgets, the session's date header. Five notes searched with `budget=120` came back at 121 tokens.
+  - A pass is now accepted only within the budget. When the last pass is still over, the context is cut to the
+    longest prefix of whole words that fits, which can be empty for a budget smaller than a date header.
+  - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
+    is returned whole only when it fits as joined.
+  - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
+- **A memory session with one speaker keeps one turn per line.** Notes stored with the MCP `remember` tool are all
+  `user` turns, and selection read a block as a transcript only with two speakers. Such a session was flattened into
+  one paragraph: its date was repeated on every turn and kept turns were joined with spaces. A block with one speaker
+  now reads as a transcript when every turn is stamped, so the date is shown once and each turn stays on its line.
+  Text with two speakers is selected as before.
 
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing

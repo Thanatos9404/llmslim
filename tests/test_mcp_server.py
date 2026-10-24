@@ -91,6 +91,25 @@ def test_recall_on_an_empty_memory_says_so(memory):
     )
 
 
+def test_recall_stays_within_its_budget_and_says_when_nothing_fits(memory):
+    server = build_server(memory)
+    for note in [
+        "This repo uses pnpm, never npm.",
+        "Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI.",
+        "We deploy from main only. Feature branches never deploy.",
+        "The staging database is orders_staging; never point migrations at orders_prod.",
+        "I prefer short answers with the code first.",
+    ]:
+        _call(server, "remember", {"text": note})
+    query = "How do I run the tests, and where can I deploy from?"
+    head, _, recalled = _text(_call(server, "recall", {"query": query, "budget": 120})).partition(
+        "\n\n"
+    )
+    assert head.startswith("Recalled conversation history (") and count_tokens(recalled) <= 120
+    nothing = _text(_call(server, "recall", {"query": query, "budget": 1}))
+    assert nothing.startswith("No stored message fits the 1-token budget (")
+
+
 def test_sessions_scope_remember_and_recall(memory):
     server = build_server(memory)
     _call(server, "remember", {"text": "The launch is on Friday.", "session": "launch"})

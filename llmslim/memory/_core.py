@@ -34,10 +34,12 @@ _ROLE_ALIASES = {
 }
 _TEXT_PARTS = ("text", "input_text", "output_text")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
-# Fitting the rendered text to the budget: as in LLMSlim's benchmark builders, a few passes that shrink the ratio by
-# the overshoot. Selection is deterministic, so the same history and question always give the same context.
+# Fitting the rendered text to the budget: as in LLMSlim's benchmark builders, a few passes that shrink the target by
+# the overshoot. Selection is deterministic, so the same history and question always give the same context. Turn
+# selection treats its limit as a target (gap markers and session headers are not charged exactly), so a pass is
+# accepted only within the budget, and what is still over after the last pass is clipped.
 _FIT_PASSES = 4
-_FIT_SLACK = 1.02
+_WORD = re.compile(r"\S+")
 
 
 def _utcnow() -> datetime:
@@ -102,6 +104,39 @@ def _squash(text: str) -> str:
     return " ".join(text.split())
 
 
+def _join(parts: Iterable[str]) -> str:
+    """Sessions as the context shows them: the non-empty ones, a blank line apart."""
+    return "\n\n".join(part for part in parts if part)
+
+
+def _clip(parts: Sequence[str], budget: int) -> List[str]:
+    """The longest prefix of the sessions' text, in whole words, whose joined text fits ``budget``.
+
+    The last resort when selection cannot get under the budget, which happens when the budget is smaller than a
+    session's date header and a few words. May leave every session empty.
+    """
+    words = [
+        (index, match.end()) for index, part in enumerate(parts) for match in _WORD.finditer(part)
+    ]
+
+    def prefix(count: int) -> List[str]:
+        out = [""] * len(parts)
+        if count:
+            last, end = words[count - 1]
+            out[:last] = parts[:last]
+            out[last] = parts[last][:end]
+        return out
+
+    low, high = 0, len(words)
+    while low < high:  # low always fits: no words is the empty text
+        mid = (low + high + 1) // 2
+        if count_tokens(_join(prefix(mid))) <= budget:
+            low = mid
+        else:
+            high = mid - 1
+    return prefix(low)
+
+
 def storage_target(db: str) -> Union[str, Path]:
     """What ``Memory`` should open for a ``--db`` value: a Postgres URL as it is, or a SQLite path whose folder exists."""
     if is_postgres_url(db):
@@ -125,7 +160,7 @@ class Memory:
         budget: Default token budget for :meth:`search`.
         relevance: Default relevance for :meth:`search`: ``"lexical"`` (no model), ``"semantic"`` (LLMSlim's optional
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
-        tz: Time zone for the session dates shown to the model. Defaults to UTC.
+        tz: Time zone for the turn dates shown to the model. Defaults to UTC.
         stamp_format: strftime format of those dates. The default reads like 2026-10-17 (Sat) 14:05.
         clock: Returns "now" for turns added without a timestamp. For tests.
 
@@ -271,10 +306,11 @@ class Memory:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
         If the whole history fits, all of it is returned. Otherwise each session (a ``run_id``, or a calendar day) is
-        rendered as ``[date] role: content`` lines and LLMSlim ranks every turn against the query, across all sessions
-        with one shared budget: the most relevant turns stay whole and in their order, a question stays with its
-        reply, and the session date is kept as a header. A session that holds the whole history (a day of turns
-        without a ``run_id``) is ranked turn by turn the same way.
+        rendered as ``[date] role: content`` lines, each with its own turn's time, and LLMSlim ranks every turn
+        against the query, across all sessions with one shared budget: the most relevant turns stay whole and in their
+        order, a question stays with its reply, and a date shared by every turn of a session is kept once as its
+        header. A session that holds the whole history (a day of turns without a ``run_id``) is ranked turn by turn
+        the same way.
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -286,7 +322,9 @@ class Memory:
         items = self.store.list(Scope(user_id, agent_id, run_id), **self._window(since, until))
         sessions = self._sessions(items)
         documents = [self._render(session) for session in sessions]
-        history_tokens = sum(count_tokens(document) for document in documents)
+        # Counted as joined, separators included: per-session counts can add up to less than the text they make.
+        history = _join(documents)
+        history_tokens = count_tokens(history) if history else 0
         if history_tokens <= budget:
             kept = documents
         else:
@@ -294,7 +332,7 @@ class Memory:
         turns: List[RecalledTurn] = []
         for session, text in zip(sessions, kept):
             turns.extend(self._recalled(session, text, query))
-        text = "\n\n".join(part for part in kept if part)
+        text = _join(kept)
         return MemoryContext(
             query=query,
             text=text,
@@ -327,10 +365,13 @@ class Memory:
             grouped.setdefault(self._session_key(item), []).append(item)
         return sorted(grouped.values(), key=lambda turns: (turns[0].created_at, turns[0].seq))
 
+    def _stamp(self, item: MemoryItem) -> str:
+        return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
+
     def _turns(self, session: Sequence[MemoryItem]) -> List[Turn]:
-        # Every turn carries the session's stamp, so LLMSlim shows it once as the session's header.
-        stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
-        return [(stamp, item.role, item.content) for item in session]
+        # Every turn carries its own stamp. When a session's turns share one (benchmark data gives every turn the
+        # session date), LLMSlim shows it once as the session's header; different times stay on their lines.
+        return [(self._stamp(item), item.role, item.content) for item in session]
 
     def _render(self, session: Sequence[MemoryItem]) -> str:
         return "\n".join(
@@ -358,11 +399,11 @@ class Memory:
             if size not in ranked:
                 ranked[size] = rank_turns(turns, documents, query, size, scorer)
             kept = select_turns(ranked[size], query, limit)
-            tokens = count_tokens("\n\n".join(part for part in kept if part))
-            if tokens <= budget * _FIT_SLACK:
-                break
+            tokens = count_tokens(_join(kept))
+            if tokens <= budget:
+                return kept
             target *= budget / tokens * 0.98
-        return kept
+        return _clip(kept, budget)
 
     @staticmethod
     def _recalled(session: Sequence[MemoryItem], text: str, query: str) -> List[RecalledTurn]:

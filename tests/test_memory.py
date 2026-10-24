@@ -192,11 +192,93 @@ def test_search_selects_the_answer_from_a_long_history(memory):
     memory.add(messages, user_id="u1", timestamp=when)
     context = memory.search("Where did I move to?", user_id="u1", budget=200)
     assert context.compressed and context.history_tokens > 200
-    assert context.tokens <= 200 * 1.02
+    assert context.tokens <= 200
     assert "Koregaon Park" in context.text
     assert any("Koregaon Park" in t.item.content and not t.partial for t in context.turns)
     assert context.sessions_kept < context.sessions_total
     assert context.tokens == count_tokens(context.text)
+
+
+NOTES = [
+    "This repo uses pnpm, never npm.",
+    "Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI.",
+    "We deploy from main only. Feature branches never deploy.",
+    "The staging database is orders_staging; never point migrations at orders_prod.",
+    "I prefer short answers with the code first.",
+]
+QUESTION = "How do I run the tests, and where can I deploy from?"
+
+
+def notes_in_one_session():
+    memory = Memory(clock=clock)
+    for note in NOTES:
+        memory.add(note, user_id="demo", timestamp="2026-10-24T07:43:00")
+    return memory
+
+
+def notes_one_per_day():
+    memory = Memory(clock=clock)
+    for day, note in enumerate(NOTES):
+        memory.add(note, user_id="demo", timestamp=T0 + timedelta(days=day))
+    return memory
+
+
+def dialog_over_three_days():
+    memory = Memory(clock=clock)
+    for day, user, assistant in [
+        (0, "Which package manager does this repo use?", "pnpm. The lockfile is pnpm-lock.yaml."),
+        (0, "How do I run the tests?", "pnpm test -- --runInBand. Parallel runs flake on CI."),
+        (1, "Where can I deploy from?", "Only from main. Feature branches never deploy."),
+        (1, "And the staging database?", "orders_staging. Never point migrations at orders_prod."),
+        (2, "Please keep answers short, code first.", "Understood."),
+    ]:
+        messages, when = chat(day, user, assistant)
+        memory.add(messages, user_id="demo", timestamp=when)
+    return memory
+
+
+@pytest.mark.parametrize(
+    "history", [notes_in_one_session, notes_one_per_day, dialog_over_three_days]
+)
+def test_search_never_exceeds_the_budget(history):
+    memory = history()
+    for budget in range(1, 401):
+        context = memory.search(QUESTION, user_id="demo", budget=budget)
+        assert count_tokens(str(context)) == context.tokens <= budget, budget
+
+
+def test_search_stays_within_a_budget_the_gap_marker_used_to_overrun():
+    """This history at budget=120 came back at 121 tokens: selection did not charge the "..." it put between kept
+    turns, and the fit loop accepted up to 2% over."""
+    context = notes_in_one_session().search(QUESTION, user_id="demo", budget=120)
+    assert context.compressed
+    assert count_tokens(str(context)) == context.tokens <= 120
+    assert "--runInBand" in context.text and "We deploy from main only." in context.text
+
+
+def test_a_session_of_notes_keeps_one_note_per_line_under_one_date():
+    context = notes_in_one_session().search(QUESTION, user_id="demo", budget=70)
+    assert context.compressed
+    header, *lines = context.text.split("\n")
+    assert header == "[2026-10-24 (Sat) 07:43]" and len(lines) >= 2
+    assert all(line.startswith("user: ") or line == "..." for line in lines)
+    assert "user: Run the tests with `pnpm test -- --runInBand`" in context.text
+
+
+def test_search_clips_what_selection_cannot_fit(monkeypatch):
+    import llmslim.memory._core as core
+
+    memory = notes_in_one_session()
+    whole = memory.search(QUESTION, user_id="demo", budget=10_000).text
+    # Selection that keeps the whole session on every pass, so each pass is over the budget.
+    monkeypatch.setattr(core, "select_turns", lambda ranked, query, budget: [whole])
+    context = memory.search(QUESTION, user_id="demo", budget=40)
+    assert 0 < context.tokens <= 40
+    assert whole.startswith(context.text) and whole[len(context.text)].isspace()
+    assert [(t.item.content, t.partial) for t in context.turns] == [(NOTES[0], False)]
+    nothing = memory.search(QUESTION, user_id="demo", budget=1)
+    assert (nothing.text, nothing.tokens, nothing.turns, nothing.sessions_kept) == ("", 0, (), 0)
+    assert nothing.compressed
 
 
 def test_sessions_group_by_run_or_by_day_and_keep_the_date_once(memory):
@@ -209,6 +291,80 @@ def test_sessions_group_by_run_or_by_day_and_keep_the_date_once(memory):
     memory.add("next day, no run", user_id="u1", timestamp=T0 + timedelta(days=1))
     context = memory.search("anything", user_id="u1", budget=1000)
     assert context.sessions_total == 3
+
+
+class FirstTurnStamp(Memory):
+    """The renderer before per-turn stamps: every turn of a session carried the session's first stamp."""
+
+    def _render(self, session):
+        stamp = self._stamp(session[0])
+        return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
+
+
+def test_same_day_turns_show_their_own_times(memory):
+    memory.add(
+        "We use pnpm in this repo, never npm.", user_id="u1", timestamp="2026-10-20T10:30:00"
+    )
+    memory.add(
+        "Deploys go out from main, never from feature branches.",
+        user_id="u1",
+        timestamp="2026-10-20T16:45:00",
+    )
+    context = memory.search("package manager and deploys", user_id="u1", budget=200)
+    assert context.sessions_total == 1  # one calendar day, so one session
+    assert context.text == (
+        "[2026-10-20 (Tue) 10:30] user: We use pnpm in this repo, never npm.\n"
+        "[2026-10-20 (Tue) 16:45] user: Deploys go out from main, never from feature branches."
+    )
+
+
+def test_selected_turns_keep_their_own_times(memory):
+    for day in range(40):
+        messages, when = chat(
+            day,
+            f"Day {day}: can you suggest a recipe with lentils and rice for dinner tonight?",
+            f"Day {day}: try a simple khichdi with ghee, cumin and a side of pickle.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    morning = T0 + timedelta(days=41, hours=1)
+    memory.add(
+        [
+            {"role": "user", "content": "We use pnpm in this repo, never npm."},
+            {"role": "assistant", "content": "Noted, pnpm only."},
+        ],
+        user_id="u1",
+        timestamp=morning,
+    )
+    memory.add(
+        [
+            {"role": "user", "content": "Deploys go out from main, never from feature branches."},
+            {"role": "assistant", "content": "Understood, main only."},
+        ],
+        user_id="u1",
+        timestamp=morning + timedelta(hours=6, minutes=15),
+    )
+    context = memory.search("Which branch do deploys go out from?", user_id="u1", budget=120)
+    assert context.compressed
+    assert "[2026-04-12 (Sun) 16:45] user: Deploys go out from main" in context.text
+    assert "[2026-04-12 (Sun) 10:30] user: Deploys" not in context.text
+
+
+def test_turns_sharing_a_time_render_as_before(memory):
+    """Benchmark data gives every turn the session date; those contexts must not change by a byte."""
+    for day in range(40):
+        messages, when = chat(
+            day,
+            f"Note {day}: the meeting room for project {day} is room {day + 100}.",
+            f"Got it, project {day} meets in room {day + 100}.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    before = FirstTurnStamp(memory.store, clock=clock)
+    for budget in (10_000, 150):
+        new = memory.search("Which room is project 7 in?", user_id="u1", budget=budget)
+        old = before.search("Which room is project 7 in?", user_id="u1", budget=budget)
+        assert new.text == old.text and new.tokens == old.tokens
+    assert new.compressed and "room 107" in new.text
+    assert new.text.count("[2026-03-09 (Mon) 09:30]") == 1  # the shared stamp is still shown once
 
 
 def test_search_validates_inputs(memory):

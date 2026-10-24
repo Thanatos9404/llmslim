@@ -60,6 +60,20 @@ def test_prose_with_a_colon_is_not_a_transcript():
 def test_one_speaker_is_not_a_transcript():
     text = "Name: Ada Lovelace\nName: Charles Babbage\nName: Mary Somerville"
     assert len(segment(text, max_unit_tokens=200)) == 1
+    assert len(segment("[09:00] user: first note\nuser: second note", max_unit_tokens=200)) == 1
+
+
+def test_one_speaker_with_every_turn_stamped_is_a_transcript():
+    """A memory session of notes: each note stays on its own line, and a shared stamp is shown once."""
+    notes = ["user: This repo uses pnpm, never npm.", "user: We deploy from main only."]
+    units = segment(_session("24 Oct 2026", notes), max_unit_tokens=40)
+    assert [(u.text, u.header, u.joiner) for u in units] == [
+        (note, "[24 Oct 2026]", "\n") for note in notes
+    ]
+    assert render(units, {u.index: u.text for u in units}) == "[24 Oct 2026]\n" + "\n".join(notes)
+    own_stamps = ["[09:00] user: first note", "[14:30] user: second note"]
+    units = segment("\n".join(own_stamps), max_unit_tokens=40)
+    assert [(u.text, u.header) for u in units] == [(line, "") for line in own_stamps]
 
 
 def test_rendered_turns_keep_their_lines_and_show_the_date_once():

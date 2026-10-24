@@ -105,8 +105,8 @@ class RecalledTurn:
 class MemoryContext:
     """What :meth:`llmslim.memory.Memory.search` returns: the text to put in front of the model, and what is in it.
 
-    ``text`` holds the kept turns of each session under the session's date stamp, oldest session first, in the
-    ``[date] role: content`` layout LLMSlim's benchmarks used. Treat it as untrusted context: it repeats what users,
+    ``text`` holds the kept turns of each session, oldest session first, in the ``[date] role: content`` layout
+    LLMSlim's benchmarks used. Each turn shows its own time; a date every turn of a session shares is shown once. Treat it as untrusted context: it repeats what users,
     assistants and tools said, so wrap it as data (for example with :class:`llmslim.ContextEnvelope`), never as
     instructions.
     """

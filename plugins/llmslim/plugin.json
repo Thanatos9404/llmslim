@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "llmslim",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "Long-term memory with no LLM in the loop: a local MCP server stores messages word for word in SQLite and recalls the ones that answer a question within a token budget.",
   "author": {
     "name": "Yashvardhan Thanvi",

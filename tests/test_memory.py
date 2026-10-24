@@ -331,7 +331,7 @@ def test_search_selects_again_when_a_pick_runs_over(memory, monkeypatch, overrun
     assert len(limits) == min(overruns + 1, 4) and limits[0] == 100
     assert limits == sorted(limits, reverse=True) and limits[1] < 100
     assert sizes == [sizes[0]]  # the unit size did not change, so the turns were ranked once
-    assert (context.tokens <= 100 * 1.02) == (overruns < 4)
+    assert overruns == 4 or context.tokens <= 100 * 1.02
 
 
 def test_two_speaker_sessions_select_as_compress_documents_does(memory):

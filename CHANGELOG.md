@@ -10,9 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **`Memory.search` ranks the turns of a session by relevance when the session does not fit the budget.** Turns
+  without a `run_id` are grouped by calendar day, so a day of `remember` calls to the `llmslim mcp` server is one
+  session. When that session did not fit, `recall` kept the newest turns of the day and dropped the ones that answered
+  the question: ten notes from one morning, asked "How do I run the tests, and where can I deploy from?", came back
+  as the last four notes at a 150-token budget. The same notes spread over ten days were recalled correctly.
+  - The turns of a one-speaker session are now ranked one by one, as the turns of a two-speaker session already were.
+    The kept turns stay in their order, under the session's date.
+  - A history of one session (one day, or one `run_id`) goes through the same selection as a history of many. It was
+    compressed as one text, whose `[date] role: content` lines read as a log, so its newest lines won.
+  - In both cases each kept turn is counted with the line break and `...` line it can add.
+  - A history of several sessions with two speakers each selects exactly as before.
 - **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
   from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
   showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
+  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
+  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
+  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
+  contexts do not change.
+- **`Memory.search` (and the MCP `recall` tool) no longer return more tokens than the budget.** A pass of the
+  selection was accepted up to 2% over, and selection does not charge the `...` it puts between kept turns or, for
+  very small budgets, the session's date header. Five notes searched with `budget=120` came back at 121 tokens.
+  - A pass is now accepted only within the budget. When the last pass is still over, the context is cut to the
+    longest prefix of whole words that fits, which can be empty for a budget smaller than a date header.
+  - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
+    is returned whole only when it fits as joined.
+  - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
+- **A memory session with one speaker keeps one turn per line.** Notes stored with the MCP `remember` tool are all
+  `user` turns, and selection read a block as a transcript only with two speakers. Such a session was flattened into
+  one paragraph: its date was repeated on every turn and kept turns were joined with spaces. A block with one speaker
+  now reads as a transcript when every turn is stamped, so the date is shown once and each turn stays on its line.
+  Text with two speakers is selected as before.
 
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
@@ -22,13 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pinned MCP server (`uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`) to VS Code's MCP support through
   `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
   file. It is not published yet and is not part of the PyPI package.
-
-### Fixed
-- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
-  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
-  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
-  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
-  contexts do not change.
 
 ### Packaging
 - **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
@@ -49,21 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same pinned server. Copilot CLI already read the Claude layout; the awesome-copilot list checks only these files.
 - **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
   noreply address, which receives no mail.
-
-### Fixed
-- **`Memory.search` (and the MCP `recall` tool) no longer return more tokens than the budget.** A pass of the
-  selection was accepted up to 2% over, and selection does not charge the `...` it puts between kept turns or, for
-  very small budgets, the session's date header. Five notes searched with `budget=120` came back at 121 tokens.
-  - A pass is now accepted only within the budget. When the last pass is still over, the context is cut to the
-    longest prefix of whole words that fits, which can be empty for a budget smaller than a date header.
-  - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
-    is returned whole only when it fits as joined.
-  - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
-- **A memory session with one speaker keeps one turn per line.** Notes stored with the MCP `remember` tool are all
-  `user` turns, and selection read a block as a transcript only with two speakers. Such a session was flattened into
-  one paragraph: its date was repeated on every turn and kept turns were joined with spaces. A block with one speaker
-  now reads as a transcript when every turn is stamped, so the date is shown once and each turn stays on its line.
-  Text with two speakers is selected as before.
 
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:

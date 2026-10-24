@@ -72,7 +72,7 @@ messages.append({
   - Turns with the same `run_id` form one session; turns without one are grouped by calendar day (in `tz`, UTC by default).
   - Each turn is shown with its own date stamp, e.g. `[2026-10-17 (Sat) 14:05]`. That is how the model can answer "when" questions and tell newer turns from older ones.
   - When every turn of a session has the same stamp, as in benchmark data that gives each turn the session date, it is shown once as the session's header.
-- **Budget.** `search(..., budget=N)` returns at most about N tokens (counted with tiktoken's `cl100k_base`), within 2%.
+- **Budget.** `search(..., budget=N)` returns at most N tokens (counted with tiktoken's `cl100k_base`).
   - If the whole history fits, all of it is returned and `context.compressed` is false.
   - The default budget is set on `Memory(budget=...)` and starts at 2,000.
 - **Relevance.**
@@ -122,6 +122,7 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 
 **The same pipeline as the benchmarks.**
 - `Memory.search` runs LLMSlim's round-3 benchmark pipeline: one document per session, `[date] role: content` lines, and one shared budget.
+  - Two kinds of history that the benchmarks did not have are ranked turn by turn from the stored turns: a session of one speaker (such as a day of `remember` calls) and a history of only one session. A history of several two-speaker sessions selects exactly as the pipeline does.
 - With the benchmark's date format (`Memory(stamp_format="%Y/%m/%d (%a) %H:%M")`), its output was **byte-identical** to the benchmark builder on 120 of 120 LongMemEval-S development contexts. That was 60 histories at 2,500 and 10,000 tokens.
 
 **What that pipeline measured on held-out test questions** (Claude Haiku 5.5 reader, cost per 1,000 questions end to end; [full report](../benchmarks/live/round3/RESULTS.md)):

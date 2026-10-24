@@ -6,7 +6,6 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 
 import pytest
 
@@ -267,14 +266,12 @@ def test_a_session_of_notes_keeps_one_note_per_line_under_one_date():
 
 
 def test_search_clips_what_selection_cannot_fit(monkeypatch):
-    import llmslim.pipelines as pipelines
-
-    def keeps_everything(documents, **_):
-        return [SimpleNamespace(compressed_text=document) for document in documents]
+    import llmslim.memory._core as core
 
     memory = notes_in_one_session()
     whole = memory.search(QUESTION, user_id="demo", budget=10_000).text
-    monkeypatch.setattr(pipelines, "compress_documents", keeps_everything)
+    # Selection that keeps the whole session on every pass, so each pass is over the budget.
+    monkeypatch.setattr(core, "select_turns", lambda ranked, query, budget: [whole])
     context = memory.search(QUESTION, user_id="demo", budget=40)
     assert 0 < context.tokens <= 40
     assert whole.startswith(context.text) and whole[len(context.text)].isspace()
@@ -413,6 +410,105 @@ def test_custom_scorer_is_used(memory):
 
     context = memory.search("anything", user_id="u1", budget=60, relevance=scorer)
     assert calls and "Fact 3 " in context.text
+
+
+# Notes added one at a time with no run_id, as the llmslim mcp server stores them.
+PROJECT_NOTES = [
+    "This repo uses pnpm, never npm.",
+    "Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI.",
+    "We deploy from main only. Feature branches never deploy.",
+    "The staging database is orders_staging; never point migrations at orders_prod.",
+    "I prefer short answers with the code first.",
+    "The design review for the billing page is on Friday at 4 pm.",
+    "Use Zod for request validation in the API routes, not hand-written checks.",
+    "Our error tracker is Sentry; the project is called web-prod.",
+    "Dark mode colours live in tokens.css; never hard-code hex values in components.",
+    "Renew the TLS certificate for api.example.com before 30 November.",
+]
+
+
+@pytest.mark.parametrize("budget", [100, 150, 200])
+@pytest.mark.parametrize("spread", ["same day", "one per day"])
+def test_search_ranks_the_turns_of_a_day_by_relevance(memory, spread, budget):
+    # Regression: one day's notes form one session, and when it did not fit, search kept the day's newest notes.
+    for i, note in enumerate(PROJECT_NOTES):
+        step = timedelta(minutes=i) if spread == "same day" else timedelta(days=i)
+        memory.add(note, user_id="u1", timestamp=T0 + step)
+    context = memory.search(
+        "How do I run the tests, and where can I deploy from?", user_id="u1", budget=budget
+    )
+    assert context.compressed
+    assert context.sessions_total == (1 if spread == "same day" else len(PROJECT_NOTES))
+    assert "pnpm test -- --runInBand" in context.text and "deploy from main" in context.text
+    assert count_tokens(str(context)) <= budget
+    kept = [turn.item.content for turn in context.turns]
+    assert PROJECT_NOTES[1] in kept and PROJECT_NOTES[2] in kept
+    assert kept == [note for note in PROJECT_NOTES if note in kept]  # in the order they were added
+    lines = context.text.split("\n")
+    assert all(any(line.endswith(f"user: {note}") for line in lines) for note in kept)
+
+
+@pytest.mark.parametrize("budget", [100, 150, 200])
+def test_search_ranks_the_turns_of_a_single_chat(memory, budget):
+    # Regression: a history of one session was compressed as one text, whose short [date] lines read as a log.
+    messages = []
+    for note in PROJECT_NOTES:
+        messages += [{"role": "user", "content": note}, {"role": "assistant", "content": "Noted."}]
+    memory.add(messages, user_id="u1", run_id="chat")
+    context = memory.search(
+        "How do I run the tests, and where can I deploy from?", user_id="u1", budget=budget
+    )
+    assert context.compressed and context.sessions_total == 1
+    assert "pnpm test -- --runInBand" in context.text and "deploy from main" in context.text
+    assert count_tokens(str(context)) <= budget
+
+
+@pytest.mark.parametrize("overruns", [1, 4])
+def test_search_selects_again_when_a_pick_runs_over(memory, monkeypatch, overruns):
+    import llmslim.memory._core as core
+
+    for i, note in enumerate(PROJECT_NOTES):
+        memory.add(note, user_id="u1", timestamp=T0 + timedelta(minutes=i))
+    sizes, limits = [], []
+    rank_turns, select_turns = core.rank_turns, core.select_turns
+
+    def rank(sessions, documents, query, size, scorer):
+        sizes.append(size)
+        return rank_turns(sessions, documents, query, size, scorer)
+
+    def select(ranked, query, limit):
+        limits.append(limit)
+        kept = select_turns(ranked, query, limit)
+        return [part + " and more" * 20 for part in kept] if len(limits) <= overruns else kept
+
+    monkeypatch.setattr(core, "rank_turns", rank)
+    monkeypatch.setattr(core, "select_turns", select)
+    context = memory.search("How do I run the tests?", user_id="u1", budget=100)
+    assert len(limits) == min(overruns + 1, 4) and limits[0] == 100
+    assert limits == sorted(limits, reverse=True) and limits[1] < 100
+    assert sizes == [sizes[0]]  # the unit size did not change, so the turns were ranked once
+    assert overruns == 4 or context.tokens <= 100 * 1.02
+
+
+def test_two_speaker_sessions_select_as_compress_documents_does(memory):
+    # Sessions with two speakers are segmented and ranked exactly as before, blank lines and lists included, so
+    # contexts built like the benchmarks' do not change.
+    from llmslim import compress_documents
+
+    for day in range(12):
+        messages, when = chat(
+            day,
+            f"Day {day}: what can I cook with lentils?\n\nI have rice and cumin too.",
+            f"Try khichdi.\n\n- rinse the lentils\n- add cumin\n\nOn day {day}, serve it with pickle.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    query = "What did you suggest with khichdi on day 7?"
+    context = memory.search(query, user_id="u1", budget=150)
+    sessions = memory._sessions(memory.get_all(user_id="u1"))
+    documents = [memory._render(session) for session in sessions]
+    results = compress_documents(documents, query=query, target_ratio=150 / context.history_tokens)
+    expected = "\n\n".join(r.compressed_text.strip() for r in results if r.compressed_text)
+    assert context.compressed and context.text == expected
 
 
 def test_context_to_dict_round_trips_turns(memory):

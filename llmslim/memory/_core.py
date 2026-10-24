@@ -32,9 +32,11 @@ _ROLE_ALIASES = {
 _TEXT_PARTS = ("text", "input_text", "output_text")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 # Fitting the rendered text to the budget: as in LLMSlim's benchmark builders, a few passes that shrink the ratio by
-# the overshoot. Selection is deterministic, so the same history and question always give the same context.
+# the overshoot. Selection is deterministic, so the same history and question always give the same context. The
+# compressor treats its ratio as a target (gap markers and session headers are not charged exactly), so a pass is
+# accepted only within the budget, and what is still over after the last pass is clipped.
 _FIT_PASSES = 4
-_FIT_SLACK = 1.02
+_WORD = re.compile(r"\S+")
 
 
 def _utcnow() -> datetime:
@@ -97,6 +99,39 @@ def _normalize(messages: Union[Message, Sequence[Message]]) -> List[Mapping[str,
 
 def _squash(text: str) -> str:
     return " ".join(text.split())
+
+
+def _join(parts: Iterable[str]) -> str:
+    """Sessions as the context shows them: the non-empty ones, a blank line apart."""
+    return "\n\n".join(part for part in parts if part)
+
+
+def _clip(parts: Sequence[str], budget: int) -> List[str]:
+    """The longest prefix of the sessions' text, in whole words, whose joined text fits ``budget``.
+
+    The last resort when selection cannot get under the budget, which happens when the budget is smaller than a
+    session's date header and a few words. May leave every session empty.
+    """
+    words = [
+        (index, match.end()) for index, part in enumerate(parts) for match in _WORD.finditer(part)
+    ]
+
+    def prefix(count: int) -> List[str]:
+        out = [""] * len(parts)
+        if count:
+            last, end = words[count - 1]
+            out[:last] = parts[:last]
+            out[last] = parts[last][:end]
+        return out
+
+    low, high = 0, len(words)
+    while low < high:  # low always fits: no words is the empty text
+        mid = (low + high + 1) // 2
+        if count_tokens(_join(prefix(mid))) <= budget:
+            low = mid
+        else:
+            high = mid - 1
+    return prefix(low)
 
 
 def storage_target(db: str) -> Union[str, Path]:
@@ -281,7 +316,9 @@ class Memory:
         items = self.store.list(Scope(user_id, agent_id, run_id), **self._window(since, until))
         sessions = self._sessions(items)
         documents = [self._render(session) for session in sessions]
-        history_tokens = sum(count_tokens(document) for document in documents)
+        # Counted as joined, separators included: per-session counts can add up to less than the text they make.
+        history = _join(documents)
+        history_tokens = count_tokens(history) if history else 0
         if history_tokens <= budget:
             kept = documents
         else:
@@ -289,7 +326,7 @@ class Memory:
         turns: List[RecalledTurn] = []
         for session, text in zip(sessions, kept):
             turns.extend(self._recalled(session, text, query))
-        text = "\n\n".join(part for part in kept if part)
+        text = _join(kept)
         return MemoryContext(
             query=query,
             text=text,
@@ -341,11 +378,11 @@ class Memory:
                 documents, query=query, target_ratio=min(ratio, 1.0), **options
             )
             kept = [result.compressed_text.strip() for result in results]
-            tokens = count_tokens("\n\n".join(part for part in kept if part))
-            if tokens <= budget * _FIT_SLACK:
-                break
+            tokens = count_tokens(_join(kept))
+            if tokens <= budget:
+                return kept
             ratio *= budget / tokens * 0.98
-        return kept
+        return _clip(kept, budget)
 
     @staticmethod
     def _recalled(session: Sequence[MemoryItem], text: str, query: str) -> List[RecalledTurn]:

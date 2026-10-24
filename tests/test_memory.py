@@ -6,6 +6,7 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -192,11 +193,86 @@ def test_search_selects_the_answer_from_a_long_history(memory):
     memory.add(messages, user_id="u1", timestamp=when)
     context = memory.search("Where did I move to?", user_id="u1", budget=200)
     assert context.compressed and context.history_tokens > 200
-    assert context.tokens <= 200 * 1.02
+    assert context.tokens <= 200
     assert "Koregaon Park" in context.text
     assert any("Koregaon Park" in t.item.content and not t.partial for t in context.turns)
     assert context.sessions_kept < context.sessions_total
     assert context.tokens == count_tokens(context.text)
+
+
+NOTES = [
+    "This repo uses pnpm, never npm.",
+    "Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI.",
+    "We deploy from main only. Feature branches never deploy.",
+    "The staging database is orders_staging; never point migrations at orders_prod.",
+    "I prefer short answers with the code first.",
+]
+QUESTION = "How do I run the tests, and where can I deploy from?"
+
+
+def notes_in_one_session():
+    memory = Memory(clock=clock)
+    for note in NOTES:
+        memory.add(note, user_id="demo", timestamp="2026-10-24T07:43:00")
+    return memory
+
+
+def notes_one_per_day():
+    memory = Memory(clock=clock)
+    for day, note in enumerate(NOTES):
+        memory.add(note, user_id="demo", timestamp=T0 + timedelta(days=day))
+    return memory
+
+
+def dialog_over_three_days():
+    memory = Memory(clock=clock)
+    for day, user, assistant in [
+        (0, "Which package manager does this repo use?", "pnpm. The lockfile is pnpm-lock.yaml."),
+        (0, "How do I run the tests?", "pnpm test -- --runInBand. Parallel runs flake on CI."),
+        (1, "Where can I deploy from?", "Only from main. Feature branches never deploy."),
+        (1, "And the staging database?", "orders_staging. Never point migrations at orders_prod."),
+        (2, "Please keep answers short, code first.", "Understood."),
+    ]:
+        messages, when = chat(day, user, assistant)
+        memory.add(messages, user_id="demo", timestamp=when)
+    return memory
+
+
+@pytest.mark.parametrize(
+    "history", [notes_in_one_session, notes_one_per_day, dialog_over_three_days]
+)
+def test_search_never_exceeds_the_budget(history):
+    memory = history()
+    for budget in range(1, 401):
+        context = memory.search(QUESTION, user_id="demo", budget=budget)
+        assert count_tokens(str(context)) == context.tokens <= budget, budget
+
+
+def test_search_stays_within_a_budget_the_gap_marker_used_to_overrun():
+    """This history at budget=120 came back at 121 tokens: selection did not charge the "..." it put between kept
+    turns, and the fit loop accepted up to 2% over."""
+    context = notes_in_one_session().search(QUESTION, user_id="demo", budget=120)
+    assert context.compressed
+    assert count_tokens(str(context)) == context.tokens <= 120
+    assert "--runInBand" in context.text and "We deploy from main only." in context.text
+
+
+def test_search_clips_what_selection_cannot_fit(monkeypatch):
+    import llmslim.pipelines as pipelines
+
+    def keeps_everything(documents, **_):
+        return [SimpleNamespace(compressed_text=document) for document in documents]
+
+    memory = notes_in_one_session()
+    whole = memory.search(QUESTION, user_id="demo", budget=10_000).text
+    monkeypatch.setattr(pipelines, "compress_documents", keeps_everything)
+    context = memory.search(QUESTION, user_id="demo", budget=40)
+    assert 0 < context.tokens <= 40
+    assert whole.startswith(context.text) and whole[len(context.text)].isspace()
+    assert [(t.item.content, t.partial) for t in context.turns] == [(NOTES[0], False)]
+    nothing = memory.search(QUESTION, user_id="demo", budget=1)
+    assert (nothing.text, nothing.tokens, nothing.turns, nothing.sessions_kept) == ("", 0, (), 0)
+    assert nothing.compressed
 
 
 def test_sessions_group_by_run_or_by_day_and_keep_the_date_once(memory):

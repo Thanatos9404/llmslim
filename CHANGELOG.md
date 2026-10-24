@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
   noreply address, which receives no mail.
 
+### Fixed
+- **`Memory.search` (and the MCP `recall` tool) no longer return more tokens than the budget.** A pass of the
+  selection was accepted up to 2% over, and selection does not charge the `...` it puts between kept turns or, for
+  very small budgets, the session's date header. Five notes searched with `budget=120` came back at 121 tokens.
+  - A pass is now accepted only within the budget. When the last pass is still over, the context is cut to the
+    longest prefix of whole words that fits, which can be empty for a budget smaller than a date header.
+  - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
+    is returned whole only when it fits as joined.
+  - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;

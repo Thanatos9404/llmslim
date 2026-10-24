@@ -139,6 +139,8 @@ def build_server(
             )
         except ValueError as error:  # an empty query or a budget below one token
             raise ToolError(str(error)) from error
+        if not context.text and context.history_tokens:
+            return f"No stored message fits the {context.budget}-token budget ({context.history_tokens} stored tokens)."
         if not context.text:
             return "No stored memories yet."
         note = f"{context.tokens} of {context.history_tokens} stored tokens"

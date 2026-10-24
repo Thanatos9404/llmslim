@@ -5,6 +5,20 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.11.2",
+    date: "24 Oct 2026",
+    theme: "Recall that finds the right note, even on a busy day.",
+    summary: "Notes saved through the MCP server on one day form one session. When a day's notes outgrew the recall budget, 0.11.1 kept the newest ones and could drop the notes that answered the question. 0.11.2 ranks every note against the question, keeps recall within its token budget and shows each note's own time.",
+    metrics: ["Same-day notes ranked by relevance", "Never over the token budget", "Each note keeps its own time"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.11.2",
+    items: [
+      { label: "Fixed", icon: Wrench, title: "Same-day notes are ranked by relevance", body: "Ten notes from one morning, asked how to run the tests and where to deploy from, came back as the last four notes of the day at a 150-token budget. Recall now ranks each note against the question, so both answering notes come back at 100, 150 and 200 tokens." },
+      { label: "Fixed", icon: ShieldCheck, title: "Recall stays within its budget", body: "A selection pass was accepted up to 2% over the budget. Recall now accepts a pass only within the budget and trims what is still over, so the context never exceeds the tokens you set." },
+      { label: "Fixed", icon: Wrench, title: "Each note keeps its own time", body: "Notes added hours apart on the same day all showed the first note's time. Each now shows its own, and notes that share a time still show it once as a header." },
+      { label: "Added", icon: CheckCircle2, title: "Install links and manifests for more clients", body: "One-click install links in the README for VS Code, Cursor, LM Studio, Goose and Kiro, a Hermes Agent plugin, and manifests for Codex, Copilot CLI and Gemini CLI, all pinned to 0.11.2." },
+    ],
+  },
+  {
     version: "v0.11.1",
     date: "17 Oct 2026",
     theme: "What the proxy really does to a Claude Code bill.",

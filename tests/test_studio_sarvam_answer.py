@@ -1119,4 +1119,4 @@ def test_production_installs_the_hosted_extras_from_pypi() -> None:
     lines = (ROOT / "web" / "requirements.txt").read_text(encoding="utf-8").splitlines()
     pinned = next(line for line in lines if line.startswith("llmslim"))
     assert pinned.startswith("llmslim[") and "sarvam" in pinned and "mongodb" in pinned
-    assert pinned.endswith("==0.11.1")
+    assert pinned.endswith("==0.11.2")

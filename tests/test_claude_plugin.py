@@ -158,3 +158,25 @@ def test_skills_have_a_name_and_description():
         frontmatter = text.split("---\n", 2)[1]
         assert f"\nname: {path.parent.name}\n" in "\n" + frontmatter
         assert "\ndescription: " in "\n" + frontmatter
+
+
+def test_plugin_links_for_the_directory():
+    # The Claude plugin directory reads these links from plugin.json.
+    manifest = _json(PLUGIN / ".claude-plugin" / "plugin.json")
+    for field in (
+        "homepage",
+        "repository",
+        "documentationUrl",
+        "supportUrl",
+        "privacyPolicyUrl",
+        "termsOfServiceUrl",
+    ):
+        assert manifest[field].startswith("https://")
+
+
+def test_skills_pin_uvx_to_the_release():
+    # Directories treat an unpinned uvx launcher as a warning, so every uvx fallback names this release.
+    for path in (PLUGIN / "skills").glob("*/SKILL.md"):
+        text = path.read_text(encoding="utf-8")
+        for launcher in re.findall(r"uvx --from \"?llmslim\[proxy\][^ \"]*", text):
+            assert launcher.endswith(f"=={llmslim.__version__}"), (path.name, launcher)

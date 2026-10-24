@@ -55,6 +55,7 @@ This checklist outlines the mandatory verification steps required before publish
   `plugins/vscode/README.md`; bump the extension's own `version` in `plugins/vscode/package.json` and add a
   `plugins/vscode/CHANGELOG.md` entry. `tests/test_claude_plugin.py` checks the pin. Once the extension is listed,
   publish the new version from `plugins/vscode` with `npx vsce publish` and `npx ovsx publish`.
+- [ ] Bump the `llmslim[proxy]==X.Y.Z` pin in the uvx fallbacks of `plugins/llmslim/skills/*/SKILL.md`. `tests/test_claude_plugin.py` checks them.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

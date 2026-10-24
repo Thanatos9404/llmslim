@@ -9,6 +9,10 @@
   },
   "homepage": "https://llmslim.app/integrations/claude-code",
   "repository": "https://github.com/Thanatos9404/llmslim",
+  "documentationUrl": "https://github.com/Thanatos9404/llmslim/blob/main/docs/MCP.md",
+  "supportUrl": "https://github.com/Thanatos9404/llmslim/issues",
+  "privacyPolicyUrl": "https://llmslim.app/privacy",
+  "termsOfServiceUrl": "https://github.com/Thanatos9404/llmslim/blob/main/LICENSE",
   "license": "MIT",
   "keywords": [
     "memory",

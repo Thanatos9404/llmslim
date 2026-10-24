@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the question: ten notes from one morning, asked "How do I run the tests, and where can I deploy from?", came back
   as the last four notes at a 150-token budget. The same notes spread over ten days were recalled correctly.
   - The turns of a one-speaker session are now ranked one by one, as the turns of a two-speaker session already were.
-    The kept turns stay in their order, under the session's date.
+    The kept turns stay in their order, each with its time.
   - A history of one session (one day, or one `run_id`) goes through the same selection as a history of many. It was
     compressed as one text, whose `[date] role: content` lines read as a log, so its newest lines won.
   - In both cases each kept turn is counted with the line break and `...` line it can add.

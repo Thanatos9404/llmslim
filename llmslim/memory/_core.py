@@ -122,7 +122,7 @@ class Memory:
         budget: Default token budget for :meth:`search`.
         relevance: Default relevance for :meth:`search`: ``"lexical"`` (no model), ``"semantic"`` (LLMSlim's optional
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
-        tz: Time zone for the session dates shown to the model. Defaults to UTC.
+        tz: Time zone for the turn dates shown to the model. Defaults to UTC.
         stamp_format: strftime format of those dates. The default reads like 2026-10-17 (Sat) 14:05.
         clock: Returns "now" for turns added without a timestamp. For tests.
 
@@ -268,8 +268,9 @@ class Memory:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
         If the whole history fits, all of it is returned. Otherwise each session (a ``run_id``, or a calendar day) is
-        rendered as ``[date] role: content`` lines and LLMSlim selects across all sessions with one shared budget:
-        the most relevant turns stay whole, a question stays with its reply, and the session date is kept as a header.
+        rendered as ``[date] role: content`` lines, each with its own turn's time, and LLMSlim selects across all
+        sessions with one shared budget: the most relevant turns stay whole, a question stays with its reply, and a
+        date shared by every turn of a session is kept once as its header.
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -322,10 +323,13 @@ class Memory:
             grouped.setdefault(self._session_key(item), []).append(item)
         return sorted(grouped.values(), key=lambda turns: (turns[0].created_at, turns[0].seq))
 
+    def _stamp(self, item: MemoryItem) -> str:
+        return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
+
     def _render(self, session: Sequence[MemoryItem]) -> str:
-        # Every turn carries the session's stamp, so LLMSlim shows it once as the session's header.
-        stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
-        return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
+        # Every turn carries its own stamp. When a session's turns share one (benchmark data gives every turn the
+        # session date), LLMSlim shows it once as the session's header; different times stay on their lines.
+        return "\n".join(f"[{self._stamp(item)}] {item.role}: {item.content}" for item in session)
 
     @staticmethod
     def _select(

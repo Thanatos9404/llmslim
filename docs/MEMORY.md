@@ -70,7 +70,8 @@ messages.append({
   - Reads treat a missing id as "any": `search(..., user_id="asha")` covers all of Asha's sessions with every agent.
 - **Sessions.**
   - Turns with the same `run_id` form one session; turns without one are grouped by calendar day (in `tz`, UTC by default).
-  - Each session is shown under one date stamp, e.g. `[2026-10-17 (Sat) 14:05]`. That is how the model can answer "when" questions and tell newer turns from older ones.
+  - Each turn is shown with its own date stamp, e.g. `[2026-10-17 (Sat) 14:05]`. That is how the model can answer "when" questions and tell newer turns from older ones.
+  - When every turn of a session has the same stamp, as in benchmark data that gives each turn the session date, it is shown once as the session's header.
 - **Budget.** `search(..., budget=N)` returns at most about N tokens (counted with tiktoken's `cl100k_base`), within 2%.
   - If the whole history fits, all of it is returned and `context.compressed` is false.
   - The default budget is set on `Memory(budget=...)` and starts at 2,000.

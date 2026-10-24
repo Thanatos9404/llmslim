@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
   file. It is not published yet and is not part of the PyPI package.
 
+### Fixed
+- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
+  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
+  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
+  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
+  contexts do not change.
+
 ### Packaging
 - **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
   Claude plugin directory blocks a version range as an unpinned uvx launcher.

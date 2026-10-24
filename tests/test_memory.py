@@ -211,6 +211,80 @@ def test_sessions_group_by_run_or_by_day_and_keep_the_date_once(memory):
     assert context.sessions_total == 3
 
 
+class FirstTurnStamp(Memory):
+    """The renderer before per-turn stamps: every turn of a session carried the session's first stamp."""
+
+    def _render(self, session):
+        stamp = self._stamp(session[0])
+        return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
+
+
+def test_same_day_turns_show_their_own_times(memory):
+    memory.add(
+        "We use pnpm in this repo, never npm.", user_id="u1", timestamp="2026-10-20T10:30:00"
+    )
+    memory.add(
+        "Deploys go out from main, never from feature branches.",
+        user_id="u1",
+        timestamp="2026-10-20T16:45:00",
+    )
+    context = memory.search("package manager and deploys", user_id="u1", budget=200)
+    assert context.sessions_total == 1  # one calendar day, so one session
+    assert context.text == (
+        "[2026-10-20 (Tue) 10:30] user: We use pnpm in this repo, never npm.\n"
+        "[2026-10-20 (Tue) 16:45] user: Deploys go out from main, never from feature branches."
+    )
+
+
+def test_selected_turns_keep_their_own_times(memory):
+    for day in range(40):
+        messages, when = chat(
+            day,
+            f"Day {day}: can you suggest a recipe with lentils and rice for dinner tonight?",
+            f"Day {day}: try a simple khichdi with ghee, cumin and a side of pickle.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    morning = T0 + timedelta(days=41, hours=1)
+    memory.add(
+        [
+            {"role": "user", "content": "We use pnpm in this repo, never npm."},
+            {"role": "assistant", "content": "Noted, pnpm only."},
+        ],
+        user_id="u1",
+        timestamp=morning,
+    )
+    memory.add(
+        [
+            {"role": "user", "content": "Deploys go out from main, never from feature branches."},
+            {"role": "assistant", "content": "Understood, main only."},
+        ],
+        user_id="u1",
+        timestamp=morning + timedelta(hours=6, minutes=15),
+    )
+    context = memory.search("Which branch do deploys go out from?", user_id="u1", budget=120)
+    assert context.compressed
+    assert "[2026-04-12 (Sun) 16:45] user: Deploys go out from main" in context.text
+    assert "[2026-04-12 (Sun) 10:30] user: Deploys" not in context.text
+
+
+def test_turns_sharing_a_time_render_as_before(memory):
+    """Benchmark data gives every turn the session date; those contexts must not change by a byte."""
+    for day in range(40):
+        messages, when = chat(
+            day,
+            f"Note {day}: the meeting room for project {day} is room {day + 100}.",
+            f"Got it, project {day} meets in room {day + 100}.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    before = FirstTurnStamp(memory.store, clock=clock)
+    for budget in (10_000, 150):
+        new = memory.search("Which room is project 7 in?", user_id="u1", budget=budget)
+        old = before.search("Which room is project 7 in?", user_id="u1", budget=budget)
+        assert new.text == old.text and new.tokens == old.tokens
+    assert new.compressed and "room 107" in new.text
+    assert new.text.count("[2026-03-09 (Mon) 09:30]") == 1  # the shared stamp is still shown once
+
+
 def test_search_validates_inputs(memory):
     memory.add("x", user_id="u1")
     with pytest.raises(ValueError):

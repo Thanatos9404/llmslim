@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
+  from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
+  showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
@@ -17,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pinned MCP server (`uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`) to VS Code's MCP support through
   `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
   file. It is not published yet and is not part of the PyPI package.
+
+### Fixed
+- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
+  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
+  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
+  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
+  contexts do not change.
 
 ### Packaging
 - **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The

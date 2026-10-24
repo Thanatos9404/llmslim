@@ -51,7 +51,7 @@ REPLY_GROUP = (
 )
 DEDUP_OVERLAP = 0.8  # share of a candidate's word 5-grams already kept above which it is left out
 SHINGLE = 5
-SLACK = 1.02  # the context may run this much over the budget (LLMSlim's usual allowance)
+SLACK = 1.0  # the context never runs over the budget (Memory.search clips what fit leaves over)
 GAP = " ... "  # marks text left out between two kept parts of one turn
 
 Scorer = Callable[[str, Sequence[str]], Sequence[float]]
@@ -366,16 +366,20 @@ class Selection:
         self.seen: Set[Tuple[str, ...]] = set()
         self.exact: Set[Tuple[str, ...]] = set()
         self.per_session: Dict[int, int] = {}
+        self.stamps: Dict[int, Set[str]] = {}  # per session: the full stamps of its kept turns
 
     def label(self, turn: int, first: bool = True) -> str:
-        """A turn's label: the full stamp on the first kept turn of its session, the date on the others."""
+        """A turn's label: its full stamp when ``first`` (the first kept turn of its session, or one whose time
+        differs from the one shown last in its session), else its date."""
         t = self.turns[turn]
         stamp = t.stamp if first or not t.date else t.date
         return f"[{stamp}] {t.item.role}: "
 
     def label_cost(self, turn: int) -> int:
-        """What a new turn's label adds: a full stamp when its session has nothing kept yet, else a date."""
-        first = not self.per_session.get(self.turns[turn].session)
+        """What a new turn's label adds: a full stamp when no kept turn of its session has its time yet, else a
+        date (an estimate: the exact labels depend on the order of the kept turns, and ``fit`` counts them)."""
+        t = self.turns[turn]
+        first = t.stamp not in self.stamps.get(t.session, ())
         return tokens_of(self.label(turn, first)) + 1
 
     def duplicate(self, text: str) -> bool:
@@ -407,6 +411,7 @@ class Selection:
         if piece.turn not in self.kept:
             session = self.turns[piece.turn].session
             self.per_session[session] = self.per_session.get(session, 0) + 1
+            self.stamps.setdefault(session, set()).add(self.turns[piece.turn].stamp)
         self.kept.setdefault(piece.turn, {})[piece.part] = (
             parts,
             piece.score,
@@ -439,13 +444,17 @@ class Selection:
         return labelled(self.label(turn, first), body), partial
 
     def render(self) -> Tuple[List[str], List[Tuple[int, bool]]]:
-        """Kept turns in date order: one text per session (empty when nothing of it is kept), and (turn, partial)."""
+        """Kept turns in date order: one text per session (empty when nothing of it is kept), and (turn, partial).
+        Each turn shows its own time: its full stamp when it is the first kept turn of its session or its time
+        differs from the one shown last there, else its date."""
         sessions: Dict[int, List[str]] = {}
+        shown: Dict[int, str] = {}
         recalled = []
         for turn in sorted(self.kept):
-            session = self.turns[turn].session
-            block, partial = self.render_turn(turn, session not in sessions)
-            sessions.setdefault(session, []).append(block)
+            t = self.turns[turn]
+            block, partial = self.render_turn(turn, shown.get(t.session) != t.stamp)
+            shown[t.session] = t.stamp
+            sessions.setdefault(t.session, []).append(block)
             recalled.append((turn, partial))
         count = max((t.session for t in self.turns), default=-1) + 1
         return ["\n".join(sessions.get(s, [])) for s in range(count)], recalled
@@ -579,6 +588,7 @@ def last_resort(chosen: Selection, order: Sequence[Piece], budget: int) -> None:
     chosen.used = count_tokens(text) + chosen.label_cost(best.turn)
     chosen.kept[best.turn] = {best.part: (parts, best.score, True)}
     chosen.per_session[chosen.turns[best.turn].session] = 1
+    chosen.stamps[chosen.turns[best.turn].session] = {chosen.turns[best.turn].stamp}
 
 
 Fitted = Tuple[List[str], List[Tuple[int, bool]], int]

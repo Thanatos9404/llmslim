@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Merged from 0.11.2
+- **The 0.11.2 fixes hold on the turn-level read path.** `Memory.search` ranks stored turns itself (below), so it
+  does not use 0.11.2's `memory/_selection.py`, which is left out; the guarantees are kept as follows:
+  - **Each turn shows its own time.** When the whole history fits, every turn carries its own stamp. When it is
+    selected from, the first kept turn of a session shows its full stamp, and a later one shows its own full stamp
+    when its time differs from the one shown last in its session, else the date alone.
+  - **Never over the budget.** A context is at most `budget` tokens (it was allowed 2% over): the fit drops the
+    weakest pieces until the whole fits, and anything still over is cut to the longest prefix of whole words, as in
+    0.11.2. `history_tokens` counts the history as one text, blank lines between sessions included.
+  - **The turns of a day are ranked by relevance**, as every turn already is; a one-speaker or one-session history
+    goes through the same selection.
+  - **A section's best line may take at most a quarter of the room** (was half), so at budgets of about a hundred
+    tokens a request or preference no longer crowds out the turns that answer the question.
+
 ### Changed
 - **Memory: a long history is read turn by turn.** When the history does not fit the budget, `Memory.search` now
   ranks the stored turns themselves instead of rendered session text. When the whole history fits, the output is
@@ -24,8 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     tables follow it, fenced. Markdown headings are folded into the sentence they head, so no heading stands alone,
     and a label never starts in the middle of a line. A stored line that looks like a turn label is indented, so
     stored text can't pass for another turn. Kept turns are in date order, with a blank line between sessions.
-  - **Dates:** the first kept turn of each session shows the full stamp (`stamp_format`), the others the date
-    (`date_format`, new, default `%Y-%m-%d`).
+  - **Dates:** the first kept turn of each session shows the full stamp (`stamp_format`); a later one shows its own
+    full stamp when its time differs from the one shown last in its session, else the date (`date_format`, new,
+    default `%Y-%m-%d`).
 - **Memory: the kind of question decides the sections** (fixed English patterns, no model; see
   `llmslim/memory/_routing.py`):
   - a plain lookup of a past fact or a history check ("What is my salary?", "When did I say ...?", "Have I ever
@@ -78,6 +93,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llmslim.focus.rank` takes an optional `candidates`: how many of the strongest lexical candidates the reranker
   reads.
 
+## [0.11.2] - 2026-10-24
+
+### Fixed
+- **`Memory.search` ranks the turns of a session by relevance when the session does not fit the budget.** Turns
+  without a `run_id` are grouped by calendar day, so a day of `remember` calls to the `llmslim mcp` server is one
+  session. When that session did not fit, `recall` kept the newest turns of the day and dropped the ones that answered
+  the question: ten notes from one morning, asked "How do I run the tests, and where can I deploy from?", came back
+  as the last four notes at a 150-token budget. The same notes spread over ten days were recalled correctly.
+  - The turns of a one-speaker session are now ranked one by one, as the turns of a two-speaker session already were.
+    The kept turns stay in their order, under the session's date.
+  - A history of one session (one day, or one `run_id`) goes through the same selection as a history of many. It was
+    compressed as one text, whose `[date] role: content` lines read as a log, so its newest lines won.
+  - In both cases each kept turn is counted with the line break and `...` line it can add.
+  - A history of several sessions with two speakers each selects exactly as before.
+- **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
+  from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
+  showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+- **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
+  time, so turns added hours apart on the same day (the normal case for the `llmslim mcp` memory server, which groups
+  turns without a `run_id` by calendar day) all showed the first one's time. A session whose turns share one
+  timestamp renders byte for byte as before, with the stamp shown once as its header, so LongMemEval and BEAM style
+  contexts do not change.
+- **`Memory.search` (and the MCP `recall` tool) no longer return more tokens than the budget.** A pass of the
+  selection was accepted up to 2% over, and selection does not charge the `...` it puts between kept turns or, for
+  very small budgets, the session's date header. Five notes searched with `budget=120` came back at 121 tokens.
+  - A pass is now accepted only within the budget. When the last pass is still over, the context is cut to the
+    longest prefix of whole words that fits, which can be empty for a budget smaller than a date header.
+  - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
+    is returned whole only when it fits as joined.
+  - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
+- **A memory session with one speaker keeps one turn per line.** Notes stored with the MCP `remember` tool are all
+  `user` turns, and selection read a block as a transcript only with two speakers. Such a session was flattened into
+  one paragraph: its date was repeated on every turn and kept turns were joined with spaces. A block with one speaker
+  now reads as a transcript when every turn is stamped, so the date is shown once and each turn stays on its line.
+  Text with two speakers is selected as before.
+
+### Added
+- **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
+  `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
+  declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
+- **A VS Code extension, LLMSlim Memory, in `plugins/vscode`**, for the VS Code Marketplace and Open VSX. It adds the
+  pinned MCP server (`uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`) to VS Code's MCP support through
+  `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
+  file. It is not published yet and is not part of the PyPI package.
+
+### Packaging
+- **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The
+  Claude plugin directory blocks a version range as an unpinned uvx launcher.
+- **The plugin has a README** (`plugins/llmslim/README.md`): what it runs, what it stores and what reaches the
+  network. The directory requires one.
+- **A Gemini CLI extension manifest** (`gemini-extension.json` at the repo root) runs the same pinned server, so
+  `gemini extensions install https://github.com/Thanatos9404/llmslim` works and the extensions gallery can index the
+  repo.
+- **One-click install links** in the README for VS Code, Cursor, LM Studio, Goose and Kiro.
+- **A Codex plugin manifest** (`plugins/llmslim/.codex-plugin/plugin.json`) starts the same pinned server from the
+  plugin's `.mcp.json`, for Codex and the awesome-codex-plugins list.
+- **The plugin folder has its own LICENSE and SECURITY.md**, its two skills declare a `name`, and the marketplace
+  declares `"strict": true`. The HOL plugin scanner that the awesome-ai-plugins and awesome-codex-plugins lists run
+  checks for all of these.
+- **The Codex plugin has an icon** (`plugins/llmslim/assets/icon.png`), which the awesome-codex-plugins list requires.
+- **Agent Plugins manifests for Copilot CLI** (`plugins/llmslim/plugin.json` and `mcp.json`, schema 1.0.0) start the
+  same pinned server. Copilot CLI already read the Claude layout; the awesome-copilot list checks only these files.
+- **Security and conduct reports go to support@llmslim.app.** `SECURITY.md` and `CODE_OF_CONDUCT.md` gave a GitHub
+  noreply address, which receives no mail.
+
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:
   - the lint task has 240 warnings, not 260;
@@ -88,6 +168,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - pooled and test-run results now lead with the primary (default permission mode) measurement instead of a range
     across two modes;
   - interactive sessions through the proxy were not tested for their permission mode.
+- **A shorter first screen in the README**: what LLMSlim does in one line, setup commands for Claude Code, Codex,
+  Copilot CLI, Gemini CLI, Hermes Agent, Python and TypeScript, and a recorded session with llmslim 0.11.1 from PyPI
+  (`docs/assets/llmslim-memory-demo.svg`). Every earlier section is still there, below it.
+- **Runnable examples with tests** in `examples/`: Claude Code memory over MCP, LangChain and Pydantic AI agents with
+  memory, fitting a long log into a budget, and the TypeScript client against `llmslim serve`. They run offline with
+  fake or test models; `tests/test_examples.py` and the TypeScript client CI job run them.
 
 ## [0.11.1] - 2026-10-17
 

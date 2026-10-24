@@ -43,6 +43,19 @@ This checklist outlines the mandatory verification steps required before publish
 - [ ] Bump version in `llmslim/__init__.py` (`__version__ = "X.Y.Z"`).
 - [ ] Bump `version` in `server.json` (both places, and the `llmslim[mcp]==X.Y.Z` pin) and in
   `plugins/llmslim/.claude-plugin/plugin.json`. `tests/test_claude_plugin.py` checks they match.
+- [ ] Bump the `llmslim[mcp]==X.Y.Z` pin in `plugins/llmslim/.mcp.json` and `plugins/llmslim/README.md`, `version`
+  and the pin in `gemini-extension.json`, and the five one-click install links in the README's MCP section (Cursor
+  and LM Studio carry the config base64-encoded). Directories reject a version range, so these stay exact.
+  `tests/test_claude_plugin.py` checks them too.
+- [ ] Bump `version` in the Codex manifest, `plugins/llmslim/.codex-plugin/plugin.json`. It starts the server from
+  `plugins/llmslim/.mcp.json`, so its pin moves with the one above. `tests/test_claude_plugin.py` checks both.
+- [ ] Bump `version` in `plugins/llmslim/plugin.json` and the pin in `plugins/llmslim/mcp.json` (the Agent Plugins
+  files Copilot CLI reads). awesome-copilot pins a commit, so resubmit its external plugin entry after a release.
+- [ ] Bump the VS Code extension's pin, `LLMSLIM_VERSION` in `plugins/vscode/src/command.ts`, and the pin in
+  `plugins/vscode/README.md`; bump the extension's own `version` in `plugins/vscode/package.json` and add a
+  `plugins/vscode/CHANGELOG.md` entry. `tests/test_claude_plugin.py` checks the pin. Once the extension is listed,
+  publish the new version from `plugins/vscode` with `npx vsce publish` and `npx ovsx publish`.
+- [ ] Bump the `llmslim[proxy]==X.Y.Z` pin in the uvx fallbacks of `plugins/llmslim/skills/*/SKILL.md`. `tests/test_claude_plugin.py` checks them.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

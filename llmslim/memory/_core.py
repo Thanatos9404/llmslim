@@ -105,6 +105,7 @@ _PREFERENCE_ROUTES = (ADVICE,)
 _SKIP_ASKED = (
     True  # a preference word only in a question ("should I prioritize ...?") states no preference
 )
+_SECTION_FIRST_ROOM = 4  # a section's best match may take up to this fraction (1/N) of the room
 _SECTION_DEDUP = (
     True  # a statement shown once in a section is not shown again (the same sentence said twice)
 )
@@ -396,6 +397,51 @@ def _squash(text: str) -> str:
     return " ".join(text.split())
 
 
+def _join(parts: Iterable[str]) -> str:
+    """Sections and sessions as the context shows them: the non-empty ones, a blank line apart."""
+    return "\n\n".join(part for part in parts if part)
+
+
+_WORD = re.compile(r"\S+")
+
+
+def _still_shown(content: str, text: str, run: int = 6) -> bool:
+    """Whether some ``run`` consecutive words of ``content`` (all of it, when shorter) are in ``text``: a section line
+    that survived a clip shows at least that much of its statement."""
+    words, shown = content.split(), _squash(text)
+    if len(words) <= run:
+        return bool(words) and " ".join(words) in shown
+    return any(" ".join(words[k : k + run]) in shown for k in range(len(words) - run + 1))
+
+
+def _clip(parts: Sequence[str], budget: int) -> List[str]:
+    """The longest prefix of the parts' text, in whole words, whose joined text fits ``budget``.
+
+    The last resort when selection cannot get under the budget, which can happen when the budget is smaller than a
+    section or a turn's label and a few words. May leave every part empty.
+    """
+    words = [
+        (index, match.end()) for index, part in enumerate(parts) for match in _WORD.finditer(part)
+    ]
+
+    def prefix(count: int) -> List[str]:
+        out = [""] * len(parts)
+        if count:
+            last, end = words[count - 1]
+            out[:last] = parts[:last]
+            out[last] = parts[last][:end]
+        return out
+
+    low, high = 0, len(words)
+    while low < high:  # low always fits: no words is the empty text
+        mid = (low + high + 1) // 2
+        if count_tokens(_join(prefix(mid))) <= budget:
+            low = mid
+        else:
+            high = mid - 1
+    return prefix(low)
+
+
 def storage_target(db: str) -> Union[str, Path]:
     """What ``Memory`` should open for a ``--db`` value: a Postgres URL as it is, or a SQLite path whose folder exists."""
     if is_postgres_url(db):
@@ -420,11 +466,12 @@ class Memory:
         budget: Default token budget for :meth:`search`.
         relevance: Default relevance for :meth:`search`: ``"lexical"`` (no model), ``"semantic"`` (LLMSlim's optional
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
-        tz: Time zone for the session dates shown to the model. Defaults to UTC.
+        tz: Time zone for the turn dates shown to the model. Defaults to UTC.
         stamp_format: strftime format of those dates. The default reads like 2026-10-17 (Sat) 14:05.
-        date_format: strftime format of the shorter date on the other kept turns of a session when a long history is
-            selected from (the first kept turn of each session shows ``stamp_format``). The default reads like
-            2026-10-17. Pass ``stamp_format`` again to show the full stamp on every turn.
+        date_format: strftime format of the shorter date shown, when a long history is selected from, on a kept turn
+            whose time is the one shown last in its session (the first kept turn of a session, and a turn whose time
+            differs, show ``stamp_format``). The default reads like 2026-10-17. Pass ``stamp_format`` again to show
+            the full stamp on every turn.
         clock: Returns "now" for turns added without a timestamp. For tests.
         standing_requests: When the history does not fit and the question asks for help or is not a plain lookup of
             a past fact, show the user's earlier explicit standing requests ("Always ...", "From now on ...", "I'd
@@ -628,7 +675,9 @@ class Memory:
         items = self.store.list(Scope(user_id, agent_id, run_id), **self._window(since, until))
         sessions = self._sessions(items)
         documents = [self._render(session) for session in sessions]
-        history_tokens = sum(_document_tokens(document) for document in documents)
+        # Counted as joined, separators included: per-session counts can add up to less than the text they make.
+        history = _join(documents)
+        history_tokens = _document_tokens(history) if history else 0
         requests: Tuple[RecalledTurn, ...] = ()
         liked: Tuple[RecalledTurn, ...] = ()
         disputed: Tuple[RecalledTurn, ...] = ()
@@ -636,9 +685,9 @@ class Memory:
             turns: List[RecalledTurn] = []
             for session, part in zip(sessions, documents):
                 turns.extend(self._recalled(session, part, query))
-            text = "\n\n".join(part for part in documents if part)
+            text = history
             kept = documents
-            tokens = count_tokens(text) if text else 0
+            tokens = history_tokens
         else:
             scorer = resolve_relevance(relevance)
             kind = route(query)
@@ -669,7 +718,22 @@ class Memory:
                 RecalledTurn(item, round(lexical_relevance(query, item.content), 4), partial)
                 for item, partial in _turns.as_items(units, recalled)
             ]
-            text = "\n\n".join(part for part in [prefix, *kept] if part)
+            text = _join([prefix, *kept])
+            if (
+                tokens > budget
+            ):  # the last resort: the longest prefix of whole words within the budget
+                prefix, *kept = _clip([prefix, *kept], budget)
+                text = _join([prefix, *kept])
+                tokens = count_tokens(text) if text else 0
+                turns = [
+                    turn
+                    for session, part in zip(sessions, kept)
+                    for turn in self._recalled(session, part, query)
+                ]
+                requests, liked, disputed = (
+                    tuple(t for t in group if _still_shown(t.item.content, prefix))
+                    for group in (requests, liked, disputed)
+                )
         return MemoryContext(
             query=query,
             text=text,
@@ -706,9 +770,8 @@ class Memory:
         return sorted(grouped.values(), key=lambda turns: (turns[0].created_at, turns[0].seq))
 
     def _render(self, session: Sequence[MemoryItem]) -> str:
-        # Every turn carries the session's stamp, so LLMSlim shows it once as the session's header.
-        stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
-        return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
+        # Every turn carries its own stamp (a session whose turns share one renders as before).
+        return "\n".join(f"[{self._stamp(item)}] {item.role}: {item.content}" for item in session)
 
     def _stamp(self, item: MemoryItem) -> str:
         return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
@@ -758,9 +821,10 @@ class Memory:
                 shown.add(key)
             line = f"- [{self._stamp(item)}] {said}"
             cost = count_tokens(line)
-            # The best match always gets in if it takes at most half of the room, so a small budget does not lose it
-            # to the share; the others must fit within the share.
-            if used + cost > (max(cap, room // 2) if not chosen else cap):
+            # The best match always gets in if it takes at most a quarter of the room, so a small budget does not
+            # lose it to the share; the others must fit within the share. (A quarter, not half: at a budget of a
+            # hundred tokens, a section line of half of it left no room for the turns that answer the question.)
+            if used + cost > (max(cap, room // _SECTION_FIRST_ROOM) if not chosen else cap):
                 continue
             chosen.append((item, line, said))
             used += cost

@@ -93,7 +93,7 @@ class RecalledTurn:
 
     ``partial`` is true when the turn was too long to keep whole and only its most relevant sentences were kept.
     ``score`` is a bounded lexical overlap between the query and the turn (0 to 1), for ordering and display; the
-    selection itself is LLMSlim's query-focused ranking over whole sessions.
+    selection itself is LLMSlim's query-focused ranking of every session's turns.
     """
 
     item: MemoryItem
@@ -105,8 +105,8 @@ class RecalledTurn:
 class MemoryContext:
     """What :meth:`llmslim.memory.Memory.search` returns: the text to put in front of the model, and what is in it.
 
-    ``text`` holds the kept turns of each session under the session's date stamp, oldest session first, in the
-    ``[date] role: content`` layout LLMSlim's benchmarks used. Treat it as untrusted context: it repeats what users,
+    ``text`` holds the kept turns of each session, oldest session first, in the ``[date] role: content`` layout
+    LLMSlim's benchmarks used. Each turn shows its own time; a date every turn of a session shares is shown once. Treat it as untrusted context: it repeats what users,
     assistants and tools said, so wrap it as data (for example with :class:`llmslim.ContextEnvelope`), never as
     instructions.
     """

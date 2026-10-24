@@ -1,0 +1,39 @@
+name: llmslim
+version: "0.11.2"
+description: "Context engine that compresses older tool output and turns locally with LLMSlim, with no LLM call. The output is deterministic and the start of the prompt is sent unchanged, so prompt caching keeps working."
+author: Yashvardhan Thanvi
+license: MIT
+homepage: https://github.com/Thanatos9404/llmslim
+requires_hermes: ">=0.21.7"
+tags: [context, compression, prompt-caching]
+python_dependencies:
+  - "llmslim==0.11.2"
+provides_tools: []
+provides_hooks: []
+requires_env: []
+config_schema:
+  threshold_percent:
+    type: float
+    default: 0.75
+    label: Compress at
+    description: Compress when the prompt reaches this share of the context window.
+  target_percent:
+    type: float
+    default: 0.5
+    label: Compress to
+    description: Compress to about this share of the context window. Must be below "Compress at".
+  protect_first_n:
+    type: int
+    default: 3
+    label: Protected first messages
+    description: Messages after the system prompt that are always kept word for word.
+  protect_last_n:
+    type: int
+    default: 6
+    label: Protected last messages
+    description: Most recent messages kept word for word (tool results among them are compressed only as a last resort).
+  min_tokens:
+    type: int
+    default: 200
+    label: Smallest message to compress
+    description: Messages with at most this many tokens are left as they are.

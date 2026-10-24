@@ -996,3 +996,59 @@ def test_small_summaries_stay_within_tiny_budgets(memory, budget):
     assert context.tokens <= budget * 1.02
     again = memory.search("Summarize the garden plan we discussed", user_id="u1", budget=budget)
     assert again.text == context.text
+
+
+# ---------------------------------------------------------------- merged from main (0.11.2): own times, strict budget
+
+
+def test_a_later_turn_shows_its_own_time_when_it_differs(memory):
+    filler(memory, days=30)
+    day = T0 + timedelta(days=40)
+    memory.add(
+        "We use pnpm in this repo, never npm.", user_id="u1", timestamp=day + timedelta(hours=1)
+    )
+    memory.add("Deploys go out from main only.", user_id="u1", timestamp=day + timedelta(hours=7))
+    memory.add("Deploy previews go to Vercel.", user_id="u1", timestamp=day + timedelta(hours=7))
+    context = memory.search("pnpm, deploys from main, deploy previews", user_id="u1", budget=400)
+    assert context.compressed
+    assert "[2026-04-11 (Sat) 10:30] user: We use pnpm in this repo, never npm." in context.text
+    assert "[2026-04-11 (Sat) 16:30] user: Deploys go out from main only." in context.text
+    assert (
+        "[2026-04-11] user: Deploy previews go to Vercel." in context.text
+    )  # the time shown just above
+    whole = memory.search("pnpm", user_id="u1", budget=100_000)
+    assert (
+        not whole.compressed
+        and "[2026-04-11 (Sat) 16:30] user: Deploy previews go to Vercel." in whole.text
+    )
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_random_histories_with_sections_never_exceed_the_budget(seed):
+    rng = random.Random(500 + seed)
+    memory = Memory(clock=clock)
+    said = [
+        "Always include the cost when I ask about trips.",
+        "I prefer short answers with the code first.",
+        "I have never been to Iceland.",
+        "I went to Iceland in 2019 with my sister.",
+    ]
+    for _ in range(rng.randint(10, 60)):
+        text = rng.choice(said) if rng.random() < 0.3 else _random_text(rng, 3, 40)
+        memory.add(
+            [
+                {"role": "user", "content": text},
+                {"role": "assistant", "content": _random_text(rng, 5, 120)},
+            ],
+            user_id="u1",
+            timestamp=T0 + timedelta(days=rng.randint(0, 20), minutes=rng.randint(0, 600)),
+        )
+    for question in (
+        "Can you plan a trip for me?",
+        "Have I ever been to Iceland?",
+        "Summarize what we discussed",
+        "What is my " + rng.choice(WORDS) + "?",
+    ):
+        for budget in list(range(1, 120, 7)) + [150, 300, 700]:
+            context = memory.search(question, user_id="u1", budget=budget)
+            assert count_tokens(str(context)) == context.tokens <= budget, (question, budget)

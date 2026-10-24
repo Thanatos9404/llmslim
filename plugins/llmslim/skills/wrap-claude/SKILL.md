@@ -1,13 +1,14 @@
 ---
+name: wrap-claude
 description: Set up llmslim wrap claude, which runs Claude Code through a local proxy that shortens long test logs, build output and search results the first time the model sees them and resends the same bytes on every later turn.
 disable-model-invocation: true
-allowed-tools: Bash(llmslim proxy --help), Bash(uvx --from llmslim[proxy] llmslim proxy --help)
+allowed-tools: Bash(llmslim proxy --help), Bash(uvx --from llmslim[proxy]==0.11.2 llmslim proxy --help)
 ---
 
 Help the user start Claude Code through the LLMSlim proxy. Work through these steps and keep the explanation short.
 
 1. Check whether the proxy is installed by running `llmslim proxy --help`. If that fails, try
-   `uvx --from "llmslim[proxy]" llmslim proxy --help`.
+   `uvx --from "llmslim[proxy]==0.11.2" llmslim proxy --help`.
 2. If neither works, tell the user to install it once, with either command (Python 3.9 or newer):
 
    ```bash
@@ -25,7 +26,7 @@ Help the user start Claude Code through the LLMSlim proxy. Work through these st
 
    Anything after `--` goes to Claude Code, for example `llmslim wrap claude -- --continue` or
    `llmslim wrap claude -- -p "Run the tests and fix what fails"`. Without a permanent install,
-   `uvx --from "llmslim[proxy]" llmslim wrap claude` works the same way.
+   `uvx --from "llmslim[proxy]==0.11.2" llmslim wrap claude` works the same way.
 4. Tell them what it changes, in one or two sentences:
    - Output from Bash, PowerShell, Grep, Glob, WebFetch, WebSearch and Monitor that is longer than 1,500 tokens is
      shortened once. Errors, failures and the lines related to the command are kept, and repeated lines collapse into

@@ -234,8 +234,9 @@ CHAINED_ROUNDS = (
 
 
 def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
-    """(stamp, speaker, line) per turn when the block reads as a transcript: at least two turns, two speakers, and
-    nearly every line starting with a speaker. A line without one continues the turn above it. None otherwise."""
+    """(stamp, speaker, line) per turn when the block reads as a transcript: at least two turns, two speakers (or one
+    speaker whose every turn is stamped, like a memory session of notes), and nearly every line starting with a
+    speaker. A line without one continues the turn above it. None otherwise."""
     turns: List[List] = []
     for raw in lines:
         line = raw.strip()
@@ -246,7 +247,10 @@ def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str,
             turns[-1][2] += " " + line
         else:
             return None
-    if len(turns) < 2 or len({t[1] for t in turns}) < 2 or len(turns) < 0.8 * len(lines):
+    one_speaker = len({t[1] for t in turns}) < 2
+    if len(turns) < 2 or len(turns) < 0.8 * len(lines):
+        return None
+    if one_speaker and not all(t[0] for t in turns):
         return None
     return [(t[0], t[1], t[2]) for t in turns]
 
@@ -962,10 +966,12 @@ def focus_lines(text: str, budget: int, query: Optional[str] = None) -> Tuple[st
             if k in collapsed:
                 out.append(f"... [{collapsed[k] - 2} similar lines]")
         elif k in hidden:
-            continue
+            continue  # counted with the first line of its run
         else:
             if line.strip():
                 gap += 1
+            if k in collapsed:
+                gap += collapsed[k] - 2  # a run omitted from its first line is omitted whole
     if gap:
         out.append(f"... [{gap} lines omitted]")
     return "\n".join(out), n, len(keep)

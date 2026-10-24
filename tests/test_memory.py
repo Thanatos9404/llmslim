@@ -257,6 +257,15 @@ def test_search_stays_within_a_budget_the_gap_marker_used_to_overrun():
     assert "--runInBand" in context.text and "We deploy from main only." in context.text
 
 
+def test_a_session_of_notes_keeps_one_note_per_line_under_one_date():
+    context = notes_in_one_session().search(QUESTION, user_id="demo", budget=70)
+    assert context.compressed
+    header, *lines = context.text.split("\n")
+    assert header == "[2026-10-24 (Sat) 07:43]" and len(lines) >= 2
+    assert all(line.startswith("user: ") or line == "..." for line in lines)
+    assert "user: Run the tests with `pnpm test -- --runInBand`" in context.text
+
+
 def test_search_clips_what_selection_cannot_fit(monkeypatch):
     import llmslim.pipelines as pipelines
 

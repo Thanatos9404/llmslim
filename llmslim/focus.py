@@ -228,8 +228,9 @@ CHAINED_ROUNDS = (
 
 
 def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str, str]]]:
-    """(stamp, speaker, line) per turn when the block reads as a transcript: at least two turns, two speakers, and
-    nearly every line starting with a speaker. A line without one continues the turn above it. None otherwise."""
+    """(stamp, speaker, line) per turn when the block reads as a transcript: at least two turns, two speakers (or one
+    speaker whose every turn is stamped, like a memory session of notes), and nearly every line starting with a
+    speaker. A line without one continues the turn above it. None otherwise."""
     turns: List[List] = []
     for raw in lines:
         line = raw.strip()
@@ -240,7 +241,10 @@ def _transcript(lines: Sequence[str]) -> Optional[List[Tuple[Optional[str], str,
             turns[-1][2] += " " + line
         else:
             return None
-    if len(turns) < 2 or len({t[1] for t in turns}) < 2 or len(turns) < 0.8 * len(lines):
+    one_speaker = len({t[1] for t in turns}) < 2
+    if len(turns) < 2 or len(turns) < 0.8 * len(lines):
+        return None
+    if one_speaker and not all(t[0] for t in turns):
         return None
     return [(t[0], t[1], t[2]) for t in turns]
 

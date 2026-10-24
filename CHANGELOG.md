@@ -47,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `history_tokens` counts the history as one text, with the blank lines between sessions, so a history that fits
     is returned whole only when it fits as joined.
   - `recall` says when no stored message fits the budget, instead of "No stored memories yet."
+- **A memory session with one speaker keeps one turn per line.** Notes stored with the MCP `remember` tool are all
+  `user` turns, and selection read a block as a transcript only with two speakers. Such a session was flattened into
+  one paragraph: its date was repeated on every turn and kept turns were joined with spaces. A block with one speaker
+  now reads as a transcript when every turn is stamped, so the date is shown once and each turn stays on its line.
+  Text with two speakers is selected as before.
 
 ### Documentation
 - **Corrected figures from the 0.11.1 notes**, found by checking every published claim against the raw runs:

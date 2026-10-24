@@ -18,6 +18,7 @@ Every pattern is ordinary English a user would write to any assistant; none is k
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 OVERVIEW, LOOKUP, ADVICE, OTHER = "overview", "lookup", "advice", "other"
 
@@ -92,6 +93,13 @@ def ordering(query: str) -> bool:
     return bool(_ORDERING.search(" ".join(query.split())))
 
 
+def history_check(query: str) -> bool:
+    """True for a yes-or-no question about the user's own past ("Have I ever ...?", "Did I ... before?", "Have I
+    completed any ...?"), where statements that disagree in polarity ("I have never ..." against "I did ...") bear
+    directly on the answer."""
+    return bool(_HISTORY.search(" ".join(query.split())))
+
+
 def route(query: str) -> str:
     """The kind of question (``overview``, ``lookup``, ``advice`` or ``other``); see the module docstring."""
     text = " ".join(query.split())
@@ -128,3 +136,25 @@ PREFERENCE = re.compile(
     r"|\brather than\b",
     re.IGNORECASE,
 )
+# The same words asked rather than stated: "should I prioritize ...?", "how can I prioritize ...?", "when might I
+# prefer ...?", "what do I usually ...?". A sentence whose only match is one of these asks for advice and states no
+# preference.
+ASKED_PREFERENCE = re.compile(
+    r"\b(?:should|would|could|can|do|does|did|will|shall|must|might)\s+(?:i|we)\s+"
+    r"(?:(?:really|still|also|even|just|actually)\s+)?(?:prefer|favou?r|prioriti[sz]e|value|lean|like|love|enjoy|"
+    r"usually|typically|normally|generally|tend|always|avoid|hate|dislike)\b",
+    re.IGNORECASE,
+)
+
+
+def states_preference(sentence: str) -> Optional[re.Match]:
+    """The match of ``PREFERENCE`` that states a preference in ``sentence``, or None when there is none or every
+    match is asked rather than stated (see ``ASKED_PREFERENCE``)."""
+    found = PREFERENCE.search(sentence)
+    if found is None or not ASKED_PREFERENCE.search(sentence):
+        return found
+    asked = [(m.start(), m.end()) for m in ASKED_PREFERENCE.finditer(sentence)]
+    for match in PREFERENCE.finditer(sentence):
+        if not any(start <= match.start() < end for start, end in asked):
+            return match
+    return None

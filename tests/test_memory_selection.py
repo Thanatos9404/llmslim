@@ -756,3 +756,208 @@ def test_section_lines_are_single_lines(memory):
     for section in sections:
         lines = section.split("\n")
         assert all(line.startswith("- [") for line in lines[1:]), lines
+
+
+# ---------------------------------------------------------------- statements that may conflict, section hygiene
+
+CONFLICT_HEADER = "Statements the user made on this that may conflict (in date order):"
+
+
+def conflict_lines(context):
+    """The statements shown in the conflicts section (without their bullet and stamp), or None without one."""
+    if not context.text.startswith(CONFLICT_HEADER):
+        return None
+    section = context.text.split("\n\n", 1)[0].split("\n")
+    stamp = re.compile(r"^- \[\d{4}-\d{2}-\d{2} \(\w{3}\) \d{2}:\d{2}\] \S")
+    assert all(stamp.match(line) for line in section[1:]), section
+    return [line.split("] ", 1)[1] for line in section[1:]]
+
+
+def skydiving(memory, affirm_day=4, deny_day=12):
+    say(
+        memory,
+        affirm_day,
+        "I went skydiving over the Dubai desert with my cousin last spring.",
+        "Wow!",
+        minutes=5,
+    )
+    if deny_day is not None:
+        say(
+            memory,
+            deny_day,
+            "I have never gone skydiving, heights scare me too much.",
+            "Understood.",
+            minutes=5,
+        )
+
+
+def test_history_checks_show_statements_that_conflict(memory):
+    filler(memory, days=30)
+    skydiving(memory)
+    context = memory.search("Have I ever gone skydiving?", user_id="u1", budget=800)
+    lines = conflict_lines(context)
+    assert lines and len(lines) == 2, context.text[:400]
+    assert "Dubai desert" in lines[0] and "never gone skydiving" in lines[1]  # date order
+    assert len(context.conflicts) == 2 and context.to_dict()["conflicts"]
+    assert {t.item.content[:10] for t in context.conflicts} == {"I went sky", "I have nev"}
+    assert context.tokens <= 800 * 1.02
+    again = memory.search("Have I ever gone skydiving?", user_id="u1", budget=800)
+    assert again.text == context.text
+
+
+def test_no_conflicts_section_when_statements_agree_or_for_other_questions(memory):
+    filler(memory, days=30)
+    skydiving(memory, deny_day=None)
+    say(memory, 12, "Skydiving again in Dubai is on my list for next year.", "Fun!", minutes=5)
+    agree = memory.search("Have I ever gone skydiving?", user_id="u1", budget=800)
+    assert conflict_lines(agree) is None and agree.conflicts == ()
+    say(
+        memory,
+        20,
+        "I have never gone skydiving, heights scare me too much.",
+        "Understood.",
+        minutes=5,
+    )
+    for question in ("Where did I go skydiving?", "Can you suggest a skydiving school?"):
+        other = memory.search(question, user_id="u1", budget=800)
+        assert CONFLICT_HEADER not in other.text and other.conflicts == ()
+    off = memory.search("Have I ever gone skydiving?", user_id="u1", budget=800, conflicts=False)
+    assert CONFLICT_HEADER not in off.text and off.conflicts == ()
+    assert Memory(conflicts=False).conflicts is False
+
+
+def test_questions_and_requests_are_not_statements():
+    from llmslim.memory._core import _NEGATION, _statements_in
+
+    said = (
+        "Did I ever tell you about my trip? I have never been to Iceland. "
+        "Never suggest flights when I ask about trains. "
+        "I took the night train to Pune, can you help me plan?"
+    )
+    kept = _statements_in(said)
+    assert "I have never been to Iceland." in kept
+    assert any(s.startswith("I took the night train") for s in kept)
+    assert not any(s.startswith(("Did I ever", "Never suggest")) for s in kept)
+    for denial in (
+        "I've never tried it.",
+        "I haven't started yet.",
+        "She has not called.",
+        "Not yet.",
+    ):
+        assert _NEGATION.search(denial), denial
+    for other in (
+        "I tried it but didn't like it.",
+        "I went there twice.",
+        "Nevertheless, it worked.",
+    ):
+        assert not _NEGATION.search(other), other
+
+
+@pytest.mark.parametrize("budget", [50, 100, 300])
+def test_conflicts_section_stays_within_small_budgets(memory, budget):
+    filler(memory, days=20)
+    skydiving(memory)
+    context = memory.search("Have I ever gone skydiving?", user_id="u1", budget=budget)
+    assert context.tokens <= budget * 1.02
+    lines = conflict_lines(context)
+    assert lines is None or len(lines) >= 2  # both sides, or no section
+
+
+def test_conflicts_section_handles_unicode_and_long_statements(memory):
+    filler(memory, days=20)
+    tail = " ".join(f"and then detail {k} about the weather" for k in range(80))
+    say(memory, 3, f"Я ездил в Токио, I went to Tokyo 東京 in 2023 😊 {tail}", "Nice.", minutes=5)
+    say(memory, 9, f"I have never been to Tokyo 東京, {tail}", "Okay.", minutes=5)
+    context = memory.search("Have I ever been to Tokyo?", user_id="u1", budget=1200)
+    assert context.tokens <= 1200 * 1.02
+    lines = conflict_lines(context)
+    assert lines, context.text[:300]
+    assert all(count_tokens(line) <= 100 for line in lines)
+    assert any("never been to Tokyo" in line for line in lines)
+    assert any("東京" in line for line in lines)
+
+
+def test_asked_preferences_are_not_preferences():
+    from llmslim.memory._routing import states_preference
+
+    for asked in (
+        "Should I prioritize battery life or the camera?",
+        "So how can I prioritize my tasks better?",
+        "When might I prefer precision over recall?",
+    ):
+        assert PREFERENCE.search(asked) and states_preference(asked) is None, asked
+    for stated in (
+        "I prefer tea in the evening, should I prioritize sleep over study?",
+        "Considering my priorities for photography, which phone fits?",
+        "I usually run at 6 AM.",
+    ):
+        assert states_preference(stated), stated
+    assert states_preference("The function returns a list.") is None
+
+
+def test_preferences_section_skips_questions_and_shows_a_repeated_statement_once(memory):
+    filler(memory, days=30)
+    say(memory, 2, "Should I prioritize spicy dishes for the dinner party?", "Maybe.", minutes=5)
+    say(memory, 3, "I prefer vegetarian meals that take under 20 minutes.", "Got it.", minutes=5)
+    say(memory, 8, "I prefer vegetarian meals that take under 20 minutes.", "Noted.", minutes=5)
+    context = memory.search("Can you suggest a quick dinner for tonight?", user_id="u1", budget=900)
+    section = [p for p in context.text.split("\n\n") if p.startswith("Preferences the user stated")]
+    assert section
+    assert section[0].count("vegetarian meals that take under 20 minutes") == 1
+    assert "Should I prioritize spicy" not in section[0]
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_random_history_checks_respect_budget_determinism_and_sections(seed):
+    rng = random.Random(1000 + seed)
+    memory = Memory(clock=clock)
+    topics = ["skydiving", "pottery", "Iceland", "marathons", "Rust", "sourdough"]
+    for _ in range(rng.randint(5, 80)):
+        topic = rng.choice(topics)
+        roll = rng.random()
+        if roll < 0.2:
+            said = f"I have never tried {topic}, {_random_text(rng, 2, 12).lower()}"
+        elif roll < 0.4:
+            said = f"I did {topic} last year. {_random_text(rng)}"
+        else:
+            said = _random_text(rng)
+        memory.add(
+            [
+                {"role": "user", "content": said},
+                {"role": "assistant", "content": _random_text(rng, 10, 200)},
+            ],
+            user_id="u1",
+            timestamp=T0 + timedelta(days=rng.randint(0, 30), seconds=rng.randint(0, 5)),
+        )
+    for topic in topics[:3]:
+        question = f"Have I ever done {topic}?"
+        for budget in (50, 150, 600, 2500):
+            first = memory.search(question, user_id="u1", budget=budget)
+            assert first.text == memory.search(question, user_id="u1", budget=budget).text
+            assert first.tokens <= budget * 1.02 or not first.compressed
+            assert first.tokens == count_tokens(first.text)
+            lines = conflict_lines(first)
+            if lines is None:
+                assert first.conflicts == ()
+                continue
+            assert len(lines) >= 2 and len(lines) == len(first.conflicts)
+            stamps = re.findall(
+                r"^- \[(\d{4}-\d{2}-\d{2} \(\w{3}\) \d{2}:\d{2})\]", first.text, re.M
+            )
+            assert stamps == sorted(stamps)
+            assert all(t.item.role == "user" for t in first.conflicts)
+            rest = first.text.split("\n\n", 1)[1] if "\n\n" in first.text else ""
+            found, before = blocks(rest)
+            assert before == ""
+
+
+def test_code_and_markup_lines_are_not_statements():
+    from llmslim.memory._core import _statements_in
+
+    said = (
+        "I have never used NTP.\n// Synchronize the server time with an NTP service\n# Use Alpine\n"
+        "```js\nconst synced = true; // I did sync it\n```\n$ ntpdate pool.ntp.org\n"
+        "I went to Pune last May. <div>synced</div>"
+    )
+    assert _statements_in(said) == ("I have never used NTP.", "I went to Pune last May.")
+    assert _statements_in("```\nonly code\n```") == ()

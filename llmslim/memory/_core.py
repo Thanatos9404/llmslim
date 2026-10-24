@@ -10,12 +10,22 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
-from ..focus import Unit, rank
+from ..focus import Unit, _query_terms, _stem, rank
 from ..planning.scoring import lexical_relevance
 from ..rerank import resolve_relevance
 from ..tokens import count_tokens
 from . import _turns
-from ._routing import ADVICE, OTHER, OVERVIEW, PREFERENCE, ordering, route
+from ._routing import (
+    ADVICE,
+    LOOKUP,
+    OTHER,
+    OVERVIEW,
+    PREFERENCE,
+    history_check,
+    ordering,
+    route,
+    states_preference,
+)
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
 from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
@@ -92,6 +102,28 @@ _COVERAGE_MODES = ("auto", "always", "never")
 # The routes on which each section is shown (see llmslim.memory._routing).
 _REQUEST_ROUTES = (ADVICE, OTHER)
 _PREFERENCE_ROUTES = (ADVICE,)
+_SKIP_ASKED = (
+    True  # a preference word only in a question ("should I prioritize ...?") states no preference
+)
+_SECTION_DEDUP = (
+    True  # a statement shown once in a section is not shown again (the same sentence said twice)
+)
+# Statements that may conflict: for a yes-or-no question about the user's past ("Have I ever ...?"), the user's
+# statements that bear on it most, when some say it happened and some deny it ("I have never ..."), shown together
+# in date order in their own section, so the disagreement is in plain view and not lost among other turns.
+_CONFLICT_HEADER = "Statements the user made on this that may conflict (in date order):"
+_CONFLICT_ROUTES = (LOOKUP,)  # the routes on which the section can appear (history checks only)
+_CONFLICT_POOL = 6  # the strongest statements read for a conflict ...
+_CONFLICT_RELEVANCE = 0.5  # ... among those scoring at least this share of the best one
+_CONFLICT_PER_SIDE = 2  # at most this many statements that deny it, and as many that affirm it
+_CONFLICT_SHARE = 0.08  # most of the budget the section may take
+_CONFLICT_TOKENS = 80  # a longer statement is shown around what made it relevant, cut to about this
+# A denial of past experience in a statement: "never", "haven't", "hasn't", "not yet", "no experience". ("didn't" is
+# left out: "I tried it but didn't like it" affirms the experience.)
+_NEGATION = re.compile(
+    r"\b(?:never|haven'?t|have not|hasn'?t|has not|hadn'?t|had not|not yet|no prior|no experience)\b",
+    re.IGNORECASE,
+)
 # A reply's opening pleasantry ("Great question!", "Absolutely, ...", "I'm glad that helped.") says nothing about its
 # content; an overview skips it and keeps the sentence after it.
 _PLEASANTRY = re.compile(
@@ -205,13 +237,48 @@ def _requests_in(content: str) -> str:
 def _preferences_in(content: str) -> str:
     """The sentences of a user turn that state a preference (see ``_routing.PREFERENCE``) and are not requests,
     each shown around what states it and cut to about ``_PREFERENCE_TOKENS``; empty when there is none."""
+    find = states_preference if _SKIP_ASKED else PREFERENCE.search
     stated = [
         _around(s, m.start(), _PREFERENCE_TOKENS)
         for s in _sentences(content)
-        for m in [PREFERENCE.search(s)]
+        for m in [find(s)]
         if m and not _EXPLICIT.search(s)
     ]
     return " ".join(stated)
+
+
+# A question on its own ("Did I tell you about ...?", "What should I do?"): it asks, it does not state anything.
+_QUESTION = re.compile(
+    r"^\W*(?:what|which|when|where|who|whom|whose|why|how|can|could|would|should|will|shall|may|might|do|does|did|"
+    r"is|are|was|were|am|have|has|had)\b.*\?\W*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_WORD_SPAN = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z]+)?")
+# A line of code or markup pasted outside a fence: a comment, a heading, a shell or REPL prompt, a tag.
+_NOT_PROSE = re.compile(r"^\s*(?:#|//|/\*|\*/|--|>>>|\$ |<[A-Za-z/!])")
+
+
+@lru_cache(maxsize=1 << 14)
+def _statements_in(content: str) -> Tuple[str, ...]:
+    """The prose sentences of a user turn that state something, for the conflicts section: not code (fenced blocks,
+    or lines that open like a comment or a prompt), not questions on their own, and not standing requests (which
+    direct the assistant and say nothing about what happened)."""
+    return tuple(
+        s
+        for s in _sentences(_CODE_BLOCK.sub("\n", content))
+        if not _NOT_PROSE.match(s)
+        and not _QUESTION.match(s)
+        and not (_EXPLICIT.search(s) and _STANDING.search(s))
+    )
+
+
+def _focus_offset(sentence: str, query: str) -> int:
+    """Where in ``sentence`` the first word sharing a term with ``query`` starts (0 when none does)."""
+    wanted = set(_query_terms(query))
+    for match in _WORD_SPAN.finditer(sentence):
+        if _stem(match.group(0).lower()) in wanted:
+            return match.start()
+    return 0
 
 
 @lru_cache(maxsize=64)
@@ -367,7 +434,13 @@ class Memory:
             for every question, ``"never"`` never.
         preferences: When the history does not fit and the question asks for advice, a recommendation or help, show
             the user's earlier statements of preference ("I prefer ...", "I'd rather ...", "I usually ...", "I don't
-            like ...") that best match it in their own section at the top. Only user turns qualify.
+            like ...") that best match it in their own section at the top. Only user turns qualify. A preference word
+            that is only asked about ("should I prioritize ...?") is not a stated preference.
+        conflicts: When the history does not fit and the question asks whether something happened ("Have I ever
+            ...?", "Did I ... before?"), and among the user's statements that bear on it most some deny it ("I have
+            never ...") and some do not, show both kinds together in date order in their own section at the top, so
+            the disagreement is in plain view. Only user turns qualify. Detection is a fixed pattern, with no model
+            call.
 
     Example:
         >>> from llmslim.memory import Memory
@@ -390,6 +463,7 @@ class Memory:
         standing_requests: bool = True,
         coverage: str = "auto",
         preferences: bool = True,
+        conflicts: bool = True,
     ) -> None:
         if budget <= 0:
             raise ValueError("budget must be a positive number of tokens")
@@ -412,6 +486,7 @@ class Memory:
         self.standing_requests = standing_requests
         self.coverage = coverage
         self.preferences = preferences
+        self.conflicts = conflicts
 
     # ------------------------------------------------------------------ writes
 
@@ -520,16 +595,19 @@ class Memory:
         standing_requests: Optional[bool] = None,
         coverage: Optional[str] = None,
         preferences: Optional[bool] = None,
+        conflicts: Optional[bool] = None,
     ) -> MemoryContext:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
         If the whole history fits, all of it is returned. Otherwise the stored turns are ranked against the question
         and the budget is filled with the user's turns (a reserved share, whole where they fit) and the most relevant
         parts of the replies, each kept turn rendered as one ``[date] role: text`` block, in date order. The kind of
-        question decides the rest (see ``llmslim.memory._routing``): a plain lookup gets the whole budget; a request
-        for help also gets the standing requests and stated preferences that bear on it, in their own sections at the
-        top; an overview question is answered from the opening of many turns (see ``standing_requests``,
-        ``coverage`` and ``preferences`` on :class:`Memory`, which these arguments override for one call).
+        question decides the rest (see ``llmslim.memory._routing``): a plain lookup gets the whole budget, except
+        that a question about whether something happened also gets the user's statements on it that may conflict; a
+        request for help also gets the standing requests and stated preferences that bear on it, in their own
+        sections at the top; an overview question is answered from the opening of many turns (see
+        ``standing_requests``, ``coverage``, ``preferences`` and ``conflicts`` on :class:`Memory`, which these
+        arguments override for one call).
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -540,6 +618,7 @@ class Memory:
         standing = self.standing_requests if standing_requests is None else standing_requests
         coverage = self.coverage if coverage is None else coverage
         stated = self.preferences if preferences is None else preferences
+        flagged = self.conflicts if conflicts is None else conflicts
         if coverage not in _COVERAGE_MODES:
             raise ValueError(f"coverage must be one of {_COVERAGE_MODES}")
         started = time.perf_counter()
@@ -549,6 +628,7 @@ class Memory:
         history_tokens = sum(_document_tokens(document) for document in documents)
         requests: Tuple[RecalledTurn, ...] = ()
         liked: Tuple[RecalledTurn, ...] = ()
+        disputed: Tuple[RecalledTurn, ...] = ()
         if history_tokens <= budget:
             turns: List[RecalledTurn] = []
             for session, part in zip(sessions, documents):
@@ -570,6 +650,9 @@ class Memory:
                 lane, liked = self._preferences(
                     items, query, budget, scorer, {t.item.id for t in requests}, left
                 )
+                sections.append(lane)
+            if flagged and kind in _CONFLICT_ROUTES and history_check(query):
+                lane, disputed = self._conflicts(items, query, budget, scorer)
                 sections.append(lane)
             prefix = "\n\n".join(part for part in sections if part)
             room = budget - (count_tokens(prefix + "\n\n") if prefix else 0)
@@ -596,6 +679,7 @@ class Memory:
             elapsed_ms=round((time.perf_counter() - started) * 1000, 2),
             requests=requests,
             preferences=liked,
+            conflicts=disputed,
         )
 
     # ------------------------------------------------------------------ internals
@@ -659,10 +743,16 @@ class Memory:
         cap = min(int(budget * share), room)
         used = count_tokens(header)
         chosen: List[Tuple[MemoryItem, str, str]] = []
+        shown = set()
         for k in order:
             if len(chosen) >= limit:
                 break
             item, said = candidates[k]
+            if _SECTION_DEDUP:
+                key = _squash(said).casefold()
+                if key in shown:
+                    continue
+                shown.add(key)
             line = f"- [{self._stamp(item)}] {said}"
             cost = count_tokens(line)
             # The best match always gets in if it takes at most half of the room, so a small budget does not lose it
@@ -745,6 +835,81 @@ class Memory:
             _PREFERENCE_SHARE,
             _PREFERENCE_LIMIT,
             room,
+        )
+        return text, recalled
+
+    def _conflicts(
+        self,
+        items: Sequence[MemoryItem],
+        query: str,
+        budget: int,
+        scorer: Any,
+    ) -> Tuple[str, Tuple[RecalledTurn, ...]]:
+        """For a yes-or-no question about the user's past: the user's statements that bear on it most (the
+        ``_CONFLICT_POOL`` best, within ``_CONFLICT_RELEVANCE`` of the best one, ranked like the other sections), when
+        some of them deny it (see ``_NEGATION``) and some do not. Then at most ``_CONFLICT_PER_SIDE`` of each are shown
+        in date order, within ``_CONFLICT_SHARE`` of the budget; empty when they agree, or when one of each does not
+        fit."""
+        candidates = [
+            (item, said)
+            for item in items
+            if item.role == "user"
+            for said in _statements_in(item.content)
+        ]
+        if not candidates:
+            return "", ()
+        units = [
+            Unit(k, k, said, _turns.tokens_of(said), "", "\n")
+            for k, (_, said) in enumerate(candidates)
+        ]
+        scores = rank(units, query, scorer, candidates=_SECTION_RERANK)
+        order = sorted(
+            range(len(candidates)),
+            key=lambda k: (-scores[k], candidates[k][0].created_at, candidates[k][0].seq, k),
+        )
+        best = scores[order[0]]
+        if best <= 0:
+            return "", ()
+        pool = [k for k in order[:_CONFLICT_POOL] if scores[k] >= _CONFLICT_RELEVANCE * best]
+        denied = [k for k in pool if _NEGATION.search(candidates[k][1])]
+        affirmed = [k for k in pool if not _NEGATION.search(candidates[k][1])]
+        if not denied or not affirmed:
+            return "", ()
+        cap = int(budget * _CONFLICT_SHARE)
+        used = count_tokens(_CONFLICT_HEADER)
+        chosen: List[Tuple[MemoryItem, str, str]] = []
+        sides = set()
+        shown = set()
+        # The best of each side first: the pair may take up to a quarter of a small budget, so the disagreement is
+        # not lost to the share; any others must fit within the share.
+        rest = sorted(denied[1:_CONFLICT_PER_SIDE] + affirmed[1:_CONFLICT_PER_SIDE], key=pool.index)
+        for n, k in enumerate(sorted([denied[0], affirmed[0]], key=pool.index) + rest):
+            item, said = candidates[k]
+            key = _squash(said).casefold()
+            if key in shown:
+                continue
+            found = _NEGATION.search(said)
+            start = found.start() if found else _focus_offset(said, query)
+            text = _around(said, start, _CONFLICT_TOKENS)
+            line = f"- [{self._stamp(item)}] {text}"
+            cost = count_tokens(line)
+            if used + cost > (max(cap, budget // 4) if n < 2 else cap):
+                continue
+            shown.add(key)
+            sides.add(found is not None)
+            chosen.append((item, line, said))
+            used += cost
+        if len(sides) < 2:
+            return "", ()
+        chosen.sort(key=lambda c: (c[0].created_at, c[0].seq))
+        text = "\n".join([_CONFLICT_HEADER] + [line for _, line, _ in chosen])
+        recalled = tuple(
+            RecalledTurn(
+                item,
+                round(lexical_relevance(query, said), 4),
+                _squash(said) != _squash(item.content),
+            )
+            for item, _, said in chosen
         )
         return text, recalled
 

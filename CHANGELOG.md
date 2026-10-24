@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     compressed as one text, whose `[date] role: content` lines read as a log, so its newest lines won.
   - In both cases each kept turn is counted with the line break and `...` line it can add.
   - A history of several sessions with two speakers each selects exactly as before.
+- **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
+  from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
+  showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
 
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing

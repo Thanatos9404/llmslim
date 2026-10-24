@@ -1,35 +1,105 @@
 <div align="center">
 
-<a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 15 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j and Cartesia" width="100%">
-</a>
+# LLMSlim
 
-<br/><br/>
+**Long-term memory and context selection for AI agents and coding tools, with no LLM call.**
 
-[![PyPI Version](https://img.shields.io/pypi/v/llmslim.svg?style=for-the-badge&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
+LLMSlim stores what users and agents say word for word, then returns the parts that answer a question within a
+token budget you set. It runs as an MCP server, a Python library or a small HTTP server.
+
+[![PyPI Version](https://img.shields.io/pypi/v/llmslim.svg?style=flat-square&logo=pypi&logoColor=white&color=38bdf8)](https://pypi.org/project/llmslim/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/llmslim?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=ORANGE&left_text=downloads)](https://pepy.tech/projects/llmslim)
-[![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=for-the-badge&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
-[![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=for-the-badge&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
-[![Tests Passing](https://img.shields.io/badge/Tests-1648%20passed%20%2F%200%20failed-34d399?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
-[![Coverage](https://img.shields.io/badge/Branch%20Coverage-93.67%25-10b981?style=for-the-badge&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
-[![License](https://img.shields.io/badge/License-MIT-94a3b8?style=for-the-badge)](LICENSE)
-[![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=for-the-badge&logo=vercel&logoColor=white)](https://www.llmslim.app)
+[![MCP Registry: io.github.Thanatos9404/llmslim](https://img.shields.io/badge/MCP_Registry-io.github.Thanatos9404%2Fllmslim-0098FF?style=flat-square)](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Thanatos9404/llmslim)
+[![License](https://img.shields.io/badge/License-MIT-94a3b8?style=flat-square)](LICENSE)
 [![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/score.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 
-<br/>
+[**Examples**](examples/) • [**Documentation**](https://www.llmslim.app/docs) • [**Live Studio Playground**](https://www.llmslim.app) • [**Sarvam Integration**](https://www.llmslim.app/integrations/sarvam) • [**Benchmarks**](#-benchmarks--radical-transparency) • [**Changelog**](CHANGELOG.md)
 
-**The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.11.1, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+<img src="docs/assets/llmslim-memory-demo.svg" alt="A Python session: Memory('asha.db') holds 62 stored messages; after adding 'I moved to Pune last week for a new job.', search('Am I allergic to anything?', budget=50) returns only the peanut allergy turns, and search('Where did I move to?', budget=50) returns only the Pune message." width="760">
 
-<br/>
-
-[**Live Studio Playground**](https://www.llmslim.app) • [**Documentation**](https://www.llmslim.app/docs) • [**Sarvam Integration**](https://www.llmslim.app/integrations/sarvam) • [**Benchmarks**](#-benchmarks--radical-transparency) • [**Changelog**](CHANGELOG.md)
+<sub>A real Python session with llmslim 0.11.1 from PyPI, typed by a script and recorded with asciinema (<a href="docs/assets/demo/memory_session.py">script</a>, <a href="docs/assets/demo/memory-demo.cast">recording</a>).</sub>
 
 </div>
 
+## Use it in 30 seconds
+
+Each MCP setup below starts the same server, `llmslim mcp`, with [uv](https://docs.astral.sh/uv/) (Python 3.10 or
+newer). Memory goes to a local SQLite file, `~/.llmslim/memory.db`.
+
+**One click:**
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMSIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMSIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.11.1&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
+[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+
+| Tool | Run |
+| :--- | :--- |
+| Claude Code | `claude mcp add llmslim -- uvx --from "llmslim[mcp]" llmslim mcp` |
+| Claude Code plugin | `/plugin marketplace add Thanatos9404/llmslim`, then `/plugin install llmslim@llmslim` |
+| Codex | `codex mcp add llmslim -- uvx --from "llmslim[mcp]" llmslim mcp` |
+| GitHub Copilot CLI | `copilot mcp add llmslim -- uvx --from "llmslim[mcp]" llmslim mcp` |
+| Gemini CLI | `gemini extensions install https://github.com/Thanatos9404/llmslim` |
+| Hermes Agent | `hermes plugins install llmslim --enable`, then `hermes config set context.engine llmslim`: a context engine that compacts long conversations locally ([plugin](plugins/hermes/README.md)) |
+
+The first start downloads LLMSlim and its dependencies. If a client gives up waiting, run
+`uvx --from "llmslim[mcp]" llmslim mcp --help` once to fill uv's cache, then restart the client.
+
+**Python** (`pip install llmslim`, Python 3.9 or newer):
+
+```python
+from llmslim.memory import Memory
+
+mem = Memory("memory.db")  # a SQLite file; Memory("postgresql://...") with llmslim[postgres]
+mem.add([{"role": "user", "content": "I'm allergic to peanuts."}], user_id="asha")
+context = mem.search("Am I allergic to anything?", user_id="asha", budget=1500)
+print(context.text)  # put it in your prompt as data, not instructions
+```
+
+**TypeScript** (`npm install llmslim`, Node 18 or newer), against `llmslim serve` (`pip install "llmslim[server]"`):
+
+```ts
+import { LLMSlim } from "llmslim";
+
+const slim = new LLMSlim(); // http://127.0.0.1:8080 unless LLMSLIM_BASE_URL is set
+await slim.memories.add({ userId: "asha", messages: "I'm allergic to peanuts." });
+const context = await slim.memories.search({ userId: "asha", query: "Am I allergic to anything?", budget: 1500 });
+```
+
+Runnable examples, each with a test: [Claude Code memory](examples/claude-code-memory/),
+[LangChain agent](examples/langchain-agent-memory/), [Pydantic AI agent](examples/pydantic-ai-memory/),
+[big logs](examples/fit-context-big-logs/) and [TypeScript](examples/typescript-client/).
+
+If LLMSlim is useful, a star helps others find it. Feedback is welcome in [issues](https://github.com/Thanatos9404/llmslim/issues).
+
+## What it does
+
+- **Five MCP tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
+- **Stores messages word for word** in SQLite or Postgres. Nothing is summarized or extracted on the way in.
+- **Recalls within a token budget.** `recall` returns the stored messages that answer a question, under their dates
+  and whole where they fit, within the budget you set. `fit_context` shrinks a long log or document to a budget.
+- **Fixes the scope at server start.** The user and agent ids are set when the server starts, not by the model, so a
+  model steered by injected text can't read or delete another user's memory.
+- **Makes no LLM call.** By default, storing and recalling are plain code: no model, no embedding API, no API key.
+- **MIT licensed.** The library needs Python 3.9 or newer, the MCP server 3.10 or newer.
+
+Beyond memory, LLMSlim Core also compresses and plans prompts, chat history, retrieved documents and tool schemas
+into token budgets: see the sections below.
+
+### Why no LLM call
+
+Storing is a database write and recall is deterministic ranking code. So what comes back is what was said, not a
+model's rewrite of it, and the same history and question always give the same context, which makes recall easy to
+test. The memory server and `llmslim serve` make no network calls of their own. What does reach the network:
+installing from PyPI (including `uvx`'s first run of a version) and tiktoken downloading its tokenizer file once.
+
+The trade-off: the default lexical mode matches words, not meanings, so a question phrased differently from the
+stored message can miss it. `relevance="semantic"` adds an optional cross-encoder for that (`llmslim[semantic]`,
+which downloads the model the first time). See the [limits](docs/MEMORY.md#limits).
+
 ---
 
-## Try it in 60 seconds
+## Compress a prompt in 60 seconds
 
 **1. Install** LLMSlim Core from PyPI (Python 3.9+). Running it needs no API key, model, or network call:
 
@@ -73,11 +143,18 @@ reads `107 -> 72 tokens (32.7% fewer)`.
 
 **Next:** [Docs](https://www.llmslim.app/docs) • [Platform beta](https://www.llmslim.app/platform) • [Issues](https://github.com/Thanatos9404/llmslim/issues)
 
-If LLMSlim is useful, consider starring the repo or opening an issue with feedback.
-
 ---
 
 ## LLMSlim Core and LLMSlim Platform
+
+**The context layer for production AI agents.**
+*This repository is **LLMSlim Core** (v0.11.1, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+
+[![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=flat-square&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
+[![Tests Passing](https://img.shields.io/badge/Tests-1648%20passed%20%2F%200%20failed-34d399?style=flat-square&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
+[![Coverage](https://img.shields.io/badge/Branch%20Coverage-93.67%25-10b981?style=flat-square&logo=codecov&logoColor=white)](https://github.com/Thanatos9404/llmslim)
+[![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=flat-square&logo=vercel&logoColor=white)](https://www.llmslim.app)
+[![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=flat-square&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
@@ -143,6 +220,10 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 ---
 
 ## Startup programs
+
+<a href="https://www.llmslim.app">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 15 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j and Cartesia" width="100%">
+</a>
 
 LLMSlim is part of 15 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
@@ -604,6 +685,8 @@ claude mcp add llmslim -- llmslim mcp
 [![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
 
 In Gemini CLI, `gemini extensions install https://github.com/Thanatos9404/llmslim` adds the same server.
+In VS Code, the [LLMSlim Memory extension](plugins/vscode) adds it to VS Code's MCP support (coming soon to the VS Code
+Marketplace and Open VSX).
 
 [![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/card.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 

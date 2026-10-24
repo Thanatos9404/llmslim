@@ -1,0 +1,17 @@
+{
+  "name": "llmslim-typescript-client-example",
+  "private": true,
+  "type": "module",
+  "description": "Long-term memory from Node with the llmslim npm client against llmslim serve.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "llmslim": "0.1.0"
+  }
+}

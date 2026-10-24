@@ -9,10 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`... [N lines omitted]` counts every line of a collapsed run.** When a run of near-identical lines was omitted
+  from its first line on, the marker counted only that run's first and last lines: a 250-line run of passing tests
+  showed as `... [2 lines omitted]`. It now counts all 250. Only the number changes; which lines are kept does not.
+
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
   declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
+- **A VS Code extension, LLMSlim Memory, in `plugins/vscode`**, for the VS Code Marketplace and Open VSX. It adds the
+  pinned MCP server (`uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`) to VS Code's MCP support through
+  `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
+  file. It is not published yet and is not part of the PyPI package.
 
 ### Fixed
 - **`Memory.search` shows each turn's own time.** It stamped every turn of a session with the session's first turn's
@@ -51,6 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - pooled and test-run results now lead with the primary (default permission mode) measurement instead of a range
     across two modes;
   - interactive sessions through the proxy were not tested for their permission mode.
+- **A shorter first screen in the README**: what LLMSlim does in one line, setup commands for Claude Code, Codex,
+  Copilot CLI, Gemini CLI, Hermes Agent, Python and TypeScript, and a recorded session with llmslim 0.11.1 from PyPI
+  (`docs/assets/llmslim-memory-demo.svg`). Every earlier section is still there, below it.
+- **Runnable examples with tests** in `examples/`: Claude Code memory over MCP, LangChain and Pydantic AI agents with
+  memory, fitting a long log into a budget, and the TypeScript client against `llmslim serve`. They run offline with
+  fake or test models; `tests/test_examples.py` and the TypeScript client CI job run them.
 
 ## [0.11.1] - 2026-10-17
 

@@ -75,6 +75,11 @@ jobs:
         env:
           LLMSLIM_E2E_PYTHON: python
       - run: npm run build
+      - name: examples/typescript-client against the server, with the published npm package
+        working-directory: examples/typescript-client
+        run: |
+          npm ci
+          npm test
 
   postgres-store:
     name: Memory on Postgres

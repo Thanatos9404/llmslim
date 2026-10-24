@@ -138,6 +138,9 @@ _PLEASANTRY = re.compile(
 )
 _PLEASANTRY_MAX_WORDS = 25  # a longer opening sentence carries content even when it starts kindly
 _DIGEST_USER_SHARE = 0.5  # share of an overview's budget reserved for the openings of user turns
+# ... and in a summary below _OVERVIEW_DETAIL_MIN, which keeps no reply passage whole: what the replies said reaches
+# the summary only through their openings and outlines, so they get more of the room.
+_SMALL_DIGEST_USER_SHARE = 0.3
 _ORDER_USER_SHARE = (
     0.8  # the same for a question about the order or progression of what the user brought up
 )
@@ -918,7 +921,8 @@ class Memory:
     ) -> _turns.Selection:
         """For an overview question: the opening of each user turn and each reply (see ``_LEAD_TOKENS``; a reply's
         opening pleasantry is skipped), with the reply's outline (see ``_outline``). All of them if they fit; else
-        the most relevant ones, user openings first up to ``_DIGEST_USER_SHARE`` of the budget, or
+        the most relevant ones, user openings first up to ``_DIGEST_USER_SHARE`` of the budget
+        (``_SMALL_DIGEST_USER_SHARE`` below ``_OVERVIEW_DETAIL_MIN``, where no reply passage is kept whole), or
         ``_ORDER_USER_SHARE`` for a question about the order of what the user brought up (see ``_turns.fill``).
         Shown in date order."""
         user: List[_turns.Piece] = []
@@ -972,7 +976,12 @@ class Memory:
                 _turns.score_pool(pool, units, query, scorer, _turns.RERANK_REPLY, False),
             ):
                 piece.score = value
-        share = _ORDER_USER_SHARE if ordering(query) else _DIGEST_USER_SHARE
+        if ordering(query):
+            share = _ORDER_USER_SHARE
+        else:
+            share = (
+                _DIGEST_USER_SHARE if budget >= _OVERVIEW_DETAIL_MIN else _SMALL_DIGEST_USER_SHARE
+            )
         _turns.fill(chosen, user, other, budget, share, scorer is None)
         return chosen
 

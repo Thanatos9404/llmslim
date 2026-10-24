@@ -69,7 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   order did I ...", "how did my plan develop?") is answered from a digest: the opening of each user turn and each
   reply, without code and without the reply's opening pleasantry ("Great question!"), plus the reply's outline (its
   headings and bold list leads). Many more exchanges fit in the budget than as whole turns.
-  - User openings get half of the digest, or 80% for a question about the order of what the user brought up.
+  - User openings get half of the digest (30% in a summary under 5,000 tokens, which keeps no reply passage
+    whole, so the replies' openings and outlines get more of the room), or 80% for a question about the order of
+    what the user brought up.
   - With a budget of 5,000 tokens or more, a summary also keeps the most relevant reply passages whole, in 30% of
     the budget.
   - **Controls:** `Memory(coverage="auto" | "always" | "never")` and `search(coverage=...)`.

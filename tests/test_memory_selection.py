@@ -961,3 +961,38 @@ def test_code_and_markup_lines_are_not_statements():
     )
     assert _statements_in(said) == ("I have never used NTP.", "I went to Pune last May.")
     assert _statements_in("```\nonly code\n```") == ()
+
+
+# ---------------------------------------------------------------- r6c: room for reply openings in small summaries
+
+
+def test_small_summaries_give_reply_openings_more_room(memory, monkeypatch):
+    from llmslim.memory import _core
+
+    _topics(memory, days=40)
+    question = "Summarize the garden plan we discussed, bed by bed"
+    small = memory.search(question, user_id="u1", budget=1500)
+    assert small.compressed and small.tokens <= 1500 * 1.02
+    assert _core._SMALL_DIGEST_USER_SHARE < _core._DIGEST_USER_SHARE
+    monkeypatch.setattr("llmslim.memory._core._SMALL_DIGEST_USER_SHARE", _core._DIGEST_USER_SHARE)
+    even = memory.search(question, user_id="u1", budget=1500)
+    assert small.text.count("] assistant: ") > even.text.count("] assistant: ")
+    assert small.text.count("] user: ") < even.text.count("] user: ")
+    # from the detail threshold on, and for ordering questions, the small share plays no part
+    monkeypatch.setattr("llmslim.memory._core._SMALL_DIGEST_USER_SHARE", 0.0)
+    large = memory.search(question, user_id="u1", budget=6000)
+    monkeypatch.setattr("llmslim.memory._core._SMALL_DIGEST_USER_SHARE", 0.3)
+    assert memory.search(question, user_id="u1", budget=6000).text == large.text
+    order = "In what order did I bring up the parts of the garden plan?"
+    first = memory.search(order, user_id="u1", budget=1500).text
+    monkeypatch.setattr("llmslim.memory._core._SMALL_DIGEST_USER_SHARE", 0.9)
+    assert memory.search(order, user_id="u1", budget=1500).text == first
+
+
+@pytest.mark.parametrize("budget", [50, 100, 400])
+def test_small_summaries_stay_within_tiny_budgets(memory, budget):
+    _topics(memory, days=20)
+    context = memory.search("Summarize the garden plan we discussed", user_id="u1", budget=budget)
+    assert context.tokens <= budget * 1.02
+    again = memory.search("Summarize the garden plan we discussed", user_id="u1", budget=budget)
+    assert again.text == context.text

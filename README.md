@@ -685,6 +685,8 @@ claude mcp add llmslim -- llmslim mcp
 [![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.1%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
 
 In Gemini CLI, `gemini extensions install https://github.com/Thanatos9404/llmslim` adds the same server.
+In VS Code, the [LLMSlim Memory extension](plugins/vscode) adds it to VS Code's MCP support (coming soon to the VS Code
+Marketplace and Open VSX).
 
 [![llmslim MCP server: quality and maintenance score on Glama](https://glama.ai/mcp/servers/Thanatos9404/llmslim/badges/card.svg)](https://glama.ai/mcp/servers/Thanatos9404/llmslim)
 

@@ -1,0 +1,54 @@
+name: Publish VS Code extension
+
+# Publishes plugins/vscode to the VS Code Marketplace and Open VSX. Runs only when started by hand.
+# Needs two repository secrets: VSCE_PAT (Azure DevOps token for the Marketplace publisher) and
+# OVSX_PAT (Open VSX access token). The tokens are read from secrets and never printed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to publish: both, marketplace or openvsx"
+        required: true
+        default: both
+        type: choice
+        options: [both, marketplace, openvsx]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Test, package and publish the extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/vscode
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: plugins/vscode/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Package the .vsix
+        run: npx vsce package --no-dependencies --out llmslim-memory.vsix
+      - name: Publish to the VS Code Marketplace
+        if: inputs.target != 'openvsx'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies --packagePath llmslim-memory.vsix
+      - name: Create the Open VSX namespace (first publish only; fails harmlessly if it exists)
+        if: inputs.target != 'marketplace'
+        continue-on-error: true
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx create-namespace "$(node -p "require('./package.json').publisher")"
+      - name: Publish to Open VSX
+        if: inputs.target != 'marketplace'
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish llmslim-memory.vsix

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and
   declares the engine's settings so the Hermes desktop app shows them as a form. It is not part of the PyPI package.
+- **A VS Code extension, LLMSlim Memory, in `plugins/vscode`**, for the VS Code Marketplace and Open VSX. It adds the
+  pinned MCP server (`uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`) to VS Code's MCP support through
+  `vscode.lm.registerMcpServerDefinitionProvider`, with settings for an installed `llmslim` command and the memory
+  file. It is not published yet and is not part of the PyPI package.
 
 ### Packaging
 - **The Claude Code plugin pins its MCP server to an exact version** (`llmslim[mcp]==0.11.1`, was `>=0.11.0`). The

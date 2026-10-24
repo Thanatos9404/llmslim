@@ -1,0 +1,79 @@
+{
+  "name": "llmslim-memory",
+  "displayName": "LLMSlim Memory",
+  "description": "Long-term memory for agent mode in VS Code: adds the local LLMSlim MCP server, which keeps messages word for word in a SQLite file on your machine, with no LLM call inside.",
+  "version": "0.1.0",
+  "publisher": "llmslim",
+  "license": "MIT",
+  "author": "Yashvardhan Thanvi",
+  "icon": "images/icon.png",
+  "homepage": "https://www.llmslim.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thanatos9404/llmslim.git",
+    "directory": "plugins/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/Thanatos9404/llmslim/issues"
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "mcp",
+    "mcp server",
+    "memory",
+    "long-term memory",
+    "copilot",
+    "agent",
+    "llmslim",
+    "sqlite"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "llmslim",
+        "label": "LLMSlim Memory"
+      }
+    ],
+    "configuration": {
+      "title": "LLMSlim Memory",
+      "properties": {
+        "llmslim.command": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "The `llmslim` executable to run instead of `uvx`, for example `llmslim` after `pip install \"llmslim[mcp]\"`, or its full path. The extension starts it as `<command> mcp`. Leave empty to run the pinned release with `uvx`."
+        },
+        "llmslim.memoryPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "The SQLite file that holds the memory, passed to the server as `LLMSLIM_MEMORY_DB`. Leave empty for the default, `~/.llmslim/memory.db`."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "typecheck": "tsc -p ./ --noEmit",
+    "test": "npm run compile && node --test out/test/*.test.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.101.0",
+    "@vscode/vsce": "4.0.0",
+    "ovsx": "1.3.0",
+    "typescript": "5.9.3"
+  }
+}

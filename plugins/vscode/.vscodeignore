@@ -1,0 +1,8 @@
+# Only package.json, README.md, CHANGELOG.md, LICENSE, images/icon.png and out/src go into the .vsix.
+**
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!images/icon.png
+!out/src/**/*.js

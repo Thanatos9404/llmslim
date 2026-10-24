@@ -936,10 +936,12 @@ def focus_lines(text: str, budget: int, query: Optional[str] = None) -> Tuple[st
             if k in collapsed:
                 out.append(f"... [{collapsed[k] - 2} similar lines]")
         elif k in hidden:
-            continue
+            continue  # counted with the first line of its run
         else:
             if line.strip():
                 gap += 1
+            if k in collapsed:
+                gap += collapsed[k] - 2  # a run omitted from its first line is omitted whole
     if gap:
         out.append(f"... [{gap} lines omitted]")
     return "\n".join(out), n, len(keep)

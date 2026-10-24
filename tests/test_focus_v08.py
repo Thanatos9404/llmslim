@@ -1,6 +1,7 @@
 """v0.8 query-focused selection and line-preserving compression."""
 
 import json
+import re
 
 import pytest
 
@@ -199,6 +200,28 @@ def test_line_mode_keeps_failures_and_collapses_repeats():
     )
     assert "similar lines]" in result.compressed_text
     assert result.compressed_tokens < result.original_tokens * 0.2
+
+
+def test_omitted_marker_counts_every_line_of_a_collapsed_run():
+    lines = [
+        "[setup] resolving dependencies",
+        "[setup] creating virtualenv",
+        "[setup] installing the package",
+    ]
+    lines += [f"tests/test_api.py::test_endpoint_{i} PASSED" for i in range(250)]
+    lines += [
+        "tests/test_refund.py::test_rounding FAILED",
+        "E   AssertionError: assert Decimal('10.04') == Decimal('10.05')",
+        "=========== 1 failed, 250 passed in 41.07s ===========",
+    ]
+    text = "\n".join(lines)
+    # The run is omitted up to its last line: the marker counts all 249 lines, not the first one alone.
+    out, _, _ = focus_lines(text, 80)
+    assert "... [249 lines omitted]\ntests/test_api.py::test_endpoint_249 PASSED" in out
+    marker = re.compile(r"^\.\.\. \[(\d+) (?:lines omitted|similar lines)\]$", re.M)
+    for budget in (30, 60, 80, 120):
+        out, total, kept = focus_lines(text, budget)
+        assert kept + sum(int(count) for count in marker.findall(out)) == total, out
 
 
 def test_line_mode_keeps_tracebacks():

@@ -307,6 +307,33 @@ def test_search_ranks_the_turns_of_a_single_chat(memory, budget):
     assert count_tokens(str(context)) <= budget
 
 
+@pytest.mark.parametrize("overruns", [1, 4])
+def test_search_selects_again_when_a_pick_runs_over(memory, monkeypatch, overruns):
+    import llmslim.memory._core as core
+
+    for i, note in enumerate(PROJECT_NOTES):
+        memory.add(note, user_id="u1", timestamp=T0 + timedelta(minutes=i))
+    sizes, limits = [], []
+    rank_turns, select_turns = core.rank_turns, core.select_turns
+
+    def rank(sessions, documents, query, size, scorer):
+        sizes.append(size)
+        return rank_turns(sessions, documents, query, size, scorer)
+
+    def select(ranked, query, limit):
+        limits.append(limit)
+        kept = select_turns(ranked, query, limit)
+        return [part + " and more" * 20 for part in kept] if len(limits) <= overruns else kept
+
+    monkeypatch.setattr(core, "rank_turns", rank)
+    monkeypatch.setattr(core, "select_turns", select)
+    context = memory.search("How do I run the tests?", user_id="u1", budget=100)
+    assert len(limits) == min(overruns + 1, 4) and limits[0] == 100
+    assert limits == sorted(limits, reverse=True) and limits[1] < 100
+    assert sizes == [sizes[0]]  # the unit size did not change, so the turns were ranked once
+    assert (context.tokens <= 100 * 1.02) == (overruns < 4)
+
+
 def test_two_speaker_sessions_select_as_compress_documents_does(memory):
     # Sessions with two speakers are segmented and ranked exactly as before, blank lines and lists included, so
     # contexts built like the benchmarks' do not change.

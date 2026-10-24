@@ -25,7 +25,7 @@ before `forget` runs. `recall` labels what it returns as data, not instructions.
 - **VS Code 1.101 or newer**, or another editor that supports VS Code's MCP extension API. In an editor without it, the
   extension shows the server config once, to add in that editor's own MCP settings.
 - **[uv](https://docs.astral.sh/uv/)**. The extension starts the server with
-  `uvx --from "llmslim[mcp]==0.11.1" llmslim mcp`, which needs Python 3.10 or newer; uv uses one you have or downloads
+  `uvx --from "llmslim[mcp]==0.11.2" llmslim mcp`, which needs Python 3.10 or newer; uv uses one you have or downloads
   one.
 - **Or, without uv:** run `pip install "llmslim[mcp]"` (Python 3.10 or newer) and set **LLMSlim: Command** to
   `llmslim`, or to the full path of the `llmslim` executable. The server then starts as `llmslim mcp`.

@@ -19,7 +19,7 @@ hermes config set context.engine llmslim
 Restart Hermes (CLI, gateway or desktop app). To go back to the built-in compressor:
 `hermes config set context.engine compressor`.
 
-The install asks before it adds the plugin's one Python dependency, `llmslim==0.11.1` from PyPI, which brings numpy,
+The install asks before it adds the plugin's one Python dependency, `llmslim==0.11.2` from PyPI, which brings numpy,
 scikit-learn and jsonschema with it. The plugin needs Hermes 0.21.7 or newer.
 
 `hermes plugins install llmslim` installs the commit reviewed for the Hermes plugin catalog.
@@ -89,7 +89,7 @@ Hermes, add it under `mcp_servers` in `config.yaml` (this runs it with [uv](http
 mcp_servers:
   llmslim:
     command: uvx
-    args: ["--from", "llmslim[mcp]==0.11.1", "llmslim", "mcp"]
+    args: ["--from", "llmslim[mcp]==0.11.2", "llmslim", "mcp"]
     connect_timeout: 120  # the first start downloads LLMSlim
 ```
 

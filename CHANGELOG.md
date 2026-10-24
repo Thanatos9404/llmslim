@@ -53,7 +53,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   match it, in their own section after the requests ("Preferences the user stated earlier:"), at most 8 within 10% of
   the budget. A long sentence is shown around the words that state the preference. The matching turns are returned
   in `MemoryContext.preferences`.
+  - **What does not:** a preference word that is only asked about ("should I prioritize ...?", "how can I
+    prioritize ...?").
   - **Controls:** `Memory(preferences=...)` and `search(preferences=...)`.
+- **Memory: statements that may conflict.** For a question about whether something happened ("Have I ever ...?",
+  "Did I ... before?", "Have I completed any ...?"), `Memory.search` reads the user's statements that bear on it most
+  (prose only: no code, no questions on their own, no standing requests). When some of them deny it ("I have never
+  ...", "I haven't ...", "not yet") and some do not, both kinds are shown together in date order in their own
+  section at the top ("Statements the user made on this that may conflict (in date order):"), at most two of each,
+  within 8% of the budget (the first pair may take up to a quarter of a small budget). The matching turns are
+  returned in `MemoryContext.conflicts`.
+  - **Controls:** `Memory(conflicts=...)` and `search(conflicts=...)`.
+- **Memory: a statement is shown once per section**, even when the user said it in several turns.
 - **Memory: overview questions.** A summary, recap or ordering question ("summarize what we discussed", "in what
   order did I ...", "how did my plan develop?") is answered from a digest: the opening of each user turn and each
   reply, without code and without the reply's opening pleasantry ("Great question!"), plus the reply's outline (its

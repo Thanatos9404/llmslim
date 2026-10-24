@@ -84,14 +84,14 @@ messages.append({
   - **Repeated text is left out**: a candidate whose words are mostly in what is already kept adds nothing.
   - **Each kept turn is one block**: `[date] role: text`, prose on that line, code blocks and tables below it, fenced. Markdown headings are folded into the sentence they head. A stored line that looks like a turn label is indented, so stored text can't pass for another turn.
 - **The kind of question decides the rest** (fixed English patterns, no model):
-  - a plain lookup of a past fact ("What is my salary?", "When did I say ...?", "Have I ever ...?") gets the whole budget;
-  - a request for help, advice or a plan ("Can you suggest ...", "How should I ...") also gets, at the top, the user's standing requests that best match it (at most three, `standing_requests`) and the preferences they stated earlier ("I prefer ...", "I'd rather ...", "I usually ...", `preferences`). What the best-matching request asks the answer to include is fetched too;
+  - a plain lookup of a past fact ("What is my salary?", "When did I say ...?", "Have I ever ...?") gets the whole budget. A question about whether something happened ("Have I ever ...?", "Did I ... before?") also gets, at the top, the user's statements on it that may conflict, when some of the ones that bear on it most deny it ("I have never ...") and some do not, in date order (`conflicts`);
+  - a request for help, advice or a plan ("Can you suggest ...", "How should I ...") also gets, at the top, the user's standing requests that best match it (at most three, `standing_requests`) and the preferences they stated earlier ("I prefer ...", "I'd rather ...", "I usually ...", `preferences`; a preference word that is only asked about, as in "should I prioritize ...?", does not count). A statement said twice is shown once. What the best-matching request asks the answer to include is fetched too;
   - other questions get the best-matching standing requests;
   - a summary, recap or "in what order" / "how did it develop" question is answered from the opening of many turns (`coverage`), skipping replies' opening pleasantries; with a budget of 5,000 tokens or more, a summary also keeps the most relevant reply passages whole.
 - **What you get back** (`MemoryContext`):
   - `text`, ready for the prompt;
   - `turns`: each kept turn with its id, role, timestamp, metadata, a lexical overlap `score` and `partial` (true when only part of the turn was kept);
-  - `requests` and `preferences`: the user turns shown in those sections;
+  - `requests`, `preferences` and `conflicts`: the user turns shown in those sections;
   - token counts.
 
 ## Stores

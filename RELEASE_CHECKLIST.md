@@ -51,6 +51,7 @@ This checklist outlines the mandatory verification steps required before publish
   `plugins/llmslim/.mcp.json`, so its pin moves with the one above. `tests/test_claude_plugin.py` checks both.
 - [ ] Bump `version` in `plugins/llmslim/plugin.json` and the pin in `plugins/llmslim/mcp.json` (the Agent Plugins
   files Copilot CLI reads). awesome-copilot pins a commit, so resubmit its external plugin entry after a release.
+- [ ] Bump the `llmslim[proxy]==X.Y.Z` pin in the uvx fallbacks of `plugins/llmslim/skills/*/SKILL.md`. `tests/test_claude_plugin.py` checks them.
 - [ ] Clean previous builds: `rm -rf dist/ build/ *.egg-info`.
 - [ ] Build source distribution and binary wheel:
   ```bash

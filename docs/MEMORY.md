@@ -121,6 +121,7 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 
 **The same pipeline as the benchmarks.**
 - `Memory.search` runs LLMSlim's round-3 benchmark pipeline: one document per session, `[date] role: content` lines, and one shared budget.
+  - Two kinds of history that the benchmarks did not have are ranked turn by turn from the stored turns: a session of one speaker (such as a day of `remember` calls) and a history of only one session. A history of several two-speaker sessions selects exactly as the pipeline does.
 - With the benchmark's date format (`Memory(stamp_format="%Y/%m/%d (%a) %H:%M")`), its output was **byte-identical** to the benchmark builder on 120 of 120 LongMemEval-S development contexts. That was 60 histories at 2,500 and 10,000 tokens.
 
 **What that pipeline measured on held-out test questions** (Claude Haiku 5.5 reader, cost per 1,000 questions end to end; [full report](../benchmarks/live/round3/RESULTS.md)):

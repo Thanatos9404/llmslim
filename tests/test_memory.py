@@ -256,6 +256,78 @@ def test_custom_scorer_is_used(memory):
     assert calls and "Fact 3 " in context.text
 
 
+# Notes added one at a time with no run_id, as the llmslim mcp server stores them.
+PROJECT_NOTES = [
+    "This repo uses pnpm, never npm.",
+    "Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI.",
+    "We deploy from main only. Feature branches never deploy.",
+    "The staging database is orders_staging; never point migrations at orders_prod.",
+    "I prefer short answers with the code first.",
+    "The design review for the billing page is on Friday at 4 pm.",
+    "Use Zod for request validation in the API routes, not hand-written checks.",
+    "Our error tracker is Sentry; the project is called web-prod.",
+    "Dark mode colours live in tokens.css; never hard-code hex values in components.",
+    "Renew the TLS certificate for api.example.com before 30 November.",
+]
+
+
+@pytest.mark.parametrize("budget", [100, 150, 200])
+@pytest.mark.parametrize("spread", ["same day", "one per day"])
+def test_search_ranks_the_turns_of_a_day_by_relevance(memory, spread, budget):
+    # Regression: one day's notes form one session, and when it did not fit, search kept the day's newest notes.
+    for i, note in enumerate(PROJECT_NOTES):
+        step = timedelta(minutes=i) if spread == "same day" else timedelta(days=i)
+        memory.add(note, user_id="u1", timestamp=T0 + step)
+    context = memory.search(
+        "How do I run the tests, and where can I deploy from?", user_id="u1", budget=budget
+    )
+    assert context.compressed
+    assert context.sessions_total == (1 if spread == "same day" else len(PROJECT_NOTES))
+    assert "pnpm test -- --runInBand" in context.text and "deploy from main" in context.text
+    assert count_tokens(str(context)) <= budget
+    kept = [turn.item.content for turn in context.turns]
+    assert PROJECT_NOTES[1] in kept and PROJECT_NOTES[2] in kept
+    assert kept == [note for note in PROJECT_NOTES if note in kept]  # in the order they were added
+    lines = context.text.split("\n")
+    assert all(any(line.endswith(f"user: {note}") for line in lines) for note in kept)
+
+
+@pytest.mark.parametrize("budget", [100, 150, 200])
+def test_search_ranks_the_turns_of_a_single_chat(memory, budget):
+    # Regression: a history of one session was compressed as one text, whose short [date] lines read as a log.
+    messages = []
+    for note in PROJECT_NOTES:
+        messages += [{"role": "user", "content": note}, {"role": "assistant", "content": "Noted."}]
+    memory.add(messages, user_id="u1", run_id="chat")
+    context = memory.search(
+        "How do I run the tests, and where can I deploy from?", user_id="u1", budget=budget
+    )
+    assert context.compressed and context.sessions_total == 1
+    assert "pnpm test -- --runInBand" in context.text and "deploy from main" in context.text
+    assert count_tokens(str(context)) <= budget
+
+
+def test_two_speaker_sessions_select_as_compress_documents_does(memory):
+    # Sessions with two speakers are segmented and ranked exactly as before, blank lines and lists included, so
+    # contexts built like the benchmarks' do not change.
+    from llmslim import compress_documents
+
+    for day in range(12):
+        messages, when = chat(
+            day,
+            f"Day {day}: what can I cook with lentils?\n\nI have rice and cumin too.",
+            f"Try khichdi.\n\n- rinse the lentils\n- add cumin\n\nOn day {day}, serve it with pickle.",
+        )
+        memory.add(messages, user_id="u1", timestamp=when)
+    query = "What did you suggest with khichdi on day 7?"
+    context = memory.search(query, user_id="u1", budget=150)
+    sessions = memory._sessions(memory.get_all(user_id="u1"))
+    documents = [memory._render(session) for session in sessions]
+    results = compress_documents(documents, query=query, target_ratio=150 / context.history_tokens)
+    expected = "\n\n".join(r.compressed_text.strip() for r in results if r.compressed_text)
+    assert context.compressed and context.text == expected
+
+
 def test_context_to_dict_round_trips_turns(memory):
     memory.add("I like tea", user_id="u1")
     data = memory.search("tea", user_id="u1").to_dict()

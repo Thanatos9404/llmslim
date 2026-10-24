@@ -93,7 +93,7 @@ class RecalledTurn:
 
     ``partial`` is true when the turn was too long to keep whole and only its most relevant sentences were kept.
     ``score`` is a bounded lexical overlap between the query and the turn (0 to 1), for ordering and display; the
-    selection itself is LLMSlim's query-focused ranking over whole sessions.
+    selection itself is LLMSlim's query-focused ranking of every session's turns.
     """
 
     item: MemoryItem

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`Memory.search` ranks the turns of a session by relevance when the session does not fit the budget.** Turns
+  without a `run_id` are grouped by calendar day, so a day of `remember` calls to the `llmslim mcp` server is one
+  session. When that session did not fit, `recall` kept the newest turns of the day and dropped the ones that answered
+  the question: ten notes from one morning, asked "How do I run the tests, and where can I deploy from?", came back
+  as the last four notes at a 150-token budget. The same notes spread over ten days were recalled correctly.
+  - The turns of a one-speaker session are now ranked one by one, as the turns of a two-speaker session already were.
+    The kept turns stay in their order, under the session's date.
+  - A history of one session (one day, or one `run_id`) goes through the same selection as a history of many. It was
+    compressed as one text, whose `[date] role: content` lines read as a log, so its newest lines won.
+  - In both cases each kept turn is counted with the line break and `...` line it can add.
+  - A history of several sessions with two speakers each selects exactly as before.
+
 ### Added
 - **A Hermes Agent plugin for the Hermes plugin catalog, in `plugins/hermes`.** It installs the existing
   `LLMSlimContextEngine` with `hermes plugins install`, pins `llmslim==0.11.1` as its one Python dependency, and

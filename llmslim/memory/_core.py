@@ -9,8 +9,11 @@ from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
+from ..focus import unit_size
 from ..planning.scoring import lexical_relevance
+from ..rerank import resolve_relevance
 from ..tokens import count_tokens
+from ._selection import Ranked, Turn, rank_turns, select_turns
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
 from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
@@ -268,8 +271,10 @@ class Memory:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
         If the whole history fits, all of it is returned. Otherwise each session (a ``run_id``, or a calendar day) is
-        rendered as ``[date] role: content`` lines and LLMSlim selects across all sessions with one shared budget:
-        the most relevant turns stay whole, a question stays with its reply, and the session date is kept as a header.
+        rendered as ``[date] role: content`` lines and LLMSlim ranks every turn against the query, across all sessions
+        with one shared budget: the most relevant turns stay whole and in their order, a question stays with its
+        reply, and the session date is kept as a header. A session that holds the whole history (a day of turns
+        without a ``run_id``) is ranked turn by turn the same way.
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -285,7 +290,7 @@ class Memory:
         if history_tokens <= budget:
             kept = documents
         else:
-            kept = self._select(documents, query, budget, history_tokens, relevance)
+            kept = self._select(sessions, documents, query, budget, relevance)
         turns: List[RecalledTurn] = []
         for session, text in zip(sessions, kept):
             turns.extend(self._recalled(session, text, query))
@@ -322,29 +327,41 @@ class Memory:
             grouped.setdefault(self._session_key(item), []).append(item)
         return sorted(grouped.values(), key=lambda turns: (turns[0].created_at, turns[0].seq))
 
-    def _render(self, session: Sequence[MemoryItem]) -> str:
+    def _turns(self, session: Sequence[MemoryItem]) -> List[Turn]:
         # Every turn carries the session's stamp, so LLMSlim shows it once as the session's header.
         stamp = session[0].created_at.astimezone(self.tz).strftime(self.stamp_format)
-        return "\n".join(f"[{stamp}] {item.role}: {item.content}" for item in session)
+        return [(stamp, item.role, item.content) for item in session]
 
-    @staticmethod
+    def _render(self, session: Sequence[MemoryItem]) -> str:
+        return "\n".join(
+            f"[{stamp}] {role}: {content}" for stamp, role, content in self._turns(session)
+        )
+
     def _select(
-        documents: List[str], query: str, budget: int, history_tokens: int, relevance: Any
+        self,
+        sessions: List[List[MemoryItem]],
+        documents: List[str],
+        query: str,
+        budget: int,
+        relevance: Any,
     ) -> List[str]:
-        from ..pipelines import compress_documents
-
-        options = {} if relevance == "lexical" else {"relevance": relevance}
-        ratio = budget / history_tokens
-        kept: List[str] = documents
+        """Each session's most relevant turns, ranked turn by turn across all sessions within one budget."""
+        turns = [self._turns(session) for session in sessions]
+        scorer = resolve_relevance(relevance)
+        # Ranked units by unit size: a later pass at the same size only selects again.
+        ranked: Dict[int, Ranked] = {}
+        target = float(budget)
+        kept: List[str] = []
         for _ in range(_FIT_PASSES):
-            results = compress_documents(
-                documents, query=query, target_ratio=min(ratio, 1.0), **options
-            )
-            kept = [result.compressed_text.strip() for result in results]
+            limit = max(1, round(target))
+            size = unit_size(limit)
+            if size not in ranked:
+                ranked[size] = rank_turns(turns, documents, query, size, scorer)
+            kept = select_turns(ranked[size], query, limit)
             tokens = count_tokens("\n\n".join(part for part in kept if part))
             if tokens <= budget * _FIT_SLACK:
                 break
-            ratio *= budget / tokens * 0.98
+            target *= budget / tokens * 0.98
         return kept
 
     @staticmethod

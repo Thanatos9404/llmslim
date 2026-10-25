@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 import uuid
@@ -31,6 +32,7 @@ from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
 Message = Union[str, Mapping[str, Any]]
+_LOGGER = logging.getLogger("llmslim.memory")
 
 # Roles other frameworks use, mapped onto the four a memory keeps.
 _ROLE_ALIASES = {
@@ -496,8 +498,9 @@ class Memory:
     Nothing is summarized or extracted on the way in, so writes cost no model call and a stored turn never turns into
     a wrong "fact". On the way out, :meth:`search` ranks the stored turns against the question and returns what
     answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the
-    replies, one labelled and dated block per turn, in date order. No model is called to write or to read, and the
-    same history and question always give the same text.
+    replies, one labelled and dated block per turn, in date order. No LLM is called to write or to read (by default no
+    model runs at all; ``relevance="semantic"`` adds a small local cross-encoder), and on one installation the same
+    history and question give the same text (see ``docs/MEMORY.md``, Limits).
 
     Args:
         store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, or ``None`` for an
@@ -717,6 +720,7 @@ class Memory:
         # Counted as joined, separators included: per-session counts can add up to less than the text they make.
         history = _join(documents)
         history_tokens = _document_tokens(history) if history else 0
+        kind = "whole history"
         requests: Tuple[RecalledTurn, ...] = ()
         liked: Tuple[RecalledTurn, ...] = ()
         disputed: Tuple[RecalledTurn, ...] = ()
@@ -773,7 +777,7 @@ class Memory:
                     tuple(t for t in group if _still_shown(t.item.content, prefix))
                     for group in (requests, liked, disputed)
                 )
-        return MemoryContext(
+        context = MemoryContext(
             query=query,
             text=text,
             turns=tuple(turns),
@@ -787,6 +791,24 @@ class Memory:
             preferences=liked,
             conflicts=disputed,
         )
+        # What was read and how, never what was said: no query or turn text is logged.
+        _LOGGER.debug(
+            "search: %s, %d of %d history tokens in a budget of %d, %d of %d turns, %d of %d sessions, "
+            "sections: %d requests, %d preferences, %d conflicts, %.1f ms",
+            kind,
+            context.tokens,
+            history_tokens,
+            budget,
+            len(context.turns),
+            len(items),
+            context.sessions_kept,
+            context.sessions_total,
+            len(requests),
+            len(liked),
+            len(disputed),
+            context.elapsed_ms,
+        )
+        return context
 
     # ------------------------------------------------------------------ internals
 

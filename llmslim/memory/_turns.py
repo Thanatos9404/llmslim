@@ -309,10 +309,12 @@ def labelled(label: str, body: str) -> str:
 
 
 def words(text: str) -> List[str]:
+    """The case-folded words of ``text`` (any script), for near-duplicate checks."""
     return _WORDS.findall(text.casefold())
 
 
 def shingles(text: str, n: int = SHINGLE) -> Set[Tuple[str, ...]]:
+    """The word ``n``-grams of ``text`` (one shorter tuple when it has fewer words)."""
     ws = words(text)
     if len(ws) < n:
         return {tuple(ws)} if ws else set()
@@ -337,6 +339,8 @@ class Piece:
 
 @dataclass
 class Turn:
+    """A stored turn as selection sees it: its session's index, its labels and its segments."""
+
     item: MemoryItem
     session: int
     stamp: str  # the full stamp, shown on the first kept turn of its session
@@ -346,10 +350,12 @@ class Turn:
 
 
 def cap_for_user_turn(budget: int) -> int:
+    """The most of ``budget`` one user turn may take whole (``USER_TURN_SHARE``, within the min and max)."""
     return max(USER_TURN_MIN, min(USER_TURN_MAX, int(budget * USER_TURN_SHARE)))
 
 
 def window_size(budget: int) -> int:
+    """About how many tokens a reply window holds at ``budget`` (``WINDOW_DIVISOR``, within the min and max)."""
     return max(WINDOW_MIN, min(WINDOW_MAX, budget // WINDOW_DIVISOR))
 
 
@@ -602,6 +608,7 @@ def build_turns(
     stamp: Callable[[MemoryItem], str],
     date: Optional[Callable[[MemoryItem], str]] = None,
 ) -> List[Turn]:
+    """Every turn of ``sessions`` (in session order, then stored order) with its labels and cached segments."""
     turns: List[Turn] = []
     for s, session in enumerate(sessions):
         for item in session:
@@ -750,4 +757,5 @@ def fit(
 def as_items(
     turns: Sequence[Turn], recalled: Sequence[Tuple[int, bool]]
 ) -> List[Tuple[MemoryItem, bool]]:
+    """The stored turns behind ``render``'s (turn index, partial) pairs."""
     return [(turns[k].item, partial) for k, partial in recalled]

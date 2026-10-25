@@ -235,6 +235,9 @@ def _prose(text: str, out: List[Segment], heading: str) -> str:
             heading = f"{heading.rstrip(':')}: {text}" if heading else text
             continue
         cursor = 0
+        # The line's current segment: a sentence and those attached to it, joined once it is complete (adding them
+        # one at a time took time quadratic in a long paragraph of Chinese or Japanese).
+        current: List[str] = []
         for k, sentence in enumerate(split_sentences(stripped) or [stripped]):
             at = stripped.find(sentence, cursor)
             attached = (
@@ -242,12 +245,16 @@ def _prose(text: str, out: List[Segment], heading: str) -> str:
             )  # no space before it (CJK sentences): it stays with the one before
             cursor = at + len(sentence) if at >= 0 else cursor
             if attached:
-                out[-1] = Segment(out[-1].text + sentence)
+                current.append(sentence)
                 continue
+            if current:
+                out.append(Segment("".join(current)))
             if heading and k == 0:
                 sentence = f"{heading.rstrip(':')}: {sentence}"
                 heading = ""
-            out.append(Segment(sentence))
+            current = [sentence]
+        if current:
+            out.append(Segment("".join(current)))
     return heading
 
 
@@ -271,15 +278,29 @@ def _guard(block: str) -> str:
 def join(parts: Sequence[Tuple[str, bool]]) -> str:
     """Segments (text, is_block) as one turn's text: prose on one line, blocks on their own lines. Text that opens
     with a block starts with a line break, so the block's first line never shares the turn's label line."""
-    out = ""
+    # The text is built from pieces (never empty) and joined once: rebuilding it for every part took time quadratic
+    # in a long turn's length, on every search.
+    pieces: List[str] = []
     for text, block in parts:
         if block:
-            out = f"{out.rstrip()}\n{_guard(text)}\n"
-        elif out and not out.endswith("\n"):
-            out = f"{out} {text}"
-        else:
-            out = f"{out}{text}"
-    return out.rstrip()
+            while pieces:  # the text so far without its trailing whitespace
+                last = pieces[-1].rstrip()
+                if last:
+                    pieces[-1] = last
+                    break
+                pieces.pop()
+            pieces.append("\n")
+            guarded = _guard(text)
+            if guarded:
+                pieces.append(guarded)
+            pieces.append("\n")
+        elif pieces and not pieces[-1].endswith("\n"):
+            pieces.append(" ")
+            if text:
+                pieces.append(text)
+        elif text:
+            pieces.append(text)
+    return "".join(pieces).rstrip()
 
 
 def labelled(label: str, body: str) -> str:

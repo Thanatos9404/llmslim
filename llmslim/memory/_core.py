@@ -158,10 +158,11 @@ _CODE_BLOCK = re.compile(r"```.*?(?:```|\Z)", re.DOTALL)
 _LEAD_TOKENS = {"user": 80, "assistant": 30}  # how much of each turn's opening an overview keeps
 _OUTLINE_TOKENS = 30  # and how much of a reply's outline
 _MIN_CUT = 8  # a sentence cut shorter than this is left out instead
-# A reply's outline: its headings and the bold leads of its list items ("1. **Use SQLAlchemy**: ..."), which name the
-# points it made. Points that are code, or only a label and a number ("Step 2"), say nothing about the content.
-_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$", re.MULTILINE)
+# A reply's outline: its headings (``_turns.heading_spans``) and the bold leads of its list items ("1. **Use
+# SQLAlchemy**: ..."), which name the points it made. Points that are code, or only a label and a number ("Step 2"),
+# say nothing about the content.
 _BOLD_LEAD = re.compile(r"^\s*(?:\d+[.)]|[-*+])\s+\*\*(.+?)\*\*", re.MULTILINE)
+_SPACE_RUN = re.compile(r"\s+")
 _ENUMERATOR = re.compile(r"^\d+[.)]\s*")
 _LABEL_ONLY = re.compile(r"^(?:[A-Za-z]+\s+)?\d+$")
 
@@ -251,12 +252,29 @@ def _preferences_in(content: str) -> str:
     return " ".join(stated)
 
 
-# A question on its own ("Did I tell you about ...?", "What should I do?"): it asks, it does not state anything.
-_QUESTION = re.compile(
+# A question on its own ("Did I tell you about ...?", "What should I do?"): it asks, it does not state anything. It
+# opens with a question word and its last "?" has no word character after it: the expression
+# r"^\W*(?:what|...|had)\b.*\?\W*$" (re.DOTALL), checked in two parts (see ``_is_question``).
+_QUESTION_WORD = re.compile(
     r"^\W*(?:what|which|when|where|who|whom|whose|why|how|can|could|would|should|will|shall|may|might|do|does|did|"
-    r"is|are|was|were|am|have|has|had)\b.*\?\W*$",
-    re.IGNORECASE | re.DOTALL,
+    r"is|are|was|were|am|have|has|had)\b",
+    re.IGNORECASE,
 )
+_NON_WORD_RUN = re.compile(r"\W*")
+
+
+def _is_question(sentence: str) -> bool:
+    """Whether ``sentence`` is a question on its own (see ``_QUESTION_WORD``). The whole expression's backtracking
+    took time quadratic in a long run of punctuation, so its tail is checked directly: a "?" among the characters
+    after the question word that end the sentence with no word character."""
+    opening = _QUESTION_WORD.match(sentence)
+    if opening is None:
+        return False
+    trailing = _NON_WORD_RUN.match(sentence[::-1])
+    end = len(sentence) - (trailing.end() if trailing else 0)
+    return "?" in sentence[max(opening.end(), end) :]
+
+
 _WORD_SPAN = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z]+)?")
 # A line of code or markup pasted outside a fence: a comment, a heading, a shell or REPL prompt, a tag.
 _NOT_PROSE = re.compile(r"^\s*(?:#|//|/\*|\*/|--|>>>|\$ |<[A-Za-z/!])")
@@ -271,7 +289,7 @@ def _statements_in(content: str) -> Tuple[str, ...]:
         s
         for s in _sentences(_CODE_BLOCK.sub("\n", content))
         if not _NOT_PROSE.match(s)
-        and not _QUESTION.match(s)
+        and not _is_question(s)
         and not (_EXPLICIT.search(s) and _STANDING.search(s))
     )
 
@@ -318,20 +336,41 @@ def _request_terms(request: str) -> str:
     return " ".join(picked[:_EXPAND_TERMS])
 
 
+def _bold_leads(prose: str) -> List[Tuple[int, str]]:
+    """(start, group 1) of every ``_BOLD_LEAD`` match in ``prose``, in the order ``finditer`` gives them.
+
+    When the expression fails at a line start, it has tried every length of the whitespace that opens there, so it
+    fails at every later line start inside that whitespace too; those are skipped. (``finditer`` tries them all,
+    which takes time quadratic in a run of blank lines.)"""
+    leads: List[Tuple[int, str]] = []
+    at = 0
+    while at < len(prose):
+        match = _BOLD_LEAD.match(prose, at)
+        if match:
+            leads.append((at, match.group(1)))
+            at = match.end()
+            if prose[at - 1] == "\n":
+                continue
+        else:
+            blank = _SPACE_RUN.match(prose, at)
+            at = blank.end() if blank else at
+        line_break = prose.find("\n", at)
+        if line_break < 0:
+            break
+        at = line_break + 1
+    return leads
+
+
 def _outline(text: str, limit: int) -> str:
-    """The points a reply is organised under (see ``_HEADING`` and ``_BOLD_LEAD``), in order and without repeats,
-    within about ``limit`` tokens. Empty when the reply has none."""
+    """The points a reply is organised under (its headings and ``_BOLD_LEAD``), in order and without repeats, within
+    about ``limit`` tokens. Empty when the reply has none."""
     prose = _CODE_BLOCK.sub(" ", text)
     points: List[str] = []
     seen = set()
-    for match in sorted(
-        [*_HEADING.finditer(prose), *_BOLD_LEAD.finditer(prose)], key=lambda m: m.start()
+    for _, title in sorted(
+        [*_turns.heading_spans(prose), *_bold_leads(prose)], key=lambda found: found[0]
     ):
-        point = (
-            _ENUMERATOR.sub("", " ".join(match.group(1).replace("**", "").split()))
-            .rstrip(":")
-            .strip()
-        )
+        point = _ENUMERATOR.sub("", " ".join(title.replace("**", "").split())).rstrip(":").strip()
         if not point or "`" in point or _LABEL_ONLY.match(point) or point.casefold() in seen:
             continue
         seen.add(point.casefold())

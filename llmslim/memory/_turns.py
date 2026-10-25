@@ -64,7 +64,6 @@ _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _CODE_SPAN = re.compile(
     r"(?P<fence>`{3,}|~{3,}).*?(?:(?P<close>(?P=fence))(?![\w-])|\Z)", re.DOTALL
 )
-_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 # What a turn's own label looks like at the start of a line ("[2026-01-05 (Mon) 09:30] user: ..."). Text inside a
 # turn that would start a line this way is indented, so stored text can never pass for another turn.
@@ -72,6 +71,108 @@ _LABEL_LIKE = re.compile(
     r"^\s*\[[^\]\n]{1,60}\]\s*(?:user|assistant|system|tool)\s*:", re.IGNORECASE
 )
 _WORDS = re.compile(r"\w+", re.UNICODE)
+
+# A markdown heading ("## Setup") is a match of the regular expression
+#
+#     ^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$
+#
+# (group 1 is the heading's text). Python's backtracking takes time cubic in a run of spaces or tabs inside such a
+# line (seconds for a few thousand), so ``heading_of`` and ``heading_spans`` compute the same matches directly, in
+# linear time. tests/test_memory_production.py checks them against the expression on random text.
+_SPACE_RUN = re.compile(r"\s+")
+_HASH_RUN = re.compile(r"#+")
+_SPACE_OR_HASH = re.compile(r"[\s#]")
+
+
+def _run_end(run: "re.Pattern[str]", text: str, at: int) -> int:
+    """Where the run of ``run`` that starts at ``at`` ends (``at`` itself when there is none)."""
+    found = run.match(text, at)
+    return found.end() if found else at
+
+
+def _heading_tail(text: str, at: int) -> int:
+    """Where ``\\s*#*\\s*$`` (re.MULTILINE) first matches from ``at``, in the expression's own search order, or -1.
+
+    The expression tries the longest leading whitespace first: then a run of '#' and whitespace up to the end of the
+    text or the last line break in that whitespace. Failing that, it ends at the last line break in the leading
+    whitespace itself."""
+    size = len(text)
+    spaces = _run_end(_SPACE_RUN, text, at)
+    if spaces == size:
+        return size
+    if text[spaces] == "#":
+        hashes = _run_end(_HASH_RUN, text, spaces)
+        after = _run_end(_SPACE_RUN, text, hashes)
+        if after == size:
+            return size
+        last = text.rfind("\n", hashes, after)
+        if last >= 0:
+            return last
+    return text.rfind("\n", at, spaces)
+
+
+def _heading_at(text: str, start: int) -> Optional[Tuple[int, str]]:
+    """The heading expression (re.MULTILINE) matched at ``start``, a line start: (where the match ends, group 1)."""
+    size = len(text)
+    hashes = _run_end(_SPACE_RUN, text, start)
+    if hashes - start > 3 or hashes == size or text[hashes] != "#":
+        return None
+    gap = _run_end(_HASH_RUN, text, hashes)
+    if gap - hashes > 6:
+        return None
+    title = _run_end(_SPACE_RUN, text, gap)
+    if title == gap:
+        return None
+    if title == size:
+        # Only whitespace after the hashes: the expression gives its last character that is not a line break to the
+        # text, if the whitespace before it still has one character.
+        for last in range(size - 1, gap, -1):
+            if text[last] != "\n":
+                return size, text[last]
+        return None
+    line_end = text.find("\n", title)
+    line_end = size if line_end < 0 else line_end
+    # The text is as short as it can be: it ends where the tail first matches. The tail's result is the same at every
+    # position of a run of whitespace or of '#', and it never matches at another character, so one try per run does.
+    at = title + 1
+    while True:
+        end = _heading_tail(text, at)
+        if end >= 0:
+            return end, text[title:at]
+        if text[at].isspace():
+            at = _run_end(_SPACE_RUN, text, at)
+        elif text[at] == "#":
+            at = _run_end(_HASH_RUN, text, at)
+        else:
+            found = _SPACE_OR_HASH.search(text, at + 1, line_end)
+            at = found.start() if found else line_end
+
+
+def heading_of(line: str) -> Optional[str]:
+    """The text of the markdown heading ``line`` is, as the heading expression's group 1, or None."""
+    found = _heading_at(line, 0) if "#" in line else None
+    return found[1] if found else None
+
+
+def heading_spans(text: str) -> List[Tuple[int, str]]:
+    """(start, group 1) of every match of the heading expression in ``text`` with re.MULTILINE, in the order
+    ``finditer`` gives them (whitespace, as ``\\s``, may run across lines)."""
+    spans: List[Tuple[int, str]] = []
+    if "#" not in text:
+        return spans
+    at = 0
+    while at < len(text):
+        found = _heading_at(text, at)
+        if found is not None:
+            spans.append((at, found[1]))
+            at = found[0]
+            if at and text[at - 1] == "\n":
+                continue
+        line_break = text.find("\n", at)
+        if line_break < 0:
+            break
+        at = line_break + 1
+    return spans
 
 
 @dataclass(frozen=True)
@@ -128,9 +229,9 @@ def _prose(text: str, out: List[Segment], heading: str) -> str:
         stripped = " ".join(line.split())
         if not stripped:
             continue
-        match = _HEADING.match(line)
-        if match:
-            text = match.group(1).replace("**", "").strip()
+        title = heading_of(line)
+        if title is not None:
+            text = title.replace("**", "").strip()
             heading = f"{heading.rstrip(':')}: {text}" if heading else text
             continue
         cursor = 0

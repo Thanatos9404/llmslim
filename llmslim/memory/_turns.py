@@ -615,10 +615,14 @@ def fit(
         ((part, (pieces, score, _)),) = parts.items()
         flat = " ".join(" ".join(text.split()) for text, _ in pieces)
         room = count(flat) - (tokens - limit) - 4
-        if room < 4:
+        cut = [(_cut(flat, room), False)] if room >= 4 else []
+        # A cut that leaves the piece as it is cannot get it under the budget: its first word alone is longer than the
+        # room (text with no spaces, such as Chinese or Japanese prose, a long URL or an encoded blob). Cutting it again
+        # would give the same text forever, so the piece is dropped, as when no room is left.
+        if not cut or cut == pieces:
             chosen.kept.clear()
         else:
-            chosen.kept[turn][part] = ([(_cut(flat, room), False)], score, True)
+            chosen.kept[turn][part] = (cut, score, True)
 
 
 def as_items(

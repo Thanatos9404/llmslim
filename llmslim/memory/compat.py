@@ -138,8 +138,14 @@ class Mem0Memory:
             raise TypeError(f"unexpected arguments: {', '.join(sorted(kwargs))}")
         if top_k <= 0:
             raise ValueError("top_k must be positive")
+        scope = _entities(filters)
         context = self.memory.search(
-            query, budget=budget, relevance="semantic" if rerank else None, **_entities(filters)
+            query,
+            budget=budget,
+            relevance="semantic" if rerank else None,
+            user_id=scope["user_id"],
+            agent_id=scope["agent_id"],
+            run_id=scope["run_id"],
         )
         ranked = sorted(
             context.turns, key=lambda turn: (-turn.score, turn.item.created_at, turn.item.seq)

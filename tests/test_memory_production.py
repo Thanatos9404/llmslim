@@ -111,6 +111,136 @@ def test_fit_drops_a_last_piece_when_not_one_character_fits():
     assert texts == [""] and recalled == [] and tokens == 0
 
 
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        "e\u0301",  # e and a combining acute accent
+        "\U0001f468\u200d\U0001f469\u200d\U0001f467",  # a family emoji: three people joined by ZWJ
+        "\U0001f1ee\U0001f1f3",  # a flag: two regional indicators
+        "\U0001f44d\U0001f3fd",  # thumbs up with a skin tone
+        "\u2764\ufe0f",  # a heart with its emoji variation selector
+        "\u1100\u1161\u11a8",  # a Hangul syllable written as conjoining jamo
+        "我",
+    ],
+    ids=[
+        "combining-accent",
+        "zwj-emoji",
+        "flag",
+        "skin-tone",
+        "variation-selector",
+        "jamo",
+        "chinese",
+    ],
+)
+def test_a_character_cut_never_splits_a_character_sequence(sequence):
+    text = sequence * 400
+    for limit in (5, 9, 20, 47, 100):
+        cut = _turns._cut_chars(text, limit)
+        if count_tokens(sequence) + 2 > limit:
+            assert cut == ""  # not one whole sequence fits: nothing, rather than part of one
+            continue
+        assert cut.endswith(" ...")
+        kept = cut[: -len(" ...")]
+        assert count_tokens(kept) + 2 <= limit and text.startswith(kept)
+        assert len(kept) % len(sequence) == 0, (limit, len(kept))  # whole sequences only
+    assert _turns._cut_chars(text, 2) == ""
+
+
+def test_a_character_cut_keeps_a_surrogate_pair_together():
+    text = (
+        "a\ud83d\ude00" * 10
+    )  # an emoji's two UTF-16 halves, as text decoded with surrogatepass holds them
+    points = _turns._cut_points(text, 100)
+    assert points[:4] == [1, 3, 4, 6]
+    assert not any("\ud800" <= text[p - 1] <= "\udbff" for p in points)
+
+
+# ---------------------------------------------------------------- questions with no Latin-script word to match
+
+
+def _notes(memory, notes, days=1):
+    for k, note in enumerate(notes):
+        memory.add(note, user_id="u", timestamp=T0 + timedelta(days=days * k))
+
+
+FILLER_NOTES = [f"Note {k}: the weather was mild and we walked by the river." for k in range(30)]
+
+
+@pytest.mark.parametrize(
+    "fact, question",
+    [
+        ("我的猫叫小白，它很喜欢晒太阳。", "我的猫叫什么名字？"),  # Chinese
+        ("私の猫の名前はタマです。毎朝ミルクを飲みます。", "私の猫の名前は何ですか？"),  # Japanese
+        ("Мою кошку зовут Мурка.", "Как зовут мою кошку?"),  # Russian: Cyrillic words
+    ],
+    ids=["chinese", "japanese", "russian"],
+)
+def test_a_question_in_another_script_is_matched_on_its_letters(fact, question):
+    memory = Memory(clock=clock)
+    _notes(memory, FILLER_NOTES[:15] + [fact] + FILLER_NOTES[15:])
+    context = memory.search(question, user_id="u", budget=60)
+    assert context.compressed and context.tokens <= 60
+    assert fact in context.text and fact in [t.item.content for t in context.turns]
+
+
+def test_a_question_of_common_words_only_gets_the_most_recent_turns():
+    memory = Memory(clock=clock)
+    _notes(memory, FILLER_NOTES)
+    context = memory.search("What is it?", user_id="u", budget=60)
+    contents = [turn.item.content for turn in context.turns]
+    assert contents and contents[-1] == FILLER_NOTES[-1] and FILLER_NOTES[0] not in contents
+    # A question in another script that shares nothing with the history: the most recent turns too.
+    assert memory.search("我喜欢什么", user_id="u", budget=60).text == context.text
+
+
+def test_a_long_turn_keeps_the_sentences_that_share_letters_with_the_question():
+    memory = Memory(clock=clock)
+    lines = (
+        [f"第{k}天我们去了公园散步。" for k in range(60)]
+        + ["我的猫叫小白。"]
+        + ["今天天气很好。"] * 20
+    )
+    story = "\n".join(
+        lines
+    )  # one per line: Chinese sentences with no space between them stay one segment
+    memory.add(story, user_id="u")
+    memory.add(
+        "Filler about something else entirely. " * 40, user_id="u", timestamp=T0 + timedelta(days=1)
+    )
+    context = memory.search("我的猫叫什么？", user_id="u", budget=200)
+    assert "我的猫叫小白" in context.text and context.tokens <= 200
+
+
+def test_a_scorer_reads_the_candidates_of_a_question_with_no_latin_word():
+    memory = Memory(clock=clock)
+    _notes(memory, FILLER_NOTES + ["我的猫叫小白。"])
+    read = []
+
+    def scorer(query, texts):  # stands in for a reranker: prefers the note about the river on day 3
+        read.append((query, list(texts)))
+        return [1.0 if "Note 3:" in text else 0.0 for text in texts]
+
+    context = memory.search("我的猫叫什么名字？", user_id="u", budget=40, relevance=scorer)
+    assert read and all(q == "我的猫叫什么名字？" for q, _ in read)
+    first_read = read[0][1]
+    assert (
+        first_read[0] == "我的猫叫小白。" or "我的猫叫小白。" in first_read
+    )  # the matching turn is a candidate
+    assert "Note 3:" in context.text  # the scorer decides
+    read.clear()
+    memory.search("What is it?", user_id="u", budget=40, relevance=scorer)
+    assert read and any(
+        "Note 29:" in text for _, texts in read for text in texts
+    )  # the most recent are read
+
+
+def test_no_conflicts_section_when_the_question_has_nothing_to_match():
+    memory = Memory(clock=clock)
+    _notes(memory, ["I have never been to Paris.", "I went to Paris in May."] + FILLER_NOTES)
+    assert memory.search("Have I?", user_id="u", budget=400).conflicts == ()
+    assert memory.search("Have I ever been to Paris?", user_id="u", budget=400).conflicts
+
+
 def test_fit_still_cuts_a_last_piece_that_whole_words_can_shorten():
     # The last piece left is flattened to one line and cut at a space to fit, as before.
     item = Memory(clock=clock).add("x", user_id="u")[0]

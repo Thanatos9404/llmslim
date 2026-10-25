@@ -305,7 +305,9 @@ def _focus_offset(sentence: str, query: str) -> int:
     return 0
 
 
-@lru_cache(maxsize=64)
+# Keyed by the whole history text, so each entry keeps one history alive (8 of them at 1M tokens are about 32 MB);
+# every write makes a new history, so a long-running server gains nothing from more. (It was 64.)
+@lru_cache(maxsize=8)
 def _document_tokens(document: str) -> int:
     return count_tokens(document)
 

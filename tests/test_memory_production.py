@@ -64,7 +64,9 @@ def finish(seconds, fn, *args, **kwargs):
     ids=["one-word", "one-word-then-more", "chinese", "url"],
 )
 @pytest.mark.parametrize("budget", [30, 50, 100, 150])
-def test_a_turn_whose_first_word_is_longer_than_the_budget_does_not_hang(text, query, budget):
+def test_a_turn_whose_first_word_is_longer_than_the_budget_is_cut_between_characters(
+    text, query, budget
+):
     memory = Memory(clock=clock)
     memory.add(text, user_id="u")
     context = finish(10, memory.search, query, user_id="u", budget=budget)
@@ -72,6 +74,10 @@ def test_a_turn_whose_first_word_is_longer_than_the_budget_does_not_hang(text, q
     assert context.tokens <= budget
     assert context.tokens == count_tokens(context.text)
     assert finish(10, memory.search, query, user_id="u", budget=budget).text == context.text
+    # It used to loop forever, then to be left out; now the turn's opening is kept, marked as cut.
+    label, kept = context.text.split(": ", 1)
+    assert kept.endswith(" ...") and text.startswith(kept[: -len(" ...")]) and len(kept) > 4
+    assert [turn.partial for turn in context.turns] == [True]
 
 
 def test_a_long_chinese_turn_does_not_crowd_out_a_short_fact():
@@ -85,12 +91,23 @@ def test_a_long_chinese_turn_does_not_crowd_out_a_short_fact():
     assert CJK * 12 in memory.search("我喜欢什么", user_id="u", budget=5000).text
 
 
-def test_fit_drops_a_last_piece_that_no_whole_word_cut_can_shorten():
+def _one_piece(text, budget):
     item = Memory(clock=clock).add("x", user_id="u")[0]
     turns = [_turns.Turn(item, 0, "2026-04-06 (Mon) 08:00", parts=1, date="2026-04-06")]
-    chosen = _turns.Selection(turns, 50, "q")
-    chosen.kept[0] = {0: ([("Z" * 4000, False)], 1.0, False)}
-    texts, recalled, tokens = finish(10, _turns.fit, chosen, 50, "")
+    chosen = _turns.Selection(turns, budget, "q")
+    chosen.kept[0] = {0: ([(text, False)], 1.0, False)}
+    return chosen
+
+
+def test_fit_cuts_a_last_piece_with_no_space_between_characters():
+    texts, recalled, tokens = finish(10, _turns.fit, _one_piece("Z" * 4000, 50), 50, "")
+    assert 0 < tokens <= 50 and recalled == [(0, True)]
+    assert texts[0].startswith("[2026-04-06 (Mon) 08:00] user: ZZZ") and texts[0].endswith("Z ...")
+
+
+def test_fit_drops_a_last_piece_when_not_one_character_fits():
+    # The label alone leaves no room: the piece is dropped, as before.
+    texts, recalled, tokens = finish(10, _turns.fit, _one_piece("Z" * 4000, 12), 12, "")
     assert texts == [""] and recalled == [] and tokens == 0
 
 

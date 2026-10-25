@@ -24,6 +24,7 @@ Everything here is deterministic: the same history, question and settings give t
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
@@ -543,6 +544,58 @@ def _cut(text: str, limit: int) -> str:
     return " ".join(ws[:low]) + (GAP.rstrip() if low < len(ws) else "")
 
 
+def _regional(char: str) -> bool:
+    return "\U0001f1e6" <= char <= "\U0001f1ff"
+
+
+def _joins(char: str, previous: str, regional_before: int) -> bool:
+    """Whether ``char`` belongs with the character before it, so text is never cut between them: a combining mark,
+    a zero-width joiner or the character after one, a variation selector, an emoji skin tone or tag, the second
+    regional indicator of a flag, a Hangul vowel or final consonant (conjoining jamo), or the low half of a
+    surrogate pair."""
+    code = ord(char)
+    return (
+        unicodedata.category(char) in ("Mn", "Mc", "Me")
+        or char == "\u200d"
+        or previous == "\u200d"
+        or 0xFE00 <= code <= 0xFE0F
+        or 0xE0100 <= code <= 0xE01EF
+        or 0x1F3FB <= code <= 0x1F3FF
+        or 0xE0020 <= code <= 0xE007F
+        or 0x1160 <= code <= 0x11FF
+        or 0xD7B0 <= code <= 0xD7FF
+        or (0xDC00 <= code <= 0xDFFF and 0xD800 <= ord(previous) <= 0xDBFF)
+        or (_regional(char) and regional_before % 2 == 1)
+    )
+
+
+def _cut_points(text: str, stop: int) -> List[int]:
+    """The offsets up to ``stop`` where ``text`` can be cut without splitting a character sequence (``_joins``)."""
+    points: List[int] = []
+    regional = 0  # regional indicators in a row just before the offset
+    for at in range(1, min(stop, len(text)) + 1):
+        regional = regional + 1 if _regional(text[at - 1]) else 0
+        if at == len(text) or not _joins(text[at], text[at - 1], regional):
+            points.append(at)
+    return points
+
+
+def _cut_chars(text: str, limit: int) -> str:
+    """The longest prefix of ``text`` within ``limit`` tokens, cut between two characters and marked as cut, for
+    text with no space where a whole word fits (Chinese or Japanese prose, a long URL or token). A character sequence
+    that shows as one (an accented letter, an emoji, a flag) is never split. Empty when not one character fits."""
+    # A token covers at most a few characters of such text, so the cut is looked for in the first ones only.
+    points = _cut_points(text, max(1, limit) * 32)
+    low, high = 0, len(points)
+    while low < high:
+        mid = (low + high + 1) // 2
+        if count_tokens(text[: points[mid - 1]]) + 2 <= limit:
+            low = mid
+        else:
+            high = mid - 1
+    return text[: points[low - 1]] + GAP.rstrip() if low else ""
+
+
 # ------------------------------------------------------------------ selection
 
 
@@ -813,9 +866,13 @@ def fit(
         flat = " ".join(" ".join(text.split()) for text, _ in pieces)
         room = count(flat) - (tokens - limit) - 4
         cut = [(_cut(flat, room), False)] if room >= 4 else []
-        # A cut that leaves the piece as it is cannot get it under the budget: its first word alone is longer than the
-        # room (text with no spaces, such as Chinese or Japanese prose, a long URL or an encoded blob). Cutting it again
-        # would give the same text forever, so the piece is dropped, as when no room is left.
+        if cut and cut == pieces:
+            # A cut at a space leaves the piece as it is: its first word alone is longer than the room (text with no
+            # spaces, such as Chinese or Japanese prose, a long URL or an encoded blob). It is cut between two
+            # characters instead. When that cannot shorten it either, cutting again would give the same text
+            # forever, so the piece is dropped, as when no room is left.
+            chars = _cut_chars(flat, room)
+            cut = [(chars, False)] if chars else []
         if not cut or cut == pieces:
             chosen.kept.clear()
         else:

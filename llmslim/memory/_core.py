@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
-from ..focus import Unit, _query_terms, _stem, rank
+from ..focus import Unit, _query_terms, _stem
 from ..planning.scoring import lexical_relevance
 from ..rerank import resolve_relevance
 from ..tokens import count_tokens
@@ -861,7 +861,7 @@ class Memory:
         units = [
             Unit(k, k, said, count_tokens(said), "", "\n") for k, (_, said) in enumerate(candidates)
         ]
-        scores = rank(units, query, scorer, candidates=_SECTION_RERANK)
+        scores = _turns.rank_units(units, query, scorer, _SECTION_RERANK)
         order = sorted(
             range(len(candidates)),
             key=lambda k: (-scores[k], candidates[k][0].created_at, candidates[k][0].seq, k),
@@ -990,7 +990,8 @@ class Memory:
             Unit(k, k, said, _turns.tokens_of(said), "", "\n")
             for k, (_, said) in enumerate(candidates)
         ]
-        scores = rank(units, query, scorer, candidates=_SECTION_RERANK)
+        # Without anything in the question to match, there is nothing to say the statements bear on it: no section.
+        scores = _turns.rank_units(units, query, scorer, _SECTION_RERANK, recency=False)
         order = sorted(
             range(len(candidates)),
             key=lambda k: (-scores[k], candidates[k][0].created_at, candidates[k][0].seq, k),

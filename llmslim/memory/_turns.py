@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from ..focus import BM25, Unit, _query_terms, rank, terms
+from ..focus import BM25, Unit, _query_terms, _rerank, rank, terms
 from ..tokenization import split_sentences
 from ..tokens import count_tokens
 from ._types import MemoryItem
@@ -425,18 +425,86 @@ def score_pool(
         Unit(k, p.turn if by_turn else turns[p.turn].session, p.text, p.tokens, "", "\n")
         for k, p in enumerate(pieces)
     ]
-    return rank(units, query, scorer, candidates=candidates)
+    return rank_units(units, query, scorer, candidates)
+
+
+# Letters outside the Latin alphabet: Chinese, Japanese, Korean, Cyrillic, Arabic and so on. LLMSlim's lexical
+# ranking reads Latin-script words and numbers only, so a question with none of them (written in another script, or
+# only common words such as "What is it?") is matched on these letters instead: every pair of adjacent letters in a
+# run of them (or the letter itself, in a run of one) counts as a word for BM25. Chinese and Japanese put no spaces
+# between words, and letter pairs are the usual way to match them without a dictionary.
+_OTHER_LETTERS = re.compile(r"[^\W\d_A-Za-z]+")
+
+
+def query_grams(query: str) -> Tuple[str, ...]:
+    """What a question with no Latin-script word to match is matched on: the pairs of adjacent letters in each run of
+    letters outside the Latin alphabet (a run of one letter gives that letter), case-folded, without repeats."""
+    grams: List[str] = []
+    for run in _OTHER_LETTERS.findall(query.casefold()):
+        grams.extend([run] if len(run) == 1 else (run[k : k + 2] for k in range(len(run) - 1)))
+    return tuple(dict.fromkeys(grams))
+
+
+@lru_cache(maxsize=1 << 15)
+def text_grams(text: str) -> Tuple[str, ...]:
+    """The letters and pairs of adjacent letters of ``text``'s runs of letters outside the Latin alphabet."""
+    grams: List[str] = []
+    for run in _OTHER_LETTERS.findall(text.casefold()):
+        grams.extend(run)
+        grams.extend(run[k : k + 2] for k in range(len(run) - 1))
+    return tuple(grams)
+
+
+def gram_scores(texts: Sequence[str], query: str) -> List[float]:
+    """BM25 of ``query_grams(query)`` against each text's ``text_grams``; all 0 when the question has none."""
+    wanted = query_grams(query)
+    if not wanted or not texts:
+        return [0.0] * len(texts)
+    return BM25([text_grams(text) for text in texts]).scores(dict.fromkeys(wanted, 1.0))
+
+
+def rank_units(
+    units: Sequence[Unit],
+    query: str,
+    scorer: Optional[Scorer],
+    candidates: int,
+    recency: bool = True,
+) -> List[float]:
+    """Relevance of each unit to ``query``, the units in date order.
+
+    A question with a Latin-script word or a number to match is ranked by ``focus.rank``, exactly as before. One with
+    none is matched on its other letters (``gram_scores``). When nothing matches either, the most recent units score
+    highest (with ``recency``; without it they all score 0). With a reranker or a custom scorer set, it reads the
+    strongest of these (``candidates`` of them: the matching units, then the most recent), as for any question."""
+    if not units:
+        return []
+    if _query_terms(query):
+        return rank(units, query, scorer, candidates=candidates)
+    size = len(units)
+    scores = gram_scores([u.text for u in units], query)
+    if not any(score > 0 for score in scores):
+        if not recency:
+            return scores
+        scores = [(k + 1) / size for k in range(size)]
+    if scorer is None:
+        return scores
+    top = max(scores)
+    lexical = [s if s > 0 else top * 1e-6 * (k + 1) / size for k, s in enumerate(scores)]
+    return _rerank(units, query, lexical, scorer, candidates)
 
 
 def excerpt(segs: Sequence[Segment], query: str, limit: int) -> Tuple[List[Tuple[str, bool]], bool]:
-    """The most relevant segments of a long turn within ``limit`` tokens, in their order, with gaps marked.
-    Falls back to the opening segments when none shares a term with the query. Returns (parts, trimmed)."""
+    """The most relevant segments of a long turn within ``limit`` tokens, in their order, with gaps marked: by the
+    query's terms, or by its other letters when it has no Latin-script word (``gram_scores``). Falls back to the
+    opening segments when none shares anything with the query. Returns (parts, trimmed)."""
     costs = [tokens_of(s.text) for s in segs]
     if sum(costs) <= limit:
         return [(s.text, s.block) for s in segs], False
-    bm25 = BM25([terms(s.text) for s in segs])
     weights = dict.fromkeys(_query_terms(query), 1.0)
-    scores = bm25.scores(weights) if weights else [0.0] * len(segs)
+    if weights:
+        scores = BM25([terms(s.text) for s in segs]).scores(weights)
+    else:
+        scores = gram_scores([s.text for s in segs], query)
     order = sorted(range(len(segs)), key=lambda k: (-scores[k], k))
     if not any(s > 0 for s in scores):
         order = list(range(len(segs)))

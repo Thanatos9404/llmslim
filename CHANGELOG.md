@@ -41,10 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Dates:** the first kept turn of each session shows the full stamp (`stamp_format`); a later one shows its own
     full stamp when its time differs from the one shown last in its session, else the date (`date_format`, new,
     default `%Y-%m-%d`).
+  - **Cuts are at spaces:** when a budget is too small for any whole turn, the best one is cut to fit at a space. A
+    turn with no spaces in it (Chinese or Japanese prose, a long URL) can't be cut that way and is left out (0.11.2
+    returned its label with no text).
 - **Memory: the kind of question decides the sections** (fixed English patterns, no model; see
   `llmslim/memory/_routing.py`):
   - a plain lookup of a past fact or a history check ("What is my salary?", "When did I say ...?", "Have I ever
-    ...?") gets no section, so the whole budget goes to the turns that answer it;
+    ...?") gets no requests or preferences section, so the budget goes to the turns that answer it (a history check
+    can get the section of statements that may conflict, below);
   - a request for help, advice or a plan gets the standing requests and the stated preferences that best match it;
   - other questions get the standing requests that best match them;
   - a summary, recap, ordering or "how did it develop" question is answered from the digest.
@@ -92,6 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Controls:** `Memory(coverage="auto" | "always" | "never")` and `search(coverage=...)`.
 - `llmslim.focus.rank` takes an optional `candidates`: how many of the strongest lexical candidates the reranker
   reads.
+- `MemoryContext.requests`, `preferences` and `conflicts`, and the same three lists in `MemoryContext.to_dict()`, so
+  in `llmslim serve`'s `POST /v1/memories/search` response (each turn with its id, role, content, timestamps,
+  `score` and `partial`). Empty when the section is not shown.
+- `Memory.search` logs one line per search at DEBUG level on the `llmslim.memory` logger: the kind of question, token
+  counts, turns and sessions kept, the size of each section and the time taken. It never logs the query or any
+  stored text.
 
 ## [0.11.2] - 2026-10-24
 

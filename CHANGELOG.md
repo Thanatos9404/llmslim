@@ -41,9 +41,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Dates:** the first kept turn of each session shows the full stamp (`stamp_format`); a later one shows its own
     full stamp when its time differs from the one shown last in its session, else the date (`date_format`, new,
     default `%Y-%m-%d`).
-  - **Cuts are at spaces:** when a budget is too small for any whole turn, the best one is cut to fit at a space. A
-    turn with no spaces in it (Chinese or Japanese prose, a long URL) can't be cut that way and is left out (0.11.2
-    returned its label with no text).
+  - **Cuts:** when a budget is too small for any whole turn, the best one is cut to fit, at a space when it has
+    one. A turn with no space where a whole word fits (Chinese or Japanese prose, a long URL or token) is cut between
+    two characters instead, never splitting what shows as one character (a letter and its accents, an emoji with its
+    modifiers, a flag). 0.11.2 returned such a turn's label with no text.
+- **Memory: questions with no Latin-script word are matched on their letters.** A question written in Chinese,
+  Japanese, Russian or another script, or made only of common words ("What is it?"), has nothing for the lexical
+  ranking to match; it used to get no ranking at all (even with a reranker), so the earliest turns filled the budget.
+  Such a question is now matched on pairs of adjacent letters, with the same BM25; when no turn shares any, the most
+  recent turns come first; and a reranker or custom scorer reads the strongest of these candidates. A history check
+  with nothing to match gets no conflicts section. Questions with a Latin-script word or a number are ranked exactly
+  as before.
+- **MCP:** the `recall` tool's description says the stored messages come back under their dates and whole where they
+  fit (the most relevant parts of longer ones), as the turn-level read path returns them.
 - **Memory: the kind of question decides the sections** (fixed English patterns, no model; see
   `llmslim/memory/_routing.py`):
   - a plain lookup of a past fact or a history check ("What is my salary?", "When did I say ...?", "Have I ever

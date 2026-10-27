@@ -27,11 +27,11 @@ Each MCP setup below starts the same server, `llmslim mcp`, with [uv](https://do
 newer). Memory goes to a local SQLite file, `~/.llmslim/memory.db`.
 
 **One click:**
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.2%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
-[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMiIsImxsbXNsaW0iLCJtY3AiXX0%3D)
-[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMiIsImxsbXNsaW0iLCJtY3AiXX0%3D)
-[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.11.2&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
-[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.2%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.12.0%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTIuMCIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTIuMCIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.12.0&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
+[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.12.0%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
 
 | Tool | Run |
 | :--- | :--- |
@@ -148,7 +148,7 @@ reads `107 -> 72 tokens (32.7% fewer)`.
 ## LLMSlim Core and LLMSlim Platform
 
 **The context layer for production AI agents.**
-*This repository is **LLMSlim Core** (v0.11.2, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
+*This repository is **LLMSlim Core** (v0.12.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
 
 [![Python Versions](https://img.shields.io/pypi/pyversions/llmslim.svg?style=flat-square&logo=python&logoColor=white&color=818cf8)](https://pypi.org/project/llmslim/)
 [![Tests Passing](https://img.shields.io/badge/Tests-1648%20passed%20%2F%200%20failed-34d399?style=flat-square&logo=pytest&logoColor=white)](https://github.com/Thanatos9404/llmslim/actions)
@@ -158,7 +158,7 @@ reads `107 -> 72 tokens (32.7% fewer)`.
 
 | | **LLMSlim Core** | **LLMSlim Platform** |
 |---|---|---|
-| Version | 0.11.2 | 0.9.1 beta |
+| Version | 0.12.0 | 0.9.1 beta |
 | License | MIT, this repository | Proprietary, private beta |
 | Install | `pip install llmslim` | By invitation; not published to PyPI |
 | What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
@@ -675,14 +675,14 @@ claude mcp add llmslim -- llmslim mcp
 - **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
 
-**One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.11.2" llmslim mcp`, so it needs
+**One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.12.0" llmslim mcp`, so it needs
 [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer.
 
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.2%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
-[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMiIsImxsbXNsaW0iLCJtY3AiXX0%3D)
-[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTEuMiIsImxsbXNsaW0iLCJtY3AiXX0%3D)
-[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.11.2&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
-[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.11.2%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.12.0%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTIuMCIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=llmslim&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJsbG1zbGltW21jcF09PTAuMTIuMCIsImxsbXNsaW0iLCJtY3AiXX0%3D)
+[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=uvx&arg=--from&arg=llmslim%5Bmcp%5D%3D%3D0.12.0&arg=llmslim&arg=mcp&id=llmslim&name=LLMSlim&description=Long-term%20memory%20for%20agents%20with%20no%20LLM%20in%20the%20loop)
+[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=llmslim&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22llmslim%5Bmcp%5D%3D%3D0.12.0%22%2C%22llmslim%22%2C%22mcp%22%5D%7D)
 
 In Gemini CLI, `gemini extensions install https://github.com/Thanatos9404/llmslim` adds the same server.
 In VS Code, the [LLMSlim Memory extension](plugins/vscode) adds it to VS Code's MCP support (coming soon to the VS Code
@@ -959,7 +959,7 @@ llmslim document.txt --stats
 
 ## 📋 Changelog
 
-Release notes for every version, including 0.11.2, are in
+Release notes for every version, including 0.12.0, are in
 [CHANGELOG.md](CHANGELOG.md) and on
 [GitHub Releases](https://github.com/Thanatos9404/llmslim/releases).
 

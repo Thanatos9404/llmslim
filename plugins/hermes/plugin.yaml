@@ -1,5 +1,5 @@
 name: llmslim
-version: "0.11.2"
+version: "0.12.0"
 description: "Context engine that compresses older tool output and turns locally with LLMSlim, with no LLM call. The output is deterministic and the start of the prompt is sent unchanged, so prompt caching keeps working."
 author: Yashvardhan Thanvi
 license: MIT
@@ -7,7 +7,7 @@ homepage: https://github.com/Thanatos9404/llmslim
 requires_hermes: ">=0.21.7"
 tags: [context, compression, prompt-caching]
 python_dependencies:
-  - "llmslim==0.11.2"
+  - "llmslim==0.12.0"
 provides_tools: []
 provides_hooks: []
 requires_env: []

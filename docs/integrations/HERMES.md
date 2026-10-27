@@ -18,7 +18,7 @@ installer, Docker image or Nix (the `hermes-agent` package on PyPI is an old
 
 The shortest way is the ready-made plugin in [`plugins/hermes`](../../plugins/hermes/)
 (Hermes 0.21.7 and newer). Hermes installs it, asks before adding its one
-dependency (`llmslim==0.11.2` from PyPI), and keeps that dependency across
+dependency (`llmslim==0.12.0` from PyPI), and keeps that dependency across
 updates:
 
 ```bash

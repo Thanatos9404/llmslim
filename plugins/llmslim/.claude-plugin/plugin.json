@@ -1,7 +1,7 @@
 {
   "name": "llmslim",
   "displayName": "LLMSlim",
-  "version": "0.11.2",
+  "version": "0.12.0",
   "description": "Long-term memory with no LLM in the loop, plus setup and savings commands for running Claude Code through the LLMSlim proxy.",
   "author": {
     "name": "Yashvardhan Thanvi",

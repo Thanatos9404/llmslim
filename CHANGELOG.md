@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.12.0] - 2026-10-27
 
 ### Merged from 0.11.2
 - **The 0.11.2 fixes hold on the turn-level read path.** `Memory.search` ranks stored turns itself (below), so it

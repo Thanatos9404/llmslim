@@ -5,6 +5,21 @@ export type Release = { version: string; date: string; theme: string; summary: s
 
 export const releases: Release[] = [
   {
+    version: "v0.12.0",
+    date: "27 Oct 2026",
+    theme: "Memory that reads turn by turn.",
+    summary: "When a long history does not fit the budget, recall now ranks the stored turns themselves, keeps the user's own turns in their share of the budget, and adds the user's standing requests, stated preferences and statements that may conflict when the question calls for them. A history that fits comes back exactly as before, and with the default settings there is still no model call to store or to recall.",
+    metrics: ["Turn-by-turn recall", "Requests, preferences and conflicts", "Questions in any script"],
+    tag: "https://github.com/Thanatos9404/llmslim/releases/tag/v0.12.0",
+    items: [
+      { label: "Changed", icon: Wrench, title: "A long history is read turn by turn", body: "User turns form their own pool with 55% of the budget, kept whole when they fit and trimmed to their relevant sentences when they do not. Replies are cut into windows that fill the rest, near-duplicates are skipped, and each kept turn is one dated block." },
+      { label: "Added", icon: CheckCircle2, title: "Standing requests and preferences", body: "Requests like \"Always include the rollback command when I ask about a deploy\" go to the top of the context, and what they ask for is fetched too. When you ask for help or a plan, the preferences you stated come back with it." },
+      { label: "Added", icon: CheckCircle2, title: "Statements that may conflict", body: "Ask \"Have I ever deployed on a Friday?\" and recall shows the statements that deny it and the ones that do not side by side, in date order, above the rest of the context." },
+      { label: "Added", icon: CheckCircle2, title: "Summaries from a digest", body: "Summary, recap and ordering questions are answered from the opening of every turn and the outline of every reply, so many more exchanges fit in the budget." },
+      { label: "Changed", icon: ShieldCheck, title: "Questions in any script, and never over budget", body: "A question in Japanese, Chinese, Russian or another script is matched on pairs of its letters, with no dictionary and no model. A turn with no space is cut between characters when only part of it fits, and recall never returns more tokens than its budget." },
+    ],
+  },
+  {
     version: "v0.11.2",
     date: "24 Oct 2026",
     theme: "Recall that finds the right note, even on a busy day.",

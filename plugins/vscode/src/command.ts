@@ -4,7 +4,7 @@
 import * as path from "node:path";
 
 /** The llmslim release the server runs. Bump it with each llmslim release (see RELEASE_CHECKLIST.md). */
-export const LLMSLIM_VERSION = "0.11.2";
+export const LLMSLIM_VERSION = "0.12.0";
 
 /** The package uvx installs: pinned, so every start runs the same release. */
 export const PACKAGE_SPEC = `llmslim[mcp]==${LLMSLIM_VERSION}`;

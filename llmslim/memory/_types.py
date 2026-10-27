@@ -120,6 +120,15 @@ class MemoryContext:
     sessions_total: int
     sessions_kept: int
     elapsed_ms: float = 0.0
+    # Standing requests the user made earlier ("always ...", "from now on ...") that bear on the question, shown in
+    # their own section at the top of ``text``. Only user turns can appear here.
+    requests: Tuple[RecalledTurn, ...] = ()
+    # Preferences the user stated earlier ("I prefer ...", "I'd rather ...") that bear on a request for advice, shown
+    # in their own section at the top of ``text``, after the requests. Only user turns can appear here.
+    preferences: Tuple[RecalledTurn, ...] = ()
+    # For a yes-or-no question about the user's past ("Have I ever ...?"): the user's statements on it that may
+    # conflict (some deny it, some do not), shown in their own section at the top of ``text``. Only user turns.
+    conflicts: Tuple[RecalledTurn, ...] = ()
 
     @property
     def compressed(self) -> bool:
@@ -142,5 +151,17 @@ class MemoryContext:
             "turns": [
                 {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
                 for turn in self.turns
+            ],
+            "requests": [
+                {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
+                for turn in self.requests
+            ],
+            "preferences": [
+                {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
+                for turn in self.preferences
+            ],
+            "conflicts": [
+                {**turn.item.to_dict(), "score": turn.score, "partial": turn.partial}
+                for turn in self.conflicts
             ],
         }

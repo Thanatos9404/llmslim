@@ -125,8 +125,8 @@ def build_server(
         )
     )
     def recall(query: str, budget: int = default_budget, session: Optional[str] = None) -> str:
-        """Find what earlier conversations said about a question: the stored messages that answer it, whole and
-        under their dates, within a token budget.
+        """Find what earlier conversations said about a question: the stored messages that answer it, under their
+        dates and whole where they fit (the most relevant parts of longer ones), within a token budget.
 
         Args:
             query: The question, e.g. the user's latest message.

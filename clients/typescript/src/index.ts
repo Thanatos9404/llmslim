@@ -238,7 +238,7 @@ export class LLMSlim {
       return body.deleted as number;
     },
 
-    /** The stored turns that answer `query`, whole and under their dates, within `budget` tokens. */
+    /** The stored turns that answer `query`, under their dates and whole where they fit, within `budget` tokens. */
     search: async (
       request: Scope & {
         query: string;

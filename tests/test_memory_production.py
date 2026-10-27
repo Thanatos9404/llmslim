@@ -193,6 +193,52 @@ def test_a_question_of_common_words_only_gets_the_most_recent_turns():
     assert memory.search("我喜欢什么", user_id="u", budget=60).text == context.text
 
 
+JAPANESE_FACT = "検索サービスは来週ベルリンにも展開する予定です。"
+JAPANESE_QUESTION = "検索サービスはどこに展開しますか？"
+
+
+def test_a_standing_request_does_not_switch_off_matching_a_question_on_its_letters():
+    # The request says what an answer should include, so its words are added to the retrieval query. Added to a
+    # question with no Latin-script word, they turned the letter matching off and the one matching turn was lost.
+    memory = Memory(clock=clock)
+    request = "Always include the rollback command when I ask about a deploy."
+    _notes(memory, [request] + FILLER_NOTES[:20] + [JAPANESE_FACT] + FILLER_NOTES[20:])
+    for budget in (100, 160, 300):
+        context = memory.search(JAPANESE_QUESTION, user_id="u", budget=budget)
+        assert JAPANESE_FACT in context.text and context.tokens <= budget
+    assert [
+        t.item.content for t in memory.search(JAPANESE_QUESTION, user_id="u", budget=300).requests
+    ] == [request]
+    # A question with Latin-script words is still widened by the request's words.
+    _notes(memory, ["The rollback command is fly releases rollback."])
+    context = memory.search("How do I deploy the search service?", user_id="u", budget=160)
+    assert "fly releases rollback" in context.text
+
+
+def test_replies_that_share_no_letters_wait_for_the_user_turn_that_does():
+    # Each pool fell back to its most recent pieces when nothing in it matched, so English replies to a Japanese
+    # question took the room before the matching user turn's top-up.
+    memory = Memory(clock=clock)
+    for k in range(8):
+        memory.add(
+            [
+                {
+                    "role": "user",
+                    "content": JAPANESE_FACT if k == 3 else f"Note {k}: the weather was mild.",
+                },
+                {"role": "assistant", "content": f"Reply {k}: noted, thanks for the update."},
+            ],
+            user_id="u",
+            timestamp=T0 + timedelta(days=k),
+        )
+    for budget in (60, 80, 120):
+        context = memory.search(JAPANESE_QUESTION, user_id="u", budget=budget)
+        assert JAPANESE_FACT in context.text and context.tokens <= budget
+    # Nothing shares a letter with the question: the most recent turns of both pools, as before.
+    contents = [t.item.content for t in memory.search("我喜欢什么", user_id="u", budget=80).turns]
+    assert "Reply 7: noted, thanks for the update." in contents
+
+
 def test_a_long_turn_keeps_the_sentences_that_share_letters_with_the_question():
     memory = Memory(clock=clock)
     lines = (

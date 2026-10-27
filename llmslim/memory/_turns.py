@@ -416,17 +416,18 @@ def score_pool(
     scorer: Optional[Scorer],
     candidates: int,
     by_turn: bool,
+    recency: bool = True,
 ) -> List[float]:
     """Relevance of each piece to ``query``: LLMSlim's lexical ranking (BM25 with feedback and bonuses; a piece
     inherits part of its group's relevance, the group being its turn when ``by_turn`` else its session), then the
-    reranker over the ``candidates`` strongest lexical candidates when one is set."""
+    reranker over the ``candidates`` strongest lexical candidates when one is set. ``recency`` as in ``rank_units``."""
     if not pieces:
         return []
     units = [
         Unit(k, p.turn if by_turn else turns[p.turn].session, p.text, p.tokens, "", "\n")
         for k, p in enumerate(pieces)
     ]
-    return rank_units(units, query, scorer, candidates)
+    return rank_units(units, query, scorer, candidates, recency)
 
 
 # Letters outside the Latin alphabet: Chinese, Japanese, Korean, Cyrillic, Arabic and so on. LLMSlim's lexical
@@ -454,6 +455,12 @@ def text_grams(text: str) -> Tuple[str, ...]:
         grams.extend(run)
         grams.extend(run[k : k + 2] for k in range(len(run) - 1))
     return tuple(grams)
+
+
+def _grams_match(user: Sequence[Piece], other: Sequence[Piece], query: str) -> bool:
+    """Whether any piece shares a letter or letter pair (``query_grams``) with a question matched on its letters."""
+    wanted = set(query_grams(query))
+    return bool(wanted) and any(wanted.intersection(text_grams(p.text)) for p in (*user, *other))
 
 
 def gram_scores(texts: Sequence[str], query: str) -> List[float]:
@@ -771,9 +778,21 @@ def select_turns(
     """Fill ``budget`` from the user pool (up to its share) and the reply pool, then top up from both."""
     share = USER_SHARE if user_share is None else user_share
     user, other = pools(turns, budget)
-    ranked_query = f"{query} {expansion}".strip() if expansion else query
+    # A request's words widen a question that has Latin-script words of its own. A question with none is matched on
+    # its letters, which added Latin-script words would switch off, so it is ranked as asked.
+    ranked_query = f"{query} {expansion}".strip() if expansion and _query_terms(query) else query
+    # Without a reranker, a question matched on its letters falls back to recency only when no piece of either pool
+    # shares a letter pair with it: a pool with no match then scores 0, and waits for the top-up like any piece
+    # with no shared term, instead of crowding out the matches in the other pool.
+    recency = (
+        scorer is not None
+        or bool(_query_terms(ranked_query))
+        or not _grams_match(user, other, ranked_query)
+    )
     for pool, n, by_turn in ((user, RERANK_USER, False), (other, RERANK_REPLY, REPLY_GROUP)):
-        for piece, value in zip(pool, score_pool(pool, turns, ranked_query, scorer, n, by_turn)):
+        for piece, value in zip(
+            pool, score_pool(pool, turns, ranked_query, scorer, n, by_turn, recency)
+        ):
             piece.score = value
     chosen = Selection(turns, budget, ranked_query)
     fill(chosen, user, other, budget, share, scorer is None, cap_for_user_turn(budget))

@@ -52,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recent turns come first; and a reranker or custom scorer reads the strongest of these candidates. A history check
   with nothing to match gets no conflicts section. Questions with a Latin-script word or a number are ranked exactly
   as before.
+  - A standing request's words are not added to such a question: they would switch the letter matching off.
+  - When a user turn shares letters with the question but no reply does, the replies wait for that turn instead of
+    filling the budget by recency (without a reranker).
 - **MCP:** the `recall` tool's description says the stored messages come back under their dates and whole where they
   fit (the most relevant parts of longer ones), as the turn-level read path returns them.
 - **Memory: the kind of question decides the sections** (fixed English patterns, no model; see

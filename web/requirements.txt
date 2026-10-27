@@ -4,4 +4,4 @@ numpy>=1.21
 scikit-learn>=1.0
 llmslim[sarvam,mongodb]==0.12.0
 # Server-side error reporting (api/_sentry.py); it stays inactive unless SENTRY_DSN is set.
-sentry-sdk==2.71.0
+sentry-sdk==2.73.0

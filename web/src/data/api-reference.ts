@@ -7,11 +7,11 @@ export const API_REFERENCE_DOCS: DocPage[] = [
     "slug": "api-llmslim",
     "title": "API reference: llmslim",
     "subtitle": "Every public name in the llmslim package, with its signature and docstring.",
-    "description": "Signatures, type annotations and docstrings of the 77 public names in llmslim, generated from the source of llmslim 0.12.0.",
+    "description": "Signatures, type annotations and docstrings of the 80 public names in llmslim, generated from the source of llmslim 0.12.0.",
     "category": "API Reference",
     "searchIntent": "LLMSlim Python API reference for llmslim: signatures, parameters and return types.",
     "lastUpdated": "October 2026",
-    "readingTime": "35 min read",
+    "readingTime": "36 min read",
     "sections": [
       {
         "id": "about",
@@ -569,6 +569,26 @@ export const API_REFERENCE_DOCS: DocPage[] = [
         }
       },
       {
+        "id": "render-context-item",
+        "title": "render_context_item()",
+        "content": "Render one item with an explicit provenance boundary, as the planner puts it in the final context.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim import render_context_item",
+          "code": "def render_context_item(item: ContextItem, content: str) -> str:\n    \"\"\"Render one item with an explicit provenance boundary, as the planner puts it in the final context.\n\n    The block is an ``<llmslim_context id=\"...\" kind=\"...\" role=\"...\" trusted=\"...\">`` element around ``content``.\n    Attribute values are escaped, and untrusted content has any envelope tag\n    neutralized (see :mod:`llmslim.planning.boundary`), so neither an item ID\n    nor untrusted text can close the block or forge a trusted one. Trusted\n    content, and untrusted content without an envelope tag, render as given.\n\n    Args:\n        item: The item whose id, kind and role label the block. Its role decides whether it is trusted.\n        content: The text to render, for example ``item.content`` or a compressed form of it.\n\n    Returns:\n        The rendered block, followed by a blank line.\n    \"\"\""
+        }
+      },
+      {
+        "id": "rendered-token-count",
+        "title": "rendered_token_count()",
+        "content": "Tokens that content costs in the context once rendered for item, boundary included.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim import rendered_token_count",
+          "code": "def rendered_token_count(item: ContextItem, content: str) -> int:\n    \"\"\"Tokens that ``content`` costs in the context once rendered for ``item``, boundary included.\n\n    Args:\n        item: The item ``content`` belongs to.\n        content: The text to render, as for :func:`render_context_item`.\n\n    Returns:\n        The token count of the rendered block, from :func:`llmslim.count_tokens`.\n    \"\"\""
+        }
+      },
+      {
         "id": "generic-request",
         "title": "generic_request()",
         "content": "Return detached Python request data for a caller-owned model adapter.",
@@ -706,6 +726,16 @@ export const API_REFERENCE_DOCS: DocPage[] = [
           "language": "python",
           "filename": "from llmslim import cache_cost_breakdown",
           "code": "def cache_cost_breakdown(\n    original_tokens: int,\n    planned_tokens: int,\n    telemetry: CacheTelemetry,\n    policy: CachePolicy,\n) -> dict[str, Optional[float]]:\n    \"\"\"Disjoint compression and caching savings against the same raw baseline.\"\"\""
+        }
+      },
+      {
+        "id": "compile-cache-plan",
+        "title": "compile_cache_plan()",
+        "content": "Fingerprint the provider-visible leading prefix without changing model semantics.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim import compile_cache_plan",
+          "code": "def compile_cache_plan(\n    plan: ContextPlan,\n    model_input: ModelInput,\n    policy: CachePolicy,\n    material_settings: Optional[Mapping[str, Any]] = None,\n) -> CachePlan:\n    \"\"\"Fingerprint the provider-visible leading prefix without changing model semantics.\n\n    The prefix is the tools, in caller order, then the leading messages marked stable (by default, system and\n    developer messages), together with the provider, model, rendering version, tenant and settings. The plan's\n    segments say how stable each kept context item is. Nothing in ``model_input`` is changed.\n\n    Args:\n        plan: The context plan the request was built from.\n        model_input: The request parts built from ``plan``.\n        policy: The cache policy: mode, provider, tenant, conversation mode and prices.\n        material_settings: Request settings that change what the provider caches, such as sampling settings.\n            They are part of the fingerprint.\n\n    Returns:\n        The cache plan, with status ``DISABLED`` when ``policy.mode`` is ``\"disabled\"`` and ``COLD`` otherwise.\n\n    Raises:\n        ValueError: The policy asks for a caching feature the provider does not offer.\n    \"\"\""
         }
       },
       {

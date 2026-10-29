@@ -160,7 +160,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _stats(argv: Sequence[str]) -> int:
+def build_stats_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim proxy stats", description="Tokens the proxy kept out of requests."
     )
@@ -171,7 +171,11 @@ def _stats(argv: Sequence[str]) -> int:
         type=float,
         help="Your input price in dollars per million tokens, to estimate dollars saved.",
     )
-    args = parser.parse_args(list(argv))
+    return parser
+
+
+def _stats(argv: Sequence[str]) -> int:
+    args = build_stats_parser().parse_args(list(argv))
     store = ProxyStore(args.db)
     since = datetime.now(timezone.utc).timestamp() - args.days * 86400 if args.days else None
     stats = store.stats(datetime.fromtimestamp(since, timezone.utc) if since else None)
@@ -297,9 +301,7 @@ def claude_arguments(
     return ["--permission-mode", "default", *arguments]
 
 
-def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call) -> int:
-    """``llmslim wrap claude [claude arguments...]``: run the agent with its API traffic through the proxy."""
-    arguments = list(sys.argv[1:] if argv is None else argv)
+def build_wrap_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim wrap",
         description="Run a coding agent with its API traffic through the LLMSlim proxy. "
@@ -310,7 +312,13 @@ def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call)
         "--upstream", help=f"API to forward to (default $ANTHROPIC_BASE_URL or {DEFAULT_UPSTREAM})."
     )
     _policy_arguments(parser)
-    args, rest = parser.parse_known_args(arguments)
+    return parser
+
+
+def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call) -> int:
+    """``llmslim wrap claude [claude arguments...]``: run the agent with its API traffic through the proxy."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    args, rest = build_wrap_parser().parse_known_args(arguments)
     if rest[:1] == ["--"]:
         rest = rest[1:]
     executable = shutil.which(args.agent)
@@ -334,4 +342,4 @@ def wrap(argv: Optional[Sequence[str]] = None, *, runner: Any = subprocess.call)
     return code
 
 
-__all__: List[str] = ["build_parser", "main", "wrap"]
+__all__: List[str] = ["build_parser", "build_stats_parser", "build_wrap_parser", "main", "wrap"]

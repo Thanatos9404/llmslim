@@ -3,6 +3,9 @@
 ``pip install "llmslim[proxy]"``, then ``llmslim wrap claude`` (or run ``llmslim proxy`` and set
 ``ANTHROPIC_BASE_URL``). See :mod:`llmslim.proxy.rewrite` for what is compressed and why it stays cache-safe and
 thinking-safe.
+
+Experimental: this package and the ``llmslim proxy`` and ``llmslim wrap`` commands may change in a minor release
+(docs/API_STABILITY.md).
 """
 
 from .rewrite import (

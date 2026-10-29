@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
+__all__ = ["count_tokens", "count_tokens_batch", "get_active_token_counter_name"]
+
 _ENCODER = None
 _ENCODER_LOAD_ATTEMPTED = False
 

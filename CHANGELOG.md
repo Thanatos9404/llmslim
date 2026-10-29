@@ -22,6 +22,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   docstring. `tests/test_api_reference.py` fails when the pages are out of date with the source, when a public name
   has no docstring, or when a public function or method has an unannotated parameter or return type.
 - CI checks that the wheel ships `py.typed`.
+- **A public API contract for 1.0** in `docs/API_STABILITY.md`:
+  - what is stable, experimental and internal, and the semantic-versioning promise from 1.0.0;
+  - the deprecation policy: a `DeprecationWarning` that names the replacement and the removal release, at least two
+    minor releases and 90 days, and removal only in a major release;
+  - the same rules for the command line, the `llmslim serve` routes, the `llmslim mcp` tools, stored memory and
+    environment variables.
+  - **Experimental:** `llmslim.proxy` with `llmslim proxy` and `llmslim wrap`, `llmslim.tool_retrieval`,
+    `llmslim.semantic_retrieval`, tool ranking and selection in `llmslim.tools`, `PlanMode.SELECTIVE` and
+    `TransformersKVSession`.
+  - **Internal:** implementation modules such as `llmslim.core` and `llmslim.runtime`. Import their names from
+    `llmslim`.
+- **A snapshot of the public API.** `tests/fixtures/public_api.json` records every public name and signature, the
+  command-line flags, the `llmslim serve` routes, the `llmslim mcp` tools and schemas, the entry points and the
+  `LLMSLIM_*` variables. `tests/test_public_api.py` fails on any difference. `python scripts/public_api.py --write`
+  regenerates it.
+- `llmslim._deprecation`, a helper that deprecates functions, classes, keyword arguments and module attributes.
+- **Rendering and cache-plan helpers for integrators**, now exported from `llmslim` with docstrings and full type
+  annotations: `render_context_item` (an item in its provenance boundary, as the planner renders it),
+  `rendered_token_count` (the tokens of that rendering) and `compile_cache_plan` (the cache plan of a prepared
+  request).
 
 ### Changed
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,
@@ -29,6 +49,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `CacheSegment`, `CachePlan`, `CacheTelemetry`, `MODEL_PRICING` and `PROVIDER_CAPABILITIES`.
 - **Site:** the docs sidebar gets its list of guides from the server instead of importing every guide into the
   browser.
+- `llmslim.tokens`, `llmslim.mcp` and `llmslim.integrations.openai_agents` declare `__all__`. Nothing is renamed or
+  removed.
+- **Smaller public lists before 1.0 freezes them.** The names below leave `__all__`, so they become internal. They stay
+  importable from the modules that define them.
+  - `llmslim.integrations.web_search` exports `WebSearchSource`, `WebSearchResult` and their errors. Its 20 helper
+    functions and limits are internal.
+  - `llmslim.integrations.sarvam` keeps its documented classes and functions, the result types they return and their
+    errors: 35 names, down from 42. Its guard prefixes, default limits and `sarvam_chat_cost_inr` are internal, and it
+    no longer re-exports the text and document default limits and guard prefixes.
+  - `llmslim.integrations.sarvam_text` and `llmslim.integrations.sarvam_documents` keep their documented names and
+    result types.
+  - `llmslim.server` exports `create_app` and `main`. `api_keys_from` and `is_loopback` are internal.
+- `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
+  `build_wrap_parser`. The commands are unchanged.
 
 ### Fixed
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and

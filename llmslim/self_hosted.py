@@ -2,6 +2,9 @@
 
 This object is for a single trusted host process. It cannot be serialized into
 LLMSlim stores, traces, or the browser. The host still owns inference.
+
+Experimental: it works with Transformers' internal KV cache classes, so it may
+change in a minor release (docs/API_STABILITY.md).
 """
 
 from __future__ import annotations

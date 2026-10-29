@@ -13,8 +13,6 @@ import pytest
 
 from llmslim.core import ContextRole
 from llmslim.integrations.sarvam import (
-    DEFAULT_TEXT_LIMITS,
-    TEXT_GUARD_PREFIX,
     AsyncSarvamLanguageTools,
     RateLimitExceeded,
     SarvamAuthenticationError,
@@ -30,7 +28,11 @@ from llmslim.integrations.sarvam import (
     normalize_scripts,
     split_for_sarvam,
 )
-from llmslim.integrations.sarvam_text import _grapheme_boundary
+from llmslim.integrations.sarvam_text import (
+    DEFAULT_TEXT_LIMITS,
+    TEXT_GUARD_PREFIX,
+    _grapheme_boundary,
+)
 from llmslim.planning.models import ContextItem, ContextKind
 
 SECRET = "sk-text-secret"

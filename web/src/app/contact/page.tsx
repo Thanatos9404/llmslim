@@ -4,13 +4,13 @@ import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
   title: "Contact",
-  description: "Contact LLMSlim by email: hello@ameyor.in for business and billing, support@llmslim.app for product support, founder@llmslim.app for the founder. AMEYOR, Jaipur, Rajasthan, India.",
+  description: "Contact LLMSlim: hello@ameyor.in or +91 73576 74970 for business and billing, support@llmslim.app for product support, founder@llmslim.app for the founder. AMEYOR, Jaipur, Rajasthan, India.",
   path: "/contact",
 })
 
 export default function ContactPage() {
   const { company } = siteConfig
-  return <PolicyPage title="Contact" lede="We handle every enquiry by email and reply within 1 to 2 business days. Pick the address that fits, so your message reaches the right inbox first time.">
+  return <PolicyPage title="Contact" lede="We reply to every enquiry within 1 to 2 business days. Email is fastest: pick the address that fits, so your message reaches the right inbox first time.">
     <h2>Email</h2>
     <dl className="policy-contacts">
       <div>
@@ -29,6 +29,9 @@ export default function ContactPage() {
         <dd>The Orbit founding list, Enterprise plans, the Vault beta and the launch offers.</dd>
       </div>
     </dl>
+
+    <h2>Phone</h2>
+    <p><a href={`tel:${siteConfig.businessPhone.tel}`}>{siteConfig.businessPhone.display}</a>, for billing and payment questions, Monday to Friday, 10:00 to 18:00 India time. For anything else, email is quicker.</p>
 
     <h2>Response time</h2>
     <p>We reply within 1 to 2 business days, Monday to Friday, India time.</p>

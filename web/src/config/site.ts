@@ -24,6 +24,8 @@ export const siteConfig = {
   supportEmail: "support@llmslim.app",
   /** AMEYOR's business address: billing, legal and privacy requests. */
   businessEmail: "hello@ameyor.in",
+  /** AMEYOR's phone line for billing and payment questions (founder's instruction, 30 Oct 2026). */
+  businessPhone: { display: "+91 73576 74970", tel: "+917357674970" },
   /** The legal entity behind LLMSlim, as shown on the company and policy pages. Founder's instruction: city and state only. */
   company: {
     name: "AMEYOR",

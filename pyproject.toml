@@ -108,7 +108,7 @@ all = [
     "pydantic-ai-slim>=1.0",
 ]
 # griffe reads the source for the API reference (scripts/api_reference.py); pinned so its output is stable.
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0", "griffe==2.3.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.17.2", "mypy>=1.8", "build>=1.0", "griffe==2.3.0"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"

@@ -7,7 +7,7 @@ name = "llmslim"
 version = "0.12.0"
 description = "Context compression and planning for RAG and AI agents: fit retrieved documents, chat history and tool output into a token budget."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Yashvardhan Thanvi", email = "thanatos9404@users.noreply.github.com" }]
 keywords = [
@@ -37,7 +37,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -55,64 +54,58 @@ dependencies = [
 
 [project.optional-dependencies]
 semantic = ["sentence-transformers>=2.2"]
-mcp = ["mcp>=2.0,<3; python_version >= '3.10'", "httpx2>=2.5,<3; python_version >= '3.10'", "tiktoken>=0.5"]
+mcp = ["mcp>=2.0,<3", "httpx2>=2.5,<3", "tiktoken>=0.5"]
 # llmslim serve: the HTTP API for memory and context.
 server = ["starlette>=0.40", "uvicorn>=0.30", "tiktoken>=0.5"]
 # PostgresStore for llmslim.memory (and llmslim serve / mcp with --db postgresql://...).
 postgres = ["psycopg[binary]>=3.2,<4", "psycopg-pool>=3.2,<4"]
 # llmslim proxy / llmslim wrap: the local tool-output proxy for coding agents.
 proxy = ["starlette>=0.40", "uvicorn>=0.30", "httpx>=0.27,<1", "tiktoken>=0.5"]
-agents = ["openai-agents>=0.11,<1; python_version >= '3.10'", "mcp>=2.0,<3; python_version >= '3.10'", "httpx2>=2.5,<3; python_version >= '3.10'"]
+agents = ["openai-agents>=0.11,<1", "mcp>=2.0,<3", "httpx2>=2.5,<3"]
 sarvam = ["sarvamai>=0.1.34,<0.2"]
 zoho = ["httpx>=0.27,<1"]
 # The Exa web-search source calls Exa's REST API over httpx; no vendor SDK.
 exa = ["httpx>=0.27,<1"]
 neo4j = ["neo4j>=5.20,<7"]
-mongodb = [
-    "pymongo>=4.10,<4.13; python_version < '3.9'",
-    "pymongo>=4.13,<5; python_version >= '3.9'",
-]
+mongodb = ["pymongo>=4.13,<5"]
 fast-tokens = ["tiktoken>=0.5"]
 nlp = ["nltk>=3.8"]
 structured = ["pyyaml>=6.0"]
-# Framework adapters in llmslim.integrations. llama-index-core needs Python 3.10+ in practice:
-# 0.14.17 dropped 3.9, and on 3.9 the last 3.9 release fails to import (its "banks" dependency
-# uses 3.10-only syntax).
+# Framework adapters in llmslim.integrations.
 langchain = ["langchain-core>=0.3"]
 # LLMSlimToolOutputMiddleware for LangChain 1.x agents (create_agent).
-langchain-agents = ["langchain>=1.0,<2; python_version >= '3.10'"]
-llamaindex = ["llama-index-core>=0.12; python_version >= '3.10'"]
+langchain-agents = ["langchain>=1.0,<2"]
+llamaindex = ["llama-index-core>=0.12"]
 haystack = ["haystack-ai>=2.0"]
-# Agent-framework adapters. gptme and Pydantic AI need Python 3.10+ (pydantic-ai-slim 2.55 needs
-# 3.11+). gptme is not in "all" because it pins mcp<2 and the mcp extra needs mcp>=2. There is no
-# Hermes Agent extra: current Hermes is installed with its own installer (it refuses to build
-# wheels, and hermes-agent on PyPI is an old 0.19 release), and its context engine needs nothing
-# beyond llmslim installed in Hermes's environment.
-gptme = ["gptme>=0.34; python_version >= '3.10'"]
-pydantic-ai = ["pydantic-ai-slim>=1.0; python_version >= '3.10'"]
-transformers-cache = ["transformers>=4.53,<6; python_version >= '3.10'", "torch>=2.0; python_version >= '3.10'"]
+# Agent-framework adapters (pydantic-ai-slim 2.55 needs Python 3.11+). gptme is not in "all"
+# because it pins mcp<2 and the mcp extra needs mcp>=2. There is no Hermes Agent extra: current
+# Hermes is installed with its own installer (it refuses to build wheels, and hermes-agent on PyPI
+# is an old 0.19 release), and its context engine needs nothing beyond llmslim installed in
+# Hermes's environment.
+gptme = ["gptme>=0.34"]
+pydantic-ai = ["pydantic-ai-slim>=1.0"]
+transformers-cache = ["transformers>=4.53,<6", "torch>=2.0"]
 all = [
     "sentence-transformers>=2.2",
     "psycopg[binary]>=3.2,<4",
     "psycopg-pool>=3.2,<4",
     "starlette>=0.40",
     "uvicorn>=0.30",
-    "mcp>=2.0,<3; python_version >= '3.10'",
-    "httpx2>=2.5,<3; python_version >= '3.10'",
-    "openai-agents>=0.11,<1; python_version >= '3.10'",
+    "mcp>=2.0,<3",
+    "httpx2>=2.5,<3",
+    "openai-agents>=0.11,<1",
     "sarvamai>=0.1.34,<0.2",
     "httpx>=0.27,<1",
-    "pymongo>=4.10,<4.13; python_version < '3.9'",
-    "pymongo>=4.13,<5; python_version >= '3.9'",
+    "pymongo>=4.13,<5",
     "tiktoken>=0.5",
     "nltk>=3.8",
     "pyyaml>=6.0",
     "langchain-core>=0.3",
-    "langchain>=1.0,<2; python_version >= '3.10'",
-    "llama-index-core>=0.12; python_version >= '3.10'",
+    "langchain>=1.0,<2",
+    "llama-index-core>=0.12",
     "haystack-ai>=2.0",
     "neo4j>=5.20,<7",
-    "pydantic-ai-slim>=1.0; python_version >= '3.10'",
+    "pydantic-ai-slim>=1.0",
 ]
 dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0"]
 
@@ -185,12 +178,12 @@ exclude_lines = [
 
 [tool.black]
 line-length = 100
-target-version = ['py39']
+target-version = ['py310']
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 src = ["llmslim", "tests", "benchmarks"]
 exclude = ["notebooks", "venv", ".venv", "dist"]
 # ruff 0.16 also formats Python blocks inside Markdown; README and docs examples are
@@ -212,6 +205,7 @@ ignore = [
     "E402", # module level import not at top of file
     "C901", # function complexity
     "W291", # trailing whitespace in templates
+    "B905", # zip() without strict=: checked from py310; existing calls are not rewritten for it
 ]
 
 
@@ -223,7 +217,7 @@ ignore = [
 known-first-party = ["llmslim", "benchmarks"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false

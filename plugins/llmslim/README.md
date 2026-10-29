@@ -43,7 +43,7 @@ On Claude Code 2.1.275 or later, `/plugin install llmslim --marketplace Thanatos
 - [uv](https://docs.astral.sh/uv/), which provides `uvx`. The plugin starts the memory server with it.
 - Python 3.10 or newer for the memory server. If you don't have one, `uv python install` adds one.
 - For the two proxy commands, the proxy installed once with `uv tool install "llmslim[proxy]"` or
-  `pip install "llmslim[proxy]"` (Python 3.9 or newer).
+  `pip install "llmslim[proxy]"` (Python 3.10 or newer).
 
 ## Data and network
 

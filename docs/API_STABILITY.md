@@ -91,6 +91,10 @@ and the attributes declared on the class (such as dataclass fields).
 | `llmslim.mcp_server` | `build_server`, `fit_text` and the `llmslim mcp` entry point |
 | `llmslim.server` | `create_app` and the `llmslim serve` entry point |
 
+`llmslim` also exports three helpers for integrators that build their own context or caching on top of the planner:
+`render_context_item` renders an item in its provenance boundary exactly as the planner does, `rendered_token_count`
+counts the tokens of that rendering, and `compile_cache_plan` builds the cache plan for a prepared request.
+
 ### Integrations
 
 | Module | Integration |
@@ -108,7 +112,10 @@ and the attributes declared on the class (such as dataclass fields).
 | `llmslim.integrations.sarvam` | Sarvam chat, language tools and documents (also `llmslim.integrations.sarvam_text` and `llmslim.integrations.sarvam_documents`) |
 | `llmslim.integrations.zoho` | Zoho CRM and WorkDrive context sources |
 | `llmslim.integrations.exa` | Exa web search context source |
-| `llmslim.integrations.web_search` | Vendor-neutral web-search building blocks |
+| `llmslim.integrations.web_search` | `WebSearchSource`, `WebSearchResult` and their errors, for web-search sources |
+
+Each integration module exports its documented classes and functions, the types they return and the errors they
+raise. Its constants, default limits and helper functions are internal, even when they are importable.
 
 The API of each integration module is stable. The framework versions it supports follow the framework: when a
 framework or vendor SDK changes incompatibly, a minor release may raise the minimum version in the extra, or cap it
@@ -180,7 +187,7 @@ refuses a store with a newer schema rather than misreading it.
 | `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |
 | `LLMSLIM_PROXY_DB`, `LLMSLIM_PROXY_UPSTREAM` | `llmslim proxy`, `llmslim wrap` | Experimental |
-| `LLMSLIM_<PREFIX>_REQUESTS_PER_MINUTE`, `_MAX_REQUESTS`, `_MAX_UNITS` | usage guards of the vendor integrations; each module's `*_GUARD_PREFIX` constant names its prefix | Stable |
+| `LLMSLIM_<PREFIX>_REQUESTS_PER_MINUTE`, `_MAX_REQUESTS`, `_MAX_UNITS` | usage guards of the vendor integrations, with `<PREFIX>` one of `SARVAM_CHAT`, `SARVAM_TEXT`, `SARVAM_DOCUMENT`, `EXA` and `NEO4J` | Stable |
 
 Each integration's `from_env()` reads one credential variable, named by its `env_var` parameter (for example
 `SARVAM_API_KEY`, `EXA_API_KEY`, `MONGODB_URI`); those defaults are stable as part of the signatures. The

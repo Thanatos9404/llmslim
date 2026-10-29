@@ -39,13 +39,6 @@ from ..planning.boundary import neutralize_boundary_tags
 from ..planning.models import ContextItem, ContextKind
 
 __all__ = [
-    "DEFAULT_HALF_LIFE_DAYS",
-    "DEFAULT_MAX_CHARACTERS",
-    "MAX_CHARACTERS_LIMIT",
-    "MAX_SEARCH_LIMIT",
-    "MAX_TITLE_CHARACTERS",
-    "MAX_URL_CHARACTERS",
-    "Clock",
     "WebSearchAuthenticationError",
     "WebSearchBadRequestError",
     "WebSearchError",
@@ -56,19 +49,6 @@ __all__ = [
     "WebSearchServerError",
     "WebSearchSource",
     "WebSearchTransportError",
-    "dedupe_results",
-    "normalize_score",
-    "parse_published_date",
-    "parse_retry_after",
-    "recency_score",
-    "result_item_id",
-    "result_to_context_item",
-    "results_to_context_items",
-    "sanitize_text",
-    "utc_now",
-    "validate_domains",
-    "validate_query",
-    "validate_url",
 ]
 
 #: Default recency half-life: a page published this many days ago scores 0.5.

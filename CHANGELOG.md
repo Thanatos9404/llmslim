@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LLMSLIM_*` variables. `tests/test_public_api.py` fails on any difference. `python scripts/public_api.py --write`
   regenerates it.
 - `llmslim._deprecation`, a helper that deprecates functions, classes, keyword arguments and module attributes.
+- **Rendering and cache-plan helpers for integrators**, now exported from `llmslim` with docstrings and full type
+  annotations: `render_context_item` (an item in its provenance boundary, as the planner renders it),
+  `rendered_token_count` (the tokens of that rendering) and `compile_cache_plan` (the cache plan of a prepared
+  request).
 
 ### Changed
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,
@@ -47,6 +51,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   browser.
 - `llmslim.tokens`, `llmslim.mcp` and `llmslim.integrations.openai_agents` declare `__all__`. Nothing is renamed or
   removed.
+- **Smaller public lists before 1.0 freezes them.** The names below leave `__all__`, so they become internal. They stay
+  importable from the modules that define them.
+  - `llmslim.integrations.web_search` exports `WebSearchSource`, `WebSearchResult` and their errors. Its 20 helper
+    functions and limits are internal.
+  - `llmslim.integrations.sarvam` keeps its documented classes and functions, the result types they return and their
+    errors: 35 names, down from 42. Its guard prefixes, default limits and `sarvam_chat_cost_inr` are internal, and it
+    no longer re-exports the text and document default limits and guard prefixes.
+  - `llmslim.integrations.sarvam_text` and `llmslim.integrations.sarvam_documents` keep their documented names and
+    result types.
+  - `llmslim.server` exports `create_app` and `main`. `api_keys_from` and `is_loopback` are internal.
 - `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
   `build_wrap_parser`. The commands are unchanged.
 

@@ -36,12 +36,20 @@ def trusted_role(role: ContextRole) -> bool:
 
 
 def render_context_item(item: ContextItem, content: str) -> str:
-    """Render one item with an explicit provenance boundary.
+    """Render one item with an explicit provenance boundary, as the planner puts it in the final context.
 
+    The block is an ``<llmslim_context id="..." kind="..." role="..." trusted="...">`` element around ``content``.
     Attribute values are escaped, and untrusted content has any envelope tag
     neutralized (see :mod:`llmslim.planning.boundary`), so neither an item ID
     nor untrusted text can close the block or forge a trusted one. Trusted
     content, and untrusted content without an envelope tag, render as given.
+
+    Args:
+        item: The item whose id, kind and role label the block. Its role decides whether it is trusted.
+        content: The text to render, for example ``item.content`` or a compressed form of it.
+
+    Returns:
+        The rendered block, followed by a blank line.
     """
 
     is_trusted = trusted_role(item.role)
@@ -56,6 +64,15 @@ def render_context_item(item: ContextItem, content: str) -> str:
 
 
 def rendered_token_count(item: ContextItem, content: str) -> int:
+    """Tokens that ``content`` costs in the context once rendered for ``item``, boundary included.
+
+    Args:
+        item: The item ``content`` belongs to.
+        content: The text to render, as for :func:`render_context_item`.
+
+    Returns:
+        The token count of the rendered block, from :func:`llmslim.count_tokens`.
+    """
     return count_tokens(render_context_item(item, content))
 
 

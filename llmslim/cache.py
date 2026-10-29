@@ -12,10 +12,13 @@ import time
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from threading import RLock
-from typing import Any, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
 
 from .planning.models import CandidateMethod, ContextKind, ContextPlan
 from .tokens import count_tokens
+
+if TYPE_CHECKING:  # runtime imports this module
+    from .runtime import ModelInput
 
 RENDER_VERSION = "llmslim-cache-render-1"
 
@@ -308,11 +311,29 @@ def classify_stability(item: Any) -> str:
 
 def compile_cache_plan(
     plan: ContextPlan,
-    model_input: Any,
+    model_input: ModelInput,
     policy: CachePolicy,
     material_settings: Optional[Mapping[str, Any]] = None,
 ) -> CachePlan:
-    """Fingerprint the provider-visible leading prefix without changing model semantics."""
+    """Fingerprint the provider-visible leading prefix without changing model semantics.
+
+    The prefix is the tools, in caller order, then the leading messages marked stable (by default, system and
+    developer messages), together with the provider, model, rendering version, tenant and settings. The plan's
+    segments say how stable each kept context item is. Nothing in ``model_input`` is changed.
+
+    Args:
+        plan: The context plan the request was built from.
+        model_input: The request parts built from ``plan``.
+        policy: The cache policy: mode, provider, tenant, conversation mode and prices.
+        material_settings: Request settings that change what the provider caches, such as sampling settings.
+            They are part of the fingerprint.
+
+    Returns:
+        The cache plan, with status ``DISABLED`` when ``policy.mode`` is ``"disabled"`` and ``COLD`` otherwise.
+
+    Raises:
+        ValueError: The policy asks for a caching feature the provider does not offer.
+    """
     policy.validate_capabilities()
     segments = []
     for index, decision in enumerate(plan.decisions):

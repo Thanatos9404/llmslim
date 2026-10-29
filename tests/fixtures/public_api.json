@@ -1358,6 +1358,11 @@
           "signature": "(sources: Sequence[ContextSource], query: str, *, limit_per_source: int = 10, fail_open: bool = False) -> ContextSourceResult",
           "status": "stable"
         },
+        "compile_cache_plan": {
+          "kind": "function",
+          "signature": "(plan: ContextPlan, model_input: ModelInput, policy: CachePolicy, material_settings: Optional[Mapping[str, Any]] = None) -> CachePlan",
+          "status": "stable"
+        },
         "compress": {
           "kind": "function",
           "signature": "(text: str, target_ratio: float = 0.5, query: Optional[str] = None, mode: Optional[str] = None, detect_content: bool = False, strategy: str = 'extractive', provider: Optional[Any] = None, required_keywords: Optional[List[str]] = None, constraints: Optional[List[str]] = None, template_name: Optional[str] = None, **kwargs) -> CompressionResult",
@@ -1456,6 +1461,16 @@
         "plan_mcp_context": {
           "kind": "function",
           "signature": "(snapshot: ToolCatalogSnapshot, *, query: str = '', mode: PlanMode = PlanMode.FULL, top_k: int = 5, experimental: bool = False, planner: Optional[AdaptiveContextPlanner] = None, **planner_kwargs: Any) -> MCPAdaptiveContextPlan",
+          "status": "stable"
+        },
+        "render_context_item": {
+          "kind": "function",
+          "signature": "(item: ContextItem, content: str) -> str",
+          "status": "stable"
+        },
+        "rendered_token_count": {
+          "kind": "function",
+          "signature": "(item: ContextItem, content: str) -> int",
           "status": "stable"
         },
         "request_bytes": {
@@ -2123,31 +2138,6 @@
           "signature": "(api_key: Optional[str] = None, *, model: str = 'sarvam-105b', timeout_seconds: float = 30.0, max_tokens: int = 2048, reasoning_effort: Optional[str] = None, client: Optional[Any] = None, guard: Optional[UsageGuard] = None) -> None",
           "status": "stable"
         },
-        "CHAT_GUARD_PREFIX": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
-        "DEFAULT_CHAT_LIMITS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "UsageLimits"
-        },
-        "DEFAULT_DOCUMENT_LIMITS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "UsageLimits"
-        },
-        "DEFAULT_TEXT_LIMITS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "UsageLimits"
-        },
-        "DOCUMENT_GUARD_PREFIX": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
         "RateLimitExceeded": {
           "bases": [
             "UsageLimitExceeded"
@@ -2409,11 +2399,6 @@
           "signature": "(prompt_tokens: Optional[int] = None, completion_tokens: Optional[int] = None, total_tokens: Optional[int] = None, classification: str = 'PROVIDER_REPORTED', cached_tokens: Optional[int] = None, reasoning_tokens: Optional[int] = None) -> None",
           "status": "stable"
         },
-        "TEXT_GUARD_PREFIX": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
         "UsageCapExceeded": {
           "bases": [
             "UsageLimitExceeded"
@@ -2487,11 +2472,6 @@
           "signature": "(items: Iterable[ContextItem], tools: SarvamLanguageTools, *, languages: Optional[Iterable[str]] = None, skip_required: bool = True, kinds: Iterable[Any] = frozenset({ContextKind.MEMORY, ContextKind.RAG_DOCUMENT, ContextKind.TOOL_RESULT, ContextKind.USER}), roles: Iterable[Any] = frozenset({ContextRole.GENERAL, ContextRole.RAG, ContextRole.TOOL, ContextRole.USER})) -> Tuple[ContextItem, ...]",
           "status": "stable"
         },
-        "sarvam_chat_cost_inr": {
-          "kind": "function",
-          "signature": "(model: str, prompt_tokens: int, completion_tokens: int, *, cached_tokens: Optional[int] = None, profile: Optional[ModelProfile] = None) -> float",
-          "status": "stable"
-        },
         "sarvam_prompt_token_bound": {
           "kind": "function",
           "signature": "(messages: Sequence[Mapping[str, Any]]) -> int",
@@ -2521,41 +2501,6 @@
           },
           "signature": "(api_key: Optional[str] = None, *, client: Optional[Any] = None, guard: Optional[UsageGuard] = None, prices: SarvamPriceTable = <SarvamPriceTable>, timeout_seconds: float = 60.0, max_file_bytes: int = 52428800, max_pages_per_job: int = 10, poll_interval_seconds: float = 5.0, poll_timeout_seconds: float = 300.0, allow_partial: bool = True, clock: Optional[Callable[[], float]] = None, sleep: Optional[Callable[[float], Any]] = None) -> None",
           "status": "stable"
-        },
-        "CONTENT_TYPES": {
-          "kind": "data",
-          "status": "stable",
-          "type": "frozenset"
-        },
-        "DEFAULT_DOCUMENT_LIMITS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "UsageLimits"
-        },
-        "DEFAULT_MAX_FILE_BYTES": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "DOCUMENT_GUARD_PREFIX": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
-        "FILE_TYPES": {
-          "kind": "data",
-          "status": "stable",
-          "type": "dict"
-        },
-        "SARVAM_MAX_FILE_BYTES": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "SARVAM_MAX_PAGES_PER_JOB": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
         },
         "SarvamDocumentResult": {
           "bases": [
@@ -2592,11 +2537,6 @@
           },
           "signature": "(api_key: Optional[str] = None, *, client: Optional[Any] = None, guard: Optional[UsageGuard] = None, prices: SarvamPriceTable = <SarvamPriceTable>, timeout_seconds: float = 60.0, max_file_bytes: int = 52428800, max_pages_per_job: int = 10, poll_interval_seconds: float = 5.0, poll_timeout_seconds: float = 300.0, allow_partial: bool = True, clock: Optional[Callable[[], float]] = None, sleep: Optional[Callable[[float], Any]] = None) -> None",
           "status": "stable"
-        },
-        "pdf_page_count": {
-          "kind": "function",
-          "signature": "(data: bytes) -> Optional[int]",
-          "status": "stable"
         }
       },
       "status": "stable"
@@ -2618,21 +2558,6 @@
           },
           "signature": "(api_key: Optional[str] = None, *, client: Optional[Any] = None, guard: Optional[UsageGuard] = None, prices: SarvamPriceTable = <SarvamPriceTable>, timeout_seconds: float = 30.0) -> None",
           "status": "stable"
-        },
-        "DEFAULT_TEXT_LIMITS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "UsageLimits"
-        },
-        "DEFAULT_TRANSLATE_MODEL": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
-        "IDENTIFY_LANGUAGE_MAX_CHARS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
         },
         "NORMALIZABLE_KINDS": {
           "kind": "data",
@@ -2692,21 +2617,6 @@
           "signature": "(text: str, source_language_code: str, target_language_code: str, model: Optional[str], usage: SarvamServiceUsage) -> None",
           "status": "stable"
         },
-        "TEXT_GUARD_PREFIX": {
-          "kind": "data",
-          "status": "stable",
-          "type": "str"
-        },
-        "TRANSLATE_MAX_CHARS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "dict"
-        },
-        "TRANSLITERATE_MAX_CHARS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
         "aannotate_languages": {
           "kind": "async function",
           "signature": "(items: Iterable[ContextItem], tools: AsyncSarvamLanguageTools, *, max_chunks: int = 1, overwrite: bool = False) -> Tuple[ContextItem, ...]",
@@ -2737,41 +2647,6 @@
     },
     "llmslim.integrations.web_search": {
       "names": {
-        "Clock": {
-          "kind": "type alias",
-          "status": "stable",
-          "value": "Callable[[], datetime]"
-        },
-        "DEFAULT_HALF_LIFE_DAYS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "float"
-        },
-        "DEFAULT_MAX_CHARACTERS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "MAX_CHARACTERS_LIMIT": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "MAX_SEARCH_LIMIT": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "MAX_TITLE_CHARACTERS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
-        "MAX_URL_CHARACTERS": {
-          "kind": "data",
-          "status": "stable",
-          "type": "int"
-        },
         "WebSearchAuthenticationError": {
           "bases": [
             "WebSearchError"
@@ -2872,71 +2747,6 @@
           "kind": "class",
           "members": {},
           "signature": "(message: str, *, vendor: str, status_code: Optional[int] = None, tag: Optional[str] = None) -> None",
-          "status": "stable"
-        },
-        "dedupe_results": {
-          "kind": "function",
-          "signature": "(results: Iterable[WebSearchResult]) -> Tuple[WebSearchResult, ...]",
-          "status": "stable"
-        },
-        "normalize_score": {
-          "kind": "function",
-          "signature": "(value: Any) -> Optional[float]",
-          "status": "stable"
-        },
-        "parse_published_date": {
-          "kind": "function",
-          "signature": "(value: Any) -> Optional[datetime]",
-          "status": "stable"
-        },
-        "parse_retry_after": {
-          "kind": "function",
-          "signature": "(value: Optional[str], *, now: datetime) -> Optional[float]",
-          "status": "stable"
-        },
-        "recency_score": {
-          "kind": "function",
-          "signature": "(published_at: Optional[datetime], *, now: datetime, half_life_days: float = 180.0) -> float",
-          "status": "stable"
-        },
-        "result_item_id": {
-          "kind": "function",
-          "signature": "(vendor: str, url: str) -> str",
-          "status": "stable"
-        },
-        "result_to_context_item": {
-          "kind": "function",
-          "signature": "(result: WebSearchResult, *, retrieved_at: datetime, now: Optional[datetime] = None, half_life_days: float = 180.0) -> ContextItem",
-          "status": "stable"
-        },
-        "results_to_context_items": {
-          "kind": "function",
-          "signature": "(results: Iterable[WebSearchResult], *, retrieved_at: datetime, now: Optional[datetime] = None, half_life_days: float = 180.0) -> Tuple[ContextItem, ...]",
-          "status": "stable"
-        },
-        "sanitize_text": {
-          "kind": "function",
-          "signature": "(value: Any, max_characters: int = 4000) -> str",
-          "status": "stable"
-        },
-        "utc_now": {
-          "kind": "function",
-          "signature": "() -> datetime",
-          "status": "stable"
-        },
-        "validate_domains": {
-          "kind": "function",
-          "signature": "(domains: Optional[Iterable[str]], *, max_items: int, allow_paths: bool = False, label: str = 'domains') -> Tuple[str, ...]",
-          "status": "stable"
-        },
-        "validate_query": {
-          "kind": "function",
-          "signature": "(query: Any, *, max_characters: int) -> str",
-          "status": "stable"
-        },
-        "validate_url": {
-          "kind": "function",
-          "signature": "(value: Any) -> Optional[str]",
           "status": "stable"
         }
       },
@@ -4034,19 +3844,9 @@
     },
     "llmslim.server": {
       "names": {
-        "api_keys_from": {
-          "kind": "function",
-          "signature": "(values: Sequence[str], environ: Mapping[str, str] = <_Environ>) -> List[str]",
-          "status": "stable"
-        },
         "create_app": {
           "kind": "function",
           "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000) -> Any",
-          "status": "stable"
-        },
-        "is_loopback": {
-          "kind": "function",
-          "signature": "(host: str) -> bool",
           "status": "stable"
         },
         "main": {

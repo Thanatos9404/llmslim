@@ -401,7 +401,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
-__all__ = ["create_app", "api_keys_from", "is_loopback", "main"]
+__all__ = ["create_app", "main"]
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

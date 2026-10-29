@@ -16,6 +16,8 @@ _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)*\b")
 
 @dataclass(frozen=True)
 class QualityReport:
+    """Whether a selected context passed its quality gates, with the metrics and the gates that failed."""
+
     passed: bool
     quality_floor: float
     metrics: Mapping[str, float]

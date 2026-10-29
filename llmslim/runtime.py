@@ -162,6 +162,8 @@ class ContextTrace:
 
 @dataclass(frozen=True)
 class PreparedContext:
+    """Everything prepared for one model turn: the plan, the model input, quality, trace and cache plan."""
+
     envelope: ContextEnvelope
     graph: ContextGraph
     plan: ContextPlan
@@ -458,6 +460,8 @@ class ContextRuntime:
 
 @dataclass
 class RuntimeSession:
+    """A conversation on a :class:`ContextRuntime`: keeps a bounded message history and prepares each turn."""
+
     runtime: ContextRuntime
     session_id: str
     _messages: list[Mapping[str, Any]] = field(default_factory=list, repr=False)

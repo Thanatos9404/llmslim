@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on 3.9, and Ruff and mypy check against 3.10. On Python 3.9, pip keeps installing 0.12.0. No public API changes.
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
+### Added
+- **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
+  docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
+  (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its
+  docstring. `tests/test_api_reference.py` fails when the pages are out of date with the source, when a public name
+  has no docstring, or when a public function or method has an unannotated parameter or return type.
+- CI checks that the wheel ships `py.typed`.
+
+### Changed
+- Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,
+  `QualityReport`, `RuntimeSession`, `PreparedContext`, `CacheStatus`, `CacheCapabilities`, `CachePolicy`,
+  `CacheSegment`, `CachePlan`, `CacheTelemetry`, `MODEL_PRICING` and `PROVIDER_CAPABILITIES`.
+- **Site:** the docs sidebar gets its list of guides from the server instead of importing every guide into the
+  browser.
+
 ### Fixed
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
   starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and

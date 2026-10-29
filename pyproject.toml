@@ -107,7 +107,8 @@ all = [
     "neo4j>=5.20,<7",
     "pydantic-ai-slim>=1.0",
 ]
-dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0"]
+# griffe reads the source for the API reference (scripts/api_reference.py); pinned so its output is stable.
+dev = ["pytest>=7.0", "pytest-cov", "ruff==0.16.10", "mypy>=1.8", "build>=1.0", "griffe==2.3.0"]
 
 [project.urls]
 Homepage = "https://www.llmslim.app"
@@ -214,7 +215,7 @@ ignore = [
 "benchmarks/live/*" = ["E741", "E731", "B023"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["llmslim", "benchmarks"]
+known-first-party = ["llmslim", "benchmarks", "scripts"]
 
 [tool.mypy]
 python_version = "3.10"

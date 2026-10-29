@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { securityHeaders, TOKEN_PAGES, tokenPageHeaders } from "./security-headers";
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -32,6 +33,13 @@ const nextConfig: NextConfig = {
     // Local development only: forward the Studio's Python functions to a local server.
     const studio = localStudioApiOrigin ? ["studio", "compress", "plan", "context", "sarvam_answer"].map((name) => ({ source: `/api/${name}`, destination: `${localStudioApiOrigin}/api/${name}` })) : [];
     return { beforeFiles: [], afterFiles: [...markdown, ...studio], fallback: [] };
+  },
+  async headers() {
+    // Later entries win for the same key, so the token pages' stricter Referrer-Policy comes last.
+    return [
+      { source: "/:path*", headers: securityHeaders(process.env) },
+      ...TOKEN_PAGES.map((page) => ({ source: page, headers: tokenPageHeaders() })),
+    ];
   },
 };
 

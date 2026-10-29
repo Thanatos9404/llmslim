@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, m, useMotionValueEvent, useReducedMotion, useScroll } from "framer-motion"
 import { ArrowRight, ArrowUpRight, Moon, Sun } from "lucide-react"
 import { siteConfig } from "@/config/site"
+import { LogoMark } from "@/components/brand/LogoMark"
 import { TrackedLink } from "./TrackedLink"
 
 const links = [["Docs", "/docs"], ["Vault", "/vault"], ["Pricing", "/pricing"], ["Results", "/results"], ["Integrations", "/integrations"], ["Changelog", "/changelog"]] as const
@@ -21,19 +22,13 @@ const menu = [
 ] as const
 const SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.8 } as const
 
-/** The mark: five lines of context folding into three. One colour, with the kept lines in the accent. */
+/** The mark: five strands of context converging into three, in the brand gradient. */
 export function Mark({ size = 22 }: { size?: number }) {
-  return <svg className="mark" viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" fill="none" strokeLinecap="round" strokeWidth="2.6">
-    <g stroke="currentColor">
-      <path d="M4 7h8c5 0 5 6 10 6" /><path d="M4 11.5h8c5 0 5 1.5 10 1.5" /><path d="M4 16h18" />
-      <path d="M4 20.5h8c5 0 5-1.5 10-1.5" /><path d="M4 25h8c5 0 5-6 10-6" />
-    </g>
-    <g stroke="var(--brand)"><path d="M22 13h6" /><path d="M22 16h6" /><path d="M22 19h6" /></g>
-  </svg>
+  return <LogoMark size={size} className="mark" />
 }
 
 export function Brand() {
-  return <span className="brand"><Mark size={26} /><span className="brand-word">LLM<span className="brand-slim">Slim</span></span></span>
+  return <span className="brand"><Mark size={24} /><span className="brand-word">LLM<span className="brand-slim">Slim</span></span></span>
 }
 
 export function GitHubMark() {

@@ -217,6 +217,12 @@ def _annotation_text(value: Any) -> str:
     return _DOTTED.sub(r"\1", repr(value)).replace("NoneType", "None")
 
 
+def _type_name(value: Any) -> str:
+    """A value's type name, the same on every operating system (a path is a ``Path``, not a ``PosixPath``)."""
+
+    return "Path" if isinstance(value, os.PathLike) else type(value).__name__
+
+
 def _value_text(value: Any) -> str:
     """A default value as text that is the same on every machine and supported Python version."""
 
@@ -354,7 +360,7 @@ def _class(klass: type) -> Dict[str, Any]:
             if described is not None:
                 members[name] = described
             elif name not in annotations:
-                members[name] = f"attribute: {type(value).__name__}"
+                members[name] = f"attribute: {_type_name(value)}"
     entry["members"] = dict(sorted(members.items()))
     return entry
 
@@ -372,7 +378,7 @@ def describe(value: Any) -> Dict[str, Any]:
     elif inspect.ismodule(value):
         entry = {"kind": "module", "value": value.__name__}
     else:
-        entry = {"kind": "data", "type": type(value).__name__}
+        entry = {"kind": "data", "type": _type_name(value)}
     message = vars(value).get("__deprecated__") if hasattr(value, "__dict__") else None
     if isinstance(message, str):
         entry["deprecated"] = message

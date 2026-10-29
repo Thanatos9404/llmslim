@@ -144,6 +144,7 @@ def test_signatures_are_the_same_on_every_machine():
         "flags: frozenset = frozenset({'a', 'b'})) -> None"
     )
     assert api.describe(Colour)["values"] == {"RED": "'red'"}
+    assert api.describe(Path.home())["type"] == "Path"  # not WindowsPath or PosixPath
 
 
 def test_a_deprecated_name_is_recorded_as_deprecated():

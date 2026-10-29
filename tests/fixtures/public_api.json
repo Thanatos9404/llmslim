@@ -3273,7 +3273,7 @@
         "DEFAULT_DB": {
           "kind": "data",
           "status": "stable",
-          "type": "WindowsPath"
+          "type": "Path"
         },
         "INSTRUCTIONS": {
           "kind": "data",

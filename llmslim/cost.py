@@ -30,6 +30,8 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "deepseek-v3": {"input": 0.00014, "output": 0.00028},
     "deepseek-r1.5": {"input": 0.00055, "output": 0.00219},
 }
+"""Approximate USD prices per 1,000 input and output tokens, by model name. They change often; check the
+provider's pricing page before relying on them."""
 
 
 @dataclass

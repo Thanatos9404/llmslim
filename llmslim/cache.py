@@ -21,6 +21,8 @@ RENDER_VERSION = "llmslim-cache-render-1"
 
 
 class CacheStatus(str, Enum):
+    """The state of a cache plan: estimated locally, or reported by the provider."""
+
     DISABLED = "disabled"
     COLD = "cold"
     ESTIMATED_REUSE = "estimated_reuse"
@@ -31,6 +33,8 @@ class CacheStatus(str, Enum):
 
 @dataclass(frozen=True)
 class CacheCapabilities:
+    """The prompt-caching features a provider offers."""
+
     provider: str
     automatic_prefix_cache: bool = False
     explicit_prefix_cache: bool = False
@@ -75,10 +79,13 @@ PROVIDER_CAPABILITIES: Mapping[str, CacheCapabilities] = {
     "transformers": CacheCapabilities("transformers", client_managed_kv_cache=True),
     "generic": CacheCapabilities("generic", verified=False),
 }
+"""The prompt-caching features of each known provider, by provider name."""
 
 
 @dataclass(frozen=True)
 class CachePolicy:
+    """How to plan prompt caching for a provider: mode, tenant, conversation mode, TTL and prices."""
+
     mode: str = "disabled"  # disabled, provider_memory, explicit, auto
     provider: str = "generic"
     tenant_id: Optional[str] = None
@@ -137,6 +144,8 @@ class CachePolicy:
 
 @dataclass(frozen=True)
 class CacheSegment:
+    """One context item in a cache plan, with its stability and position in the prompt."""
+
     item_hash: str
     kind: str
     stability: str
@@ -156,6 +165,8 @@ class CacheSegment:
 
 @dataclass(frozen=True)
 class CachePlan:
+    """The cacheable layout of one request: stable prefix, semi-stable and dynamic parts, and expected reuse."""
+
     provider: str
     mode: str
     conversation_mode: str
@@ -205,6 +216,8 @@ class CachePlan:
 
 @dataclass(frozen=True)
 class CacheTelemetry:
+    """Token and latency usage of one request, estimated locally or reported by the provider."""
+
     source: str = "estimated"  # estimated or provider_reported
     input_tokens: Optional[int] = None
     cache_read_tokens: Optional[int] = None

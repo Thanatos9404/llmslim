@@ -4,15 +4,20 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { m, useReducedMotion } from "framer-motion"
 import { Search } from "lucide-react"
-import { DOCS_REGISTRY, DOC_CATEGORIES } from "@/data/docs"
+
+/** One category of guides as the server lists them; `filter` is the lowercase text the filter box matches. */
+export interface DocNavGroup { category: string; items: { slug: string; title: string; filter: string }[] }
 
 /** Grouped guides with a filter. The highlight slides to the current page. */
-export function DocSidebar({ className }: { className?: string }) {
+export function DocSidebar({ className, groups }: { className?: string; groups: DocNavGroup[] }) {
   const pathname = usePathname()
   const [query, setQuery] = useState("")
   const reduced = useReducedMotion()
   const current = pathname?.split("/").pop() || ""
-  const docs = useMemo(() => Object.values(DOCS_REGISTRY).filter((doc) => `${doc.title} ${doc.description} ${doc.searchIntent}`.toLowerCase().includes(query.toLowerCase().trim())), [query])
+  const shown = useMemo(() => {
+    const needle = query.toLowerCase().trim()
+    return groups.map((group) => ({ ...group, items: group.items.filter((item) => item.filter.includes(needle)) }))
+  }, [groups, query])
   return <aside aria-label="Documentation navigation" className={className}>
     <label className="docs-search">
       <Search size={14} aria-hidden="true" />
@@ -20,8 +25,7 @@ export function DocSidebar({ className }: { className?: string }) {
     </label>
     <nav className="docs-nav">
       <Link href="/docs" className="docs-nav-home" aria-current={pathname === "/docs" ? "page" : undefined}>Overview</Link>
-      {DOC_CATEGORIES.map((category) => {
-        const items = docs.filter((doc) => doc.category === category)
+      {shown.map(({ category, items }) => {
         return items.length ? <div key={category} className="docs-nav-group">
           <p className="docs-nav-label">{category}</p>
           <ul>{items.map((item) => <li key={item.slug}>
@@ -32,7 +36,7 @@ export function DocSidebar({ className }: { className?: string }) {
           </li>)}</ul>
         </div> : null
       })}
-      {docs.length === 0 && <p className="docs-nav-empty">No guide matches “{query}”.</p>}
+      {shown.every((group) => group.items.length === 0) && <p className="docs-nav-empty">No guide matches “{query}”.</p>}
     </nav>
   </aside>
 }

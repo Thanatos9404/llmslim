@@ -1,0 +1,180 @@
+"""The website's API reference is generated from the source and kept up to date (scripts/api_reference.py)."""
+
+from __future__ import annotations
+
+import json
+import textwrap
+
+import pytest
+
+griffe = pytest.importorskip("griffe")
+
+from scripts import api_reference as reference  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def package():
+    return reference.load()
+
+
+def _pages(text: str):
+    return json.loads(text[text.index("= [") + 2 :])
+
+
+def test_the_reference_on_the_site_is_up_to_date(package):
+    current = reference.OUTPUT.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert current == reference.render(package), (
+        "web/src/data/api-reference.ts is out of date with the source. "
+        "Run `python scripts/api_reference.py --write` and commit it."
+    )
+
+
+def test_every_public_name_is_documented(package):
+    for page in _pages(reference.render(package)):
+        undocumented = [s["title"] for s in page["sections"] if s["content"] == "No docstring yet."]
+        assert not undocumented, f"{page['title']}: add a docstring to {undocumented}"
+
+
+def test_public_functions_and_methods_are_fully_annotated(package):
+    assert reference.unannotated(package) == []
+
+
+def test_each_page_has_one_section_per_exported_name(package):
+    import llmslim
+    import llmslim.memory
+
+    pages = {page["slug"]: page for page in _pages(reference.render(package))}
+    for module, slug in ((llmslim, "api-llmslim"), (llmslim.memory, "api-llmslim-memory")):
+        names = [n for n in module.__all__ if not n.startswith("_")]
+        sections = pages[slug]["sections"]
+        assert sections[0]["id"] == "about"
+        assert [s["codeSnippet"]["filename"].rsplit(" ", 1)[1] for s in sections[1:]] == names
+        assert len({s["id"] for s in sections}) == len(sections)
+        assert pages[slug]["category"] == "API Reference"
+        assert llmslim.__version__ in pages[slug]["description"]
+
+
+# --------------------------------------------------------------------------- rendering
+
+
+@pytest.fixture(scope="module")
+def sample(tmp_path_factory):
+    folder = tmp_path_factory.mktemp("sample")
+    (folder / "sample.py").write_text(
+        textwrap.dedent(
+            '''
+            from dataclasses import dataclass, field
+            from enum import Enum
+
+            __all__ = ["short", "Box", "untyped"]
+
+
+            def untyped(a, b: int = 1):
+                """No types on a or the return."""
+
+
+            def short(a: int, /, b: str = "x", *, c: bool = False) -> None:
+                """Do a thing with ``a``.
+
+                Args:
+                    a: The first.
+                """
+
+
+            def varargs(*items: str, **options: int) -> list:
+                """Collect."""
+
+
+            def long_one(first_parameter_name: int, second_parameter_name: str = "default", third: float = 1.5) -> dict:
+                """Wrapped."""
+
+
+            class Colour(str, Enum):
+                """A colour."""
+
+                RED = "red"
+
+
+            @dataclass
+            class Point:
+                """A point.
+
+                More text.
+                """
+
+                x: int
+                tags: list = field(default_factory=list)
+
+                @property
+                def norm(self) -> float:
+                    """Its length.
+
+                    Details.
+                    """
+
+                def moved(self, dx: int) -> Point:
+                    """A copy, moved."""
+
+
+            class Box:
+                """A box."""
+
+                def __init__(self, size: int) -> None:
+                    self.size = size
+
+                @classmethod
+                def unit(cls) -> Box:
+                    """The unit box."""
+            '''
+        ),
+        encoding="utf-8",
+    )
+    return griffe.load("sample", search_paths=[str(folder)], docstring_parser="google")
+
+
+def test_function_stubs_keep_kinds_defaults_and_the_docstring(sample):
+    assert reference._function_stub(sample["short"], "short") == (
+        "def short(a: int, /, b: str = 'x', *, c: bool = False) -> None:\n"
+        '    """Do a thing with ``a``.\n'
+        "\n"
+        "    Args:\n"
+        "        a: The first.\n"
+        '    """'
+    )
+    assert reference._function_stub(sample["varargs"], "varargs").splitlines()[0] == (
+        "def varargs(*items: str, **options: int) -> list:"
+    )
+    assert reference._function_stub(sample["long_one"], "long_one").splitlines()[:3] == [
+        "def long_one(",
+        "    first_parameter_name: int,",
+        "    second_parameter_name: str = 'default',",
+    ]
+
+
+def test_class_stubs_list_fields_values_and_method_summaries(sample):
+    assert reference._class_stub(sample["Colour"], "Colour") == (
+        'class Colour(str, Enum):\n    """A colour."""\n\n    RED = \'red\''
+    )
+    point = reference._class_stub(sample["Point"], "Point")
+    assert "__init__" not in point  # generated by @dataclass
+    assert "    x: int\n    tags: list = field(default_factory=list)" in point
+    assert '    @property\n    def norm(self) -> float:\n        """Its length."""' in point
+    assert '    def moved(self, dx: int) -> Point:\n        """A copy, moved."""' in point
+    box = reference._class_stub(sample["Box"], "Box")
+    assert "    def __init__(self, size: int) -> None:\n        ..." in box
+    assert (
+        "size" not in box.split("__init__")[1].split("\n", 2)[2]
+    )  # assigned in __init__, not declared
+    assert "    @classmethod\n    def unit(cls) -> Box:" in box
+
+
+def test_summaries_are_plain_text(sample):
+    assert reference._summary(sample["short"]) == "Do a thing with a."
+    assert reference._plain("See :class:`llmslim.memory.Memory` and ``x``.") == "See Memory and x."
+
+
+def test_unannotated_reports_missing_types(sample):
+    assert reference.unannotated(sample, modules=["sample"]) == [
+        "sample.untyped: parameter 'a'",
+        "sample.untyped: return type",
+    ]

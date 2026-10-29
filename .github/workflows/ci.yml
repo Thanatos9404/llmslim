@@ -171,6 +171,9 @@ jobs:
           pip install dist/*.whl
           python -c "import llmslim; print(f'llmslim version: {llmslim.__version__}')"
 
+      - name: Verify the wheel ships py.typed
+        run: python -c "import glob, zipfile; assert 'llmslim/py.typed' in zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist()"
+
       - name: Upload Coverage to Codecov (Python 3.12 only)
         if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v7

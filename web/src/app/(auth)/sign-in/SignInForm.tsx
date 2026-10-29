@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { useCallback, useState, type FormEvent } from "react"
+import { KeyIcon } from "@/components/auth/icons"
+import { SecretField } from "@/components/auth/PasswordField"
 import { Divider, Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { SocialButtons } from "@/components/auth/SocialButtons"
 import { usePasskeySignIn } from "@/components/auth/usePasskeySignIn"
@@ -45,14 +47,15 @@ export function SignInForm({ features, next, initialStatus }: { features: Public
     <div className="auth-stack">
       <OfflineNotice />
       <FormStatus status={status} id="sign-in-status" />
-      <SocialButtons google={features.google} github={features.github} callbackURL={next} errorCallbackURL="/sign-in" onStatus={setStatus} disabled={busy} />
+      {/* Fastest first: a passkey, then Google and GitHub side by side, then email. */}
       {features.passkey ? (
         <button type="button" className="auth-button auth-button-passkey" onClick={passkey.signIn} disabled={busy} aria-busy={passkey.pending || undefined} data-testid="passkey-sign-in">
-          {passkey.pending ? <span className="auth-spinner" aria-hidden="true" /> : null}
+          {passkey.pending ? <span className="auth-spinner" aria-hidden="true" /> : <KeyIcon />}
           Sign in with a passkey
         </button>
       ) : null}
-      {features.google || features.github || features.passkey ? <Divider>or use your email</Divider> : null}
+      <SocialButtons google={features.google} github={features.github} callbackURL={next} errorCallbackURL="/sign-in" onStatus={setStatus} disabled={busy} />
+      {features.google || features.github || features.passkey ? <Divider>or</Divider> : null}
       <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="sign-in-status">
         <Field
           label="Email"
@@ -63,18 +66,26 @@ export function SignInForm({ features, next, initialStatus }: { features: Public
           autoCapitalize="none"
           spellCheck={false}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            if (errors.email) setErrors((current) => ({ ...current, email: validateEmail(event.target.value) }))
+          }}
+          onBlur={() => {
+            if (email) setErrors((current) => ({ ...current, email: validateEmail(email) }))
+          }}
           error={errors.email}
           required
           maxLength={254}
         />
-        <Field
+        <SecretField
           label="Password"
           name="password"
-          type="password"
           autoComplete="current-password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            if (errors.password && event.target.value) setErrors((current) => ({ ...current, password: null }))
+          }}
           error={errors.password}
           required
           maxLength={128}

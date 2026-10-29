@@ -22,6 +22,7 @@ import { HISTORY_RECALL } from "@/data/landing-demo"
 import { RACE } from "@/data/results-story"
 import { contextBlocks } from "@/lib/landing-context"
 import { constructMetadata, faqJsonLd, jsonLdScript } from "@/lib/seo"
+import "./lp-base.css"
 import "./landing.css"
 
 export const metadata = constructMetadata({

@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { useState, type FormEvent } from "react"
+import { Envelope } from "@/components/auth/Envelope"
+import { Step } from "@/components/auth/motion"
 import { Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { authClient, takeRetryAfter } from "@/lib/auth/client"
 import { describeError, OFFLINE_ERROR } from "@/lib/auth/messages"
@@ -33,6 +35,7 @@ export function ForgotPasswordForm() {
   return (
     <div className="auth-stack">
       <OfflineNotice />
+      {sent ? <Step className="auth-sent"><Envelope id="forgot-envelope" /></Step> : null}
       <FormStatus status={status} id="forgot-status" />
       {sent ? (
         <p className="auth-footnote">
@@ -42,7 +45,7 @@ export function ForgotPasswordForm() {
         </p>
       ) : (
         <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="forgot-status">
-          <Field label="Email" name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} error={error} required maxLength={254} />
+          <Field label="Email" name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); if (error) setError(validateEmail(event.target.value)) }} onBlur={() => { if (email) setError(validateEmail(email)) }} error={error} required maxLength={254} />
           <SubmitButton pending={pending} pendingText="Sending…">
             Send reset link
           </SubmitButton>

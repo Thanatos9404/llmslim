@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { Envelope } from "@/components/auth/Envelope"
+import { Step } from "@/components/auth/motion"
 import { NewPasswordField } from "@/components/auth/PasswordField"
 import { Divider, Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { SocialButtons } from "@/components/auth/SocialButtons"
@@ -60,6 +62,16 @@ export function SignUpForm({ features, next }: { features: PublicAuthFeatures; n
     setPassword("")
   }
 
+  // Inline validation with the same rules as on submit: a field is checked when you leave it (if it has a value),
+  // and an error clears as soon as the value is fixed.
+  const RULES = { name: validateName, email: validateEmail, password: validatePassword } as const
+  function blurCheck(field: keyof typeof RULES, value: string) {
+    if (value) setErrors((current) => ({ ...current, [field]: RULES[field](value) }))
+  }
+  function recheck(field: keyof typeof RULES, value: string) {
+    if (errors[field]) setErrors((current) => ({ ...current, [field]: RULES[field](value) }))
+  }
+
   if (sentTo) return <CheckEmail email={sentTo} />
 
   return (
@@ -69,11 +81,11 @@ export function SignUpForm({ features, next }: { features: PublicAuthFeatures; n
       <SocialButtons google={features.google} github={features.github} callbackURL={next} errorCallbackURL="/sign-up" onStatus={setStatus} beforeStart={requireConsent} disabled={pending} />
       {features.emailSignUp ? (
         <>
-          {features.google || features.github ? <Divider>or sign up with email</Divider> : null}
+          {features.google || features.github ? <Divider>or</Divider> : null}
           <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="sign-up-status">
-            <Field label="Name" name="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} error={errors.name} required maxLength={80} />
-            <Field label="Email" name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} error={errors.email} required maxLength={254} />
-            <NewPasswordField value={password} onChange={setPassword} error={errors.password} context={[name, email.split("@")[0] ?? ""]} />
+            <Field label="Name" name="name" type="text" autoComplete="name" value={name} onChange={(event) => { setName(event.target.value); recheck("name", event.target.value) }} onBlur={() => blurCheck("name", name)} error={errors.name} required maxLength={80} />
+            <Field label="Email" name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); recheck("email", event.target.value) }} onBlur={() => blurCheck("email", email)} error={errors.email} required maxLength={254} />
+            <NewPasswordField value={password} onChange={(value) => { setPassword(value); recheck("password", value) }} onBlur={() => blurCheck("password", password)} error={errors.password} context={[name, email.split("@")[0] ?? ""]} />
             <ConsentField consent={consent} setConsent={setConsent} error={errors.consent} inputRef={consentRef} />
             <SubmitButton pending={pending} pendingText="Creating account…">
               Create account
@@ -134,6 +146,13 @@ function ConsentField({ consent, setConsent, error, inputRef }: { consent: boole
 function CheckEmail({ email }: { email: string }) {
   const [status, setStatus] = useState<Status>(null)
   const [pending, setPending] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+
+  // The confirmation replaces a taller form: bring it into view if the page was scrolled past its top.
+  useEffect(() => {
+    const element = box.current
+    if (element && element.getBoundingClientRect().top < 96) element.scrollIntoView({ block: "center" })
+  }, [])
 
   async function resend() {
     if (!navigator.onLine) return setStatus({ kind: "error", text: OFFLINE_ERROR })
@@ -144,7 +163,9 @@ function CheckEmail({ email }: { email: string }) {
   }
 
   return (
-    <div className="auth-stack" data-testid="check-email">
+    <Step className="auth-sent">
+      <div className="auth-stack" data-testid="check-email" ref={box}>
+      <Envelope id="sign-up-envelope" />
       <div className="auth-status auth-status-success" role="status">
         <p>
           Check your email. If <strong>{email}</strong> can be used for a new account, we have sent a link to confirm it. The link expires in 1 hour.
@@ -160,6 +181,7 @@ function CheckEmail({ email }: { email: string }) {
           Sign in
         </Link>
       </p>
-    </div>
+      </div>
+    </Step>
   )
 }

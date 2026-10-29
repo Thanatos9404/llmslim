@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useState, type FormEvent } from "react"
-import { NewPasswordField } from "@/components/auth/PasswordField"
-import { Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
+import { NewPasswordField, SecretField } from "@/components/auth/PasswordField"
+import { FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { authClient, takeRetryAfter } from "@/lib/auth/client"
 import { describeError, OFFLINE_ERROR } from "@/lib/auth/messages"
 import { validatePassword } from "@/lib/auth/validation"
@@ -53,7 +53,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       ) : (
         <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="reset-status">
           <NewPasswordField label="New password" value={password} onChange={setPassword} error={errors.password} />
-          <Field label="Confirm new password" name="confirm-password" type="password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} required maxLength={128} />
+          <SecretField label="Confirm new password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} required maxLength={128} />
           <SubmitButton pending={pending} pendingText="Saving…">
             Change password
           </SubmitButton>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { connection } from "next/server"
 import { AuthCard, UnavailableNotice } from "@/components/auth/AuthCard"
+import { RecallMoment } from "@/components/auth/AuthMoments"
 import type { Status } from "@/components/auth/primitives"
 import { getAuthConfig, publicFeatures } from "@/lib/auth/config"
 import { messageForCode, GENERIC_ERROR } from "@/lib/auth/messages"
@@ -38,7 +39,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
   else if (first(params.reset) === "1") initialStatus = { kind: "success", text: "Your password has been changed. Sign in with your new password." }
 
   return (
-    <AuthCard title={reauth ? "Confirm it's you" : "Sign in"} description="Use a passkey, Google, GitHub or your email and password.">
+    <AuthCard title={reauth ? "Confirm it's you" : "Sign in"} description="Use a passkey, Google, GitHub or your email and password." aside={<RecallMoment />}>
       {features.available ? <SignInForm features={features} next={next} initialStatus={initialStatus} /> : <UnavailableNotice />}
     </AuthCard>
   )

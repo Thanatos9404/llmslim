@@ -128,3 +128,27 @@ external references:
   a dependency of this site; the path data matches `es/<Name>/components/Color.js` or `Mono.js` there.
 - `vscode.svg` is Microsoft's Visual Studio Code product icon, as the trailer uses it. Where the trailer's copy came
   from was not recorded; https://code.visualstudio.com/brand publishes the icon and its usage terms.
+
+## Accounts pages, 30 October 2026
+
+The sign-in, sign-up, forgot and reset password, verify-email and account pages use the home page's glass system:
+`src/app/lp-base.css` holds the shared tokens, glass, headings, buttons and sky (split out of `landing.css`), and
+`src/app/(auth)/auth.css` styles the existing `auth-` markup on top of it. Presentation only: no auth logic,
+validation rules, server code, rate limits or headers changed, and every accessible name the tests use is unchanged.
+
+- **Layout.** One glass card on the home page's sky. On wide screens, sign-in and sign-up add a quiet product moment
+  (`components/auth/AuthMoments.tsx`, decorative and hidden from screen readers): sign-in shows a `memory.search`
+  window with real llmslim 0.12.0 output (the standing request and preference from the home page's data), sign-up the
+  logo's strands drawing in. The account page's sections are glass panels; deleting the account confirms in a modal
+  `<dialog>`.
+- **Order on sign-in.** A passkey first, then Google and GitHub side by side with equal weight (each button shows the
+  provider's name; "Continue with" stays in its accessible name), then email and password.
+- **Fields.** A green focus ring with a soft glow, a show/hide button inside every password input, a four-segment
+  strength meter driven by the existing `passwordStrength` rules, and validation when a field is left (with the same
+  rules as on submit).
+- **Provider marks.** `components/auth/icons.tsx`: the Google (colour) and GitHub (single colour) marks are the
+  artwork of `@lobehub/icons` 5.13.0 (MIT), `es/Google/components/Color.js` and `es/Github/components/Mono.js`, path
+  data unchanged. The line icons are drawn for this site.
+- **Motion.** CSS for the card's entrance (transform only, so the heading paints at once), strands, envelope and
+  status banners; Framer Motion's `m` (under the site's `LazyMotion`) for the step from a form to its "check your
+  email" state. Reduced motion shows every final state at once.

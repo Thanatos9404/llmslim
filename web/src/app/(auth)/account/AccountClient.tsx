@@ -2,8 +2,10 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, type FormEvent, type ReactNode } from "react"
-import { NewPasswordField } from "@/components/auth/PasswordField"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { DeviceIcon, KeyIcon, MailIcon } from "@/components/auth/icons"
+import { NewPasswordField, SecretField } from "@/components/auth/PasswordField"
+import { ProviderMark } from "@/components/auth/SocialButtons"
 import { Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { authClient, takeRetryAfter } from "@/lib/auth/client"
 import { describeDevice } from "@/lib/auth/device"
@@ -55,9 +57,9 @@ function relative(iso: string): string {
   return `${days} ${days === 1 ? "day" : "days"} ago`
 }
 
-function Section({ id, title, description, children }: { id: string; title: string; description?: ReactNode; children: ReactNode }) {
+function Section({ id, title, description, children, danger }: { id: string; title: string; description?: ReactNode; children: ReactNode; danger?: boolean }) {
   return (
-    <section className="auth-section" aria-labelledby={`${id}-title`} id={id} data-testid={`section-${id}`}>
+    <section className={`auth-section lp-glass${danger ? " is-danger" : ""}`} aria-labelledby={`${id}-title`} id={id} data-testid={`section-${id}`}>
       <h2 id={`${id}-title`} className="auth-subtitle">
         {title}
       </h2>
@@ -114,8 +116,10 @@ function ProfileSection({ view }: { view: AccountView }) {
       <div className="auth-profile">
         {view.user.image ? (
           // eslint-disable-next-line @next/next/no-img-element -- provider avatars, allowed hosts only, no optimisation needed
-          <img src={view.user.image} alt="" width={48} height={48} className="auth-avatar" referrerPolicy="no-referrer" />
-        ) : null}
+          <img src={view.user.image} alt="" width={56} height={56} className="auth-avatar" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="auth-avatar auth-monogram" aria-hidden="true">{Array.from(view.user.name.trim() || view.user.email)[0]?.toUpperCase()}</span>
+        )}
         <dl className="auth-facts">
           <dt>Email</dt>
           <dd data-testid="account-email">
@@ -174,6 +178,7 @@ function MethodsSection({ view }: { view: AccountView }) {
       <FormStatus status={status} />
       <ul className="auth-list">
         <li className="auth-list-item">
+          <span className="auth-list-icon" aria-hidden="true"><MailIcon /></span>
           <span className="auth-list-main">Email and password</span>
           <span className="auth-list-meta" data-testid="password-state">
             {view.hasPassword ? "Password set" : "No password"}
@@ -184,8 +189,9 @@ function MethodsSection({ view }: { view: AccountView }) {
           const canUnlink = linked && methodCount > 1
           return (
             <li key={provider} className="auth-list-item" data-testid={`provider-${provider}`}>
+              <span className="auth-list-icon" aria-hidden="true"><ProviderMark provider={provider} /></span>
               <span className="auth-list-main">{labels[provider]}</span>
-              <span className="auth-list-meta">{linked ? "Connected" : "Not connected"}</span>
+              <span className={`auth-list-meta${linked ? " is-on" : ""}`}>{linked ? "Connected" : "Not connected"}</span>
               <span className="auth-list-actions">
                 {linked ? (
                   canUnlink ? (
@@ -313,6 +319,7 @@ function PasskeyRow({ item, onStatus }: { item: AccountView["passkeys"][number];
         </form>
       ) : (
         <>
+          <span className="auth-list-icon" aria-hidden="true"><KeyIcon /></span>
           <span className="auth-list-main" data-testid="passkey-name">
             {item.name}
           </span>
@@ -400,9 +407,9 @@ function PasswordSection({ view }: { view: AccountView }) {
       <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="password-status">
         {/* Lets password managers attach the new password to the right account. */}
         <input type="email" name="username" autoComplete="username" value={view.user.email} readOnly hidden />
-        {view.hasPassword ? <Field label="Current password" name="current-password" type="password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} error={errors.current} required maxLength={128} /> : null}
+        {view.hasPassword ? <SecretField label="Current password" name="current-password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} error={errors.current} required maxLength={128} /> : null}
         <NewPasswordField label="New password" name="new-password" value={password} onChange={setPassword} error={errors.password} context={[view.user.name, view.user.email.split("@")[0] ?? ""]} />
-        <Field label="Confirm new password" name="confirm-password" type="password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} required maxLength={128} />
+        <SecretField label="Confirm new password" name="confirm-password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} error={errors.confirm} required maxLength={128} />
         <SubmitButton pending={pending} pendingText="Saving…" className="auth-button-secondary">
           {view.hasPassword ? "Change password" : "Set password"}
         </SubmitButton>
@@ -445,6 +452,7 @@ function SessionsSection({ view }: { view: AccountView }) {
       <ul className="auth-list" data-testid="session-list">
         {view.sessions.map((item) => (
           <li key={item.id} className="auth-list-item" data-testid="session-item">
+            <span className="auth-list-icon" aria-hidden="true"><DeviceIcon /></span>
             <span className="auth-list-main">
               {item.device}
               {item.current ? <span className="auth-badge">This device</span> : null}
@@ -508,6 +516,19 @@ function DeleteSection({ view }: { view: AccountView }) {
   const [status, setStatus] = useState<Status>(null)
   const [pending, setPending] = useState(false)
   const needsReauth = !view.hasPassword && !view.fresh
+  const dialog = useRef<HTMLDialogElement>(null)
+  const opener = useRef<HTMLButtonElement>(null)
+
+  // The confirmation is a modal dialog: focus moves into it, the page behind is inert, and Escape closes it.
+  useEffect(() => {
+    const element = dialog.current
+    if (open && element && !element.open) element.showModal()
+  }, [open])
+
+  function close() {
+    if (pending) return
+    dialog.current?.close()
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -532,40 +553,65 @@ function DeleteSection({ view }: { view: AccountView }) {
   }
 
   return (
-    <Section id="delete" title="Delete account" description="Permanently delete your account, sign-in methods, passkeys and sessions. This cannot be undone.">
-      <FormStatus status={status} id="delete-status" />
-      {!open ? (
-        <button type="button" className="auth-button auth-button-danger" onClick={() => setOpen(true)} data-testid="delete-open">
-          Delete account…
-        </button>
-      ) : needsReauth ? (
-        <div className="auth-status auth-status-info" role="status">
-          <p>To delete your account, confirm it is you first.</p>
-          <div className="auth-status-action">{reauthLink()}</div>
-        </div>
-      ) : (
-        <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="delete-status">
-          <input type="email" name="username" autoComplete="username" value={view.user.email} readOnly hidden />
-          {view.hasPassword ? <Field label="Password" name="delete-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} required maxLength={128} /> : null}
-          <div className={`auth-field auth-checkbox${errors.understood ? " auth-field-invalid" : ""}`}>
-            <input id="delete-understood" type="checkbox" checked={understood} onChange={(event) => setUnderstood(event.target.checked)} aria-invalid={errors.understood ? true : undefined} aria-describedby={errors.understood ? "delete-understood-error" : undefined} />
-            <label htmlFor="delete-understood">I understand that my account will be deleted permanently.</label>
-            {errors.understood ? (
-              <p id="delete-understood-error" className="auth-field-error">
-                {errors.understood}
-              </p>
-            ) : null}
-          </div>
-          <div className="auth-row">
-            <SubmitButton pending={pending} pendingText="Deleting…" className="auth-button-danger">
-              Delete my account permanently
-            </SubmitButton>
-            <button type="button" className="auth-button auth-button-quiet" onClick={() => setOpen(false)} disabled={pending}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+    <Section id="delete" title="Delete account" description="Permanently delete your account, sign-in methods, passkeys and sessions. This cannot be undone." danger>
+      <button ref={opener} type="button" className="auth-button auth-button-danger" onClick={() => setOpen(true)} data-testid="delete-open" aria-haspopup="dialog">
+        Delete account…
+      </button>
+      {open ? (
+        <dialog
+          ref={dialog}
+          className="auth-dialog lp-glass"
+          aria-labelledby="delete-dialog-title"
+          onClose={() => {
+            setOpen(false)
+            opener.current?.focus()
+          }}
+          onCancel={(event) => {
+            if (pending) event.preventDefault()
+          }}
+        >
+          <h3 id="delete-dialog-title" className="auth-subtitle">
+            Delete your account?
+          </h3>
+          <p className="auth-description">Your account, sign-in methods, passkeys and sessions are deleted at once. This cannot be undone.</p>
+          <FormStatus status={status} id="delete-status" />
+          {needsReauth ? (
+            <div className="auth-stack">
+              <div className="auth-status auth-status-info" role="status">
+                <p>To delete your account, confirm it is you first.</p>
+                <div className="auth-status-action">{reauthLink()}</div>
+              </div>
+              <div className="auth-row auth-dialog-actions">
+                <button type="button" className="auth-button auth-button-quiet" onClick={close}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form className="auth-form" onSubmit={onSubmit} noValidate aria-describedby="delete-status">
+              <input type="email" name="username" autoComplete="username" value={view.user.email} readOnly hidden />
+              {view.hasPassword ? <SecretField label="Password" name="delete-password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} error={errors.password} required maxLength={128} /> : null}
+              <div className={`auth-field auth-checkbox${errors.understood ? " auth-field-invalid" : ""}`}>
+                <input id="delete-understood" type="checkbox" checked={understood} onChange={(event) => setUnderstood(event.target.checked)} aria-invalid={errors.understood ? true : undefined} aria-describedby={errors.understood ? "delete-understood-error" : undefined} />
+                <label htmlFor="delete-understood">I understand that my account will be deleted permanently.</label>
+                {errors.understood ? (
+                  <p id="delete-understood-error" className="auth-field-error">
+                    {errors.understood}
+                  </p>
+                ) : null}
+              </div>
+              <div className="auth-row auth-dialog-actions">
+                <button type="button" className="auth-button auth-button-quiet" onClick={close} disabled={pending}>
+                  Cancel
+                </button>
+                <SubmitButton pending={pending} pendingText="Deleting…" className="auth-button-danger">
+                  Delete my account permanently
+                </SubmitButton>
+              </div>
+            </form>
+          )}
+        </dialog>
+      ) : null}
     </Section>
   )
 }

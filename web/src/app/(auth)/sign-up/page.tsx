@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { connection } from "next/server"
 import { AuthCard, UnavailableNotice } from "@/components/auth/AuthCard"
+import { StrandsMoment } from "@/components/auth/AuthMoments"
 import { getAuthConfig, publicFeatures } from "@/lib/auth/config"
 import { messageForCode, GENERIC_ERROR } from "@/lib/auth/messages"
 import { sanitizeNext } from "@/lib/auth/next-path"
@@ -23,7 +24,7 @@ export default async function SignUpPage({ searchParams }: { searchParams: Searc
   const error = rawError ? (messageForCode(rawError) ?? GENERIC_ERROR) : null
 
   return (
-    <AuthCard title="Create your account" description="Sign up with Google, GitHub or your email address. You can add a passkey afterwards.">
+    <AuthCard title="Create your account" description="Sign up with Google, GitHub or your email address. You can add a passkey afterwards." aside={<StrandsMoment />}>
       {error ? (
         <div className="auth-status auth-status-error" role="alert">
           <p>{error}</p>

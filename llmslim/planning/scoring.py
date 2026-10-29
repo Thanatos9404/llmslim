@@ -113,7 +113,7 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
         stamp = datetime(value.year, value.month, value.day)
     elif isinstance(value, str) and value.strip():
         try:
-            # Python 3.9/3.10 fromisoformat() does not accept a trailing "Z".
+            # Python 3.10 fromisoformat() does not accept a trailing "Z".
             stamp = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
         except ValueError:
             return None

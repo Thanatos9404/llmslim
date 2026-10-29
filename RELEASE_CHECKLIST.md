@@ -18,7 +18,7 @@ This checklist outlines the mandatory verification steps required before publish
 - [ ] `py.typed` marker file is present in `llmslim/`.
 
 ### 3. Automated Test Suite & Coverage
-- [ ] `pytest` passes 100% of unit tests across Python 3.9, 3.10, 3.11, 3.12, 3.13.
+- [ ] `pytest` passes 100% of unit tests across Python 3.10, 3.11, 3.12, 3.13.
 - [ ] Code coverage threshold is **>= 90%** (`pytest --cov-fail-under=90`).
 - [ ] Edge cases (empty strings, single sentences, massive prompts, unicode/multilingual) pass without exceptions.
 

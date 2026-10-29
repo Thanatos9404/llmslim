@@ -45,7 +45,7 @@ newer). Memory goes to a local SQLite file, `~/.llmslim/memory.db`.
 The first start downloads LLMSlim and its dependencies. If a client gives up waiting, run
 `uvx --from "llmslim[mcp]" llmslim mcp --help` once to fill uv's cache, then restart the client.
 
-**Python** (`pip install llmslim`, Python 3.9 or newer):
+**Python** (`pip install llmslim`, Python 3.10 or newer):
 
 ```python
 from llmslim.memory import Memory
@@ -81,7 +81,7 @@ If LLMSlim is useful, a star helps others find it. Feedback is welcome in [issue
 - **Fixes the scope at server start.** The user and agent ids are set when the server starts, not by the model, so a
   model steered by injected text can't read or delete another user's memory.
 - **Makes no LLM call.** By default, storing and recalling are plain code: no model, no embedding API, no API key.
-- **MIT licensed.** The library needs Python 3.9 or newer, the MCP server 3.10 or newer.
+- **MIT licensed.** The library and the MCP server need Python 3.10 or newer.
 
 Beyond memory, LLMSlim Core also compresses and plans prompts, chat history, retrieved documents and tool schemas
 into token budgets: see the sections below.
@@ -101,7 +101,7 @@ which downloads the model the first time). See the [limits](docs/MEMORY.md#limit
 
 ## Compress a prompt in 60 seconds
 
-**1. Install** LLMSlim Core from PyPI (Python 3.9+). Running it needs no API key, model, or network call:
+**1. Install** LLMSlim Core from PyPI (Python 3.10+). Running it needs no API key, model, or network call:
 
 ```bash
 pip install llmslim
@@ -364,10 +364,10 @@ Explore our redesigned dark/light documentation site covering end-to-end integra
 # Core package (Deterministic extractive engine, 0 external LLM dependencies)
 pip install llmslim
 
-# With optional Model Context Protocol (MCP) catalog ingestion (Python 3.10+)
+# With optional Model Context Protocol (MCP) catalog ingestion
 pip install "llmslim[mcp]"
 
-# With optional OpenAI Agents SDK host bridge (Python 3.10+)
+# With optional OpenAI Agents SDK host bridge
 pip install "llmslim[agents]"
 
 # With optional local multilingual semantic retrieval
@@ -388,12 +388,12 @@ pip install "llmslim[zoho]"
 # Explicit MongoDB context memory and Atlas retrieval
 pip install "llmslim[mongodb]"
 
-# LangChain, LlamaIndex (Python 3.10+) and Haystack adapters
+# LangChain, LlamaIndex and Haystack adapters
 pip install "llmslim[langchain]"
 pip install "llmslim[llamaindex]"
 pip install "llmslim[haystack]"
 
-# Agent history: gptme (0.34+) and Pydantic AI adapters (Python 3.10+).
+# Agent history: gptme (0.34+) and Pydantic AI adapters.
 # Hermes Agent needs no extra: install llmslim into Hermes's environment.
 pip install "llmslim[gptme]"
 pip install "llmslim[pydantic-ai]"
@@ -402,7 +402,7 @@ pip install "llmslim[pydantic-ai]"
 pip install "llmslim[all]"
 ```
 
-*Requirements: Python 3.9 or higher. No provider SDK, PyTorch, sentence-transformers, or cloud service is required for the default installation.*
+*Requirements: Python 3.10 or higher. No provider SDK, PyTorch, sentence-transformers, or cloud service is required for the default installation.*
 
 ---
 
@@ -717,7 +717,7 @@ documents that compress to nothing are dropped. They run locally with no model.
 | Framework | Install | Class | Use it where you'd use |
 | :--- | :--- | :--- | :--- |
 | LangChain | `llmslim[langchain]` | `llmslim.integrations.langchain.LLMSlimCompressor` | `LLMLinguaCompressor`, e.g. in `ContextualCompressionRetriever` |
-| LlamaIndex | `llmslim[llamaindex]` (Python 3.10+) | `llmslim.integrations.llama_index.LLMSlimPostprocessor` | `LongLLMLinguaPostprocessor`, in `node_postprocessors` |
+| LlamaIndex | `llmslim[llamaindex]` | `llmslim.integrations.llama_index.LLMSlimPostprocessor` | `LongLLMLinguaPostprocessor`, in `node_postprocessors` |
 | Haystack | `llmslim[haystack]` | `llmslim.integrations.haystack.LLMSlimDocumentCompressor` | a component between the retriever and the prompt builder |
 
 ```python

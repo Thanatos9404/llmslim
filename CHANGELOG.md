@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+- **Python 3.10 or newer is required.** Python 3.9 is no longer supported: it reached end of life in October 2025,
+  and the MCP server and most framework extras already needed 3.10. `requires-python` is `>=3.10`, CI no longer runs
+  on 3.9, and Ruff and mypy check against 3.10. On Python 3.9, pip keeps installing 0.12.0. No public API changes.
+  - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
+
 ### Fixed
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
   starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and

@@ -98,3 +98,33 @@ The local production preview is started with `node node_modules/next/dist/bin/ne
 - Type: Geist for text, Instrument Serif italic for emphasis in headings, Geist Mono for code and numbers. All three are self-hosted under `public/fonts` (OFL).
 - Mark: the converging-lines logo drawn as one-colour SVG in the header (`Mark` in `SiteHeader.tsx`); the PNG stays for app icons.
 - Photos from Pexels (free to use, Pexels license): the light-theme hero, programme and closing bands (Pexels 11705368, 10975806, 614115) and the Platform hero (1654138 by night, 32231937 by day).
+
+## Home page, 30 October 2026
+
+The home page (`src/app/page.tsx`, `src/app/landing.css`, `src/components/landing/home/`) is a landing page for the
+memory engine, after the founder's brief: glass panels showing real LLMSlim output, the navy night sky with the
+brand's violet, blue and green light, and the logo's idea (many strands converging into the few that matter) as the
+motion motif. It follows the landing-page skill's structure and visual rules, except where the founder asked for
+glass, gradients, glow and depth.
+
+- **Real output only.** `src/data/landing-demo.ts` is the 0.12.0 launch trailer's data, copied unchanged
+  (`output/video/promo/audio/make_launch012_data.py`): 16 stored turns, three `Memory.search` answers and a sweep of
+  271 budgets. Benchmark figures come from `RACE` in `src/data/results-story.ts`, the data /results shows.
+- **Motion.** The hero demo is server markup animated with CSS from the first paint (strands drawn with
+  `stroke-dashoffset`, lines and the token meter in sequence); a small client wrapper adds the tilt on scroll, the replay
+  button and pauses the endless animations while the hero is off screen. Reveals use Framer Motion's `m` components
+  under the site's `LazyMotion`. Reduced motion shows every final state at once.
+- **No new dependencies, no images.** The sky, aurora, stars, horizon, noise and strands are CSS and inline SVG.
+
+### MCP client logos, added on 30 October 2026
+
+`public/logos/` holds the logos of the MCP clients LLMSlim's docs give a setup for, shown as a "works with" strip (a
+nominative use: no partnership or endorsement is implied). They are the files the 0.12.0 launch trailer uses
+(`output/video/promo/public-launch/launch/logos/`), copied byte for byte and checked for scripts, event handlers and
+external references:
+
+- `claude.svg`, `claude-code.svg`, `codex.svg`, `gemini-cli.svg` (colour) and `cursor.svg`, `github-copilot.svg`
+  (single colour, tinted to the text colour with a CSS mask) are the artwork of `@lobehub/icons` 5.13.0 (MIT), already
+  a dependency of this site; the path data matches `es/<Name>/components/Color.js` or `Mono.js` there.
+- `vscode.svg` is Microsoft's Visual Studio Code product icon, as the trailer uses it. Where the trailer's copy came
+  from was not recorded; https://code.visualstudio.com/brand publishes the icon and its usage terms.

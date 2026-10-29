@@ -1,105 +1,378 @@
 import Link from "next/link"
-import { ArrowRight, ArrowUpRight } from "lucide-react"
-import { GitHubMark, SiteHeader } from "@/components/site/SiteHeader"
+import type { ReactNode } from "react"
+import { ProgramLogo, startupProgramCount, startupPrograms } from "@/components/landing/StartupPrograms"
+import { Bento } from "@/components/landing/home/Bento"
+import { CodeTabs, type CodeTab } from "@/components/landing/home/CodeTabs"
+import { InstallPill } from "@/components/landing/home/CopyButton"
+import { MarkImage } from "@/components/landing/home/MarkImage"
+import { HeroDemo } from "@/components/landing/home/HeroDemo"
+import { highlight, type CodeLanguage } from "@/components/landing/home/highlight"
+import { ArrowRight, ArrowUpRight, PlusIcon } from "@/components/landing/home/icons"
+import { Reveal, RevealGroup, RevealItem } from "@/components/landing/home/motion"
+import { ProofBars, type ProofRow } from "@/components/landing/home/ProofBars"
+import { TaglineReveal, type TaglineWord } from "@/components/landing/home/TaglineReveal"
+import { WorksWith } from "@/components/landing/home/WorksWith"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { CopyCommand, HomeEffects, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
-import { LogoCloud, PhotoSection, PremiumHero, Reveal } from "@/components/landing/Premium"
-import { CompressVisual, Showcase, StatsBand, TraceVisual, type Stat } from "@/components/landing/Visuals"
-import { startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
-import { TrackedLink } from "@/components/site/TrackedLink"
+import { SiteHeader } from "@/components/site/SiteHeader"
 import { PageView } from "@/components/site/Telemetry"
+import { TrackedLink } from "@/components/site/TrackedLink"
 import { siteConfig } from "@/config/site"
 import { homeFaqs } from "@/data/home"
+import { HISTORY_RECALL } from "@/data/landing-demo"
+import { RACE } from "@/data/results-story"
+import { contextBlocks } from "@/lib/landing-context"
 import { constructMetadata, faqJsonLd, jsonLdScript } from "@/lib/seo"
+import "./landing.css"
 
-export const metadata = constructMetadata({ path: "/", markdownPath: "/index.md" })
+export const metadata = constructMetadata({
+  title: "LLMSlim: Memory for AI agents that no LLM rewrites",
+  description: "Open source memory for AI agents. LLMSlim keeps every conversation turn word for word in SQLite or Postgres and returns the turns that answer, inside your token budget, with no LLM call to store or recall. MIT licensed.",
+  path: "/",
+  markdownPath: "/index.md",
+})
 
-const faqs: ReadonlyArray<readonly [string, string]> = [
-  ...homeFaqs,
-  ["What do the startup programs give LLMSlim?", `LLMSlim is part of ${startupProgramCount} startup programs: ${startupProgramNames}. They provide credits, tools, and guidance. Our Sarvam integration guide shows how to pair local context compression with the official Sarvam Python SDK.`],
+/* ------------------------------------------------------------------ Content */
+
+const tagline: TaglineWord[][] = [
+  [{ text: "Every", accent: true }, { text: "word", accent: true }, { text: "is" }, { text: "kept." }],
+  [{ text: "Only" }, { text: "the" }, { text: "turns" }, { text: "that" }, { text: "answer", accent: true }],
+  [{ text: "reach" }, { text: "your" }, { text: "model." }],
+  [{ text: "Never" }, { text: "a" }, { text: "token" }, { text: "over" }, { text: "budget.", accent: true }],
 ]
 
-// Real-model results only (Claude Haiku 5.5, public benchmarks, held-out test questions, costs end to end).
-// The full report is on /benchmarks.
-const stats: Stat[] = [
-  { topic: "Chat memory", value: "2.8", unit: "×", label: "lower cost than Mem0 on long conversations, with more questions right", source: "LoCoMo, 93.0% vs 91.0% for Mem0 at about 2,500 tokens",
-    meter: { before: { name: "Mem0", value: 2.66, display: "$2.66" }, after: { name: "LLMSlim", value: 0.95, display: "$0.95" }, max: 2.66 } },
-  { topic: "Long histories", value: "42", unit: "×", label: "lower cost than sending the whole chat history, at the same accuracy", source: "LongMemEval, 77.8% for both at 10,000 tokens",
-    meter: { before: { name: "Whole history", value: 90.21, display: "$90.21" }, after: { name: "LLMSlim", value: 2.13, display: "$2.13" }, max: 90.21 } },
-  { topic: "Memory systems", value: "212", unit: "×", label: "lower cost than Mem0 on its own LongMemEval questions, as accurate", source: "Mem0's 60-question sample, 78.3% vs 76.7%",
-    meter: { before: { name: "Mem0", value: 220.88, display: "$220.88" }, after: { name: "LLMSlim", value: 1.04, display: "$1.04" }, max: 220.88 } },
-  { topic: "Long documents", value: "3", unit: "×", label: "fewer tokens on long documents, for the same score", source: "LongBench v1, 54.9 vs 54.9 with full context",
-    meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
+// The same stored turn, going into an extraction pipeline and coming back from LLMSlim (HISTORY_RECALL, real output).
+const fridayTurn = contextBlocks(HISTORY_RECALL.text).flatMap((block) => block.kind === "session" ? block.lines : [])
+  .find((line) => line.text.startsWith("I have never deployed on a Friday"))!
+
+const locomo = RACE.find((set) => set.key === "locomo")!
+const raceRow = (name: string) => locomo.rows.find((row) => row.name === name)!
+const slim = raceRow("LLMSlim + reranker")
+const mem0 = raceRow("Mem0")
+const proofRows: ProofRow[] = [
+  { name: "Whole history", detail: "every token, for reference", score: locomo.full.score, kind: "reference" },
+  { name: "LLMSlim 0.9 with reranker", detail: `$${slim.cost.toFixed(2)} per 1,000 questions`, score: slim.score, kind: "llmslim" },
+  { name: "Mem0", detail: `$${mem0.cost.toFixed(2)} per 1,000 questions`, score: mem0.score, kind: "rival" },
+  { name: "Zep", detail: "", score: raceRow("Zep").score, kind: "rival" },
+  { name: "LongLLMLingua", detail: "on its own 300 questions", score: raceRow("LongLLMLingua").score, kind: "rival", mark: "*" },
 ]
+
+// Every snippet uses the public API as documented in README.md, docs/MCP.md and docs/SERVER.md.
+const CODE: { id: string; label: string; file: string; language: CodeLanguage; code: string; note: ReactNode }[] = [
+  {
+    id: "python", label: "Python", file: "agent.py", language: "python",
+    code: `from llmslim.memory import Memory
+
+# A SQLite file, or a postgresql:// URL with llmslim[postgres]
+memory = Memory("memory.db")
+
+# Remember: each turn is stored word for word, with its date
+memory.add(
+    [{"role": "user", "content": "I prefer pnpm over npm."}],
+    user_id="dev",
+)
+
+# Recall: the turns that answer, within the budget
+context = memory.search(
+    "Help me plan Friday's deploy.", user_id="dev", budget=300
+)
+
+# Ship: put it in your prompt as data, not instructions
+print(context.text, context.tokens)`,
+    note: <><code>pip install llmslim</code>, Python 3.9 or newer.</>,
+  },
+  {
+    id: "mcp", label: "MCP", file: "claude_desktop_config.json", language: "json",
+    code: `{
+  "mcpServers": {
+    "llmslim": {
+      "command": "uvx",
+      "args": ["--from", "llmslim[mcp]", "llmslim", "mcp"]
+    }
+  }
+}`,
+    note: <>The same block works in Cursor&apos;s <code>~/.cursor/mcp.json</code>. In Claude Code: <code>claude mcp add llmslim -- uvx --from &quot;llmslim[mcp]&quot; llmslim mcp</code>. Tools: <code>remember</code>, <code>recall</code>, <code>list_memories</code>, <code>forget</code> and <code>fit_context</code>.</>,
+  },
+  {
+    id: "http", label: "HTTP", file: "terminal", language: "bash",
+    code: `pip install "llmslim[server]"
+llmslim serve   # http://127.0.0.1:8080
+
+curl -s localhost:8080/v1/memories \\
+  -H 'content-type: application/json' \\
+  -d '{"user_id": "dev", "messages": "I prefer pnpm over npm."}'
+
+curl -s localhost:8080/v1/memories/search \\
+  -H 'content-type: application/json' \\
+  -d '{"user_id": "dev", "budget": 300,
+       "query": "Which package manager do I use?"}'`,
+    note: <>One process and one SQLite file. It needs an API key to listen beyond localhost.</>,
+  },
+  {
+    id: "ts", label: "TypeScript", file: "agent.ts", language: "ts",
+    code: `import { LLMSlim } from "llmslim";
+
+// llmslim serve at http://127.0.0.1:8080, or LLMSLIM_BASE_URL
+const slim = new LLMSlim();
+
+await slim.memories.add({
+  userId: "dev",
+  messages: "I prefer pnpm over npm.",
+});
+
+const context = await slim.memories.search({
+  userId: "dev",
+  query: "Which package manager do I use?",
+  budget: 300,
+});`,
+    note: <><code>npm install llmslim</code>, Node 18 or newer, against <code>llmslim serve</code>.</>,
+  },
+]
+const codeTabs: CodeTab[] = CODE.map(({ language, ...tab }) => ({ ...tab, body: highlight(tab.code, language) }))
+
+// Phrases in the FAQ answers that link to the page they name.
+const FAQ_LINKS: [phrase: string, href: string][] = [
+  ["results page", "/results"],
+  ["pricing page", "/pricing"],
+  ["MCP guide", `${siteConfig.github}/blob/main/docs/MCP.md`],
+]
+function faqAnswer(answer: string): ReactNode[] {
+  const parts: ReactNode[] = [answer]
+  for (const [phrase, href] of FAQ_LINKS) {
+    const at = parts.findIndex((part) => typeof part === "string" && part.includes(phrase))
+    if (at < 0) continue
+    const [before, ...rest] = (parts[at] as string).split(phrase)
+    const link = href.startsWith("http") ? <a key={href} href={href} target="_blank" rel="noreferrer">{phrase}</a> : <Link key={href} href={href}>{phrase}</Link>
+    parts.splice(at, 1, before, link, rest.join(phrase))
+  }
+  return parts
+}
+
+/* ------------------------------------------------------------------ Pieces */
+
+/** The page's one call to action, identical in the hero and at the end. */
+function Actions({ location }: { location: "hero" | "final" }) {
+  return <>
+    <div className="lp-actions">
+      <TrackedLink className="lp-btn" href="/docs/getting-started" event="core_docs_clicked" properties={{ location }}>
+        Get started free <ArrowRight size={16} />
+      </TrackedLink>
+      <InstallPill />
+    </div>
+    <p className="lp-meta">
+      <span>Free and MIT licensed</span>
+      <span>7,000+ downloads</span>
+      <Link href="/pricing" className="lp-meta-link">See pricing <ArrowRight size={14} /></Link>
+    </p>
+  </>
+}
+
+function Head({ kicker, title, id, children, center }: { kicker: string; title: ReactNode; id: string; children?: ReactNode; center?: boolean }) {
+  return <Reveal className={center ? "lp-head is-center" : "lp-head"}>
+    <p className="lp-kicker">{kicker}</p>
+    <h2 id={id} className="lp-h2">{title}</h2>
+    {children && <p className="lp-head-body">{children}</p>}
+  </Reveal>
+}
+
+/* ------------------------------------------------------------------ Page */
 
 export default function Home() {
-  return <div className="slim-site premium"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
+  return <div className="premium lp">
+    <PageView event="homepage_view" />
+    <SiteHeader />
+    <main id="main-content">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(homeFaqs)) }} />
 
-    <PremiumHero>
-      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
-      {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
-          The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
-      <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
-      <Reveal fade={false} delay={0.1}><p className="p-hero-sub">Open-source context compression for RAG and agents. <Link className="p-hero-proof" href="/benchmarks">More answers right than Mem0 on long conversations, at a third of the cost, with no memory to build.<ArrowRight size={15} aria-hidden="true" /></Link></p></Reveal>
-      <Reveal fade={false} delay={0.2}><p className="p-hero-lede">Your agents are only as smart as what they know. LLMSlim decides what reaches the model, remembers what changed, and learns which context wins.</p></Reveal>
-      <Reveal fade={false} delay={0.3} className="p-hero-actions">
-        <TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Get started <ArrowRight size={16} /></TrackedLink>
-        <a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> View on GitHub</a>
-        <TrackedLink className="button button-outline" href="/vault#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Vault beta</TrackedLink>
-      </Reveal>
-      <Reveal fade={false} delay={0.4}><CopyCommand /></Reveal>
-    </PremiumHero>
-
-    <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">
-      <Reveal className="p-head"><p className="p-kicker">The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
-      <StatsBand stats={stats} />
-      <Reveal className="p-foot"><span>Public benchmarks. One reader and one prompt for every run; only the context changes.*</span><Link className="text-link" href="/results">See the results, chapter by chapter <ArrowUpRight size={14} /></Link></Reveal>
-      <p className="p-fineprint">* Every context was read by Claude Haiku 5.5.</p>
-    </section>
-
-    <section className="p-section site-width" id="layers" aria-labelledby="layers-title">
-      <Reveal className="p-head"><p className="p-kicker">Open-source core · self-hosted Vault</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
-      <div className="duo">
-        <div>
-          <Showcase><CompressVisual before={111372} after={10008} foot={<><span><b>42× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices, as accurate as the whole history</span></>} /></Showcase>
-          <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
+      {/* The headline is never hidden or animated in, so it paints first: it is the page's largest paint. */}
+      <section className="lp-hero" aria-labelledby="hero-title">
+        <div className="lp-sky" aria-hidden="true"><div className="lp-aurora" /><div className="lp-stars" /></div>
+        <div className="lp-wrap lp-hero-copy">
+          <Link className="lp-chip" href="/results">
+            <span className="lp-chip-tag">LoCoMo</span>
+            <span className="lp-chip-text">More answers right than Mem0 on long conversations, at a third of the cost</span>
+            <ArrowRight size={14} />
+          </Link>
+          <h1 id="hero-title" className="lp-h1">Memory for AI agents <br className="lp-br" />that no LLM rewrites.</h1>
+          <p className="lp-lead">Open source memory that keeps every conversation turn word for word, then returns the turns that answer, inside your token budget. No LLM call to store or recall.</p>
+          <Actions location="hero" />
         </div>
-        <div>
-          <Showcase><TraceVisual /></Showcase>
-          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Vault · v{siteConfig.vaultVersion} beta · self-hosted</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/vault" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore Vault <ArrowUpRight size={15} /></TrackedLink></Reveal>
+        <div className="lp-wrap lp-hero-stage"><div className="lp-horizon" aria-hidden="true" /><HeroDemo /></div>
+      </section>
+
+      <WorksWith />
+
+      <section className="lp-section lp-tagline-section" aria-labelledby="tagline-title">
+        <div className="lp-wrap"><TaglineReveal id="tagline-title" lines={tagline} /></div>
+      </section>
+
+      <section className="lp-section lp-why" aria-labelledby="why-title">
+        <div className="lp-wrap">
+          <Head kicker="Why word for word" id="why-title" title={<>Summaries drift. <br className="lp-br" />Words don&apos;t.</>} center>
+            Most agent memory asks a model to rewrite each conversation into short facts. LLMSlim keeps what was said, and picks what matters when the question arrives.
+          </Head>
+          <div className="lp-versus">
+            <Reveal as="article" className="lp-vs is-old lp-glass">
+              <p className="lp-card-kicker">Extracted memory</p>
+              <h3>A model rewrites every turn</h3>
+              <div className="lp-flow" aria-hidden="true">
+                <span className="lp-flow-turn">{fridayTurn.text}</span>
+                <span className="lp-flow-node">LLM call</span>
+                <span className="lp-flow-out"><i /><i /><i /></span>
+              </div>
+              <ul className="lp-points">
+                <li>A model call on every write</li>
+                <li>The words people used are gone</li>
+                <li>A newer fact can quietly replace an older one</li>
+                <li>A summary can state things nobody said</li>
+              </ul>
+            </Reveal>
+            <Reveal as="article" className="lp-vs is-new lp-glass" delay={0.12}>
+              <p className="lp-card-kicker">LLMSlim</p>
+              <h3>Every turn, kept as it was said</h3>
+              <div className="lp-flow" aria-hidden="true">
+                <span className="lp-flow-turn">{fridayTurn.text}</span>
+                <span className="lp-flow-node">SQLite or Postgres</span>
+                <span className="lp-flow-kept"><span className="lp-stamp">[{fridayTurn.stamp}] {fridayTurn.role}:</span> {fridayTurn.text}</span>
+              </div>
+              <ul className="lp-points">
+                <li>A database write, no model call</li>
+                <li>The exact words, with their date</li>
+                <li>Statements that may conflict come back side by side</li>
+                <li>Picked at read time, inside your budget</li>
+              </ul>
+            </Reveal>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section className="p-section site-width" id="features" aria-labelledby="features-title">
-      <Reveal className="p-head p-head-center"><p className="p-kicker">Signal in · noise out</p><h2 id="features-title">Great context makes great agents. <span>Everything else is a tax.</span></h2></Reveal>
-      <ContextPreview />
-      <ol className="p-notes">
-        <Reveal as="li"><span className="p-note-index">01</span><h3>Keep what matters</h3><p>Rank and select content around the question before a single token reaches the model.</p></Reveal>
-        <Reveal as="li" delay={0.08}><span className="p-note-index">02</span><h3>Know where it came from</h3><p>Instructions, retrieved documents, and tool output keep their roles, so untrusted text never gets promoted.</p></Reveal>
-        <Reveal as="li" delay={0.16}><span className="p-note-index">03</span><h3>Stay in control</h3><p>Pick your budget, inspect every decision, and tune it against your own workload.</p></Reveal>
-      </ol>
-    </section>
+      <section className="lp-section lp-benefits" aria-labelledby="bento-title">
+        <div className="lp-wrap">
+          <Head kicker="What comes back" id="bento-title" title={<>The turns that answer, <br className="lp-br" />in the budget you set.</>} center />
+          <Bento />
+        </div>
+      </section>
 
-    <PhotoSection src="/media/india-night.webp" lightSrc="/media/india-day.webp" lightPosition="50% 60%" id="programs" labelledBy="programs-title" className="p-programs" position="60% 40%">
-      <div className="site-width">
-        <Reveal className="p-head p-head-center"><p className="p-kicker">Supported by {startupProgramCount} startup programs</p><h2 id="programs-title">Built in India. <span>Fuelled by {startupProgramCount} startup programs.</span></h2></Reveal>
-        <LogoCloud />
-        <Reveal className="p-programs-foot"><Link className="text-link" href="/integrations/sarvam">Explore the Sarvam integration <ArrowUpRight size={15} /></Link></Reveal>
-      </div>
-    </PhotoSection>
+      <section className="lp-section lp-how-section" aria-labelledby="how-title">
+        <div className="lp-wrap lp-how">
+          <div className="lp-how-copy">
+            <Head kicker="How it works" id="how-title" title="Remember, recall, ship." />
+            <RevealGroup as="ol" className="lp-steps">
+              <RevealItem as="li">
+                <h3>Remember</h3>
+                <p>Add each turn as it happens. It is stored word for word with its date, in SQLite or Postgres. No model reads it on the way in.</p>
+              </RevealItem>
+              <RevealItem as="li">
+                <h3>Recall</h3>
+                <p>Ask with the question and a token budget. LLMSlim ranks the stored turns and returns the ones that answer, with standing requests, preferences and possible conflicts in their own sections.</p>
+              </RevealItem>
+              <RevealItem as="li">
+                <h3>Ship</h3>
+                <p>Put the context in your prompt as data, not instructions. The same history and question always give the same context, so recall is easy to test.</p>
+              </RevealItem>
+            </RevealGroup>
+          </div>
+          <Reveal className="lp-how-code" delay={0.1}><CodeTabs tabs={codeTabs} label="Ways to use LLMSlim memory" /></Reveal>
+        </div>
+      </section>
 
-    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, into the LangChain, LlamaIndex or Haystack pipeline you already run, or into a gptme, Hermes Agent or Pydantic AI agent&apos;s history. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></div><CodeExample /></section>
+      <section className="lp-section lp-proof-section" aria-labelledby="proof-title">
+        <div className="lp-wrap">
+          <Head kicker="Proof" id="proof-title" title="More answers right than Mem0 on long conversations, at a third of the cost." center />
+          <div className="lp-proof">
+            <Reveal className="lp-proof-panel lp-glass">
+              <div className="lp-proof-top">
+                <span>LoCoMo, questions answered correctly</span>
+                <span className="lp-num">1,307 questions</span>
+              </div>
+              <ProofBars rows={proofRows} caption={`LoCoMo accuracy: whole history ${locomo.full.score}%, LLMSlim 0.9 with reranker ${slim.score}%, Mem0 ${mem0.score}%, Zep ${raceRow("Zep").score}%, LongLLMLingua ${raceRow("LongLLMLingua").score}% on its own 300 questions.`} />
+              <p className="lp-proof-note">
+                Questions held out from tuning, about 2,500 tokens of context each, every answer read by Claude Haiku 5.5. Costs are end to end, per 1,000 questions. *LongLLMLingua was run on its own 300 questions.
+              </p>
+            </Reveal>
+            <Reveal className="lp-proof-side" delay={0.1}>
+              <div className="lp-proof-stat lp-glass">
+                <span className="lp-proof-label">Cost per 1,000 questions</span>
+                <span className="lp-proof-value"><b className="lp-num">${slim.cost.toFixed(2)}</b><span>against <b className="lp-num">${mem0.cost.toFixed(2)}</b> for Mem0</span></span>
+              </div>
+              <div className="lp-proof-stat lp-glass">
+                <span className="lp-proof-label">Open source, MIT</span>
+                <span className="lp-proof-value"><b className="lp-num">7,000+</b><span>downloads</span></span>
+              </div>
+              <Link className="lp-proof-link" href="/results">See every result, with its method <ArrowUpRight size={16} /></Link>
+            </Reveal>
+          </div>
 
-    <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+          <Reveal className="lp-programs">
+            <p className="lp-programs-title">Supported by {startupProgramCount} startup programs</p>
+            <ul aria-label={`${startupProgramCount} startup programs`}>
+              {startupPrograms.map((program) => <li key={program.id}>
+                <TrackedLink href={program.href} target="_blank" rel="noreferrer" aria-label={program.name} title={program.name}
+                  event="startup_program_clicked" properties={{ program: program.id }}>
+                  <ProgramLogo program={program} />
+                </TrackedLink>
+              </li>)}
+            </ul>
+          </Reveal>
+        </div>
+      </section>
 
-    <PhotoSection src="/media/earth-limb.webp" lightSrc="/media/dusk-light.webp" lightPosition="50% 40%" className="p-final" labelledBy="final-title" position="30% 50%">
-      <div className="site-width p-final-copy">
-        <Reveal><h2 id="final-title">Ship agents that know <span>exactly enough.</span></h2></Reveal>
-        <Reveal delay={0.1}><p className="p-hero-lede">One install. Your next model call gets sharper.</p></Reveal>
-        <Reveal delay={0.2} className="p-hero-actions"><Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer">Star on GitHub <ArrowUpRight size={16} /></a></Reveal>
-      </div>
-    </PhotoSection>
-  </main><SiteFooter /></div>
+      <section className="lp-section lp-editions-section" aria-labelledby="editions-title">
+        <div className="lp-wrap">
+          <Head kicker="Editions" id="editions-title" title={<>Start free. <br className="lp-br" />Add hosting when you need it.</>} center />
+          <RevealGroup className="lp-editions">
+            <RevealItem as="article" className="lp-edition is-core lp-glass">
+              <p className="lp-edition-tag">Free and MIT licensed</p>
+              <h3>LLMSlim Core</h3>
+              <p>The memory engine in your own process: the Python library, the MCP server, the HTTP server and the TypeScript client.</p>
+              <code className="lp-edition-code">pip install llmslim</code>
+              <TrackedLink className="lp-btn is-small" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "editions" }}>Get started free <ArrowRight size={14} /></TrackedLink>
+              <p className="lp-edition-foot lp-mono">Version {siteConfig.coreVersion}</p>
+            </RevealItem>
+            <RevealItem as="article" className="lp-edition lp-glass">
+              <p className="lp-edition-tag">Opening with LLMSlim 1.0</p>
+              <h3>LLMSlim Orbit</h3>
+              <p>The hosted edition, run by us: a hosted memory API, a remote MCP server with OAuth, team memory and a context console with traces and replay.</p>
+              <Link className="lp-btn is-ghost is-small" href="/pricing">See Orbit plans <ArrowRight size={14} /></Link>
+              <p className="lp-edition-foot">Not open yet. Nothing is charged before it opens.</p>
+            </RevealItem>
+            <RevealItem as="article" className="lp-edition lp-glass">
+              <p className="lp-edition-tag">Self hosted, in beta</p>
+              <h3>LLMSlim Vault</h3>
+              <p>LLMSlim in your own cloud, with a verifiable timeline of what your agents were told and a trace for every context decision.</p>
+              <TrackedLink className="lp-btn is-ghost is-small" href="/vault" event="platform_beta_clicked" properties={{ location: "editions" }}>Explore Vault <ArrowRight size={14} /></TrackedLink>
+              <p className="lp-edition-foot lp-mono">Beta {siteConfig.vaultVersion}</p>
+            </RevealItem>
+          </RevealGroup>
+          <p className="lp-editions-foot"><Link href="/pricing">Compare plans and limits on the pricing page <ArrowUpRight size={14} /></Link></p>
+        </div>
+      </section>
+
+      <section className="lp-section lp-faq-section" id="faq" aria-labelledby="faq-title">
+        <div className="lp-wrap lp-faq">
+          <Head kicker="Questions" id="faq-title" title="Before you install">
+            Anything else? Ask in <a href={`${siteConfig.github}/issues`} target="_blank" rel="noreferrer">GitHub issues</a> or write to <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>.
+          </Head>
+          <div className="lp-faq-list">
+            {homeFaqs.map(([question, answer]) => <details key={question} className="lp-faq-item">
+              <summary><span>{question}</span><PlusIcon size={16} className="lp-faq-icon" /></summary>
+              <p>{faqAnswer(answer)}</p>
+            </details>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="lp-final" aria-labelledby="final-title">
+        <div className="lp-wrap">
+          <Reveal className="lp-final-panel lp-glass">
+            <div className="lp-final-glow" aria-hidden="true" />
+            <MarkImage size={44} className="lp-final-mark" />
+            <h2 id="final-title" className="lp-h2">Give your agents a memory <br className="lp-br" />they can quote.</h2>
+            <p className="lp-lead">Free and open source. Install it, then point your agent or any MCP client at it.</p>
+            <Actions location="final" />
+          </Reveal>
+        </div>
+      </section>
+    </main>
+    <SiteFooter />
+  </div>
 }

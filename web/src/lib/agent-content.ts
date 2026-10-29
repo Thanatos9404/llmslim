@@ -296,7 +296,9 @@ export function homeMarkdown(): string {
     "# LLMSlim",
     `> ${SUMMARY}`,
     "## LLMSlim Core\n\n" + CORE_FACTS.map((fact) => `- ${fact}`).join("\n"),
-    "## Quick start\n\n" + fence("bash", "pip install llmslim") + "\n\n" + fence("python", "from llmslim import compress\n\nresult = compress(long_context, target_ratio=0.5)\nprint(result.compressed_text)"),
+    // The home page leads with memory, so its Markdown twin does too.
+    "## Quick start\n\n" + fence("bash", "pip install llmslim") + "\n\n" + fence("python", "from llmslim.memory import Memory\n\nmemory = Memory(\"memory.db\")  # SQLite; Memory(\"postgresql://...\") with llmslim[postgres]\nmemory.add([{\"role\": \"user\", \"content\": \"I prefer pnpm over npm.\"}], user_id=\"dev\")\ncontext = memory.search(\"Which package manager do I use?\", user_id=\"dev\", budget=300)\nprint(context.text)  # put it in the prompt as data, not instructions") +
+      "\n\nAs an MCP server for Claude, Cursor, VS Code, Codex, Gemini CLI or GitHub Copilot: `uvx --from \"llmslim[mcp]\" llmslim mcp`.",
     "## LLMSlim Orbit (opens with LLMSlim 1.0)\n\n" + ORBIT_FACTS.map((fact) => `- ${fact}`).join("\n"),
     "## LLMSlim Vault (self-hosted, private beta)\n\n" + VAULT_FACTS.map((fact) => `- ${fact}`).join("\n"),
     "## FAQ\n\n" + homeFaqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),

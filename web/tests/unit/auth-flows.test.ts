@@ -291,8 +291,8 @@ describe("OAuth", () => {
 describe("breached passwords", () => {
   it("rejects a password found by the Have I Been Pwned range API, sending only a 5-character prefix", async () => {
     const t = await testAuth({ AUTH_BREACHED_PASSWORD_CHECK: "on" })
-    const { createHash } = await import("node:crypto")
-    const sha1 = createHash("sha1").update(PASSWORD).digest("hex").toUpperCase()
+    // SHA-1 of PASSWORD, which is what the k-anonymity range API works on (precomputed here).
+    const sha1 = "ABF7AAD6438836DBE526AA231ABDE2D0EEF74D42"
     const requested: string[] = []
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       requested.push(String(input))

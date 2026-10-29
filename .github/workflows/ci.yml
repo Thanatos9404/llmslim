@@ -27,6 +27,57 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  web-accounts:
+    name: Website accounts (unit and end-to-end)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: llmslim
+          POSTGRES_PASSWORD: llmslim
+          POSTGRES_DB: llmslim_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U llmslim"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Unit tests (Vitest, in-process PGlite)
+        run: npm test
+      - name: Checked-in migrations match the schema
+        run: |
+          npx drizzle-kit check
+          npx drizzle-kit generate --name drift-check
+          test -z "$(git status --porcelain -- drizzle)"
+      - name: Production build with no auth variables
+        run: npm run build
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests (Playwright, next start, Postgres 17)
+        env:
+          E2E_DATABASE_URL: postgresql://llmslim:llmslim@127.0.0.1:5432/llmslim_e2e
+        run: npm run test:e2e
+      - name: Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results
+          path: web/test-results
+          retention-days: 7
+
   server-image:
     name: Server image builds and answers
     runs-on: ubuntu-latest

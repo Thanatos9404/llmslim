@@ -37,6 +37,30 @@ from .tools import (
     select_tools,
 )
 
+__all__ = [
+    "CacheScope",
+    "CatalogCache",
+    "CatalogChangedError",
+    "CatalogContextPlan",
+    "CatalogError",
+    "CatalogEvent",
+    "CatalogLimitError",
+    "CatalogLimits",
+    "CatalogPage",
+    "HostToolAdapter",
+    "MCPIntegrationError",
+    "MCPToolCatalogSource",
+    "OptionalDependencyError",
+    "PlanMode",
+    "StaticToolCatalogSource",
+    "ToolCatalogSnapshot",
+    "ToolCatalogSource",
+    "ToolContextMetrics",
+    "ToolNotFoundError",
+    "hydrate_plan",
+    "plan_catalog_context",
+]
+
 
 class MCPIntegrationError(RuntimeError):
     """Base class for safe, actionable MCP catalog integration failures."""

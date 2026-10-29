@@ -81,11 +81,18 @@ This checklist outlines the mandatory verification steps required before publish
   ```
 - [ ] Draft GitHub Release targeting tag `vX.Y.Z`:
   - Copy notes from `CHANGELOG.md`.
-  - Attach `dist/llmslim-X.Y.Z-py3-none-any.whl` and `dist/llmslim-X.Y.Z.tar.gz`.
+  - Attach nothing by hand: the release workflow attaches the wheel, the sdist and `llmslim-X.Y.Z.cdx.json` (the
+    SBOM) that it built and attested.
 
 ### 8. PyPI Publication
 - [ ] GitHub Action `release.yml` triggers automatically on tag push or release publish.
 - [ ] Monitor PyPI workflow execution to confirm sdist & wheel upload to PyPI.
+- [ ] Check the GitHub release has the wheel, the sdist and `llmslim-X.Y.Z.cdx.json`, and that the attestations
+  verify (see "Verifying a release" in `SECURITY.md`):
+  ```bash
+  gh attestation verify llmslim-X.Y.Z-py3-none-any.whl --repo Thanatos9404/llmslim     --signer-workflow Thanatos9404/llmslim/.github/workflows/release.yml
+  pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim pypi:llmslim-X.Y.Z-py3-none-any.whl
+  ```
 - [ ] Verify clean installation from PyPI in an isolated environment:
   ```bash
   pip install --no-cache-dir llmslim==X.Y.Z

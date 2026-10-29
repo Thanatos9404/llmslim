@@ -86,6 +86,37 @@ injection. Applications must still authenticate provenance, enforce their own
 authorization policy, validate tool arguments and outputs, and use defense in
 depth.
 
+## Verifying a release
+
+Releases are built and published by
+[`.github/workflows/release.yml`](.github/workflows/release.yml) in GitHub Actions, never from a laptop. The
+signatures below are made with short-lived [Sigstore](https://www.sigstore.dev/) certificates issued to that
+workflow, so there are no long-lived signing keys to leak.
+
+- **PyPI attestations.** Every file on PyPI since 0.2.0 has a [PEP 740](https://peps.python.org/pep-0740/)
+  attestation, uploaded through trusted publishing. PyPI shows it under "Provenance" on the file's page. To check
+  it yourself:
+
+  ```bash
+  pip install pypi-attestations
+  pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim     pypi:llmslim-0.12.0-py3-none-any.whl
+  ```
+
+- **GitHub artifact attestations** (releases built by the current workflow onward). Each wheel and sdist has a SLSA
+  build provenance attestation and an SBOM attestation. Verify a file you downloaded from PyPI or from the GitHub
+  release:
+
+  ```bash
+  pip download llmslim==<version> --no-deps -d llmslim-dist
+  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl     --repo Thanatos9404/llmslim     --signer-workflow Thanatos9404/llmslim/.github/workflows/release.yml
+  # The SBOM attestation for the same file:
+  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl     --repo Thanatos9404/llmslim --predicate-type https://cyclonedx.org/bom
+  ```
+
+- **SBOM.** Each GitHub release has `llmslim-<version>.cdx.json`, a [CycloneDX](https://cyclonedx.org/) SBOM of the
+  runtime dependencies: the packages a plain `pip install llmslim` resolved to when the release was built. Optional
+  extras are not included, and pip may resolve newer versions when you install.
+
 ## Reporting a vulnerability
 
 Please report potential vulnerabilities privately rather than opening a public issue.

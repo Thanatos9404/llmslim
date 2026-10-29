@@ -283,6 +283,15 @@ def _signature(obj: Any, *, drop_first: bool = False, keep: Optional[set] = None
     return str(signature.replace(parameters=normalized, return_annotation=returns))
 
 
+def _annotations(owner: type) -> Dict[str, Any]:
+    """The annotations a class declares itself (``inspect.get_annotations`` is Python 3.10+)."""
+
+    get_annotations = getattr(inspect, "get_annotations", None)
+    if get_annotations is not None:
+        return dict(get_annotations(owner))
+    return dict(vars(owner).get("__annotations__", {}))
+
+
 def _ours(klass: type) -> bool:
     return (getattr(klass, "__module__", "") or "").split(".")[0] == "llmslim"
 
@@ -298,7 +307,7 @@ def _class_signature(klass: type) -> Optional[str]:
     declared: set = set()
     for owner in klass.__mro__:
         if owner is klass or _ours(owner):
-            declared.update(inspect.get_annotations(owner))
+            declared.update(_annotations(owner))
     return _signature(klass, keep=declared)
 
 
@@ -322,7 +331,9 @@ def _class(klass: type) -> Dict[str, Any]:
         "kind": "enum" if issubclass(klass, enum.Enum) else "class",
         # Public names only: a framework or an implementation module may move a class without changing it, and a
         # private base is implementation (its public members are recorded below).
-        "bases": [base.__qualname__ for base in klass.__bases__ if not base.__name__.startswith("_")],
+        "bases": [
+            base.__qualname__ for base in klass.__bases__ if not base.__name__.startswith("_")
+        ],
     }
     if issubclass(klass, enum.Enum):
         entry["values"] = {member.name: _value_text(member.value) for member in klass}
@@ -332,7 +343,7 @@ def _class(klass: type) -> Dict[str, Any]:
     for owner in reversed(klass.__mro__):
         if not (owner is klass or _ours(owner)):
             continue
-        annotations = inspect.get_annotations(owner)
+        annotations = _annotations(owner)
         for name, annotation in annotations.items():
             if not name.startswith("_"):
                 members[name] = f"attribute: {_annotation_text(annotation)}"

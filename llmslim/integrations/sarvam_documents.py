@@ -2,14 +2,15 @@
 
 :class:`SarvamDocumentSource` (sync) and :class:`AsyncSarvamDocumentSource`
 digitise one PDF, PNG, JPEG or ZIP of page images through the ``sarvamai``
-Doc AI job API (``doc_ai.digitise`` creates and starts the job,
-``doc_ai.get_status`` is polled until a terminal state, ``doc_ai.get_results``
-returns Markdown per page) and return one untrusted RAG
+Doc AI job API (``doc_ai.parse`` creates and starts the job, ``doc_ai.get_status``
+is polled until a terminal state, ``doc_ai.get_results`` returns Markdown per
+page; ``doc_ai.parse`` was ``doc_ai.digitise`` before ``sarvamai`` 0.1.40) and
+return one untrusted RAG
 :class:`~llmslim.planning.models.ContextItem` per page.
 
 Limits are checked locally before anything is sent: file type (extension and
 magic bytes), file size, and page count against Sarvam's 10-page job limit.
-Job creation (``doc_ai.digitise``, a POST) is billable, so it is sent once with
+Job creation (``doc_ai.parse``, a POST) is billable, so it is sent once with
 ``request_options={"max_retries": 0}``, also on injected clients. The read-only
 GETs (``get_status``, ``get_results``) keep the SDK's own retries, which cannot
 bill anything. A job that outlives the poll deadline raises
@@ -691,7 +692,9 @@ class SarvamDocumentSource(_DocumentSourceBase, SyncClientOwner):
         reservation = self.guard.acquire(self._page_price(document.reserved_pages))
         try:
             # Creating the job is billable: one attempt only.
-            started = self._client.doc_ai.digitise(**document.request, request_options=no_retries())
+            started = _start_job(self._client.doc_ai)(
+                **document.request, request_options=no_retries()
+            )
         except Exception as exc:
             fail_call(self.guard, reservation, exc)
         job_id = self._job_id(started)
@@ -717,6 +720,17 @@ class SarvamDocumentSource(_DocumentSourceBase, SyncClientOwner):
             if self._state(status, job_id) in _TERMINAL:
                 return status
             self._sleep(self._next_wait(job_id, deadline))
+
+
+def _start_job(doc_ai: Any) -> Callable[..., Any]:
+    """The billable call that creates and starts a job.
+
+    ``sarvamai`` 0.1.40 renamed ``doc_ai.digitise`` to ``doc_ai.parse`` with the same arguments; the
+    supported range (0.1.34 to 0.1.x) has one or the other.
+    """
+
+    start = getattr(doc_ai, "parse", None)
+    return start if start is not None else doc_ai.digitise
 
 
 class AsyncSarvamDocumentSource(_DocumentSourceBase, AsyncClientOwner):
@@ -748,7 +762,7 @@ class AsyncSarvamDocumentSource(_DocumentSourceBase, AsyncClientOwner):
         reservation = self.guard.acquire(self._page_price(document.reserved_pages))
         try:
             # Creating the job is billable: one attempt only.
-            started = await self._client.doc_ai.digitise(
+            started = await _start_job(self._client.doc_ai)(
                 **document.request, request_options=no_retries()
             )
         except Exception as exc:

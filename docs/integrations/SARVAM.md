@@ -142,8 +142,9 @@ result = source.digitize("invoice.pdf", language="hi-IN")
 items = result.items          # one RAG_DOCUMENT / RAG item per page
 ```
 
-The source uses the SDK's Doc AI job API: `doc_ai.digitise` (creates and starts
-the job; billable, sent once with SDK retries off), `doc_ai.get_status` polled
+The source uses the SDK's Doc AI job API: `doc_ai.parse` (creates and starts
+the job; billable, sent once with SDK retries off; named `doc_ai.digitise`
+before `sarvamai` 0.1.40), `doc_ai.get_status` polled
 every `poll_interval_seconds` (5) until a terminal state or
 `poll_timeout_seconds` (300), then `doc_ai.get_results(format="md")` (both
 read-only GETs, which keep the SDK's retries). `digitize_bytes(data,

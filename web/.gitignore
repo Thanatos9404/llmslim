@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# accounts: the example env file is committed; local mail sinks, PGlite data and test output are not
+!.env.example
+/.auth-mail
+/.e2e-mail
+/.pglite
+/test-results
+/playwright-report

@@ -70,6 +70,9 @@
     },
     "sharp": "0.35.5",
     "source-map-js": "1.2.2",
-    "katex": "^0.18.2"
+    "katex": "^0.18.2",
+    "@vercel/cli-config": {
+      "zod": "4.6.7"
+    }
   }
 }

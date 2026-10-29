@@ -9,7 +9,8 @@ import { SweepChart } from "./SweepChart"
 import { ArrowUpRight } from "./icons"
 
 const locomo = RACE.find((set) => set.key === "locomo")!
-const slim = locomo.rows.find((row) => row.name === "LLMSlim + reranker")!
+// Default LLMSlim at about 2,500 tokens, the row the page compares with Mem0 (level within noise).
+const slim = locomo.rows.find((row) => row.name === "LLMSlim")!
 const mem0 = locomo.rows.find((row) => row.name === "Mem0")!
 
 const conflicts = contextBlocks(HISTORY_RECALL.text).find((block) => block.kind === "section")!
@@ -80,7 +81,7 @@ export function Bento() {
       <Card kicker="No LLM calls" title="A third of the cost"
         body={<>Storing is a database write and recall is ranking code, so no model call is paid for either. On LoCoMo, a thousand questions cost:</>}>
         <ul className="lp-cost">
-          <li data-kind="llmslim"><span>LLMSlim 0.9 with reranker</span><b className="lp-num">${slim.cost.toFixed(2)}</b><i style={{ width: `${(slim.cost / mem0.cost) * 100}%` }} /></li>
+          <li data-kind="llmslim"><span>LLMSlim 0.9</span><b className="lp-num">${slim.cost.toFixed(2)}</b><i style={{ width: `${(slim.cost / mem0.cost) * 100}%` }} /></li>
           <li><span>Mem0</span><b className="lp-num">${mem0.cost.toFixed(2)}</b><i style={{ width: "100%" }} /></li>
         </ul>
         <Link className="lp-card-link" href="/results">End to end, with answers by Claude Haiku 5.5. See the results <ArrowUpRight size={14} /></Link>

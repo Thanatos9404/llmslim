@@ -46,13 +46,14 @@ const fridayTurn = contextBlocks(HISTORY_RECALL.text).flatMap((block) => block.k
 
 const locomo = RACE.find((set) => set.key === "locomo")!
 const raceRow = (name: string) => locomo.rows.find((row) => row.name === name)!
-const slim = raceRow("LLMSlim + reranker")
+// Default LLMSlim (no model) at about 2,500 tokens: level with Mem0 within noise, so the page claims parity, never a win.
+const slim = raceRow("LLMSlim")
 const mem0 = raceRow("Mem0")
 const proofRows: ProofRow[] = [
   { name: "Whole history", detail: "every token, for reference", score: locomo.full.score, kind: "reference" },
-  { name: "LLMSlim 0.9 with reranker", detail: `$${slim.cost.toFixed(2)} per 1,000 questions`, score: slim.score, kind: "llmslim" },
+  { name: "LLMSlim 0.9", detail: `$${slim.cost.toFixed(2)} per 1,000 questions`, score: slim.score, kind: "llmslim" },
   { name: "Mem0", detail: `$${mem0.cost.toFixed(2)} per 1,000 questions`, score: mem0.score, kind: "rival" },
-  { name: "Zep", detail: "", score: raceRow("Zep").score, kind: "rival" },
+  { name: "Zep", detail: `$${raceRow("Zep").cost.toFixed(2)} per 1,000 questions`, score: raceRow("Zep").score, kind: "rival" },
   { name: "LongLLMLingua", detail: "on its own 300 questions", score: raceRow("LongLLMLingua").score, kind: "rival", mark: "*" },
 ]
 
@@ -189,7 +190,7 @@ export default function Home() {
         <div className="lp-wrap lp-hero-copy">
           <Link className="lp-chip" href="/results">
             <span className="lp-chip-tag">LoCoMo</span>
-            <span className="lp-chip-text">More answers right than Mem0 on long conversations, at a third of the cost</span>
+            <span className="lp-chip-text">Accuracy on par with Mem0, at a third of the cost</span>
             <ArrowRight size={14} />
           </Link>
           <h1 id="hero-title" className="lp-h1">Memory for AI agents <br className="lp-br" />that no LLM rewrites.</h1>
@@ -277,14 +278,16 @@ export default function Home() {
 
       <section className="lp-section lp-proof-section" aria-labelledby="proof-title">
         <div className="lp-wrap">
-          <Head kicker="Proof" id="proof-title" title="More answers right than Mem0 on long conversations, at a third of the cost." center />
+          <Head kicker="Proof" id="proof-title" title="Accuracy on par with Mem0 on long conversations, at a third of the cost." center>
+            On LoCoMo, LLMSlim answered {slim.score.toFixed(1)}% of questions and Mem0 {mem0.score.toFixed(1)}%: the same within noise. At a 1,000 token budget Mem0 is ahead, 88.7% to 87.5%.
+          </Head>
           <div className="lp-proof">
             <Reveal className="lp-proof-panel lp-glass">
               <div className="lp-proof-top">
                 <span>LoCoMo, questions answered correctly</span>
                 <span className="lp-num">1,307 questions</span>
               </div>
-              <ProofBars rows={proofRows} caption={`LoCoMo accuracy: whole history ${locomo.full.score}%, LLMSlim 0.9 with reranker ${slim.score}%, Mem0 ${mem0.score}%, Zep ${raceRow("Zep").score}%, LongLLMLingua ${raceRow("LongLLMLingua").score}% on its own 300 questions.`} />
+              <ProofBars rows={proofRows} caption={`LoCoMo accuracy: whole history ${locomo.full.score.toFixed(1)}%, LLMSlim 0.9 ${slim.score.toFixed(1)}%, Mem0 ${mem0.score.toFixed(1)}%, Zep ${raceRow("Zep").score.toFixed(1)}%, LongLLMLingua ${raceRow("LongLLMLingua").score.toFixed(1)}% on its own 300 questions.`} />
               <p className="lp-proof-note">
                 Questions held out from tuning, about 2,500 tokens of context each, every answer read by Claude Haiku 5.5. Costs are end to end, per 1,000 questions. *LongLLMLingua was run on its own 300 questions.
               </p>

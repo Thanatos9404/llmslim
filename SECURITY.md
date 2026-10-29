@@ -99,7 +99,8 @@ workflow, so there are no long-lived signing keys to leak.
 
   ```bash
   pip install pypi-attestations
-  pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim     pypi:llmslim-0.12.0-py3-none-any.whl
+  pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim \
+    pypi:llmslim-0.12.0-py3-none-any.whl
   ```
 
 - **GitHub artifact attestations** (releases built by the current workflow onward). Each wheel and sdist has a SLSA
@@ -108,9 +109,12 @@ workflow, so there are no long-lived signing keys to leak.
 
   ```bash
   pip download llmslim==<version> --no-deps -d llmslim-dist
-  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl     --repo Thanatos9404/llmslim     --signer-workflow Thanatos9404/llmslim/.github/workflows/release.yml
+  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl \
+    --repo Thanatos9404/llmslim \
+    --signer-workflow Thanatos9404/llmslim/.github/workflows/release.yml
   # The SBOM attestation for the same file:
-  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl     --repo Thanatos9404/llmslim --predicate-type https://cyclonedx.org/bom
+  gh attestation verify llmslim-dist/llmslim-<version>-py3-none-any.whl \
+    --repo Thanatos9404/llmslim --predicate-type https://cyclonedx.org/bom
   ```
 
 - **SBOM.** Each GitHub release has `llmslim-<version>.cdx.json`, a [CycloneDX](https://cyclonedx.org/) SBOM of the

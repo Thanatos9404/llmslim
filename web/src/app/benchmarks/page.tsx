@@ -4,7 +4,7 @@ import { ResultBars } from "@/components/benchmarks/ResultBars"
 import { Reveal } from "@/components/landing/Premium"
 import { StatsBand, type Stat } from "@/components/landing/Visuals"
 import { BENCHMARK_SUITES } from "@/data/benchmarks"
-import { AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES, PLATFORM_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type LiveSuite } from "@/data/live-benchmarks"
+import { AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type LiveSuite } from "@/data/live-benchmarks"
 import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
 
@@ -54,7 +54,7 @@ export default function BenchmarksPage() {
       <h1>Measured on public benchmarks. <span>Every number published.</span></h1>
       <p className="bm-lede">LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions. Every system is read by the same model with the same prompt, and every table shows what 1,000 questions cost end to end.</p>
       <p className="bm-story-link"><Link className="text-link" href="/results">Prefer the guided version? See the results as a story <ArrowUpRight size={14} /></Link></p>
-      <p className="bm-versions">LLMSlim Core {CORE_VERSION_TESTED} · long documents and agents on Core {CORE_VERSION_LONG_DOCS} · LLMSlim Platform {PLATFORM_VERSION_TESTED} · report, harness and raw results in the <a href={ROUND3_REPORT} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
+      <p className="bm-versions">LLMSlim Core {CORE_VERSION_TESTED} · long documents and agents on Core {CORE_VERSION_LONG_DOCS} · LLMSlim Vault {VAULT_VERSION_TESTED} · report, harness and raw results in the <a href={ROUND3_REPORT} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
     </header>
 
     <section className="bm-band" aria-label="Headline results"><StatsBand stats={stats} /></section>

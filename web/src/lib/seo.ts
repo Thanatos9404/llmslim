@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
+import { BILLINGS, CURRENCIES, PLANS } from "@/data/pricing";
 
 const TEMPLATE = "%s | " + siteConfig.name;
 
@@ -84,6 +85,35 @@ export function faqJsonLd(faqs: ReadonlyArray<readonly [string, string]>, path =
     "@type": "FAQPage",
     "@id": absoluteUrl(path) + "#faq",
     mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })),
+  };
+}
+
+/**
+ * SoftwareApplication data for LLMSlim Orbit on /pricing: one Offer per plan, currency and billing period.
+ * Orbit opens with LLMSlim 1.0, so no availability is claimed. INR prices include GST and apply in India.
+ */
+export function orbitPricingJsonLd() {
+  const offers = PLANS.flatMap((plan) => plan.prices === null ? [] : CURRENCIES.flatMap((currency) => BILLINGS.map((billing) => {
+    const price = String(plan.prices![currency][billing]);
+    const priceCurrency = currency.toUpperCase();
+    return {
+      "@type": "Offer", name: `${plan.name}, ${billing}`, price, priceCurrency, url: absoluteUrl("/pricing"),
+      ...(currency === "inr" ? { eligibleRegion: { "@type": "Country", name: "IN" } } : {}),
+      priceSpecification: {
+        "@type": "UnitPriceSpecification", price, priceCurrency, billingDuration: billing === "annual" ? "P1Y" : "P1M",
+        ...(currency === "inr" ? { valueAddedTaxIncluded: true } : {}),
+      },
+    };
+  })));
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": siteConfig.url + "/#orbit",
+    name: "LLMSlim Orbit",
+    description: "The hosted edition of LLMSlim: a hosted memory API and remote MCP server for AI agents, with team memory, a context console and a truth timeline. Opens with LLMSlim 1.0.",
+    applicationCategory: "DeveloperApplication", operatingSystem: "Web", url: absoluteUrl("/pricing"),
+    publisher: { "@id": siteConfig.url + "/#organization" },
+    offers,
   };
 }
 

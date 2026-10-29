@@ -22,11 +22,15 @@ const nextConfig: NextConfig = {
     cpus: 2,
     optimizePackageImports: ["lucide-react", "framer-motion", "@radix-ui/react-dialog"],
   },
+  async redirects() {
+    // LLMSlim Platform was renamed LLMSlim Vault on 29 October 2026; old links (including /platform#beta) keep working.
+    return [{ source: "/platform", destination: "/vault", permanent: true }];
+  },
   async rewrites() {
     // Markdown twins for agents: "/index.md", "/docs.md", "/docs/<slug>.md", "/compare/<slug>.md" and so on (src/app/md).
     // afterFiles rewrites run before dynamic routes, so "/docs/<slug>.md" never reaches docs/[slug].
     const markdown = [
-      { source: "/:page(index|changelog|docs|articles|integrations|benchmarks)\\.md", destination: "/md/:page" },
+      { source: "/:page(index|changelog|pricing|docs|articles|integrations|benchmarks)\\.md", destination: "/md/:page" },
       { source: "/:section(docs|articles|integrations|benchmarks|compare)/:slug([a-z0-9-]+)\\.md", destination: "/md/:section/:slug" },
     ];
     // Local development only: forward the Studio's Python functions to a local server.

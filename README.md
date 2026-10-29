@@ -141,11 +141,11 @@ saying so. With `pip install "llmslim[fast-tokens]"`, tokens are counted with
 tiktoken instead: on this input the same four sentences are kept, and the count
 reads `107 -> 72 tokens (32.7% fewer)`.
 
-**Next:** [Docs](https://www.llmslim.app/docs) • [Platform beta](https://www.llmslim.app/platform) • [Issues](https://github.com/Thanatos9404/llmslim/issues)
+**Next:** [Docs](https://www.llmslim.app/docs) • [Pricing](https://www.llmslim.app/pricing) • [Vault beta](https://www.llmslim.app/vault) • [Issues](https://github.com/Thanatos9404/llmslim/issues)
 
 ---
 
-## LLMSlim Core and LLMSlim Platform
+## LLMSlim Core, Orbit and Vault
 
 **The context layer for production AI agents.**
 *This repository is **LLMSlim Core** (v0.12.0, MIT): local-first context planning and compression that fits prompts, conversation history, RAG, memory, and tool schemas into real token budgets while preserving instructions and execution boundaries.*
@@ -156,16 +156,18 @@ reads `107 -> 72 tokens (32.7% fewer)`.
 [![Live Studio](https://img.shields.io/badge/Live%20Studio-www.llmslim.app-f43f5e?style=flat-square&logo=vercel&logoColor=white)](https://www.llmslim.app)
 [![Sarvam Startup Program](https://img.shields.io/badge/Sarvam%20AI-Startup%20Program-fbbf24?style=flat-square&logo=sparkles&logoColor=black)](https://www.sarvam.ai/startup-program)
 
-| | **LLMSlim Core** | **LLMSlim Platform** |
-|---|---|---|
-| Version | 0.12.0 | 0.9.1 beta |
-| License | MIT, this repository | Proprietary, private beta |
-| Install | `pip install llmslim` | By invitation; not published to PyPI |
-| What it does | Compresses, plans, and traces model-visible context inside your Python process | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
+| | **LLMSlim Core** | **LLMSlim Orbit** | **LLMSlim Vault** |
+|---|---|---|---|
+| What it is | The open-source library, MCP server and HTTP server | The hosted edition, run by us | The self-hosted edition, run in your own VPC (formerly LLMSlim Platform) |
+| Version | 0.12.0 | Opens with LLMSlim 1.0 | 0.9.1 beta |
+| License | MIT, this repository | Proprietary, paid plans | Proprietary, private beta |
+| Get it | `pip install llmslim` | Join the founding list at [llmslim.app/pricing](https://www.llmslim.app/pricing) | By invitation; not published to PyPI |
+| What it does | Compresses, plans, and traces model-visible context inside your Python process | A hosted memory API, remote MCP with OAuth for Claude.ai, ChatGPT, Cursor and Claude Code, team memory, a context console with traces and replay, and a truth timeline | Builds on Core: a verifiable timeline of agent state, explainable and replayable context decisions, and outcome-driven context policies that start in shadow mode |
 
-Core is and stays fully open source. Platform is a separate product that depends on
-Core; none of its code lives in this repository. Read more and request beta access at
-[llmslim.app/platform](https://www.llmslim.app/platform).
+Core is and stays fully open source. Orbit and Vault are separate products that depend on
+Core; none of their code lives in this repository. Plans and prices are at
+[llmslim.app/pricing](https://www.llmslim.app/pricing); read about Vault and request beta access at
+[llmslim.app/vault](https://www.llmslim.app/vault).
 
 What's new in Core: the [agent context runtime (v0.7.0)](#agent-context-runtime-v070)
 and the [cache-aware context runtime (v0.7.1)](#cache-aware-context-runtime-v071).

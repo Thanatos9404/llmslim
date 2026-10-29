@@ -6,6 +6,7 @@ import { COMPARISONS } from "@/data/comparisons";
 import { DOCS_REGISTRY } from "@/data/docs";
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations";
 import { RESULTS_LAST_UPDATED } from "@/data/live-benchmarks";
+import { siteConfig } from "@/config/site";
 import { absoluteUrl, contentDate } from "@/lib/seo";
 
 type Entry = MetadataRoute.Sitemap[number];
@@ -25,18 +26,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const lastDoc = latest(docs.map((doc) => contentDate(doc.lastUpdated)));
   const lastArticle = latest(articles.map((article) => contentDate(article.lastUpdated)));
   const resultsUpdated = contentDate(RESULTS_LAST_UPDATED);
+  const policiesUpdated = contentDate(siteConfig.policiesUpdated);
 
   return [
     entry("/", 1.0, "weekly", lastRelease),
     entry("/docs", 0.9, "weekly", lastDoc),
     entry("/playground", 0.9, "monthly"),
-    entry("/platform", 0.9, "monthly"),
+    entry("/vault", 0.9, "monthly"),
+    entry("/pricing", 0.9, "monthly", policiesUpdated),
     entry("/integrations", 0.9, "monthly"),
     entry("/benchmarks", 0.85, "monthly", resultsUpdated),
     entry("/results", 0.85, "monthly", resultsUpdated),
     entry("/articles", 0.8, "monthly", lastArticle),
     entry("/changelog", 0.7, "monthly", lastRelease),
-    entry("/privacy", 0.3, "yearly"),
+    entry("/about", 0.5, "monthly", policiesUpdated),
+    entry("/contact", 0.5, "yearly", policiesUpdated),
+    entry("/terms", 0.3, "yearly", policiesUpdated),
+    entry("/privacy", 0.3, "yearly", policiesUpdated),
+    entry("/refunds", 0.3, "yearly", policiesUpdated),
+    entry("/delivery", 0.3, "yearly", policiesUpdated),
     ...docs.map((doc) => entry(`/docs/${doc.slug}`, 0.8, "monthly", contentDate(doc.lastUpdated))),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => entry(`/integrations/${slug}`, 0.8, "monthly")),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => entry(`/benchmarks/${slug}`, 0.75, "monthly")),

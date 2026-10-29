@@ -18,6 +18,8 @@ const EVENTS = {
   platform_beta_clicked: ["location"],
   beta_request_submitted: ["location"],
   startup_program_clicked: ["program"],
+  // A plan button on /pricing (a mailto until checkout exists): which plan, currency and billing period was shown.
+  pricing_cta_clicked: ["plan", "currency", "billing"],
   // The Studio's "Answer with Sarvam" step: whether it answered, and token counts. No text.
   studio_sarvam_answer: ["ok", "context_tokens", "original_tokens"],
 } as const satisfies Record<string, readonly string[]>

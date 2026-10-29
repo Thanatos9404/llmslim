@@ -37,7 +37,7 @@ export default function Home() {
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
 
     <PremiumHero>
-      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Platform v{siteConfig.platformVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
+      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
       {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
           The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
       <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
@@ -46,7 +46,7 @@ export default function Home() {
       <Reveal fade={false} delay={0.3} className="p-hero-actions">
         <TrackedLink className="button" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "hero" }}>Get started <ArrowRight size={16} /></TrackedLink>
         <a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> View on GitHub</a>
-        <TrackedLink className="button button-outline" href="/platform#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Platform beta</TrackedLink>
+        <TrackedLink className="button button-outline" href="/vault#beta" event="platform_beta_clicked" properties={{ location: "hero" }}>Request Vault beta</TrackedLink>
       </Reveal>
       <Reveal fade={false} delay={0.4}><CopyCommand /></Reveal>
     </PremiumHero>
@@ -59,7 +59,7 @@ export default function Home() {
     </section>
 
     <section className="p-section site-width" id="layers" aria-labelledby="layers-title">
-      <Reveal className="p-head"><p className="p-kicker">Open-source core · private platform</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker">Open-source core · self-hosted Vault</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
       <div className="duo">
         <div>
           <Showcase><CompressVisual before={111372} after={10008} foot={<><span><b>42× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices, as accurate as the whole history</span></>} /></Showcase>
@@ -67,7 +67,7 @@ export default function Home() {
         </div>
         <div>
           <Showcase><TraceVisual /></Showcase>
-          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Platform · v{siteConfig.platformVersion} beta · private</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/platform" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore the Platform <ArrowUpRight size={15} /></TrackedLink></Reveal>
+          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Vault · v{siteConfig.vaultVersion} beta · self-hosted</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/vault" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore Vault <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
       </div>
     </section>

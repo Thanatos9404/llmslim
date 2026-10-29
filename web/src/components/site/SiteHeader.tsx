@@ -8,14 +8,16 @@ import { ArrowRight, ArrowUpRight, Moon, Sun } from "lucide-react"
 import { siteConfig } from "@/config/site"
 import { TrackedLink } from "./TrackedLink"
 
-const links = [["Docs", "/docs"], ["Platform", "/platform"], ["Results", "/results"], ["Integrations", "/integrations"], ["Changelog", "/changelog"]] as const
+const links = [["Docs", "/docs"], ["Vault", "/vault"], ["Pricing", "/pricing"], ["Results", "/results"], ["Integrations", "/integrations"], ["Changelog", "/changelog"]] as const
 const menu = [
   ["Docs", "/docs", "Install, compress, integrate"],
-  ["Platform", "/platform", "Memory, traces and policies"],
+  ["Vault", "/vault", "Self-hosted, in your own cloud"],
+  ["Pricing", "/pricing", "Plans for LLMSlim 1.0"],
   ["Results", "/results", "Every benchmark, measured"],
   ["Integrations", "/integrations", "Frameworks and providers"],
   ["Studio", "/playground", "Try it in the browser"],
   ["Changelog", "/changelog", "What shipped, and when"],
+  ["About", "/about", "Who builds LLMSlim"],
 ] as const
 const SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.8 } as const
 

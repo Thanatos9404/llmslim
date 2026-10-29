@@ -15,6 +15,6 @@ type TrackedLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & 
 /** A link that records one allow-listed click event. Navigation never waits for analytics. */
 export function TrackedLink({ href, event, properties, prefetch, onClick, children, ...rest }: TrackedLinkProps) {
   const handle: TrackedLinkProps["onClick"] = clicked => { track(event, properties); onClick?.(clicked) }
-  if (/^https?:/.test(href)) return <a href={href} onClick={handle} {...rest}>{children}</a>
+  if (/^(https?|mailto):/.test(href)) return <a href={href} onClick={handle} {...rest}>{children}</a>
   return <Link href={href} prefetch={prefetch} onClick={handle} {...rest}>{children}</Link>
 }

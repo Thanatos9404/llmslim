@@ -42,6 +42,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   annotations: `render_context_item` (an item in its provenance boundary, as the planner renders it),
   `rendered_token_count` (the tokens of that rendering) and `compile_cache_plan` (the cache plan of a prepared
   request).
+- **Signed releases with an SBOM.** For each release, the release workflow now:
+  - attests every wheel and sdist with SLSA build provenance and an SBOM attestation (GitHub artifact attestations,
+    signed through Sigstore);
+  - writes `llmslim-<version>.cdx.json`, a CycloneDX SBOM of the runtime dependencies, and attaches it to the GitHub
+    release;
+  - asks for PyPI attestations explicitly. Trusted publishing already uploaded them by default.
+
+  `SECURITY.md` shows how to verify each one with `gh attestation verify` and `pypi-attestations`.
+- The build and SBOM steps also run on pull requests that touch packaging, without attesting or publishing.
 
 ### Changed
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,

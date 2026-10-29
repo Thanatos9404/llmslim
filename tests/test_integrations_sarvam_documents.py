@@ -125,7 +125,10 @@ class FakeDocAi:
         self.calls: List[Any] = []
 
     def digitise(self, **kwargs: Any) -> Any:
-        self.calls.append(("digitise", kwargs))
+        return self._start("digitise", kwargs)
+
+    def _start(self, name: str, kwargs: Any) -> Any:
+        self.calls.append((name, kwargs))
         if self.start_error is not None:
             raise self.start_error
         return self.started
@@ -155,6 +158,22 @@ class AsyncFakeDocAi(FakeDocAi):
 
     async def get_results(self, job_id: str, *, format: str) -> Any:  # type: ignore[override]
         return FakeDocAi.get_results(self, job_id, format=format)
+
+
+class ParseDocAi(FakeDocAi):
+    """``sarvamai`` 0.1.40 and later: the job starts with ``parse``, and there is no ``digitise``."""
+
+    digitise = None  # type: ignore[assignment]
+
+    def parse(self, **kwargs: Any) -> Any:
+        return self._start("parse", kwargs)
+
+
+class AsyncParseDocAi(AsyncFakeDocAi):
+    digitise = None  # type: ignore[assignment]
+
+    async def parse(self, **kwargs: Any) -> Any:
+        return self._start("parse", kwargs)
 
 
 class Clock:
@@ -645,6 +664,28 @@ def test_async_source_parity(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------- pages without numbers
+
+
+def test_jobs_start_with_parse_on_sarvamai_0_1_40() -> None:
+    # sarvamai 0.1.40 renamed doc_ai.digitise to doc_ai.parse; the request is the same.
+    data = make_pdf(2)
+    statuses = [status("completed", usage(2, 2, 2, 0))]
+    fake = ParseDocAi(statuses, results(TWO_PAGES))
+    sync_result = source(fake).digitize_bytes(data, file_name="report.pdf", language="hi-IN")
+    assert fake.names() == ["parse", "get_status", "get_results"]
+    assert fake.calls[0][1] == {
+        "file": [("report.pdf", data, "application/pdf")],
+        "language": "hi-IN",
+        "request_options": {"max_retries": 0},
+    }
+    assert [item.content for item in sync_result.items] == [text for _, text in TWO_PAGES]
+
+    async_fake = AsyncParseDocAi(statuses, results(TWO_PAGES))
+    async_result = asyncio.run(
+        _async_source(async_fake).digitize_bytes(data, file_name="report.pdf", language="hi-IN")
+    )
+    assert async_fake.names() == fake.names()
+    assert async_result == sync_result
 
 
 def test_pages_without_a_page_number_keep_their_text_by_position() -> None:

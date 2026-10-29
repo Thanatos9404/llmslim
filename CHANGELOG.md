@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
+  starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and
+  `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now
+  call `parse` when the SDK has it and `digitise` otherwise, so the whole supported range (0.1.34 up to 0.2) works.
+  The job is still created once, with the SDK's retries off.
+
 ## [0.12.0] - 2026-10-27
 
 ### Merged from 0.11.2

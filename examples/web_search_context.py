@@ -9,8 +9,7 @@ import asyncio
 import os
 import sys
 
-from llmslim import AdaptiveContextPlanner
-from llmslim.planning.models import CandidateMethod
+from llmslim import AdaptiveContextPlanner, CandidateMethod
 
 try:
     from llmslim.integrations.exa import ExaSearchSource

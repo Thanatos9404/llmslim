@@ -62,15 +62,11 @@ from ._sarvam_common import (
     sync_client,
 )
 from .sarvam_documents import (
-    DEFAULT_DOCUMENT_LIMITS,
-    DOCUMENT_GUARD_PREFIX,
     AsyncSarvamDocumentSource,
     SarvamDocumentResult,
     SarvamDocumentSource,
 )
 from .sarvam_text import (
-    DEFAULT_TEXT_LIMITS,
-    TEXT_GUARD_PREFIX,
     AsyncSarvamLanguageTools,
     SarvamLanguageIdentification,
     SarvamLanguageTools,
@@ -431,14 +427,8 @@ class AsyncSarvamProvider(_SarvamChatCore, AsyncClientOwner):
 
 
 __all__ = [
-    "CHAT_GUARD_PREFIX",
-    "DEFAULT_CHAT_LIMITS",
-    "DEFAULT_DOCUMENT_LIMITS",
-    "DEFAULT_TEXT_LIMITS",
-    "DOCUMENT_GUARD_PREFIX",
     "RateLimitExceeded",
     "SARVAM_PRICES",
-    "TEXT_GUARD_PREFIX",
     "AsyncSarvamDocumentSource",
     "AsyncSarvamLanguageTools",
     "AsyncSarvamProvider",
@@ -470,7 +460,6 @@ __all__ = [
     "anormalize_scripts",
     "map_sarvam_error",
     "normalize_scripts",
-    "sarvam_chat_cost_inr",
     "sarvam_prompt_token_bound",
     "split_for_sarvam",
 ]

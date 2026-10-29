@@ -10,6 +10,8 @@ from .planning.models import ContextItem
 
 
 class EdgeType(str, Enum):
+    """How one context item relates to another."""
+
     REPLIES_TO = "replies_to"
     REFERENCES = "references"
     SAME_ENTITY = "same_entity"
@@ -32,6 +34,8 @@ _DEPENDENCY_TYPES = {
 
 @dataclass(frozen=True, order=True)
 class ContextEdge:
+    """A directed edge of :class:`EdgeType` ``kind`` from one context item id to another."""
+
     source_id: str
     target_id: str
     kind: EdgeType

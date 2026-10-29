@@ -24,6 +24,7 @@ from .cache import (
     CacheStatus,
     CacheTelemetry,
     cache_cost_breakdown,
+    compile_cache_plan,
     estimate_cache_cost,
 )
 from .cache_adapters import (
@@ -65,6 +66,7 @@ from .planning import (
     plan_context,
     plan_mcp_context,
 )
+from .planning.candidates import render_context_item, rendered_token_count
 from .planning.progressive import plan_context_v2
 from .quality import QualityReport
 from .rewrite import (
@@ -138,6 +140,8 @@ __all__ = [
     "ModelInput",
     "ContextTrace",
     "plan_context_v2",
+    "render_context_item",
+    "rendered_token_count",
     "generic_request",
     "sarvam_messages",
     "openai_compatible_request",
@@ -152,6 +156,7 @@ __all__ = [
     "PROVIDER_CAPABILITIES",
     "estimate_cache_cost",
     "cache_cost_breakdown",
+    "compile_cache_plan",
     "openai_responses_request",
     "anthropic_messages_request",
     "gemini_generate_request",

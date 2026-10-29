@@ -1,3 +1,5 @@
+import { API_REFERENCE_DOCS } from "./api-reference";
+
 export interface DocCallout { type: "note" | "tip" | "warning" | "important"; title?: string; content: string; }
 export interface DocFaq { question: string; answer: string; }
 export interface DocSection { id: string; title: string; content: string; codeSnippet?: { language: string; filename?: string; code: string }; callout?: DocCallout; }
@@ -40,4 +42,6 @@ export const DOCS_REGISTRY: Record<string, DocPage> = {
     slug: "telemetry", title: "Token counter telemetry", subtitle: "Understand token-count precision in each result.", description: "Read token_counter_used and handle the heuristic fallback appropriately.", category: "API Reference", searchIntent: "LLMSlim token_counter_used heuristic.", lastUpdated: updated, readingTime: "2 min read", relatedPages: [{ title: "Getting Started", slug: "getting-started" }], faqs: [{ question: "When is the heuristic used?", answer: "When the process cannot load the tiktoken encoder. LLMSlim emits one warning per process." }],
     sections: [{ id: "counter", title: "Inspect the counter", content: "token_counter_used reports the process-level active counter: tiktoken or heuristic.", codeSnippet: { language: "python", filename: "tokens.py", code: "from llmslim import compress\nresult = compress(long_text)\nprint(result.token_counter_used)" } }],
   },
+  // Generated from the Python source by scripts/api_reference.py.
+  ...Object.fromEntries(API_REFERENCE_DOCS.map((doc) => [doc.slug, doc])),
 };

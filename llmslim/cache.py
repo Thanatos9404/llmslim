@@ -12,15 +12,20 @@ import time
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from threading import RLock
-from typing import Any, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Tuple
 
 from .planning.models import CandidateMethod, ContextKind, ContextPlan
 from .tokens import count_tokens
+
+if TYPE_CHECKING:  # runtime imports this module
+    from .runtime import ModelInput
 
 RENDER_VERSION = "llmslim-cache-render-1"
 
 
 class CacheStatus(str, Enum):
+    """The state of a cache plan: estimated locally, or reported by the provider."""
+
     DISABLED = "disabled"
     COLD = "cold"
     ESTIMATED_REUSE = "estimated_reuse"
@@ -31,6 +36,8 @@ class CacheStatus(str, Enum):
 
 @dataclass(frozen=True)
 class CacheCapabilities:
+    """The prompt-caching features a provider offers."""
+
     provider: str
     automatic_prefix_cache: bool = False
     explicit_prefix_cache: bool = False
@@ -75,10 +82,13 @@ PROVIDER_CAPABILITIES: Mapping[str, CacheCapabilities] = {
     "transformers": CacheCapabilities("transformers", client_managed_kv_cache=True),
     "generic": CacheCapabilities("generic", verified=False),
 }
+"""The prompt-caching features of each known provider, by provider name."""
 
 
 @dataclass(frozen=True)
 class CachePolicy:
+    """How to plan prompt caching for a provider: mode, tenant, conversation mode, TTL and prices."""
+
     mode: str = "disabled"  # disabled, provider_memory, explicit, auto
     provider: str = "generic"
     tenant_id: Optional[str] = None
@@ -137,6 +147,8 @@ class CachePolicy:
 
 @dataclass(frozen=True)
 class CacheSegment:
+    """One context item in a cache plan, with its stability and position in the prompt."""
+
     item_hash: str
     kind: str
     stability: str
@@ -156,6 +168,8 @@ class CacheSegment:
 
 @dataclass(frozen=True)
 class CachePlan:
+    """The cacheable layout of one request: stable prefix, semi-stable and dynamic parts, and expected reuse."""
+
     provider: str
     mode: str
     conversation_mode: str
@@ -205,6 +219,8 @@ class CachePlan:
 
 @dataclass(frozen=True)
 class CacheTelemetry:
+    """Token and latency usage of one request, estimated locally or reported by the provider."""
+
     source: str = "estimated"  # estimated or provider_reported
     input_tokens: Optional[int] = None
     cache_read_tokens: Optional[int] = None
@@ -295,11 +311,29 @@ def classify_stability(item: Any) -> str:
 
 def compile_cache_plan(
     plan: ContextPlan,
-    model_input: Any,
+    model_input: ModelInput,
     policy: CachePolicy,
     material_settings: Optional[Mapping[str, Any]] = None,
 ) -> CachePlan:
-    """Fingerprint the provider-visible leading prefix without changing model semantics."""
+    """Fingerprint the provider-visible leading prefix without changing model semantics.
+
+    The prefix is the tools, in caller order, then the leading messages marked stable (by default, system and
+    developer messages), together with the provider, model, rendering version, tenant and settings. The plan's
+    segments say how stable each kept context item is. Nothing in ``model_input`` is changed.
+
+    Args:
+        plan: The context plan the request was built from.
+        model_input: The request parts built from ``plan``.
+        policy: The cache policy: mode, provider, tenant, conversation mode and prices.
+        material_settings: Request settings that change what the provider caches, such as sampling settings.
+            They are part of the fingerprint.
+
+    Returns:
+        The cache plan, with status ``DISABLED`` when ``policy.mode`` is ``"disabled"`` and ``COLD`` otherwise.
+
+    Raises:
+        ValueError: The policy asks for a caching feature the provider does not offer.
+    """
     policy.validate_capabilities()
     segments = []
     for index, decision in enumerate(plan.decisions):

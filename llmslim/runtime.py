@@ -162,6 +162,8 @@ class ContextTrace:
 
 @dataclass(frozen=True)
 class PreparedContext:
+    """Everything prepared for one model turn: the plan, the model input, quality, trace and cache plan."""
+
     envelope: ContextEnvelope
     graph: ContextGraph
     plan: ContextPlan
@@ -458,11 +460,13 @@ class ContextRuntime:
 
 @dataclass
 class RuntimeSession:
+    """A conversation on a :class:`ContextRuntime`: keeps a bounded message history and prepares each turn."""
+
     runtime: ContextRuntime
     session_id: str
     _messages: list[Mapping[str, Any]] = field(default_factory=list, repr=False)
-    # Created lazily inside the running loop: before Python 3.10, asyncio.Lock binds to the
-    # loop current at construction, which fails or mismatches outside a running loop.
+    # Created lazily inside the running loop and recreated when the loop changes: an asyncio.Lock
+    # binds to the first loop that waits on it, so one session can't share a lock across loops.
     _lock: Optional[asyncio.Lock] = field(default=None, repr=False)
     _lock_loop: Optional[asyncio.AbstractEventLoop] = field(default=None, repr=False)
 

@@ -940,3 +940,43 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
   .pr-summary, .pr-note { min-height:0; }
   .pr-toggles { flex-direction:column; align-items:flex-start; }
 }
+
+/* Page backdrops (PageBackdrop.tsx), after the docs hero: the pixel field, the mark in ASCII and a faint code
+   snippet across the top of a page, lit in the brand colour under the pointer. The wrapper clips its sides. */
+.has-backdrop { position:relative; isolation:isolate; }
+.backdrop-clip { overflow-x:clip; }
+.page-backdrop { --backdrop-h:720px; --ascii-top:132px; --code-top:470px; position:absolute; top:0; left:50%; z-index:-1; width:100vw; height:var(--backdrop-h); translate:-50% 0; overflow:hidden; pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 50%,transparent); mask-image:linear-gradient(180deg,#000 50%,transparent); }
+.page-backdrop-low { --ascii-top:236px; --code-top:600px; }
+.page-backdrop-field { position:absolute; inset:0; opacity:.7; }
+.page-backdrop-art { position:absolute; inset:0; color:var(--ink); opacity:.12; }
+.page-backdrop-art pre { position:absolute; margin:0; font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; white-space:pre; letter-spacing:0; }
+.backdrop-ascii { top:var(--ascii-top); right:max(24px,calc(50% - 690px)); font-size:9px; line-height:1.18; }
+.backdrop-code { top:var(--code-top); right:max(32px,calc(50% - 670px)); font-size:11.5px; line-height:1.75; opacity:.85; }
+.page-backdrop[data-layout="split"] .backdrop-ascii { right:auto; left:max(20px,calc(50% - 720px)); top:calc(var(--ascii-top) + 40px); }
+.page-backdrop[data-layout="split"] .backdrop-code { top:calc(var(--ascii-top) + 96px); right:max(20px,calc(50% - 720px)); }
+.page-backdrop-glow { color:var(--brand); opacity:0; transition:opacity .45s;
+  -webkit-mask-image:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),#000,transparent 72%); mask-image:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),#000,transparent 72%); }
+.page-backdrop[data-lit] .page-backdrop-glow { opacity:.9; }
+html:not(.dark) .page-backdrop-art { opacity:.16; }
+html:not(.dark) .page-backdrop[data-lit] .page-backdrop-glow { opacity:1; }
+@media (max-width:1180px) { .page-backdrop[data-layout="split"] .page-backdrop-art { display:none; } }
+@media (max-width:900px) {
+  .backdrop-code { display:none; }
+  .backdrop-ascii { top:84px; right:-140px; }
+  .page-backdrop-art { opacity:.08; }
+}
+@media (prefers-reduced-motion:reduce) { .page-backdrop-glow { transition:none; } }
+
+/* Cards that glow under the pointer, like the docs code window: a soft brand spotlight and a lit edge. */
+.glow-card { position:relative; isolation:isolate; transition:border-color .3s, box-shadow .3s, transform .3s cubic-bezier(.2,.8,.2,1); }
+.glow-card::after { content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; opacity:0; transition:opacity .3s;
+  background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--brand) 11%,transparent),transparent 70%); }
+.glow-card:hover::after { opacity:1; }
+.glow-card:hover { border-color:color-mix(in srgb,var(--brand) 38%,var(--line)); }
+@media (prefers-reduced-motion:reduce) { .glow-card, .glow-card::after { transition:none; } }
+
+/* Changelog: the site's kicker and two-tone heading over the release cards. */
+.ch-head h1 { margin:0; font-size:clamp(36px,5vw,64px); line-height:1.04; letter-spacing:-.048em; font-weight:610; text-wrap:balance; }
+.ch-head h1 span { font-family:var(--serif); font-style:italic; font-weight:400; letter-spacing:-.02em; color:color-mix(in srgb,var(--ink) 58%,transparent); }
+.ch-head > p:last-child { max-width:620px; margin-top:16px; font-size:16px; line-height:1.7; color:var(--subtle); }

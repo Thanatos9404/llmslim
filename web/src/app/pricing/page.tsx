@@ -3,6 +3,8 @@ import { headers } from "next/headers"
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
+import { PageBackdrop } from "@/components/site/PageBackdrop"
+import { BACKDROP_CODE } from "@/components/site/backdrop-code"
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { siteConfig } from "@/config/site"
 import {
@@ -77,7 +79,8 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
   const href = (next: { currency?: Currency; billing?: Billing }) => `/pricing?currency=${next.currency ?? currency}&billing=${next.billing ?? billing}`
   const faqs = PRICING_FAQS.map((faq) => [faq.question, faq.answer] as const)
 
-  return <div className="slim-site"><SiteHeader /><main id="main-content" className="pricing-page">
+  return <div className="slim-site"><SiteHeader /><main id="main-content" className="pricing-page has-backdrop">
+    <PageBackdrop code={BACKDROP_CODE.memory} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs, "/pricing")) }} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(orbitPricingJsonLd()) }} />
 
@@ -99,7 +102,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
       </div>
     </header>
 
-    <section className="site-width pr-core" aria-labelledby="core-title">
+    <section className="site-width pr-core glow-card" aria-labelledby="core-title">
       <div>
         <p className="pr-eyebrow">Open source · MIT licence</p>
         <h2 id="core-title">LLMSlim Core <span>Free forever</span></h2>
@@ -118,7 +121,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
       </div>
       <p className="pr-orbit-sub">Hosted memory and remote MCP for your agents, run by us. Prices in {currency === "inr" ? "rupees, including 18% GST" : "US dollars, for customers outside India"}.</p>
       <ul className="pr-plans">
-        {PLANS.map((plan) => <li key={plan.id} className="pr-plan">
+        {PLANS.map((plan) => <li key={plan.id} className="pr-plan glow-card">
           <h3>{plan.name}</h3>
           <p className="pr-summary">{plan.summary}</p>
           <PriceLine plan={plan} currency={currency} billing={billing} />

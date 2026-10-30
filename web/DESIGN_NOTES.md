@@ -4,8 +4,8 @@ The landing page follows the user's Raycast reference: a cinematic composition, 
 
 ## Assets
 
-- `public/compression-ribbon-dark.webp`: custom 3D artwork, 1536 × 1024, 167,482 bytes.
-- `public/compression-ribbon-light.webp`: matching light treatment, 1536 × 1024, 95,156 bytes.
+The 3D compression ribbon that floated behind the home hero was removed on 30 October 2026, with both of its images.
+
 - `public/llmslim_logo.png`: existing official LLMSlim logo, unchanged.
 - `public/sarvam-symbol.svg`: official Sarvam flower mark.
 - `public/sarvam-wordmark.svg`: official Sarvam wordmark.
@@ -54,18 +54,6 @@ raster card:
   page colour `#f4f4f1` for everything else. These are the brand colours named in the email's own stylesheet.
 - Both files are self-contained: no fonts, scripts or external references. They come from a scratch script,
   `cartesia_lockup.py`, which is not committed, and are about 10 KB each.
-
-## Generation prompts
-
-Both artwork variants were generated using the built-in image-generation tool, then encoded as WebP using Sharp. No image-generation API key or runtime image generation is required by the website.
-
-### Dark artwork
-
-Use case: stylized-concept. Asset type: premium 3D brand artwork for LLMSlim, an AI context compression developer tool. Create a museum-quality Octane/Cinema4D render of five broad, substantial sculptural ribbons made of glossy polished glass and titanium, sweeping from upper left and gracefully converging into three precisely aligned continuous ribbons toward lower right, communicating compression and flow. A single elegant coherent sculptural form, not scattered objects. Iridescent cobalt blue, electric cyan, subtle violet and emerald-green reflections from the LLMSlim logo. Macro product-photography quality, real depth, smooth bevels, exceptional refraction and specular highlights. The ribbons form a loose twisting S through the frame. Mostly near-black metallic sides with luminous blue-green glass edges. Strong dynamic diagonal perspective, sophisticated industrial design, dramatic studio rim lighting, entirely isolated on an ACTUAL TRANSPARENT BACKGROUND with alpha, no checkerboard pattern. Wide landscape 1536x1024 composition, sculpture fills 85% of frame with margins, no hard cropping. Designed to layer behind or alongside website typography on both near-black and white backgrounds. No text, no letters, no UI, no logo, no extra particles, no stars, no planets, no rectangular cards, no platforms, no boxes, no gradients in the background. This must feel like expensive art direction for a premium developer product similar in execution quality to Raycast.
-
-### Light artwork
-
-Create the matching LIGHT MODE version of this exact premium 3D brand render. Preserve the sculpture's exact shape, placement, flowing five ribbons merging to three, camera angle, and composition. Change only studio lighting and background: pure white #ffffff seamless background all the way to every edge, natural diffuse studio shadows, bright polished silver titanium and clear glass with beautiful cobalt blue, violet, cyan and emerald edge refraction. High-end industrial product render on white, brighter material. No black background, no text, no new objects. Wide landscape same dimensions. This image must sit seamlessly on a white website.
 
 ## Behavior and scope
 

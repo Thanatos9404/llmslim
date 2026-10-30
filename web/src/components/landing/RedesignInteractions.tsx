@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy, RotateCcw } from "lucide-react"
 
@@ -30,30 +29,6 @@ export function HomeEffects() {
     return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); media.removeEventListener("change", schedule); reveals.forEach(el => el.classList.remove("reveal-ready")) }
   }, [])
   return null
-}
-
-export function HeroArtwork() {
-  const artwork = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const element = artwork.current
-    const hero = element?.parentElement
-    if (!element || !hero) return
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)")
-    let frame = 0
-    let offset = 0
-    const move = (event: PointerEvent) => {
-      if (reduced.matches || event.pointerType !== "mouse") return
-      const bounds = hero.getBoundingClientRect()
-      offset = ((event.clientX - bounds.left) / bounds.width - .5) * 24
-      if (!frame) frame = requestAnimationFrame(() => { element.style.setProperty("--pointer-x", `${offset}px`); frame = 0 })
-    }
-    const reset = () => { cancelAnimationFrame(frame); frame = 0; element.style.setProperty("--pointer-x", "0px") }
-    hero.addEventListener("pointermove", move)
-    hero.addEventListener("pointerleave", reset)
-    reduced.addEventListener("change", reset)
-    return () => { reset(); hero.removeEventListener("pointermove", move); hero.removeEventListener("pointerleave", reset); reduced.removeEventListener("change", reset) }
-  }, [])
-  return <div ref={artwork} className="hero-artwork" aria-hidden="true" data-parallax="0.18"><Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} className="art-dark" priority sizes="100vw" /><Image src="/compression-ribbon-light.webp" alt="" width={1536} height={1024} className="art-light" priority sizes="100vw" /></div>
 }
 
 export function CopyCommand() {

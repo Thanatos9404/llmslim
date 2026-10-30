@@ -1,8 +1,8 @@
 "use client"
 
 import Image, { getImageProps } from "next/image"
-import { m, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion"
-import { useRef, type PointerEvent, type ReactNode } from "react"
+import { m, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { useRef, type ReactNode } from "react"
 import { track } from "@/lib/analytics"
 import { ProgramLogo, startupPrograms } from "./StartupPrograms"
 
@@ -48,39 +48,20 @@ function HeroSky({ wide, tall, className, eager }: { wide: string; tall: string;
 }
 
 /**
- * Full-bleed night sky with three depths: the photo drifts slowly, the 3D ribbon floats and tilts
- * toward the cursor, and the copy scrolls at normal speed.
+ * Full-bleed night sky in two depths: the photo drifts slowly and the copy scrolls at normal speed.
  */
 export function PremiumHero({ children }: { children: ReactNode }) {
   const section = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end start"] })
   const skyY = useTransform(scrollYProgress, [0, 1], [0, 180])
-  const ribbonY = useTransform(scrollYProgress, [0, 1], [0, -120])
   const copyOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
-  const px = useMotionValue(0), py = useMotionValue(0)
-  const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [-14, 14]), { stiffness: 60, damping: 18 })
-  const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [10, -10]), { stiffness: 60, damping: 18 })
-  const shiftX = useSpring(useTransform(px, [-0.5, 0.5], [-30, 30]), { stiffness: 60, damping: 18 })
-  const move = (event: PointerEvent<HTMLElement>) => {
-    if (reduced || event.pointerType !== "mouse") return
-    const box = event.currentTarget.getBoundingClientRect()
-    px.set((event.clientX - box.left) / box.width - 0.5)
-    py.set((event.clientY - box.top) / box.height - 0.5)
-  }
-  return <section ref={section} className="p-hero on-photo" aria-labelledby="hero-title" onPointerMove={move}>
+  return <section ref={section} className="p-hero on-photo" aria-labelledby="hero-title">
     <m.div className="p-hero-sky" style={reduced ? undefined : { y: skyY }} aria-hidden="true">
       <HeroSky wide="/media/hero-sky.webp" tall="/media/hero-sky-portrait.webp" className="art-dark" eager />
       <HeroSky wide="/media/hero-sky-light.webp" tall="/media/hero-sky-light-portrait.webp" className="art-light" />
     </m.div>
     <div className="p-hero-veil" aria-hidden="true" />
-    <m.div className="p-hero-ribbon" aria-hidden="true" style={reduced ? undefined : { y: ribbonY, x: shiftX, rotateX, rotateY }}>
-      <div className="p-hero-ribbon-float">
-        {/* The ribbon is the largest element above the fold: the dark one (the default theme) is fetched first. */}
-        <Image src="/compression-ribbon-dark.webp" alt="" width={1536} height={1024} sizes="(max-width: 800px) 120vw, 70vw" className="art-dark" loading="eager" fetchPriority="high" />
-        <Image src="/compression-ribbon-light.webp" alt="" width={1536} height={1024} sizes="(max-width: 800px) 120vw, 70vw" className="art-light" />
-      </div>
-    </m.div>
     <m.div className="p-hero-copy" style={reduced ? undefined : { opacity: copyOpacity }}>{children}</m.div>
   </section>
 }

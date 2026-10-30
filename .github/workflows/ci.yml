@@ -119,9 +119,6 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
         include:
-          # ubuntu-latest (26.04) has no Python 3.9 build for setup-python; 24.04 still does.
-          - os: ubuntu-24.04
-            python-version: "3.9"
           - os: windows-latest
             python-version: "3.12"
           - os: macos-latest
@@ -149,8 +146,9 @@ jobs:
       - name: Run Ruff Code Formatter Check
         run: ruff format --check .
 
+      # On the oldest supported Python, so the stubs installed match mypy's python_version.
       - name: Run MyPy Type Checker
-        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
         run: mypy llmslim
 
       - name: Run Pytest Suite with Coverage (Minimum 90%)
@@ -172,6 +170,9 @@ jobs:
         run: |
           pip install dist/*.whl
           python -c "import llmslim; print(f'llmslim version: {llmslim.__version__}')"
+
+      - name: Verify the wheel ships py.typed
+        run: python -c "import glob, zipfile; assert 'llmslim/py.typed' in zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist()"
 
       - name: Upload Coverage to Codecov (Python 3.12 only)
         if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'

@@ -18,7 +18,7 @@ This checklist outlines the mandatory verification steps required before publish
 - [ ] `py.typed` marker file is present in `llmslim/`.
 
 ### 3. Automated Test Suite & Coverage
-- [ ] `pytest` passes 100% of unit tests across Python 3.9, 3.10, 3.11, 3.12, 3.13.
+- [ ] `pytest` passes 100% of unit tests across Python 3.10, 3.11, 3.12, 3.13.
 - [ ] Code coverage threshold is **>= 90%** (`pytest --cov-fail-under=90`).
 - [ ] Edge cases (empty strings, single sentences, massive prompts, unicode/multilingual) pass without exceptions.
 
@@ -41,6 +41,8 @@ This checklist outlines the mandatory verification steps required before publish
 ### 6. Version Bump & Distribution Build
 - [ ] Bump version in `pyproject.toml` (`version = "X.Y.Z"`).
 - [ ] Bump version in `llmslim/__init__.py` (`__version__ = "X.Y.Z"`).
+- [ ] Regenerate the API reference pages, which name the version: `python scripts/api_reference.py --write`.
+  `tests/test_api_reference.py` checks them.
 - [ ] Bump `version` in `server.json` (both places, and the `llmslim[mcp]==X.Y.Z` pin) and in
   `plugins/llmslim/.claude-plugin/plugin.json`. `tests/test_claude_plugin.py` checks they match.
 - [ ] Bump the `llmslim[mcp]==X.Y.Z` pin in `plugins/llmslim/.mcp.json` and `plugins/llmslim/README.md`, `version`
@@ -79,11 +81,19 @@ This checklist outlines the mandatory verification steps required before publish
   ```
 - [ ] Draft GitHub Release targeting tag `vX.Y.Z`:
   - Copy notes from `CHANGELOG.md`.
-  - Attach `dist/llmslim-X.Y.Z-py3-none-any.whl` and `dist/llmslim-X.Y.Z.tar.gz`.
+  - Attach nothing by hand: the release workflow attaches the wheel, the sdist and `llmslim-X.Y.Z.cdx.json` (the
+    SBOM) that it built and attested.
 
 ### 8. PyPI Publication
 - [ ] GitHub Action `release.yml` triggers automatically on tag push or release publish.
 - [ ] Monitor PyPI workflow execution to confirm sdist & wheel upload to PyPI.
+- [ ] Check the GitHub release has the wheel, the sdist and `llmslim-X.Y.Z.cdx.json`, and that the attestations
+  verify (see "Verifying a release" in `SECURITY.md`):
+  ```bash
+  gh attestation verify llmslim-X.Y.Z-py3-none-any.whl --repo Thanatos9404/llmslim \
+    --signer-workflow Thanatos9404/llmslim/.github/workflows/release.yml
+  pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim pypi:llmslim-X.Y.Z-py3-none-any.whl
+  ```
 - [ ] Verify clean installation from PyPI in an isolated environment:
   ```bash
   pip install --no-cache-dir llmslim==X.Y.Z

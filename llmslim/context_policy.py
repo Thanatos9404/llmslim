@@ -16,6 +16,9 @@ Redactor = Callable[[ContextItem], str]
 
 @dataclass(frozen=True)
 class ContextPolicy:
+    """Caller-owned rules applied before planning: roles never dropped, token caps per kind, source allow and
+    deny lists, stale tool results, and an optional redactor."""
+
     never_drop_roles: FrozenSet[ContextRole] = field(
         default_factory=lambda: frozenset({ContextRole.SYSTEM, ContextRole.DEVELOPER})
     )

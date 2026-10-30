@@ -9,7 +9,7 @@ Help the user start Claude Code through the LLMSlim proxy. Work through these st
 
 1. Check whether the proxy is installed by running `llmslim proxy --help`. If that fails, try
    `uvx --from "llmslim[proxy]==0.12.0" llmslim proxy --help`.
-2. If neither works, tell the user to install it once, with either command (Python 3.9 or newer):
+2. If neither works, tell the user to install it once, with either command (Python 3.10 or newer):
 
    ```bash
    uv tool install "llmslim[proxy]"

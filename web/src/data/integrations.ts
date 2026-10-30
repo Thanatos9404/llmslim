@@ -348,14 +348,14 @@ You can return any item within 30 days of delivery for a full refund. Refunds go
     },
     options: frameworkOptions("node", "the metadata"),
     limitations: [
-      "Needs Python 3.10 or newer. On Python 3.9 the llamaindex extra installs nothing, because llama-index-core no longer supports 3.9.",
+      "Needs Python 3.10 or newer.",
       "Needs llmslim 0.8.1 or newer and llama-index-core 0.12 or newer. The 0.8.1 release was tested with llama-index-core 0.12.0 and 0.14.25.",
       ...FRAMEWORK_LIMITS,
       "The example uses MockEmbedding and MockLLM to stay offline. Which nodes reach the postprocessor depends on your real embedding model and retriever.",
     ],
     faqs: [
       { question: "Can LLMSlimPostprocessor replace LongLLMLinguaPostprocessor?", answer: "Yes, in the same node_postprocessors slot. Both are LlamaIndex BaseNodePostprocessor classes. LLMSlimPostprocessor takes a fraction of tokens to keep (target_ratio) rather than a token count, needs no language model by default, and keeps the nodes in their retrieved order. The LLMSlim vs LLMLingua page compares the two approaches on a public benchmark." },
-      { question: "Why does it need Python 3.10?", answer: "llama-index-core dropped Python 3.9 in 0.14.17, and its last 3.9 release does not import on 3.9 because its banks dependency uses 3.10 syntax. The rest of LLMSlim still supports Python 3.9." },
+      { question: "Why does it need Python 3.10?", answer: "llama-index-core dropped Python 3.9 in 0.14.17, and its last 3.9 release does not import on 3.9 because its banks dependency uses 3.10 syntax." },
       ...FRAMEWORK_FAQS,
     ],
     troubleshooting: [
@@ -1042,7 +1042,7 @@ tests/test_api.py::test_endpoint_699 PASSED [116%]
       { name: "--mcp", defaultValue: "off", meaning: "Also compress every MCP tool's output." },
       { name: "--json", defaultValue: "off", meaning: "Also compress output that is one whole JSON document. Off by default: agents given shortened JSON spent extra turns fetching the fields that were cut." },
     ],
-    deploymentGuide: "Install llmslim[proxy] in any Python 3.9+ environment and start Claude Code with llmslim wrap claude instead of claude. Keep ~/.llmslim/proxy.db for as long as a session lasts: it holds the bytes the proxy replays. llmslim proxy stats shows the tokens it kept out of your requests.",
+    deploymentGuide: "Install llmslim[proxy] in any Python 3.10+ environment and start Claude Code with llmslim wrap claude instead of claude. Keep ~/.llmslim/proxy.db for as long as a session lasts: it holds the bytes the proxy replays. llmslim proxy stats shows the tokens it kept out of your requests.",
     optimizationTips: [
       "Leave the defaults on first: they only touch shell, search and web output over 1,500 tokens, and leave output that is one whole JSON document alone.",
       "In our benchmark it paid off most on mid-sized logs whose useful lines sit in the middle: a simulated CI run (26-32% cheaper) and a lint run (17-21% cheaper). Build logs were not tested. For test runs agents already trim the output themselves.",

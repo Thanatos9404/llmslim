@@ -13,7 +13,7 @@ All contributors are expected to adhere to the project's [Code of Conduct](CODE_
 ## Environment Setup
 
 ### Prerequisites
-- Python 3.9, 3.10, 3.11, 3.12, or 3.13
+- Python 3.10, 3.11, 3.12, or 3.13
 - Git
 
 ### Initializing Virtual Environment
@@ -66,6 +66,15 @@ All PRs must maintain or improve the **90% code coverage** threshold:
 pytest
 ```
 
+### 4. Public API
+`tests/test_public_api.py` fails when the public API changes: a name, a signature, a command-line flag, a
+`llmslim serve` route, an `llmslim mcp` tool or an environment variable. If the change is intended, regenerate the
+snapshot and say what changed in the changelog:
+```bash
+python scripts/public_api.py --write
+```
+A stable name is deprecated before it is removed. [docs/API_STABILITY.md](docs/API_STABILITY.md) has the rules.
+
 ---
 
 ## Running Benchmarks
@@ -115,6 +124,7 @@ Before submitting a Pull Request, verify that:
 - [ ] Benchmarks pass without performance regressions (`python benchmarks/benchmark_regression.py`).
 - [ ] Docstrings follow Google style guide for all public classes/functions.
 - [ ] `CHANGELOG.md` has been updated under `[Unreleased]` if applicable.
+- [ ] The public API snapshot is unchanged, or regenerated with `python scripts/public_api.py --write` and the change is in the changelog.
 
 ---
 

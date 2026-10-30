@@ -5,6 +5,7 @@ Usage (from web/): python scripts/brand/build_assets.py . && node scripts/brand/
 Needs fonttools and brotli. Writes public/brand/*.svg, scripts/brand/og.svg and mark-component.json; then
 regenerate src/components/brand/mark-data.ts from mark-component.json if the geometry changed.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -13,10 +14,10 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
+from mark_geometry import FITS, W_LEFT, X_END, X_LEFT, strand
 
 WEB = Path(sys.argv[1])
-sys.argv = [sys.argv[0], "1.0"]
-exec(Path(__file__).with_name("mark_geometry.py").read_text().split("if __name__")[0])
+PINCH = 1.0  # the brand files narrow the travelling strands fully, as on the founder's icon
 
 OUT = WEB / "public" / "brand"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -27,13 +28,17 @@ MW, MH = MX1 - MX0, MY1 - MY0
 
 PALETTES = {
     # sampled from the founder's brand sheet
-    "dark": dict(left=["#5C50FD", "#477BFD", "#2A98FA", "#00D0A8", "#00E686"],
-                 right=["#04CDAD", "#01DB9B", "#01DB9B", "#01DB9B", "#00EA88"],
-                 end=["#00D9A2", "#02E18F", "#02E18F", "#02E18F", "#00E789"]),
+    "dark": {
+        "left": ["#5C50FD", "#477BFD", "#2A98FA", "#00D0A8", "#00E686"],
+        "right": ["#04CDAD", "#01DB9B", "#01DB9B", "#01DB9B", "#00EA88"],
+        "end": ["#00D9A2", "#02E18F", "#02E18F", "#02E18F", "#00E789"],
+    },
     # the same hues, deepened so the green strands hold up on light backgrounds
-    "light": dict(left=["#4A3DF0", "#2F67EE", "#1083E6", "#00A98A", "#00B26C"],
-                  right=["#00A894", "#00AE82", "#00AE82", "#00AE82", "#00B46E"],
-                  end=["#00B08C", "#00B57A", "#00B57A", "#00B57A", "#00B86C"]),
+    "light": {
+        "left": ["#4A3DF0", "#2F67EE", "#1083E6", "#00A98A", "#00B26C"],
+        "right": ["#00A894", "#00AE82", "#00AE82", "#00AE82", "#00B46E"],
+        "end": ["#00B08C", "#00B57A", "#00B57A", "#00B57A", "#00B86C"],
+    },
 }
 
 
@@ -54,12 +59,14 @@ def mark(prefix, palette="dark", mono=None):
             )
     for i in [0, 4, 1, 3, 2]:
         fill = mono if mono else f"url(#{prefix}{i})"
-        paths.append(f'<path fill="{fill}" d="{strand(FITS[i])}"/>')
+        paths.append(f'<path fill="{fill}" d="{strand(FITS[i], PINCH)}"/>')
     return "".join(defs), f'<g transform="translate({-MX0} {-MY0})">{"".join(paths)}</g>'
 
 
 # --- wordmark from Geist, instanced at weight 500
-font = instantiateVariableFont(TTFont(WEB / "public" / "fonts" / "geist-latin.woff2"), {"wght": 500})
+font = instantiateVariableFont(
+    TTFont(WEB / "public" / "fonts" / "geist-latin.woff2"), {"wght": 500}
+)
 glyphs = font.getGlyphSet()
 cmap = font.getBestCmap()
 hmtx = font["hmtx"]
@@ -81,8 +88,12 @@ def text(s, size, x, baseline, tracking=-0.02):
     return "".join(d), pen_x - x - tracking * size
 
 
-INKS = {"dark": ("#FFFFFF", "#00F59B"), "light": ("#0B0D17", "#007A52"), "white": ("#FFFFFF", "#FFFFFF"),
-        "black": ("#0B0D17", "#0B0D17")}
+INKS = {
+    "dark": ("#FFFFFF", "#00F59B"),
+    "light": ("#0B0D17", "#007A52"),
+    "white": ("#FFFFFF", "#FFFFFF"),
+    "black": ("#0B0D17", "#0B0D17"),
+}
 
 
 def lockup(variant, layout="horizontal"):
@@ -114,18 +125,24 @@ def lockup(variant, layout="horizontal"):
         base = h
         d1, a1 = text("LLM", size, tx, base)
         d2, _ = text("Slim", size, tx + a1, base)
-        body = (f'<g transform="translate({mx:.2f} 0)">{g}</g>'
-                f'<path fill="{llm_ink}" d="{d1}"/><path fill="{slim_ink}" d="{d2}"/>')
+        body = (
+            f'<g transform="translate({mx:.2f} 0)">{g}</g>'
+            f'<path fill="{llm_ink}" d="{d1}"/><path fill="{slim_ink}" d="{d2}"/>'
+        )
     pad = MH * 0.04
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{-pad:.2f} {-pad:.2f} {w + 2 * pad:.2f} {h + 2 * pad:.2f}">'
-            f'<title>LLMSlim</title><defs>{defs}</defs>{body}</svg>')
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{-pad:.2f} {-pad:.2f} {w + 2 * pad:.2f} {h + 2 * pad:.2f}">'
+        f"<title>LLMSlim</title><defs>{defs}</defs>{body}</svg>"
+    )
 
 
 def mark_svg(palette="dark", mono=None):
     defs, g = mark("mk", palette, mono)
     pad = 2
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{-pad} {-pad} {MW + 2 * pad} {MH + 2 * pad}">'
-            f'<title>LLMSlim</title><defs>{defs}</defs>{g}</svg>')
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{-pad} {-pad} {MW + 2 * pad} {MH + 2 * pad}">'
+        f"<title>LLMSlim</title><defs>{defs}</defs>{g}</svg>"
+    )
 
 
 def app_icon(size=512):
@@ -135,15 +152,17 @@ def app_icon(size=512):
     scale = s * 0.58 / MW
     tx = (s - MW * scale) / 2
     ty = (s - MH * scale) / 2
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}"><title>LLMSlim</title><defs>{defs}'
-            f'<linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D1130"/>'
-            f'<stop offset="1" stop-color="#05060F"/></linearGradient>'
-            f'<radialGradient id="glow" cx="0.3" cy="0.25" r="0.75"><stop offset="0" stop-color="#5C50FD" stop-opacity="0.18"/>'
-            f'<stop offset="1" stop-color="#5C50FD" stop-opacity="0"/></radialGradient></defs>'
-            f'<rect width="{s}" height="{s}" rx="{r:.1f}" fill="url(#tile)"/>'
-            f'<rect width="{s}" height="{s}" rx="{r:.1f}" fill="url(#glow)"/>'
-            f'<rect x="1.5" y="1.5" width="{s - 3}" height="{s - 3}" rx="{r - 1.5:.1f}" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="3"/>'
-            f'<g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f})">{g}</g></svg>')
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {s} {s}"><title>LLMSlim</title><defs>{defs}'
+        f'<linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D1130"/>'
+        f'<stop offset="1" stop-color="#05060F"/></linearGradient>'
+        f'<radialGradient id="glow" cx="0.3" cy="0.25" r="0.75"><stop offset="0" stop-color="#5C50FD" stop-opacity="0.18"/>'
+        f'<stop offset="1" stop-color="#5C50FD" stop-opacity="0"/></radialGradient></defs>'
+        f'<rect width="{s}" height="{s}" rx="{r:.1f}" fill="url(#tile)"/>'
+        f'<rect width="{s}" height="{s}" rx="{r:.1f}" fill="url(#glow)"/>'
+        f'<rect x="1.5" y="1.5" width="{s - 3}" height="{s - 3}" rx="{r - 1.5:.1f}" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="3"/>'
+        f'<g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f})">{g}</g></svg>'
+    )
 
 
 def og_image():
@@ -156,26 +175,38 @@ def og_image():
     lx = (W - target_w) / 2 - vb[0] * scale
     ly = 190 - vb[1] * scale
     _, tw = text("The context layer for production AI agents.", 40, 0, 0, tracking=-0.01)
-    tag, _ = text("The context layer for production AI agents.", 40, (W - tw) / 2, 470, tracking=-0.01)
+    tag, _ = text(
+        "The context layer for production AI agents.", 40, (W - tw) / 2, 470, tracking=-0.01
+    )
     _, fw = text("Open source  ·  llmslim.app", 24, 0, 0, tracking=0)
     foot, _ = text("Open source  ·  llmslim.app", 24, (W - fw) / 2, 540, tracking=0)
-    grid = "".join(f'<path d="M{x} 0V{H}" stroke="#FFFFFF" stroke-opacity="0.035"/>' for x in range(0, W + 1, 60))
-    grid += "".join(f'<path d="M0 {y}H{W}" stroke="#FFFFFF" stroke-opacity="0.035"/>' for y in range(30, H + 1, 60))
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}"><defs>'
-            f'<radialGradient id="g1" cx="0.18" cy="0.12" r="0.7"><stop offset="0" stop-color="#5C50FD" stop-opacity="0.38"/><stop offset="1" stop-color="#5C50FD" stop-opacity="0"/></radialGradient>'
-            f'<radialGradient id="g2" cx="0.88" cy="0.95" r="0.65"><stop offset="0" stop-color="#00F59B" stop-opacity="0.22"/><stop offset="1" stop-color="#00F59B" stop-opacity="0"/></radialGradient>'
-            f'<radialGradient id="g3" cx="0.55" cy="0.45" r="0.5"><stop offset="0" stop-color="#4F8CFF" stop-opacity="0.14"/><stop offset="1" stop-color="#4F8CFF" stop-opacity="0"/></radialGradient>'
-            f'</defs><rect width="{W}" height="{H}" fill="#060816"/>{grid}'
-            f'<rect width="{W}" height="{H}" fill="url(#g1)"/><rect width="{W}" height="{H}" fill="url(#g2)"/><rect width="{W}" height="{H}" fill="url(#g3)"/>'
-            f'<g transform="translate({lx:.2f} {ly:.2f}) scale({scale:.4f})">{inner}</g>'
-            f'<path fill="#C9CEE6" d="{tag}"/><path fill="#7D84A6" d="{foot}"/></svg>')
+    grid = "".join(
+        f'<path d="M{x} 0V{H}" stroke="#FFFFFF" stroke-opacity="0.035"/>'
+        for x in range(0, W + 1, 60)
+    )
+    grid += "".join(
+        f'<path d="M0 {y}H{W}" stroke="#FFFFFF" stroke-opacity="0.035"/>'
+        for y in range(30, H + 1, 60)
+    )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}"><defs>'
+        f'<radialGradient id="g1" cx="0.18" cy="0.12" r="0.7"><stop offset="0" stop-color="#5C50FD" stop-opacity="0.38"/><stop offset="1" stop-color="#5C50FD" stop-opacity="0"/></radialGradient>'
+        f'<radialGradient id="g2" cx="0.88" cy="0.95" r="0.65"><stop offset="0" stop-color="#00F59B" stop-opacity="0.22"/><stop offset="1" stop-color="#00F59B" stop-opacity="0"/></radialGradient>'
+        f'<radialGradient id="g3" cx="0.55" cy="0.45" r="0.5"><stop offset="0" stop-color="#4F8CFF" stop-opacity="0.14"/><stop offset="1" stop-color="#4F8CFF" stop-opacity="0"/></radialGradient>'
+        f'</defs><rect width="{W}" height="{H}" fill="#060816"/>{grid}'
+        f'<rect width="{W}" height="{H}" fill="url(#g1)"/><rect width="{W}" height="{H}" fill="url(#g2)"/><rect width="{W}" height="{H}" fill="url(#g3)"/>'
+        f'<g transform="translate({lx:.2f} {ly:.2f}) scale({scale:.4f})">{inner}</g>'
+        f'<path fill="#C9CEE6" d="{tag}"/><path fill="#7D84A6" d="{foot}"/></svg>'
+    )
 
 
 def app_icon_bleed(size=180):
     """Square, no rounded corners: iOS applies its own mask, and transparent corners would show black."""
     body = app_icon(size)
     r = f'rx="{size * 0.225:.1f}" '
-    body = body.replace(r + 'fill="url(#tile)"', 'fill="url(#tile)"').replace(r + 'fill="url(#glow)"', 'fill="url(#glow)"')
+    body = body.replace(r + 'fill="url(#tile)"', 'fill="url(#tile)"').replace(
+        r + 'fill="url(#glow)"', 'fill="url(#glow)"'
+    )
     return body.split('<rect x="1.5"')[0] + body.split('stroke-width="3"/>', 1)[1]
 
 
@@ -193,16 +224,27 @@ files = {
 }
 for name, body in files.items():
     (OUT / name).write_text(body, encoding="utf-8")
-Path(__file__).with_name("og.svg").write_text(og_image(), encoding="utf-8")  # rendered to public/og.png by icons.mjs
+Path(__file__).with_name("og.svg").write_text(
+    og_image(), encoding="utf-8"
+)  # rendered to public/og.png by icons.mjs
 Path(__file__).with_name("app-icon-bleed.svg").write_text(app_icon_bleed(512), encoding="utf-8")
 print(json.dumps({k: len(v) for k, v in files.items()}))
 
 # For the React component: the five strand outlines, in the icon frame, with their gradient offsets.
 x0 = X_LEFT - W_LEFT / 2
-comp = {"box": [MX0, MY0, MW, MH], "x0": x0, "x1": X_END,
-        "order": [0, 4, 1, 3, 2],
-        "strands": [{"d": strand(FITS[i]),
-                     "o1": round((FITS[i]["xs"] - x0) / (X_END - x0), 3),
-                     "o2": round((FITS[i]["xe"] - x0) / (X_END - x0), 3)} for i in range(5)],
-        "palettes": PALETTES}
+comp = {
+    "box": [MX0, MY0, MW, MH],
+    "x0": x0,
+    "x1": X_END,
+    "order": [0, 4, 1, 3, 2],
+    "strands": [
+        {
+            "d": strand(FITS[i], PINCH),
+            "o1": round((FITS[i]["xs"] - x0) / (X_END - x0), 3),
+            "o2": round((FITS[i]["xe"] - x0) / (X_END - x0), 3),
+        }
+        for i in range(5)
+    ],
+    "palettes": PALETTES,
+}
 Path(__file__).with_name("mark-component.json").write_text(json.dumps(comp))

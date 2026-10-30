@@ -1,4 +1,6 @@
 import type { ReactNode } from "react"
+import { PageBackdrop } from "@/components/site/PageBackdrop"
+import { BACKDROP_CODE } from "@/components/site/backdrop-code"
 
 /**
  * The page frame for every accounts page, in the site's style: a kicker, a two-tone heading whose
@@ -6,7 +8,8 @@ import type { ReactNode } from "react"
  */
 export function AuthCard({ title, accent, description, children, wide }: { title: string; accent?: string; description?: ReactNode; children: ReactNode; wide?: boolean }) {
   return (
-    <main id="main-content" className="auth-page">
+    <main id="main-content" className="auth-page has-backdrop">
+      <PageBackdrop code={BACKDROP_CODE.compress} layout="split" />
       <section className={`auth-card${wide ? " auth-card-wide" : ""}`} aria-labelledby="auth-title">
         <header className="auth-card-header">
           <p className="p-kicker auth-kicker">Account</p>

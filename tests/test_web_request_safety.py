@@ -184,14 +184,15 @@ def test_privacy_page_lists_every_analytics_event() -> None:
     privacy = (ROOT / "web" / "src" / "app" / "privacy" / "page.tsx").read_text(encoding="utf-8")
     described = {
         "homepage_view": "homepage",
-        "platform_page_view": "Platform page",
+        "platform_page_view": "Vault page",
         "results_page_view": "Results page",
         "core_docs_clicked": "Core documentation",
         "studio_clicked": "Studio",
-        "platform_beta_clicked": "Platform beta",
+        "platform_beta_clicked": "Vault beta",
         "beta_request_submitted": "beta request form",
         "startup_program_clicked": "startup program",
         "studio_sarvam_answer": "Answer with Sarvam",
+        "pricing_cta_clicked": "plan button",
     }
     assert events == set(described), "describe new analytics events on the privacy page"
     for event, phrase in described.items():

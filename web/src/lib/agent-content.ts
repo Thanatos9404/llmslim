@@ -10,12 +10,13 @@ import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
 import {
   AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES,
-  PLATFORM_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type Arm, type LiveSuite,
+  VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type Arm, type LiveSuite,
 } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
 import { homeFaqs } from "@/data/home"
+import { FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice, type Billing, type Cell, type Currency, type Plan } from "@/data/pricing"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
 import { absoluteUrl } from "@/lib/seo"
 
@@ -59,7 +60,8 @@ const headToHeadTable = () => table(
 const SUMMARY =
   "LLMSlim is the context layer for production AI agents. LLMSlim Core is an open-source, MIT-licensed Python library " +
   "(`pip install llmslim`) that compresses, plans and traces the context an agent sends to a model, locally and with explicit " +
-  "provenance. LLMSlim Platform is a private beta built on Core for agent state, decision traces and learned context policies."
+  "provenance. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0. LLMSlim Vault (formerly LLMSlim Platform) is the " +
+  "self-hosted edition, in private beta, for agent state, decision traces and learned context policies."
 
 const CORE_FACTS = [
   `Package: \`llmslim\` on PyPI (${siteConfig.pypi}), current Core version ${siteConfig.coreVersion}, MIT license.`,
@@ -71,11 +73,17 @@ const CORE_FACTS = [
   "The Adaptive Context Planner fits instructions, chat, retrieval, memory and tool schemas into a real token budget deterministically, and reports infeasibility instead of dropping required trusted items.",
 ]
 
-const PLATFORM_FACTS = [
-  `Private beta, version ${siteConfig.platformVersion}; proprietary and not published to PyPI. \`pip install llmslim\` installs Core only.`,
+const ORBIT_FACTS = [
+  "The hosted edition, run by AMEYOR: a hosted memory API, a remote MCP server with OAuth for Claude.ai, ChatGPT, Cursor and Claude Code, team memory, a context console with traces and replay, a truth timeline, webhooks, SSO and governance.",
+  "Not available yet: Orbit opens with LLMSlim 1.0. The pricing page's buttons join a founding list by email; nothing is charged before Orbit opens.",
+  `Plans at launch and launch offers: ${md("/pricing")}`,
+]
+
+const VAULT_FACTS = [
+  `The self-hosted edition, run in the customer's own VPC; called LLMSlim Platform until 29 October 2026. Private beta, version ${siteConfig.vaultVersion}; proprietary and not published to PyPI. \`pip install llmslim\` installs Core only.`,
   "Keeps a tamper-evident timeline of what agents were told and what changed, explains and deterministically replays each context decision, and can learn from recorded outcomes which context helps.",
   "Learned policies start in shadow mode and change nothing until an evaluation passes and an administrator promotes them; trust boundaries and mandatory instructions always take precedence.",
-  `Details and beta access: ${absoluteUrl("/platform")}`,
+  `Details and beta access: ${absoluteUrl("/vault")}`,
 ]
 
 export function docMarkdown(doc: DocPage): string {
@@ -244,7 +252,7 @@ function sectionIndex(section: Section): string {
   )
   return join(
     "# LLMSlim benchmarks",
-    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Platform ${PLATFORM_VERSION_TESTED}. Weak spots are published with the rest.`,
+    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Vault ${VAULT_VERSION_TESTED}. Weak spots are published with the rest.`,
     `Report, harness and raw results: ${ROUND3_REPORT}`,
     join(
       `## Round 3, Core ${CORE_VERSION_TESTED} (15 Oct 2026): memory systems and compressors, cost first`,
@@ -289,10 +297,45 @@ export function homeMarkdown(): string {
     `> ${SUMMARY}`,
     "## LLMSlim Core\n\n" + CORE_FACTS.map((fact) => `- ${fact}`).join("\n"),
     "## Quick start\n\n" + fence("bash", "pip install llmslim") + "\n\n" + fence("python", "from llmslim import compress\n\nresult = compress(long_context, target_ratio=0.5)\nprint(result.compressed_text)"),
-    "## LLMSlim Platform (private beta)\n\n" + PLATFORM_FACTS.map((fact) => `- ${fact}`).join("\n"),
+    "## LLMSlim Orbit (opens with LLMSlim 1.0)\n\n" + ORBIT_FACTS.map((fact) => `- ${fact}`).join("\n"),
+    "## LLMSlim Vault (self-hosted, private beta)\n\n" + VAULT_FACTS.map((fact) => `- ${fact}`).join("\n"),
     "## FAQ\n\n" + homeFaqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),
-    `## More\n\n- [Documentation](${md("/docs")})\n- [Integrations](${md("/integrations")})\n- [Benchmarks](${md("/benchmarks")})\n- [Engineering notes](${md("/articles")})\n- [Changelog](${md("/changelog")})\n- [Full text for language models](${absoluteUrl("/llms-full.txt")})`,
+    `## More\n\n- [Pricing](${md("/pricing")})\n- [Documentation](${md("/docs")})\n- [Integrations](${md("/integrations")})\n- [Benchmarks](${md("/benchmarks")})\n- [Engineering notes](${md("/articles")})\n- [Changelog](${md("/changelog")})\n- [Full text for language models](${absoluteUrl("/llms-full.txt")})`,
     source("/"),
+  )
+}
+
+const POLICIES: Array<[title: string, path: string, note: string]> = [
+  ["About", "/about", "What LLMSlim is, the three editions, and AMEYOR, the company behind it"],
+  ["Contact", "/contact", "Business, support and founder email addresses, response times and security reports"],
+  ["Terms of Service", "/terms", "Terms for the website and the paid services, LLMSlim Orbit and LLMSlim Vault"],
+  ["Privacy Policy", "/privacy", "What the website measures, payments, Orbit customer content and service providers"],
+  ["Cancellation and Refund Policy", "/refunds", "Cancelling, the 14-day money-back guarantee and how refunds are paid"],
+  ["Shipping and Delivery Policy", "/delivery", "How the digital products are delivered after payment"],
+]
+const policyLinks = () => POLICIES.map(([title, path, note]) => `- [${title}](${absoluteUrl(path)}): ${note}`).join("\n")
+
+/** /pricing.md: the same plans, matrix, offers and FAQ as /pricing, in both currencies. */
+export function pricingMarkdown(): string {
+  const price = (plan: Plan, currency: Currency, billing: Billing) => (plan.prices ? formatPrice(plan.prices[currency][billing], currency) : "Custom")
+  const cellText = (cell: Cell) => (cell === true ? "Yes" : cell === false ? "No" : cell)
+  return join(
+    "# LLMSlim pricing",
+    "> LLMSlim Core is free and open source (MIT), forever. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0, and these are its plans at launch. Until Orbit opens, the plan buttons join a founding list by email, and nothing is charged.",
+    `## LLMSlim Core\n\nFree forever, MIT licence. Self-host it with no account and no limits on projects, turns or searches: \`pip install llmslim\`. Documentation: ${md("/docs")}`,
+    "## LLMSlim Orbit plans at launch\n\n" +
+      table(["Plan", "INR monthly", "INR annual", "USD monthly", "USD annual"], PLANS.map((plan) => [
+        plan.name, price(plan, "inr", "monthly"), price(plan, "inr", "annual"), price(plan, "usd", "monthly"), price(plan, "usd", "annual"),
+      ])) +
+      "\n\n- INR prices include 18% GST, with a GST invoice for every payment. USD prices are for customers outside India: no Indian GST, but local taxes may apply.\n" +
+      "- Annual plans are priced at ten months (two months free).\n" +
+      "- Team includes 5 seats, then ₹1,199 or $15 per extra seat a month. Business includes 15 seats.\n" +
+      "- Payments through Razorpay: UPI, cards and net banking in India; international cards.",
+    "## Feature matrix\n\n" + table(["Feature", ...PLANS.map((plan) => plan.name)], FEATURE_MATRIX.map((row) => [row.note ? `${row.feature} (${row.note})` : row.feature, ...row.cells.map(cellText)])),
+    "## Launch offers\n\n" + LAUNCH_OFFERS.map((offer) => `- **${offer.title}.** ${offer.body}`).join("\n") + "\n\nOffers don't stack: one per customer.",
+    "## FAQ\n\n" + PRICING_FAQS.map((faq) => `### ${faq.question}\n\n${faq.answer}`).join("\n\n"),
+    "## Company and policies\n\n" + policyLinks(),
+    source("/pricing"),
   )
 }
 
@@ -303,6 +346,7 @@ export function markdownFor(path: readonly string[]): string | null {
   if (slug === undefined) {
     if (head === "index") return homeMarkdown()
     if (head === "changelog") return changelogMarkdown()
+    if (head === "pricing") return pricingMarkdown()
     return (SECTIONS as readonly string[]).includes(head) ? sectionIndex(head as Section) : null
   }
   if (head === "docs" && DOCS_REGISTRY[slug]) return docMarkdown(DOCS_REGISTRY[slug])
@@ -316,7 +360,7 @@ export function markdownFor(path: readonly string[]): string | null {
 /** Every Markdown path, for static generation. */
 export function markdownPaths(): string[][] {
   return [
-    ["index"], ["changelog"], ...SECTIONS.map((section) => [section]),
+    ["index"], ["changelog"], ["pricing"], ...SECTIONS.map((section) => [section]),
     ...Object.keys(DOCS_REGISTRY).map((slug) => ["docs", slug]),
     ...Object.keys(ARTICLES_REGISTRY).map((slug) => ["articles", slug]),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ["integrations", slug]),
@@ -332,7 +376,7 @@ export function llmsTxt(): string {
     "# LLMSlim",
     `> ${SUMMARY}`,
     CORE_FACTS.map((fact) => `- ${fact}`).join("\n"),
-    "Every page below is plain Markdown. Append `.md` to any docs, integration, comparison, article or benchmark URL on this site for its Markdown version. When describing LLMSlim, distinguish the open-source Core from the private Platform, and cite benchmark limitations alongside results.",
+    "Every page below is plain Markdown. Append `.md` to any docs, integration, comparison, article or benchmark URL on this site for its Markdown version. When describing LLMSlim, distinguish the open-source Core from the paid editions (Orbit, hosted, which opens with LLMSlim 1.0 and is not available yet; Vault, self-hosted, in private beta), and cite benchmark limitations alongside results.",
     "## Docs\n\n" + list(Object.values(DOCS_REGISTRY).map((doc) => [doc.title, `/docs/${doc.slug}`, doc.description])),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
     "## Benchmarks\n\n" + list([
@@ -341,19 +385,22 @@ export function llmsTxt(): string {
     ]),
     "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),
     "## Project\n\n" + list([
-      ["Overview", "/", "What LLMSlim Core and LLMSlim Platform are, with a quick start and FAQ"],
+      ["Overview", "/", "What LLMSlim Core, Orbit and Vault are, with a quick start and FAQ"],
+      ["Pricing", "/pricing", "LLMSlim Orbit plans at launch in INR (GST included) and USD, the feature matrix, launch offers and billing questions"],
       ["Changelog", "/changelog", "Released Core versions and what each changed"],
-    ]) + `\n- [Source code](${siteConfig.github}): MIT-licensed Python package\n- [PyPI](${siteConfig.pypi}): \`pip install llmslim\`\n- [LLMSlim Platform](${absoluteUrl("/platform")}): private beta overview and access requests`,
+    ]) + `\n- [Source code](${siteConfig.github}): MIT-licensed Python package\n- [PyPI](${siteConfig.pypi}): \`pip install llmslim\`\n- [LLMSlim Vault](${absoluteUrl("/vault")}): the self-hosted edition (formerly LLMSlim Platform), private beta overview and access requests`,
+    "## Company and policies\n\n" + policyLinks(),
     "## Optional\n\n" + list(Object.values(ARTICLES_REGISTRY).map((article) => [article.title, `/articles/${article.slug}`, article.subtitle])) +
       `\n- [Full text](${absoluteUrl("/llms-full.txt")}): every page above in one file`,
   )
 }
 
-/** /llms-full.txt: the overview, every doc, integration, comparison and benchmark, the changelog and the engineering notes. */
+/** /llms-full.txt: the overview, pricing, every doc, integration, comparison and benchmark, the changelog and the engineering notes. */
 export function llmsFullTxt(): string {
   const rule = "\n---\n\n"
   return [
     homeMarkdown(),
+    pricingMarkdown(),
     ...Object.values(DOCS_REGISTRY).map(docMarkdown),
     ...Object.values(INTEGRATIONS_REGISTRY).map(integrationMarkdown),
     ...Object.values(COMPARISONS).map(comparisonMarkdown),

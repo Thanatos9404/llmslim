@@ -47,7 +47,7 @@ export const RESULTS_LAST_UPDATED = "15 Oct 2026"
 export const CORE_VERSION_TESTED = "0.9.0"
 /** Round 2 (long documents and agents): Core 0.8.0, 12 Oct 2026. */
 export const CORE_VERSION_LONG_DOCS = "0.8.0"
-export const PLATFORM_VERSION_TESTED = "0.9.1"
+export const VAULT_VERSION_TESTED = "0.9.1"
 export const ROUND3_REPORT = "https://github.com/Thanatos9404/llmslim/blob/main/benchmarks/live/round3/RESULTS.md"
 
 /** Round 3: held-out test questions, read once, costs per 1,000 questions as run (see METHOD_NOTES). */
@@ -232,10 +232,10 @@ export const AGENT_FINDINGS: AgentFinding[] = [
     what: "1,054 cases where a tool result carries an attacker instruction; success means the agent calls the attacker's tool.",
     rows: [
       { arm: "Native tool-use history", result: "0 of 1,054", detail: "attack success 0.0%; 1 repeated call" },
-      { arm: "Platform 0.9.0 flow (request after the tool results)", result: "0 of 1,054", detail: "attack success 0.0%; 50 repeated calls" },
-      { arm: "Platform 0.9.1 agent turn (continue_turn)", result: "0 of 1,054", detail: "attack success 0.0%; 0 repeated calls" },
+      { arm: "Vault 0.9.0 flow (request after the tool results)", result: "0 of 1,054", detail: "attack success 0.0%; 50 repeated calls" },
+      { arm: "Vault 0.9.1 agent turn (continue_turn)", result: "0 of 1,054", detail: "attack success 0.0%; 0 repeated calls" },
     ],
-    takeaway: "The reader model resisted every attack on its own, so this benchmark shows no defence effect with this model. It did expose an agent-loop gap, now fixed: before agent turns, the Platform put the user's request after the tool results and the model repeated its call 50 times. With continue_turn, the turn is shown in the order it happened and no call is repeated.",
+    takeaway: "The reader model resisted every attack on its own, so this benchmark shows no defence effect with this model. It did expose an agent-loop gap, now fixed: before agent turns, Vault put the user's request after the tool results and the model repeated its call 50 times. With continue_turn, the turn is shown in the order it happened and no call is repeated.",
   },
 ]
 

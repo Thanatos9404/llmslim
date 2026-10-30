@@ -256,7 +256,7 @@ Given a query, Core 0.8 ranks the context's structural units (documents, chat ro
 - **Lexical, the default:** BM25 with light stemming and one round of pseudo-relevance feedback. No model, no download, deterministic output.
 - **Reranker, optional:** \`relevance="semantic"\` adds \`cross-encoder/ms-marco-MiniLM-L-6-v2\`, a 22M-parameter cross-encoder trained on MS MARCO web-search passages only. It rescores the 80 strongest lexical candidates, so it works on top of BM25 rather than replacing it, and it is installed with the \`semantic\` extra.
 
-LLMSlim Platform is a separate, private beta built on Core, for agent state, decision traces and learned context policies. It is proprietary and not on PyPI, and it played no part in the NaturalQuestions comparison. The benchmark README reports it in two places only, LongMemEval-S and InjecAgent, and section 6 quotes both.`,
+LLMSlim Vault (called LLMSlim Platform when this was written) is a separate, self-hosted edition in private beta, built on Core for agent state, decision traces and learned context policies. It is proprietary and not on PyPI, and it played no part in the NaturalQuestions comparison. The benchmark README reports it in two places only, LongMemEval-S and InjecAgent, and section 6 quotes both.`,
       },
       {
         id: "baselines",
@@ -362,12 +362,12 @@ The two baselines were run on NaturalQuestions only. The other suites in the REA
 
 The cut is the most recent sessions for LongMemEval-S, middle truncation for LongBench v2 and plain truncation elsewhere.
 
-- **LongMemEval-S:** with the reranker, the difference from full history is within noise on both samples (−5.6, CI −15.6 to +4.4; +4.4, CI −6.7 to +15.6). Reader cost per 1,000 questions at Haiku 5.5 list prices was $1.45 against $90.72, 62 times lower, but part of that is the higher rate Haiku charges for prompts over 100K tokens, which every full-history prompt is. By token count the reduction is about 14 times (114,006 to 7,984). LLMSlim Platform 0.9.1 with its defaults scored 63.3 on test_a.
+- **LongMemEval-S:** with the reranker, the difference from full history is within noise on both samples (−5.6, CI −15.6 to +4.4; +4.4, CI −6.7 to +15.6). Reader cost per 1,000 questions at Haiku 5.5 list prices was $1.45 against $90.72, 62 times lower, but part of that is the higher rate Haiku charges for prompts over 100K tokens, which every full-history prompt is. By token count the reduction is about 14 times (114,006 to 7,984). LLMSlim Vault (then Platform) 0.9.1 with its defaults scored 63.3 on test_a.
 - **HotpotQA:** full context is better on F1 on both samples: −5.5 points for LLMSlim with the reranker on test_a (CI −10.0 to −1.0) and −5.6 on test_b (CI −9.9 to −1.6), on 43% of the input tokens.
 - **LongBench v1:** lexical LLMSlim has the same macro score as full context on about a third of the input tokens, 5,232 against 15,532 (+0.0, CI −4.5 to +4.6 on test_a; −0.1, CI −4.2 to +4.1 on test_b). MuSiQue is still below full context.
 - **LongBench v2:** with the reranker, −4.4 against full context (CI −11.7 to +2.8); middle truncation to the same budget lost 11.7 (CI −20.6 to −3.3).
 - **SWE-bench Verified Mini** (50 issues, a minimal bash-tool agent): with LLMSlim 0.8.0 compressing command outputs over 800 tokens, prompts averaged 51,332 tokens per task, against 58,117 and 48,126 in two uncompressed runs ($0.0029 per task against $0.0032 and $0.0027). That is little saving: Haiku keeps its context near 8k tokens with targeted commands, so there is not much to remove. The README also lists resolved counts, but the grading reports behind them are not committed yet, so they are left out here.
-- **InjecAgent (Platform):** Haiku 5.5 resisted all 1,054 attacks without help, so this benchmark shows no defence effect with this model.`,
+- **InjecAgent (Vault):** Haiku 5.5 resisted all 1,054 attacks without help, so this benchmark shows no defence effect with this model.`,
       },
       {
         id: "runtime",

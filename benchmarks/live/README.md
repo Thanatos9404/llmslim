@@ -58,7 +58,7 @@ Histories of about 50 sessions (115k tokens). Official judge prompts, judged by 
 | Full history | 82.2 | 72.2 | 114,006 | 90.72 |
 | **LLMSlim 0.8 + reranker** (`compress_documents`) | **76.7** | **76.7** | 7,984 | 1.45 |
 | LLMSlim 0.8, lexical | 68.9 | 67.8 | 7,985 | 1.45 |
-| LLMSlim Platform 0.9.1, defaults | 63.3 | | 7,600 | 1.36 |
+| LLMSlim Vault 0.9.1 (then named Platform), defaults | 63.3 | | 7,600 | 1.36 |
 | LLMSlim 0.7.2 | 25.6 | | 10,482 | 1.86 |
 | Most recent sessions that fit | 14.4 | 14.4 | 6,693 | 1.23 |
 

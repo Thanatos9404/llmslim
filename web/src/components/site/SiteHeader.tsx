@@ -105,6 +105,7 @@ export function SiteHeader() {
         <button ref={menuButton} className="island-menu" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
           <span className="island-menu-lines" aria-hidden="true"><i /><i /></span>
         </button>
+        {!compact && <Link prefetch={false} className="island-signin" href="/sign-in">Sign in</Link>}
         <TrackedLink prefetch={false} className="island-cta" href="/playground" event="studio_clicked" properties={{ location: "header" }} aria-label="Try Studio"><span>Try Studio</span><ArrowRight size={14} /></TrackedLink>
       </m.div>
     </m.div>
@@ -121,6 +122,7 @@ export function SiteHeader() {
         <a href={siteConfig.github} target="_blank" rel="noreferrer"><GitHubMark /> GitHub <ArrowUpRight size={13} /></a>
         <a href={siteConfig.pypi} target="_blank" rel="noreferrer">PyPI <ArrowUpRight size={13} /></a>
         <Link prefetch={false} href="/articles" onClick={() => setOpen(false)}>Engineering notes <ArrowUpRight size={13} /></Link>
+        <Link prefetch={false} className="island-panel-signin" href="/sign-in" onClick={() => setOpen(false)}>Sign in <ArrowRight size={13} /></Link>
       </div>
     </m.div>}</AnimatePresence>
   </header>

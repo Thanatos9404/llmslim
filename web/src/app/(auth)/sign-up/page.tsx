@@ -23,7 +23,7 @@ export default async function SignUpPage({ searchParams }: { searchParams: Searc
   const error = rawError ? (messageForCode(rawError) ?? GENERIC_ERROR) : null
 
   return (
-    <AuthCard title="Create your account" description="Sign up with Google, GitHub or your email address. You can add a passkey afterwards.">
+    <AuthCard title="Create your" accent="account." description="Sign up with Google, GitHub or your email address. You can add a passkey afterwards.">
       {error ? (
         <div className="auth-status auth-status-error" role="alert">
           <p>{error}</p>

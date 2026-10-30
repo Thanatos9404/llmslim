@@ -10,7 +10,7 @@ export default async function ForgotPasswordPage() {
   await connection()
   const features = publicFeatures(getAuthConfig())
   return (
-    <AuthCard title="Reset your password" description="Enter the email you use for LLMSlim and we will send you a link to choose a new password.">
+    <AuthCard title="Reset your" accent="password." description="Enter the email you use for LLMSlim and we will send you a link to choose a new password.">
       {!features.available ? (
         <UnavailableNotice />
       ) : features.passwordReset ? (

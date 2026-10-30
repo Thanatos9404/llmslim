@@ -51,9 +51,11 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "id"> & {
   hint?: ReactNode
   /** Rendered after the input, inside the field (for example a strength meter). */
   after?: ReactNode
+  /** Rendered inside the input's box, at its end (for example a show-password button). */
+  trailing?: ReactNode
 }
 
-export function Field({ label, error, hint, after, className, ...input }: FieldProps) {
+export function Field({ label, error, hint, after, trailing, className, ...input }: FieldProps) {
   const id = useId()
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
@@ -68,7 +70,14 @@ export function Field({ label, error, hint, after, className, ...input }: FieldP
           {hint}
         </p>
       ) : null}
-      <input id={id} className="auth-input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
+      {trailing ? (
+        <div className="auth-input-wrap">
+          <input id={id} className="auth-input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
+          {trailing}
+        </div>
+      ) : (
+        <input id={id} className="auth-input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
+      )}
       {after}
       {error ? (
         <p id={errorId} className="auth-field-error" data-testid="field-error">

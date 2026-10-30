@@ -17,7 +17,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   const token = raw && /^[A-Za-z0-9]{16,64}$/.test(raw) ? raw : null
   const features = publicFeatures(getAuthConfig())
   return (
-    <AuthCard title="Choose a new password">
+    <AuthCard title="Choose a new" accent="password.">
       {!features.available ? (
         <UnavailableNotice />
       ) : token ? (

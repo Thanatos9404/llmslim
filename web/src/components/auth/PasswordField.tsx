@@ -1,8 +1,19 @@
 "use client"
 
 import { useId, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { passwordStrength, PASSWORD_MAX, PASSWORD_MIN } from "@/lib/auth/validation"
 import { Field } from "./primitives"
+
+/** The eye button inside a password input that shows or hides what was typed. */
+export function RevealToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
+  const label = visible ? "Hide password" : "Show password"
+  return (
+    <button type="button" className="auth-reveal" onClick={onToggle} aria-pressed={visible} aria-label={label} title={label}>
+      {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+    </button>
+  )
+}
 
 /** A new-password field with a show/hide toggle and live strength feedback. */
 export function NewPasswordField({ label = "Password", value, onChange, error, context = [], showStrength = true, name = "password" }: { label?: string; value: string; onChange: (value: string) => void; error?: string | null; context?: string[]; showStrength?: boolean; name?: string }) {
@@ -22,12 +33,10 @@ export function NewPasswordField({ label = "Password", value, onChange, error, c
       minLength={PASSWORD_MIN}
       maxLength={PASSWORD_MAX}
       hint={`At least ${PASSWORD_MIN} characters. Passwords found in known data breaches are rejected.`}
+      trailing={<RevealToggle visible={visible} onToggle={() => setVisible((shown) => !shown)} />}
       after={
-        <div className="auth-password-tools">
-          <button type="button" className="auth-button auth-button-quiet auth-toggle" onClick={() => setVisible((shown) => !shown)} aria-pressed={visible}>
-            {visible ? "Hide password" : "Show password"}
-          </button>
-          {showStrength && value ? (
+        showStrength && value ? (
+          <div className="auth-password-tools">
             <div className="auth-strength" data-score={strength.score} id={meterId}>
               <div className="auth-strength-bar" aria-hidden="true">
                 <span style={{ width: `${(strength.score / 4) * 100}%` }} />
@@ -37,8 +46,8 @@ export function NewPasswordField({ label = "Password", value, onChange, error, c
                 {strength.hint ? `. ${strength.hint}` : ""}
               </p>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null
       }
     />
   )

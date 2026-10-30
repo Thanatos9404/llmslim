@@ -18,7 +18,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Sear
   const instance = getAuthInstance()
   if (!instance) {
     return (
-      <AuthCard title="Your account">
+      <AuthCard title="Your" accent="account.">
         <UnavailableNotice />
       </AuthCard>
     )
@@ -40,7 +40,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Sear
   }
 
   return (
-    <AuthCard title="Your account" description="Manage how you sign in, your passkeys and your active sessions." wide>
+    <AuthCard title="Your" accent="account." description="Manage how you sign in, your passkeys and your active sessions." wide>
       <AccountClient view={view} notice={notice} />
     </AuthCard>
   )

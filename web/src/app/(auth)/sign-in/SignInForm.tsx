@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useState, type FormEvent } from "react"
+import { RevealToggle } from "@/components/auth/PasswordField"
 import { Divider, Field, FormStatus, OfflineNotice, SubmitButton, type Status } from "@/components/auth/primitives"
 import { SocialButtons } from "@/components/auth/SocialButtons"
 import { usePasskeySignIn } from "@/components/auth/usePasskeySignIn"
@@ -13,6 +14,7 @@ import { validateEmail } from "@/lib/auth/validation"
 export function SignInForm({ features, next, initialStatus }: { features: PublicAuthFeatures; next: string; initialStatus: Status }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({})
   const [status, setStatus] = useState<Status>(initialStatus)
   const [pending, setPending] = useState(false)
@@ -71,7 +73,8 @@ export function SignInForm({ features, next, initialStatus }: { features: Public
         <Field
           label="Password"
           name="password"
-          type="password"
+          type={passwordVisible ? "text" : "password"}
+          trailing={<RevealToggle visible={passwordVisible} onToggle={() => setPasswordVisible((shown) => !shown)} />}
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}

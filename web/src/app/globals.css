@@ -421,6 +421,12 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 .island-cta:hover { transform:translateY(-1px); }
 .island-cta svg { transition:transform .3s cubic-bezier(.2,.8,.2,1); }
 .island-cta:hover svg { transform:translateX(2px); }
+/* Sign in: hidden unless the root layout marks accounts as configured (data-accounts on <html>). */
+.island-signin { display:none; align-items:center; height:38px; padding:0 11px; border-radius:10px; font-size:13.5px; font-weight:540; letter-spacing:-.01em; color:var(--subtle); white-space:nowrap; transition:color .2s, background .2s; }
+.island-signin:hover { color:var(--ink); background:color-mix(in srgb,var(--ink) 7%,transparent); }
+html[data-accounts] .island-signin { display:inline-flex; }
+.island-panel-foot a.island-panel-signin { display:none; margin-left:auto; color:var(--ink); }
+html[data-accounts] .island-panel-foot a.island-panel-signin { display:inline-flex; }
 .island-panel { pointer-events:auto; position:absolute; top:78px; left:50%; width:min(560px,calc(100vw - 28px)); translate:-50% 0; transform-origin:50% 0; padding:8px; border-radius:18px;
   background:var(--island-solid); border:1px solid var(--island-line); box-shadow:var(--island-shadow); color:var(--ink); }
 .island-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px; margin:0; padding:0; list-style:none; }
@@ -440,6 +446,9 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
   .island-menu { display:grid; }
   .site-header[data-compact][data-where] .brand-word { display:inline; }
   .island-where { display:none; }
+}
+@media (max-width:640px) {
+  html[data-accounts] .island-signin { display:none; }
 }
 @media (max-width:420px) {
   .island-cta span { display:none; }

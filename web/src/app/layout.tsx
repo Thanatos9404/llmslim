@@ -6,6 +6,7 @@ import "./globals.css";
 import { constructMetadata, getStructuredDataGraph, jsonLdScript } from "@/lib/seo";
 import { ErrorReporting } from "@/components/site/Telemetry";
 import { MotionProvider } from "@/components/site/MotionProvider";
+import { getAuthConfig } from "@/lib/auth/config";
 
 const themeController = `(() => {
   const key = "llmslim-theme";
@@ -39,12 +40,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const jsonLdGraph = getStructuredDataGraph();
+  // The header's Sign in link shows only where accounts work (see .island-signin), so a deployment
+  // without a database never sends people to a page that says accounts are unavailable.
+  const accounts = getAuthConfig().unavailable === null;
 
   return (
     <html
       lang="en"
       data-theme="dark"
       data-scroll-behavior="smooth"
+      data-accounts={accounts ? "on" : undefined}
       suppressHydrationWarning
       className="dark h-full font-sans antialiased"
     >

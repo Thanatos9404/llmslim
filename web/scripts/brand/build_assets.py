@@ -155,8 +155,8 @@ def og_image():
     scale = target_w / vb[2]
     lx = (W - target_w) / 2 - vb[0] * scale
     ly = 190 - vb[1] * scale
-    _, tw = text("Memory for AI agents that no LLM writes.", 40, 0, 0, tracking=-0.01)
-    tag, _ = text("Memory for AI agents that no LLM writes.", 40, (W - tw) / 2, 470, tracking=-0.01)
+    _, tw = text("The context layer for production AI agents.", 40, 0, 0, tracking=-0.01)
+    tag, _ = text("The context layer for production AI agents.", 40, (W - tw) / 2, 470, tracking=-0.01)
     _, fw = text("Open source  ·  llmslim.app", 24, 0, 0, tracking=0)
     foot, _ = text("Open source  ·  llmslim.app", 24, (W - fw) / 2, 540, tracking=0)
     grid = "".join(f'<path d="M{x} 0V{H}" stroke="#FFFFFF" stroke-opacity="0.035"/>' for x in range(0, W + 1, 60))

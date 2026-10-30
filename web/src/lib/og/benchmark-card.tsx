@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og"
 import { readFile } from "node:fs/promises"
+import { MARK_BOX, MARK_GRADIENT_X, MARK_ORDER, MARK_PALETTES, MARK_STRANDS } from "@/components/brand/mark-data"
 import { join } from "node:path"
 import { RACE } from "@/data/results-story"
 
@@ -39,7 +40,7 @@ const C = {
   subtle: "#8f8e89",
   line: "#252523",
   track: "#171716",
-  brand: "#ff7a3d",
+  brand: "#00f59b",
   rival: "#5d5c58",
 }
 
@@ -66,12 +67,16 @@ const bars: Bar[] = [
   { name: "Whole history", model: "every token, for reference", score: locomo.full.score, fill: "rgba(237,237,234,0.10)", value: C.inkDim, reference: true },
 ]
 
-/** The site's mark: five lines of context folding into three, with the kept lines in the accent. */
+/** The LLMSlim mark in the dark palette. Plain SVG with fixed gradient ids: the image renderer has no React hooks. */
 function Mark({ size }: { size: number }) {
-  return <svg width={size} height={size} viewBox="0 0 32 32" fill="none" strokeLinecap="round" strokeWidth="2.6">
-    <path d="M4 7h8c5 0 5 6 10 6" stroke={C.ink} /><path d="M4 11.5h8c5 0 5 1.5 10 1.5" stroke={C.ink} /><path d="M4 16h18" stroke={C.ink} />
-    <path d="M4 20.5h8c5 0 5-1.5 10-1.5" stroke={C.ink} /><path d="M4 25h8c5 0 5-6 10-6" stroke={C.ink} />
-    <path d="M22 13h6" stroke={C.brand} /><path d="M22 16h6" stroke={C.brand} /><path d="M22 19h6" stroke={C.brand} />
+  const pal = MARK_PALETTES.dark
+  return <svg width={(size * MARK_BOX.width) / MARK_BOX.height} height={size} viewBox={`${MARK_BOX.x} ${MARK_BOX.y} ${MARK_BOX.width} ${MARK_BOX.height}`}>
+    <defs>
+      {MARK_STRANDS.map((strand, i) => <linearGradient key={i} id={`og-mark-${i}`} gradientUnits="userSpaceOnUse" x1={MARK_GRADIENT_X.from} y1={0} x2={MARK_GRADIENT_X.to} y2={0}>
+        <stop offset={strand.o1} stopColor={pal.left[i]} /><stop offset={strand.o2} stopColor={pal.right[i]} /><stop offset={1} stopColor={pal.end[i]} />
+      </linearGradient>)}
+    </defs>
+    {MARK_ORDER.map((i) => <path key={i} d={MARK_STRANDS[i].d} fill={`url(#og-mark-${i})`} />)}
   </svg>
 }
 
@@ -92,11 +97,11 @@ function BarRow({ bar }: { bar: Bar }) {
 
 export async function benchmarkCard(path: "/benchmarks" | "/results" | "/compare/llmlingua") {
   return new ImageResponse(
-    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "52px 64px 44px", backgroundColor: C.surface, backgroundImage: "radial-gradient(circle at 92% 0%, rgba(255,122,61,0.16) 0%, rgba(255,122,61,0) 46%)", color: C.ink, fontFamily: "Geist" }}>
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "52px 64px 44px", backgroundColor: C.surface, backgroundImage: "radial-gradient(circle at 92% 0%, rgba(124,92,255,0.18) 0%, rgba(124,92,255,0) 46%)", color: C.ink, fontFamily: "Geist" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center" }}>
           <Mark size={34} />
-          <div style={{ display: "flex", marginLeft: 12, fontSize: 28, fontWeight: 600 }}>LLM<span style={{ fontWeight: 400 }}>Slim</span></div>
+          <div style={{ display: "flex", marginLeft: 12, fontSize: 28, fontWeight: 600 }}>LLM<span style={{ color: C.brand }}>Slim</span></div>
         </div>
         <span style={{ fontFamily: "Geist Mono", fontSize: 17, fontWeight: 500, color: C.subtle }}>llmslim.app{path}</span>
       </div>

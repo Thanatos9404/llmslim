@@ -12,6 +12,8 @@ from typing import Any, Awaitable, Callable, Dict, List, Tuple
 
 from ..mcp import CatalogContextPlan, HostToolAdapter, OptionalDependencyError
 
+__all__ = ["HostInvoker", "to_openai_agents_tools"]
+
 HostInvoker = Callable[[str, Dict[str, Any]], Awaitable[Any]]
 
 

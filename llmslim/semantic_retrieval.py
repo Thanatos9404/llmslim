@@ -1,4 +1,4 @@
-"""Optional, offline-only dense and hybrid tool retrieval.
+"""Optional, offline-only dense and hybrid tool retrieval (experimental, research-only).
 
 This module has no import-time ML dependency and does not download models.  It
 is strictly a model-facing ranking aid; authoritative tool schemas remain in

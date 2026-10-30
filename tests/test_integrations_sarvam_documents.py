@@ -16,8 +16,6 @@ import pytest
 
 from llmslim.core import ContextRole
 from llmslim.integrations.sarvam import (
-    DEFAULT_DOCUMENT_LIMITS,
-    DOCUMENT_GUARD_PREFIX,
     AsyncSarvamDocumentSource,
     SarvamAuthenticationError,
     SarvamDocumentSource,
@@ -31,7 +29,11 @@ from llmslim.integrations.sarvam import (
     UsageGuard,
     UsageLimits,
 )
-from llmslim.integrations.sarvam_documents import pdf_page_count
+from llmslim.integrations.sarvam_documents import (
+    DEFAULT_DOCUMENT_LIMITS,
+    DOCUMENT_GUARD_PREFIX,
+    pdf_page_count,
+)
 from llmslim.planning.models import ContextKind
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32

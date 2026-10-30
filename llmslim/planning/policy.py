@@ -8,6 +8,8 @@ from typing import Dict, Tuple, Union
 
 
 class PolicyPreset(str, Enum):
+    """The built-in planner policies, by name."""
+
     BALANCED = "balanced"
     QUALITY_FIRST = "quality_first"
     COST_FIRST = "cost_first"

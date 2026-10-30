@@ -91,29 +91,30 @@ On your machine, from the `web/` folder:
    or in bash: `DATABASE_URL_UNPOOLED="postgresql://..." npm run db:migrate`.
 
 Run `npm run db:migrate` again after any future pull request that adds a file to `web/drizzle/`,
-before (or right after) that deployment goes live.
+before (or right after) that deployment goes live, then run `web/scripts/db/app-role.sql` again (2.3)
+so the site can use the new table.
 
 ### 2.3 Least-privilege app role
 
 The running site should not use the owner role. Create a role that can only read and write the
-accounts tables, and cannot change the schema or edit the audit trail:
+accounts tables, and cannot change the schema or edit the audit trail. The grants live in one file,
+`web/scripts/db/app-role.sql`; CI runs every end-to-end test as this role, so the file always matches
+what the code needs.
 
-1. Neon console (Vercel → **Storage** → `llmslim-accounts` → **Open in Neon**) → **SQL Editor**,
-   database `neondb`.
-2. Run, with the password you generated in step 1 (create the role with SQL, not with the console's
-   **Roles** page: console-created roles are members of `neon_superuser`):
+1. Open a SQL editor on the database as the owner: Neon console (Vercel → **Storage** →
+   `llmslim-accounts` → **Open in Neon**) → **SQL Editor**, database `neondb`. If it cannot connect
+   from your browser, use Vercel → **Storage** → the database → **Query** instead, with **Read-only**
+   switched off; it runs one statement at a time, which is why the file is a single statement.
+2. Paste and run the whole of `web/scripts/db/app-role.sql`. It creates `llmslim_app` without a
+   password and grants it the accounts tables; running it again is safe. (Create the role with SQL,
+   not with the console's **Roles** page: console-created roles are members of `neon_superuser`.)
+3. Set its password, with the one you generated in step 1:
 
    ```sql
-   CREATE ROLE llmslim_app WITH LOGIN PASSWORD 'PASTE_THE_GENERATED_PASSWORD';
-   GRANT CONNECT ON DATABASE neondb TO llmslim_app;
-   GRANT USAGE ON SCHEMA public TO llmslim_app;
-   GRANT SELECT, INSERT, UPDATE, DELETE ON "user", session, account, verification, passkey, rate_limit TO llmslim_app;
-   -- The audit trail can be written and pruned, never edited.
-   GRANT SELECT, INSERT, DELETE ON auth_event TO llmslim_app;
+   ALTER ROLE llmslim_app WITH PASSWORD 'PASTE_THE_GENERATED_PASSWORD';
    ```
 
-   If a later migration adds a table, the pull request will say which `GRANT` to run.
-3. Build the app's connection string from the **pooled** host (the one with `-pooler` in
+4. Build the app's connection string from the **pooled** host (the one with `-pooler` in
    `NEON_DATABASE_URL`):
 
    ```
@@ -247,6 +248,9 @@ Verification and reset links are printed in the `npm run dev` log. To try Google
 put the local client IDs and secrets from steps 4.7 and 5.4 in `.env.local`. A local Postgres works
 too: set `DATABASE_URL` to it. Tests: `npm test` (unit, in-process PGlite) and `npm run build &&
 npm run test:e2e` (Playwright; needs a database at `E2E_DATABASE_URL`, default the `db:local` one).
+To run the end-to-end tests the way CI does, as the least-privilege role, use a real Postgres and also
+set `E2E_APP_DATABASE_URL=postgresql://llmslim_app:any-local-password@HOST:PORT/DB`; the test setup
+then applies `scripts/db/app-role.sql` and fails if any table lacks a grant.
 
 ## Decisions and behaviour worth knowing
 
@@ -273,6 +277,8 @@ npm run test:e2e` (Playwright; needs a database at `E2E_DATABASE_URL`, default t
   it if it may have leaked; set the new value as Sensitive and redeploy.
 - **Rotating the database password**: `ALTER ROLE llmslim_app WITH PASSWORD '...';` in the SQL editor,
   update `DATABASE_URL` in Vercel, redeploy.
+- **A migration that adds a table** also adds its grant to `web/scripts/db/app-role.sql` (CI fails
+  until it does). After running the migration on production, run that file again (2.3).
 - **Rotating OAuth or Resend secrets**: create the new secret at the provider, update Vercel,
   redeploy, then delete the old secret at the provider.
 - **Rate limits** are stored in the `rate_limit` table and need no maintenance. To unblock someone

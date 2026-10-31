@@ -353,10 +353,31 @@ def test_memory_opens_mongodb_from_a_url_and_persists(collection):
     try:
         assert isinstance(via_url.store, MongoStore)
         assert via_url.store.collection == "llmslim_memory"
-        assert "<" not in repr(via_url.store) and "@" not in repr(via_url.store)
+        assert via_url.store.database == _url_database()
+        assert repr(via_url.store) == (
+            f"MongoStore(database={_url_database()!r}, collection='llmslim_memory')"
+        )
     finally:
         via_url.store.close()
         _drop("llmslim_memory")
+    explicit = MongoStore(URL, database="llmslim_test_named", collection=collection)
+    try:  # database= wins over the URL's database
+        explicit.add([item("in the named database")])
+        assert explicit.database == "llmslim_test_named"
+        assert explicit._turns.database.name == "llmslim_test_named"
+    finally:
+        explicit.close()
+        import pymongo
+
+        with pymongo.MongoClient(URL) as client:
+            client.drop_database("llmslim_test_named")
+
+
+def _url_database() -> str:
+    import pymongo
+
+    with pymongo.MongoClient(URL) as client:
+        return _database(client).name
 
 
 @needs_db

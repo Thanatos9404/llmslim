@@ -57,8 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Memory("mongodb://...")` and `mongodb+srv://` URLs (Atlas) use it, and so do `llmslim serve --db`,
     `llmslim mcp --db` and `llmslim import --db`. Several processes or machines can share one memory on MongoDB 6.0+,
     standalone or as a replica set. No transactions are needed.
-  - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database comes from the
-    URL, `database=...` or `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
+  - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database is
+    `database=...`, else the URL's, else `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
     (`llmslim_memory`, or `collection=...`).
   - It creates an index per scope field and a unique index on the order number when it opens, and creating them
     again changes nothing, so several processes can start at once. A collection written by a newer llmslim is

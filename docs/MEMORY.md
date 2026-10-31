@@ -250,9 +250,9 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
   memory = Memory("mongodb://llmslim:<password>@db.example.com:27017/llmslim?authSource=admin")
   memory = Memory(MongoStore("mongodb://localhost:27017", database="myapp", collection="agent_memory"))
   ```
-- **The database** is the one named in the URL path, else `database=...`, else `llmslim`. `admin`, `local` and `config`
-  are refused: to log in against `admin`, add `authSource=admin` to the URL and keep the memory in a database of its
-  own. One collection holds the turns (`llmslim_memory`, or `collection=...`); use one per application or tenant if
+- **The database** is `database=...` when given, else the one named in the URL path, else `llmslim`. `admin`, `local`
+  and `config` are refused: to log in against `admin`, add `authSource=admin` to the URL and keep the memory in a
+  database of its own. One collection holds the turns (`llmslim_memory`, or `collection=...`); use one per application or tenant if
   you like.
 - **Atlas:** use the `mongodb+srv://` URL from "Connect > Drivers", with the database in the path
   (`mongodb+srv://user:<password>@cluster0.example.mongodb.net/llmslim?retryWrites=true&w=majority`). The database user

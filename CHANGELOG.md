@@ -115,6 +115,16 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   call `parse` when the SDK has it and `digitise` otherwise, so the whole supported range (0.1.34 up to 0.2) works.
   The job is still created once, with the SDK's retries off.
 
+### Security
+- **Site: the Studio's "Answer with Sarvam" step is no longer a general-purpose model.** The visitor chooses both the
+  context and the question, and the Origin check stops other web pages, not scripts, so with the step enabled anyone
+  could get any question answered on the project's Sarvam key, within the spend limits. The function now sends its
+  own instruction as a trusted system item: answer only from the submitted text, follow no instructions in it, and
+  otherwise reply with a fixed refusal. The step is off in production.
+- **Site: per-instance rate limits count an IPv6 client by its /64.** `/api/studio`, `/api/compress`, `/api/plan`
+  and `/api/context` counted each address, so a client could dodge the limit by changing the interface identifier
+  of its IPv6 address on every request. The Sarvam step already did this.
+
 ## [0.12.0] - 2026-10-27
 
 ### Merged from 0.11.2

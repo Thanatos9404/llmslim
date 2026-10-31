@@ -182,7 +182,7 @@ refuses a store with a newer schema rather than misreading it.
 
 | Variable | Read by | Status |
 |---|---|---|
-| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS` | `llmslim serve` | Stable |
+| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` | Stable |
 | `LLMSLIM_MEMORY_DB` | `llmslim serve`, `llmslim mcp` | Stable |
 | `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |

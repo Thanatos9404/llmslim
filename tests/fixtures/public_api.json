@@ -112,6 +112,7 @@
         "--allow-remote": {
           "flag": true
         },
+        "--allowed-host": {},
         "--db": {},
         "--host": {},
         "--json": {
@@ -140,6 +141,7 @@
     },
     "llmslim serve": {
       "arguments": {
+        "--allowed-host": {},
         "--api-key": {},
         "--budget": {},
         "--db": {},
@@ -213,6 +215,7 @@
   },
   "environment": [
     "LLMSLIM_AGENT_ID",
+    "LLMSLIM_ALLOWED_HOSTS",
     "LLMSLIM_API_KEYS",
     "LLMSLIM_HOST",
     "LLMSLIM_MEMORY_DB",
@@ -3846,7 +3849,7 @@
       "names": {
         "create_app": {
           "kind": "function",
-          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000) -> Any",
+          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000, allowed_hosts: Optional[Sequence[str]] = None) -> Any",
           "status": "stable"
         },
         "main": {

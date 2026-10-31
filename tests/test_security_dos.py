@@ -26,6 +26,12 @@ from llmslim.tokens import count_tokens
 BOUND = 5.0  # seconds; the fixed code takes well under one
 
 
+@pytest.fixture(autouse=True, scope="module")
+def _warm():
+    # Load the tokenizer and the lazily imported modules first, so each bound times only the work.
+    compress("Warm the tokenizer up. Then time only the work.", target_ratio=0.5, query="warm")
+
+
 def _seconds(function, *args, **kwargs) -> float:
     started = time.perf_counter()
     function(*args, **kwargs)
@@ -68,22 +74,22 @@ def test_content_detection_is_linear(text):
 
 def test_planning_hostile_structure_stays_bounded():
     # The website's /api/plan and /api/context take 96,000 characters; "[" took 12 s at 90,000.
-    for unit in ("[", "\n", "<a "):
-        text = unit * (45_000 // len(unit))
-        assert (
-            _seconds(
-                plan_context,
-                messages=[{"role": "user", "content": text}],
-                documents=[text],
-                query="what changed?",
-                model="sarvam-105b",
-                max_input_tokens=8192,
-                reserve_output_tokens=1024,
-                safety_margin_tokens=128,
-                policy="balanced",
-            )
-            < 3 * BOUND
+    def plan(text: str) -> float:
+        return _seconds(
+            plan_context,
+            messages=[{"role": "user", "content": text}],
+            documents=[text],
+            query="what changed?",
+            model="sarvam-105b",
+            max_input_tokens=8192,
+            reserve_output_tokens=1024,
+            safety_margin_tokens=128,
+            policy="balanced",
         )
+
+    plan("Warm the planner up. It loads lazily.")
+    for unit in ("[", "\n", "<a "):
+        assert plan(unit * (45_000 // len(unit))) < BOUND, unit
 
 
 def test_list_item_priority_patterns_are_linear():

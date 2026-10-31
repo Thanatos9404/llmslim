@@ -10,7 +10,7 @@ JSON API mirrors :class:`llmslim.memory.Memory`:
 ``PATCH  /v1/memories/{id}``          correct its ``content`` or ``metadata``
 ``DELETE /v1/memories/{id}``          delete one message
 ``DELETE /v1/memories?user_id=...``   delete a whole scope
-``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens
+``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens (``explain`` says why)
 ``POST   /v1/context/fit``            shrink ``text`` to ``budget`` tokens around an optional ``query``
 ``GET    /healthz``                   liveness, without authentication
 ====================================  =====================================================================
@@ -235,6 +235,9 @@ def create_app(
             raise _HTTPError(
                 400, "invalid_request", f"relevance must be one of {', '.join(_RELEVANCE)}"
             )
+        explain = payload.get("explain")
+        if explain is not None and not isinstance(explain, bool):
+            raise _HTTPError(400, "invalid_request", "explain must be true or false")
         context = await run_in_threadpool(
             lambda: memory.search(
                 payload.get("query", ""),
@@ -242,6 +245,7 @@ def create_app(
                 relevance=relevance,
                 since=payload.get("since"),
                 until=payload.get("until"),
+                explain=bool(explain),
                 **_scope(payload),
             )
         )

@@ -63,7 +63,7 @@ limit, and text that isn't valid Unicode (a lone surrogate such as `"\ud800"`) a
 | `PATCH /v1/memories/{id}` | `content` and/or `metadata` | the updated message |
 | `DELETE /v1/memories/{id}` | | `{"deleted": 1}` |
 | `DELETE /v1/memories` | `?user_id=` (or `agent_id`, `run_id`; one is required) | `{"deleted": n}` |
-| `POST /v1/memories/search` | `query`, the scope, optional `budget`, `relevance` (`"lexical"` or `"semantic"`), `since`, `until` | `{"text", "tokens", "budget", "history_tokens", "sessions_total", "sessions_kept", "turns": [...]}` |
+| `POST /v1/memories/search` | `query`, the scope, optional `budget`, `relevance` (`"lexical"` or `"semantic"`), `since`, `until`, `explain` (`true` or `false`) | `{"text", "tokens", "budget", "history_tokens", "sessions_total", "sessions_kept", "turns": [...]}`, and `"explanation"` with `explain` |
 | `POST /v1/context/fit` | `text`, `budget` (default 2000), optional `query` | `{"text", "tokens", "original_tokens"}`, within the budget for any text |
 | `GET /v1/info` | | name, version and budgets |
 | `GET /healthz` | | `{"status": "ok"}`, without a key |
@@ -72,6 +72,7 @@ The fields mean what they mean in Python (see [MEMORY.md](MEMORY.md)):
 - `since` and `until` are ISO 8601 times.
 - Messages are stored word for word.
 - `search` returns all of a scope's history when it fits the budget, and otherwise the turns that answer the query.
+- `"explain": true` adds `explanation` to a search: why each stored turn and each section was kept, cut or left out, as `SearchExplanation.to_dict()` gives it (see [MEMORY.md](MEMORY.md#why-a-turn-was-kept-or-left-out)). The rest of the response is the same.
 
 ```bash
 curl -s localhost:8080/v1/memories -H 'content-type: application/json' \

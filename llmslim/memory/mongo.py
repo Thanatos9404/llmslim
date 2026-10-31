@@ -299,7 +299,9 @@ def _text(value: Any, name: str) -> str:
     if not isinstance(value, str):
         raise TypeError(f"{name} must be a string, not {type(value).__name__}")
     if not value.isascii():
-        value.encode("utf-8")  # a lone surrogate raises UnicodeEncodeError (a ValueError), as in SQLiteStore
+        value.encode(
+            "utf-8"
+        )  # a lone surrogate raises UnicodeEncodeError (a ValueError), as in SQLiteStore
     return value
 
 
@@ -374,7 +376,9 @@ def _metadata_fields(metadata: Mapping[str, Any]) -> Dict[str, Any]:
     """
     if not isinstance(metadata, Mapping):
         raise TypeError(f"metadata must be a mapping, not {type(metadata).__name__}")
-    text = _text(json.dumps(dict(metadata), ensure_ascii=False), "metadata")  # keys and values, at any depth
+    text = _text(
+        json.dumps(dict(metadata), ensure_ascii=False), "metadata"
+    )  # keys and values, at any depth
     value = json.loads(text)
     return {"metadata": value} if _plain(value) else {"metadata_json": text}
 

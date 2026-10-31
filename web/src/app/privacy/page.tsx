@@ -4,13 +4,13 @@ import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
   title: "Privacy Policy",
-  description: "What llmslim.app measures and never collects, how Studio handles your text, how payments through Razorpay work, how LLMSlim Orbit will treat your content, and the service providers we use.",
+  description: "What llmslim.app measures and never collects, what an llmslim.app account stores, how Studio handles your text, how payments through Razorpay work, how LLMSlim Orbit will treat your content, and the service providers we use.",
   path: "/privacy",
 })
 
 export default function PrivacyPage() {
   const { company } = siteConfig
-  return <PolicyPage title="Privacy Policy" lede={<>This policy covers the llmslim.app website, Studio, payments, and LLMSlim Orbit once it opens. LLMSlim is a product of {company.name}, {company.kind}, based in {company.location}. The open-source <code>llmslim</code> package sends nothing to us.</>}>
+  return <PolicyPage title="Privacy Policy" lede={<>This policy covers the llmslim.app website, llmslim.app accounts, Studio, payments, and LLMSlim Orbit once it opens. LLMSlim is a product of {company.name}, {company.kind}, based in {company.location}. The open-source <code>llmslim</code> package sends nothing to us.</>}>
     <h2>What the website measures</h2>
     <ul>
       <li><strong>Vercel Web Analytics and Speed Insights.</strong> Aggregate page views and performance metrics, without cookies.</li>
@@ -37,8 +37,21 @@ export default function PrivacyPage() {
       <li><strong>Answer with Sarvam (when available).</strong> Only when you press the button, our server sends the compressed context and your question to <a href="https://www.sarvam.ai/privacy-policy" target="_blank" rel="noreferrer">Sarvam AI</a>’s <code>sarvam-105b</code> model and returns its answer to you. We do not store the context, the question or the answer; Sarvam processes them under its own terms and privacy policy. To keep this paid step within its limits, the server keeps request, token and cost counters keyed by one-way keyed hashes of your network address (for IPv6, its /64 prefix) and of a random session ID, never the raw values. The cost shown is an estimate from LLMSlim’s dated price table, not Sarvam’s invoice.</li>
     </ul>
 
+    <h2>Your llmslim.app account</h2>
+    <p>You can use the website and Studio without an account. If you create one:</p>
+    <ul>
+      <li><strong>What we keep.</strong> Your name, your email address and whether you have confirmed it. If you sign in with Google or GitHub, the ID that provider gives your account and the address of your profile picture there. If you set a password, a salted scrypt hash of it, never the password itself. For each passkey, its public key, credential ID, device type and the name you give it.</li>
+      <li><strong>Sessions.</strong> For each device you are signed in on, a random session token, when it expires and your browser’s user agent, so the account page can show the device. No IP address. A session ends about 7 days after you last used it, and expired sessions are deleted.</li>
+      <li><strong>Security log.</strong> Sign-ins, failed sign-ins, sign-outs and changes to how you sign in, each with the time, the method, your browser’s user agent and a keyed one-way hash of your IP address, never the address itself. We keep these entries for 180 days, also after you delete your account, so that misuse of an account can be investigated.</li>
+      <li><strong>Abuse limits.</strong> To stop password guessing and email flooding, we count attempts per network and per email address. The counters are keyed by one-way keyed hashes, never readable addresses, and are deleted after their window, which is at most a day, has ended.</li>
+      <li><strong>From Google and GitHub.</strong> We ask Google for your name, email address and profile picture, and GitHub for your profile and email addresses, so that we use your primary, verified address. We discard the access tokens they send and never act on your Google or GitHub account.</li>
+      <li><strong>Breached passwords.</strong> When you choose a password, the first 5 characters of its SHA-1 hash are sent to the <a href="https://haveibeenpwned.com/Passwords" target="_blank" rel="noreferrer">Have I Been Pwned</a> range service, which cannot tell which password it was. A password found in a known breach is refused.</li>
+      <li><strong>Emails we send.</strong> Only what the account needs: a link to confirm your address or reset your password, and a notice when your password changes, when someone tries to sign up with your address, or when your account is deleted. No marketing email, and no tracking of opens or clicks.</li>
+      <li><strong>Deleting your account.</strong> The account page deletes your account, sign-in methods, passkeys and sessions at once. Only the security log entries remain, until they are 180 days old.</li>
+    </ul>
+
     <h2>In your browser</h2>
-    <p>We store your light or dark theme preference, and whether you have finished the Studio tour, in local storage. If you use Answer with Sarvam, the server also sets one HttpOnly cookie holding a random session ID for 24 hours, used only for that step’s rate limits. Nothing else.</p>
+    <p>We store your light or dark theme preference, and whether you have finished the Studio tour, in local storage. If you use Answer with Sarvam, the server also sets one HttpOnly cookie holding a random session ID for 24 hours, used only for that step’s rate limits. If you sign in, the site sets HttpOnly cookies for your session, for as long as it lasts, and, while a sign-in is in progress, short-lived ones that protect the Google, GitHub or passkey step. Nothing else.</p>
 
     <h2>Emails you send us</h2>
     <p>The founding-list, beta and contact buttons on this site open your own email app; the site itself sends and stores nothing. When you email us, we keep your message and address to reply and to follow up on what you asked, and, if you joined the founding list, to tell you when LLMSlim Orbit opens. We do not sell or share them.</p>
@@ -62,6 +75,10 @@ export default function PrivacyPage() {
     <p>These companies process data for us today:</p>
     <ul>
       <li><strong>Vercel</strong> hosts the website and the Studio functions, and provides Web Analytics and Speed Insights.</li>
+      <li><strong>Neon</strong> hosts the accounts database, on Amazon Web Services in the United States.</li>
+      <li><strong>Resend</strong> sends account emails.</li>
+      <li><strong>Google</strong> and <strong>GitHub</strong> confirm who you are, only when you choose to sign in with them.</li>
+      <li><strong>Have I Been Pwned</strong> answers the breached-password check described above.</li>
       <li><strong>Sentry</strong> receives error reports, when enabled.</li>
       <li><strong>Mixpanel</strong> receives the product events above, when enabled.</li>
       <li><strong>Razorpay</strong> processes payments.</li>

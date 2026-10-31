@@ -585,6 +585,12 @@ def test_bom_and_crlf_are_read(tmp_path):
     assert import_history(export, Memory()).imported == 7
 
 
+def test_the_windows_saved_transcript_fixture_keeps_its_bom_and_crlf():
+    # .gitattributes keeps this fixture's bytes as they are, so the Claude Code tests read a BOM and CRLF too.
+    raw = (CLAUDE_CODE / "projects" / "-home-dev-notes" / f"{SESSION_2}.jsonl").read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf") and raw.count(b"\r\n") == raw.count(b"\n") == 3
+
+
 def test_utf16_is_refused_with_a_clear_message(tmp_path):
     path = tmp_path / "ps.jsonl"
     path.write_bytes(json.dumps({"role": "user", "content": "hi"}).encode("utf-16"))

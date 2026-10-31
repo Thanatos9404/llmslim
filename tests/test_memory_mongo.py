@@ -234,10 +234,12 @@ def test_driver_errors_that_echo_the_url_lose_its_secrets(monkeypatch):
         MongoStore(url)
     error = caught.value
     _secretless(error, "hunter%3A2", "hunter:2", "s3cr3t")
-    assert "<redacted>" in str(error) and "db.example.com" in str(error)
-    assert (
-        error.__cause__ is None and error.__context__ is None
-    )  # the original message is not chained
+    assert str(error) == (  # the rest of the message is kept
+        "cannot use mongodb://shop:<redacted>@db.example.com/app?tlsCertificateKeyFilePassword=<redacted> "
+        "(password <redacted>, key <redacted>)"
+    )
+    # The original message is not chained to it.
+    assert error.__cause__ is None and error.__context__ is None
 
 
 def test_an_error_that_cannot_be_rebuilt_becomes_a_runtime_error():

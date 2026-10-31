@@ -143,8 +143,15 @@ All runs used Claude Haiku 5.5 with adaptive thinking, through the Anthropic API
 ## Security
 
 - **Network:** the proxy listens on 127.0.0.1 and refuses any other interface unless you pass `--allow-remote`.
+- **Web pages can't use it.** The proxy answers only requests addressed to this machine by name (`localhost`,
+  `127.0.0.1`, `[::1]`) that no other web page sent. A page you open can't reach it through DNS rebinding or post to
+  it across sites; such requests get a 403. Agents send no `Origin` and are not affected. If you reach the proxy by
+  another name, such as `host.docker.internal` from a container, add it with `--allowed-host`. With
+  `--allow-remote` on another interface, every name is accepted unless you set `--allowed-host`.
+- **Fixed upstream:** the upstream is set when the proxy starts (`--upstream`, `LLMSLIM_PROXY_UPSTREAM` or
+  `ANTHROPIC_BASE_URL`). A request chooses only the path and query, so the proxy is not an open relay.
 - **Credentials:** your credentials (`x-api-key` or `Authorization`, including a Claude subscription login) are
-  forwarded to the upstream API unchanged. They are never stored or logged, and logs carry only counts.
+  forwarded to that upstream unchanged and nowhere else. They are never stored or logged, and logs carry only counts.
 - **Stored output:** tool output, both original and compressed, is stored in `~/.llmslim/proxy.db` on your machine.
   It can contain whatever your tools printed, so treat the file like your shell history.
 - **Fails open:** if a request can't be rewritten, the original is forwarded. The proxy never breaks a request it

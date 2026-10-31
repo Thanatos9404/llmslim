@@ -224,7 +224,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file or postgresql:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file, postgresql:// or mongodb:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--user-id",

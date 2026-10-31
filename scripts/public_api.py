@@ -111,6 +111,7 @@ INTERNAL = frozenset(
         "llmslim.hosted",
         "llmslim.integrations",
         "llmslim.integrations.gptme_plugin",
+        "llmslim.memory.mongo",
         "llmslim.memory.postgres",
         "llmslim.memory.stores",
         "llmslim.modes",

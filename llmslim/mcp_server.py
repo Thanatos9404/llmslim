@@ -13,9 +13,9 @@ steered by injected text cannot read or delete another user's memory. Recalled t
 instructions.
 
 ``llmslim mcp --transport http`` serves the same tools over MCP's Streamable HTTP transport, so several machines can
-share one memory. It follows ``llmslim serve``: bearer keys (``--api-key``, ``LLMSLIM_API_KEYS``), no other interface
-than loopback without a key, and a keyless server answers only requests addressed to this machine that no other web
-page sent. Every key reaches the one scope the server was started with.
+share one memory. It follows ``llmslim serve``: bearer keys (``--api-key``, ``LLMSLIM_API_KEYS``), no interface but
+loopback without a key, and a keyless server answers only requests addressed to this machine that no other web page
+sent. Every key reaches the one scope the server was started with.
 """
 
 from __future__ import annotations

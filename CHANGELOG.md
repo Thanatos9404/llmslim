@@ -16,6 +16,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
 ### Added
+- **`llmslim mcp --transport http` shares one memory across machines.** The MCP server also speaks MCP's Streamable
+  HTTP transport, so the clients on a laptop, a desktop and a CI runner can use one memory. It follows
+  `llmslim serve`:
+  - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_API_KEYS`), compared in constant time
+    against every key. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never logged
+    or echoed. Without a key, the server refuses any interface but loopback;
+  - without a key, it answers only requests addressed to this machine by name that no other web page sent, so DNS
+    rebinding and cross-site requests get a 403. `--allowed-host` and `LLMSLIM_ALLOWED_HOSTS` add names, or pin them
+    on a server with keys;
+  - one server holds one scope, the `--user-id` and `--agent-id` it was started with, and every key reaches that
+    scope and nothing else. No tool takes a user or agent id, as over stdio. For several people, run one server
+    each; they can share a database;
+  - it is stateless and answers in JSON, so it runs behind any reverse proxy or load balancer, and a restart doesn't
+    break connected clients. Bodies are capped at 1 MB (413), malformed JSON-RPC is a 400, `GET /healthz` answers
+    without a key, and requests still running at shutdown get 10 seconds to finish;
+  - `--host` (`LLMSLIM_MCP_HOST`, default 127.0.0.1), `--port` (`LLMSLIM_MCP_PORT`, default 8000) and `--path`
+    (default `/mcp`). The startup line prints the URL and the scope, never a key.
+
+  stdio stays the default and is unchanged; the HTTP options are refused with it. `docs/MCP.md` shows the setup
+  behind TLS, the client configuration for Claude Code, VS Code and Cursor, and who can read whose memory. The HTTP
+  transport is experimental in its first release (`docs/API_STABILITY.md`).
 - **`Memory.search(..., explain=True)` says why each turn was kept, cut or left out.** The context carries an
   `explanation` (`SearchExplanation`), built from what the search decided:
   - for every stored turn of the scope, those outside the time window included: its pool, `status` (`kept`,

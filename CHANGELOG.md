@@ -16,6 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
 ### Added
+- **An OpenAI-compatible chat endpoint in `llmslim serve` that adds memory to any client (experimental).** Start the
+  server with `--upstream-url` (an OpenAI-compatible base URL) and the upstream's key in `LLMSLIM_UPSTREAM_API_KEY`,
+  and `POST /v1/chat/completions` works with any client that takes an OpenAI base URL: the OpenAI SDKs, and voice
+  platforms with a custom LLM setting. `docs/SERVER.md` has curl, SDK and voice-platform examples.
+  - **Scope** comes from `X-LLMSlim-User-Id` (or the request's `user` field), `X-LLMSlim-Agent-Id` and
+    `X-LLMSlim-Session-Id`. Without a user or agent id, memory is not touched and the request passes through.
+  - **Recall:** the latest user message searches the user's memory within `--memory-budget` tokens (default 1000),
+    and what it finds goes in one user message just before that message, framed as data in an untrusted
+    `<llmslim_context>` block. Turns the request already carries are left out. Nothing the client sent is edited or
+    reordered, but the recalled message isn't in the history the client re-sends, so each request misses the prompt
+    cache on its last turn. `--store-only` (or `X-LLMSlim-Memory: store-only`) keeps every request byte-identical.
+  - **Storage:** after a successful answer, the new user turn and the reply's text are stored word for word, once.
+    Nothing is stored when the upstream fails, a stream breaks off, or the client goes away mid-stream.
+  - **Streams** pass through chunk by chunk. The upstream connection is closed however a stream ends.
+  - **Security:** the upstream is fixed by the server, so no request field or header can redirect it, and redirects
+    are not followed. The client's key is never forwarded, and the upstream's key never reaches answers, errors or
+    logs. Memory failures never fail the call.
+  - `GET /v1/models` lists the upstream's models. The `server` extra now installs httpx.
 - **`Memory.search(..., explain=True)` says why each turn was kept, cut or left out.** The context carries an
   `explanation` (`SearchExplanation`), built from what the search decided:
   - for every stored turn of the scope, those outside the time window included: its pool, `status` (`kept`,

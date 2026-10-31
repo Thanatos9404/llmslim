@@ -5,7 +5,7 @@ The snapshot (``tests/fixtures/public_api.json``) records what ``docs/API_STABIL
 - **Python**: for every public module, each name in ``__all__`` with its kind and signature; for classes, their
   bases and public members, and for enums, their values.
 - **CLI**: the arguments of every ``llmslim`` command.
-- **HTTP**: the routes and methods of ``llmslim serve``.
+- **HTTP**: the routes and methods of ``llmslim serve`` (its experimental routes apart).
 - **MCP**: the tools of ``llmslim mcp``, with their input and output schemas and hints.
 - **Entry points** and the ``LLMSLIM_*`` **environment variables** the package reads.
 
@@ -69,7 +69,7 @@ MODULES: Dict[str, Dict[str, Any]] = {
     },
     "llmslim.mcp": {"status": STABLE},
     "llmslim.mcp_server": {"status": STABLE},
-    "llmslim.server": {"status": STABLE},
+    "llmslim.server": {"status": STABLE, "experimental": ["ChatUpstream"]},
     "llmslim.integrations.exa": {"status": STABLE},
     "llmslim.integrations.gptme": {"status": STABLE},
     "llmslim.integrations.haystack": {"status": STABLE},
@@ -161,6 +161,14 @@ COMMANDS: Tuple[Tuple[str, str, str], ...] = (
     ("llmslim.proxy.cli", "build_stats_parser", EXPERIMENTAL),
     ("llmslim.proxy.cli", "build_wrap_parser", EXPERIMENTAL),
 )
+
+#: Experimental flags of otherwise stable commands, by command. Keep this in step with docs/API_STABILITY.md.
+EXPERIMENTAL_FLAGS: Dict[str, Tuple[str, ...]] = {
+    "llmslim serve": ("--memory-budget", "--store-only", "--upstream-timeout", "--upstream-url"),
+}
+
+#: Experimental routes of ``llmslim serve``, whose other routes are stable.
+EXPERIMENTAL_ROUTES = frozenset({"/v1/chat/completions", "/v1/models"})
 
 #: Modules whose ``LLMSLIM_*`` variables configure the hosted demo, not the package.
 _ENV_EXCLUDED = ("llmslim/hosted.py",)
@@ -439,7 +447,10 @@ def cli_surface() -> Dict[str, Any]:
     commands = {}
     for module, builder, status in COMMANDS:
         parser = getattr(importlib.import_module(module), builder)()
-        commands[parser.prog] = {"status": status, **_arguments(parser)}
+        described = _arguments(parser)
+        for flag in EXPERIMENTAL_FLAGS.get(parser.prog, ()):
+            described["arguments"][flag]["status"] = EXPERIMENTAL
+        commands[parser.prog] = {"status": status, **described}
     return dict(sorted(commands.items()))
 
 
@@ -449,10 +460,15 @@ def http_surface() -> Dict[str, Any]:
     from llmslim.memory import Memory
     from llmslim.server import create_app
 
-    routes = {}
+    routes, experimental = {}, {}
     for route in create_app(Memory()).routes:
-        routes[route.path] = sorted(route.methods or ())
-    return {"status": STABLE, "routes": dict(sorted(routes.items()))}
+        target = experimental if route.path in EXPERIMENTAL_ROUTES else routes
+        target[route.path] = sorted(route.methods or ())
+    return {
+        "status": STABLE,
+        "routes": dict(sorted(routes.items())),
+        "experimental_routes": dict(sorted(experimental.items())),
+    }
 
 
 def _schema(node: Any) -> Any:

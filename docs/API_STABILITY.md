@@ -89,7 +89,7 @@ and the attributes declared on the class (such as dataclass fields).
 | `llmslim.tools` | Tool-schema contracts: canonical JSON, fingerprints, provider adapters, inspection |
 | `llmslim.mcp` | MCP catalog ingestion and contract-safe catalog planning |
 | `llmslim.mcp_server` | `build_server`, `fit_text` and the `llmslim mcp` entry point |
-| `llmslim.server` | `create_app` and the `llmslim serve` entry point |
+| `llmslim.server` | `create_app` and the `llmslim serve` entry point (`ChatUpstream` and the `chat` argument of `create_app` are [experimental](#experimental)) |
 
 `llmslim` also exports three helpers for integrators that build their own context or caching on top of the planner:
 `render_context_item` renders an item in its provenance boundary exactly as the planner does, `rendered_token_count`
@@ -132,6 +132,7 @@ each time, and a deprecation period is given when it is practical.
 | What | Why it is experimental |
 |---|---|
 | `llmslim.proxy`, and the `llmslim proxy` and `llmslim wrap` commands | They sit on the Anthropic Messages wire format and on Claude Code's traffic, which change without notice, and they are new in 0.11. |
+| The chat endpoint of `llmslim serve`: `POST /v1/chat/completions` and `GET /v1/models`, their `X-LLMSlim-*` request and response headers, the `--upstream-url`, `--memory-budget`, `--store-only` and `--upstream-timeout` flags, `llmslim.server.ChatUpstream` and the `chat` argument of `create_app` | It is new, it sits on the OpenAI chat-completions format and on how voice platforms call a custom LLM, and where recalled memory goes in a request may change once it is measured in real use. |
 | `llmslim.tool_retrieval` and `llmslim.semantic_retrieval` | Research-only tool retrieval, documented as such since 0.4. |
 | In `llmslim.tools`: `rank_tools`, `select_tools`, `plan_tool_context`, `RankedTool`, `ToolSelection`, `ToolContextPlan` and `LazyToolRegistry` | Ranking and showing a model fewer tools is research-only. The contract utilities in the same module are stable. |
 | `PlanMode.SELECTIVE`, in `llmslim.mcp` and through `plan_mcp_context` | Research-only; it already needs `experimental=True`. The other modes are stable. |
@@ -162,9 +163,12 @@ Everything else is internal and may change in any release:
 
 **Command line.** The commands `llmslim` (compress), `llmslim context`, `llmslim plan`, `llmslim tools`,
 `llmslim mcp` and `llmslim serve`, and their flags and arguments, are stable. `--json` output may gain fields but
-keeps the ones it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are experimental.
+keeps the ones it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are experimental, and
+so are the chat endpoint's flags of `llmslim serve` (`--upstream-url`, `--memory-budget`, `--store-only`,
+`--upstream-timeout`).
 
-**HTTP (`llmslim serve`).** The routes and methods (`/healthz` and everything under `/v1`), the request fields, the
+**HTTP (`llmslim serve`).** The routes and methods (`/healthz` and everything under `/v1` except the experimental
+chat endpoint, `/v1/chat/completions` and `/v1/models`), the request fields, the
 response fields and the error `code` values in [SERVER.md](SERVER.md) are stable. A minor release may add routes,
 optional request fields and response fields. An incompatible change would come under `/v2`, with `/v1` kept until
 the next major release.
@@ -187,6 +191,7 @@ refuses a store with a newer schema rather than misreading it.
 | `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |
 | `LLMSLIM_PROXY_DB`, `LLMSLIM_PROXY_UPSTREAM` | `llmslim proxy`, `llmslim wrap` | Experimental |
+| `LLMSLIM_UPSTREAM_URL`, `LLMSLIM_UPSTREAM_API_KEY` | the chat endpoint of `llmslim serve` | Experimental |
 | `LLMSLIM_<PREFIX>_REQUESTS_PER_MINUTE`, `_MAX_REQUESTS`, `_MAX_UNITS` | usage guards of the vendor integrations, with `<PREFIX>` one of `SARVAM_CHAT`, `SARVAM_TEXT`, `SARVAM_DOCUMENT`, `EXA` and `NEO4J` | Stable |
 
 Each integration's `from_env()` reads one credential variable, named by its `env_var` parameter (for example

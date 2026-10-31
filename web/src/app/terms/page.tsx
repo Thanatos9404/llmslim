@@ -34,6 +34,7 @@ export default function TermsPage() {
       <li>resell the hosted service, or offer it to others as your own, unless we agree in writing.</li>
     </ul>
     <p>We may remove content or limit an account that breaks these rules (see section 13).</p>
+    <p>To report misuse of LLMSlim, such as spam or unlawful content, email <Email to={siteConfig.supportEmail} />. We review every report and act under section 13.</p>
 
     <h2>4. Plans, billing and renewal</h2>
     <ul>

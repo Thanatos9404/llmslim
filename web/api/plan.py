@@ -240,7 +240,7 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         import time
 
-        client_key = self.headers.get("x-forwarded-for", "").split(",")[0].strip() or "anonymous"
+        client_key = _shared.client_key(self.headers.get("x-forwarded-for", ""))
         if not allow_request(client_key, time.monotonic()):
             self._respond(
                 HTTPStatus.TOO_MANY_REQUESTS,

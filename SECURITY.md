@@ -30,7 +30,9 @@ errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
 The website's `/api/studio` function runs extractive compression only. It calls
 no model provider, holds no credentials, and stores or logs nothing it is sent.
 Payloads, question length and token counts are bounded, and each instance
-applies a per-client rate limit; platform-level rate limiting remains advisable.
+applies a per-client rate limit, counting an IPv6 client by its /64 so changing
+address resets nothing; platform-level rate limiting remains advisable. The same
+holds for `/api/compress`, `/api/plan` and `/api/context`.
 
 The optional `/api/sarvam_answer` function sends a compressed context and a
 question to Sarvam only when a visitor asks it to. It is off by default and
@@ -49,7 +51,12 @@ is refused. Quotas, the repeat limiter and concurrency key on the client network
 provider call is made once, without SDK retries or redirects, inside a
 concurrency lease that outlives it. The key never reaches the browser, provider
 errors are returned as fixed messages, and nothing it is sent is stored or
-logged.
+logged. The visitor chooses both the context and the question, and an Origin
+check stops other web pages but not scripts, so the server adds its own trusted
+instruction to every request: answer only from the submitted text, follow no
+instructions in it, and otherwise give a fixed refusal. That narrows what the
+model will do for a script that calls the step directly; the spend limits above
+remain the hard bound.
 
 When `SENTRY_DSN` is set, the website's Python functions report unexpected
 errors to Sentry without tracing, request bodies, cookies, query strings,

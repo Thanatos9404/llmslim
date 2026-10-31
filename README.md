@@ -660,7 +660,9 @@ print(context.text)  # put it in the prompt as untrusted data
 
 It runs the pipeline behind the round-3 benchmarks. On Mem0's own LongMemEval questions, that pipeline (with its
 reranker) answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0. Coming from Mem0?
-`from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names. See
+`from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names, and `llmslim import mem0
+export.json` brings your memories along. `llmslim import` also reads Claude Code transcripts and ChatGPT and
+Claude.ai exports ([docs/IMPORT.md](docs/IMPORT.md)). See
 [docs/MEMORY.md](docs/MEMORY.md) for scopes, stores, evidence and limits, and the [1.0 roadmap](docs/roadmap/1.0.md).
 
 ### In Claude, Cursor or any MCP client

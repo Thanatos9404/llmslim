@@ -257,6 +257,11 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
   - Filters other than `user_id`, `agent_id` and `run_id` raise instead of being ignored.
   - `expiration_date` and `reference_date` aren't supported and raise.
 
+**Bring your history.** `llmslim import mem0 export.json` stores each memory of a Mem0 export (what `get_all`
+returns) under its own `user_id`, `agent_id` and `run_id`, so the filters above find it where they did. The same
+command imports Claude Code transcripts, ChatGPT and Claude.ai data exports and JSONL chat logs, and running it again
+adds only what is new. See [IMPORT.md](IMPORT.md).
+
 ## Evidence
 
 **The figures below were measured with the 0.11 read path**, which ranked rendered session text (one document per session, `[date] role: content` lines, one shared budget); with the benchmark's date format its output was byte-identical to the benchmark builder on 120 of 120 LongMemEval-S development contexts. The current read path (user turns as their own pool, per-turn blocks, question routing) selects differently and has not been re-measured on these benchmarks yet.

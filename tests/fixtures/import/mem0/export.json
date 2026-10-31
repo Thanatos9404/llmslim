@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "id": "9b1f6c0e-0000-4000-8000-000000000001",
+      "memory": "Is allergic to peanuts",
+      "hash": "h1",
+      "metadata": {
+        "category": "health"
+      },
+      "created_at": "2025-07-20T01:26:02.374498-07:00",
+      "updated_at": null,
+      "user_id": "asha"
+    },
+    {
+      "id": "9b1f6c0e-0000-4000-8000-000000000002",
+      "memory": "Prefers window seats on flights",
+      "hash": "h2",
+      "metadata": null,
+      "created_at": "2025-07-21T09:00:00Z",
+      "updated_at": "2025-07-22T09:00:00Z",
+      "user_id": "asha",
+      "run_id": "trip-2025"
+    },
+    {
+      "id": "9b1f6c0e-0000-4000-8000-000000000003",
+      "memory": "Works as a data engineer in Bengaluru",
+      "hash": "h3",
+      "metadata": {},
+      "created_at": "2025-07-23T12:00:00+05:30",
+      "updated_at": null,
+      "user_id": "ravi",
+      "agent_id": "career-coach"
+    }
+  ]
+}

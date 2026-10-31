@@ -19,7 +19,9 @@ import { authSchema } from "@/db/schema"
 import { createDatabase } from "@/db/client"
 import { recordAuthEvent, hashIdentifier, type AuthEventType } from "./audit"
 import { getAuthConfig, type AuthConfig } from "./config"
-import { accountDeletedMail, existingAccountMail, passwordChangedMail, resetPasswordMail, sendMail, verificationMail, type Mail } from "./email"
+import { accountDeletedMail, existingAccountMail, greetingName, passwordChangedMail, resetPasswordMail, sendMail, verificationMail, type Mail } from "./email"
+import { HOUSEKEEPING_SAMPLE, pruneExpired } from "./housekeeping"
+import { withinMailBudget } from "./mail-budget"
 import { consume, peek, type AnyPgDatabase } from "./rate-limit-store"
 import { DEFAULT_RULE, EMAIL_RULES, IP_RULES, isEmailLimitedPath, rateLimitMessage } from "./rate-limits"
 import { NAME_MAX, PASSWORD_MAX, PASSWORD_MIN, normalizeEmail, validateEmail, validateName, validatePasskeyName } from "./validation"
@@ -112,6 +114,11 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
 
   const sendSafely = async (mail: Mail) => {
     try {
+      if (!(await withinMailBudget(db, secret, mail))) {
+        console.warn(`[accounts] skipped a ${mail.kind} email: its mailbox reached the email limit`)
+        await audit("rate_limited", null, null, `email:${mail.kind}`)
+        return
+      }
       await deliver(mail)
     } catch (error) {
       // The address is not logged; the kind is enough to find the failure.
@@ -187,13 +194,13 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
       resetPasswordTokenExpiresIn: TOKEN_TTL,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, token }) => {
-        await sendSafely(resetPasswordMail(user.email, user.name, `${site}/reset-password?token=${encodeURIComponent(token)}`))
+        await sendSafely(resetPasswordMail(user.email, greetingName(user), `${site}/reset-password?token=${encodeURIComponent(token)}`))
       },
       onPasswordReset: async ({ user }, request) => {
         await audit("password_reset", user.id, request?.headers)
       },
       onExistingUserSignUp: async ({ user }) => {
-        await sendSafely(existingAccountMail(user.email, user.name, `${site}/sign-in`, `${site}/forgot-password`))
+        await sendSafely(existingAccountMail(user.email, greetingName(user), `${site}/sign-in`, `${site}/forgot-password`))
       },
     },
 
@@ -205,7 +212,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
       sendVerificationEmail: async ({ user, token }) => {
         // Links to the page, not the API: the page verifies with a script, so link scanners that
         // prefetch URLs cannot use up the token.
-        await sendSafely(verificationMail(user.email, user.name, `${site}/verify-email?token=${encodeURIComponent(token)}`))
+        await sendSafely(verificationMail(user.email, greetingName(user), `${site}/verify-email?token=${encodeURIComponent(token)}`))
       },
       afterEmailVerification: async (user, request) => {
         await audit("email_verified", user.id, request?.headers)
@@ -244,7 +251,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
         afterDelete: async (user, request) => {
           await db.execute(sql`delete from verification where value = ${user.id}`)
           await audit("account_deleted", user.id, request?.headers)
-          await sendSafely(accountDeletedMail(user.email, user.name))
+          await sendSafely(accountDeletedMail(user.email, greetingName(user)))
         },
       },
       validateUserInfo: ({ user, source }) => {
@@ -324,6 +331,10 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
         const path = ctx.path
         const body = (ctx.body ?? {}) as Record<string, unknown>
         const headers = ctx.request?.headers ?? ctx.headers
+
+        if (Math.random() < HOUSEKEEPING_SAMPLE) {
+          background(pruneExpired(db).catch((error) => console.error("[accounts] could not prune expired rows:", error instanceof Error ? error.message : "unknown error")))
+        }
 
         if (path === "/sign-up/email") {
           const nameError = validateName(typeof body.name === "string" ? body.name : "")
@@ -413,7 +424,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
         }
         const type = sessionEvents[path ?? ""]
         if (!type) return
-        const response = returned as { user?: { id?: string; email?: string; name?: string }; userId?: string } | undefined
+        const response = returned as { user?: { id?: string; email?: string; name?: string; emailVerified?: boolean }; userId?: string } | undefined
         let userId = response?.user?.id ?? response?.userId ?? ctx.context.session?.user.id ?? null
         let user = response?.user ?? ctx.context.session?.user ?? null
         if (!userId && path !== "/sign-out") {
@@ -423,7 +434,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
         }
         await audit(type, userId, headers)
         if (type === "password_changed" && user?.email) {
-          background(sendSafely(passwordChangedMail(user.email, user.name, `${site}/forgot-password`)))
+          background(sendSafely(passwordChangedMail(user.email, greetingName(user), `${site}/forgot-password`)))
         }
       }),
     },

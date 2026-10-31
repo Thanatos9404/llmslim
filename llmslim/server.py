@@ -10,14 +10,16 @@ JSON API mirrors :class:`llmslim.memory.Memory`:
 ``PATCH  /v1/memories/{id}``          correct its ``content`` or ``metadata``
 ``DELETE /v1/memories/{id}``          delete one message
 ``DELETE /v1/memories?user_id=...``   delete a whole scope
-``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens
+``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens (``explain`` says why)
 ``POST   /v1/context/fit``            shrink ``text`` to ``budget`` tokens around an optional ``query``
 ``GET    /healthz``                   liveness, without authentication
 ====================================  =====================================================================
 
 Every ``/v1`` route needs ``Authorization: Bearer <key>`` when API keys are configured (``--api-key`` or
-``LLMSLIM_API_KEYS``). Without keys the server only binds to the loopback interface. Keys give full access to every
-scope, so call the server from your backend, never from a browser.
+``LLMSLIM_API_KEYS``). Without keys the server only binds to the loopback interface, and it answers only requests
+addressed to this machine by name (``localhost``, ``127.0.0.1``, ``[::1]``, or a host given with ``--allowed-host``)
+that no other web page sent, so a page the user opens can neither reach it through DNS rebinding nor post to it. Keys
+give full access to every scope, so call the server from your backend, never from a browser.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence, TypedDict
 
 from ._fit import fit_text
+from ._local_http import HostGuard, HostPolicy
 from .memory import Memory
 from .memory._core import storage_target
 from .tokens import count_tokens
@@ -66,6 +69,7 @@ def create_app(
     api_keys: Sequence[str] = (),
     max_body_bytes: int = MAX_BODY_BYTES,
     max_budget: int = MAX_BUDGET,
+    allowed_hosts: Optional[Sequence[str]] = None,
 ) -> Any:
     """A Starlette app that serves ``memory`` over the JSON API above.
 
@@ -74,10 +78,15 @@ def create_app(
         api_keys: Bearer keys that may call ``/v1``. Empty means no authentication: only for loopback use.
         max_body_bytes: Largest request body accepted (413 above it).
         max_budget: Largest token budget a request may ask for.
+        allowed_hosts: Host names the server answers to besides ``localhost``, 127.0.0.0/8 and ``::1``; ``["*"]``
+            for any. By default, a server without API keys answers only loopback names and refuses requests that
+            another web page sent (403), and a server with keys answers any host. Set it with keys to pin the names
+            your deployment is reached by.
     """
     try:
         from starlette.applications import Starlette
         from starlette.concurrency import run_in_threadpool
+        from starlette.middleware import Middleware
         from starlette.requests import Request
         from starlette.responses import JSONResponse
         from starlette.routing import Route
@@ -87,6 +96,10 @@ def create_app(
     from . import __version__
 
     keys = [key.encode("utf-8") for key in api_keys]
+    if allowed_hosts is None:
+        policy = HostPolicy(["*"] if keys else ())
+    else:
+        policy = HostPolicy(allowed_hosts, origins=not keys)
 
     def authorized(request: Request) -> bool:
         if not keys:
@@ -116,8 +129,11 @@ def create_app(
             raise _HTTPError(
                 400, "invalid_json", f"request body is not valid JSON: {error}"
             ) from error
+        except RecursionError:  # arrays or objects nested past the interpreter's stack
+            raise _HTTPError(400, "invalid_json", "request body is nested too deeply") from None
         if not isinstance(payload, dict):
             raise _HTTPError(400, "invalid_request", "request body must be a JSON object")
+        _check_text(payload)
         return payload
 
     def budget_of(value: Any, default: int) -> int:
@@ -147,7 +163,9 @@ def create_app(
                 )
             except ImportError as error:
                 return JSONResponse({"error": {"type": "unavailable", "message": str(error)}}, 501)
-            except ValueError as error:
+            except (ValueError, TypeError, OverflowError) as error:
+                # A value of the wrong type or out of range (a timestamp past year 9999, a message that is a
+                # number) is the caller's mistake: a 400 that says so, not a 500.
                 return JSONResponse(
                     {"error": {"type": "invalid_request", "message": str(error)}}, 400
                 )
@@ -227,6 +245,9 @@ def create_app(
             raise _HTTPError(
                 400, "invalid_request", f"relevance must be one of {', '.join(_RELEVANCE)}"
             )
+        explain = payload.get("explain")
+        if explain is not None and not isinstance(explain, bool):
+            raise _HTTPError(400, "invalid_request", "explain must be true or false")
         context = await run_in_threadpool(
             lambda: memory.search(
                 payload.get("query", ""),
@@ -234,6 +255,7 @@ def create_app(
                 relevance=relevance,
                 since=payload.get("since"),
                 until=payload.get("until"),
+                explain=bool(explain),
                 **_scope(payload),
             )
         )
@@ -284,7 +306,15 @@ def create_app(
         Route("/v1/memories/{memory_id}", memory_item, methods=["GET", "PATCH", "DELETE"]),
         Route("/v1/context/fit", endpoint(fit), methods=["POST"]),
     ]
-    return Starlette(routes=routes)
+
+    def forbidden(message: str) -> tuple[bytes, str]:
+        body = {"error": {"type": "forbidden", "message": message}}
+        return json.dumps(body).encode("utf-8"), "application/json"
+
+    return Starlette(
+        routes=routes,
+        middleware=[Middleware(HostGuard, policy=policy, reject=forbidden)],
+    )
 
 
 class _Scope(TypedDict, total=False):
@@ -303,6 +333,29 @@ def _scope(source: Mapping[str, Any]) -> _Scope:
             raise _HTTPError(400, "invalid_request", f"{key} must be a string")
         scope[key] = value  # type: ignore[literal-required]
     return scope
+
+
+def _check_text(payload: Any) -> None:
+    """Refuse strings (keys too) that are not valid Unicode, such as a lone surrogate from a ``\\ud800`` escape.
+
+    Such text can't be written as UTF-8: a file or Postgres store refuses it, but the in-process store kept it, and
+    then every later read of that scope failed. Iterative, so nesting can't exhaust the stack here.
+    """
+    stack = [payload]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise _HTTPError(
+                    400, "invalid_request", "text must be valid Unicode (no lone surrogates)"
+                ) from None
+        elif isinstance(value, dict):
+            stack.extend(value.keys())
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
 
 
 def _bounded(value: Optional[str], name: str, default: int, low: int, high: int) -> int:
@@ -367,9 +420,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--budget", type=int, default=2000, help="Default token budget for search (default 2000)."
     )
     parser.add_argument(
+        "--allowed-host",
+        action="append",
+        default=[],
+        metavar="HOST",
+        help="A host name clients reach the server by, besides localhost, 127.0.0.1 and ::1; repeat for several, "
+        "or * for any (env LLMSLIM_ALLOWED_HOSTS, comma-separated). Without an API key, requests to other names "
+        "are refused (they are how DNS rebinding reaches a local server); with keys, every name is accepted "
+        "unless you set this.",
+    )
+    parser.add_argument(
         "--new-key", action="store_true", help="Print a new random API key and exit."
     )
     return parser
+
+
+def allowed_hosts_from(
+    values: Sequence[str], environ: Mapping[str, str] = os.environ
+) -> Optional[List[str]]:
+    """Host names from ``--allowed-host`` flags, else from ``LLMSLIM_ALLOWED_HOSTS``; ``None`` when neither is set."""
+    raw = list(values) or environ.get("LLMSLIM_ALLOWED_HOSTS", "").split(",")
+    hosts = [host.strip() for host in raw if host.strip()]
+    return hosts or None
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -394,7 +466,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         import uvicorn
     except ImportError as error:  # pragma: no cover - exercised only without the extra
         raise _missing_server_extra() from error
-    app = create_app(Memory(storage_target(args.db), budget=args.budget), api_keys=keys)
+    app = create_app(
+        Memory(storage_target(args.db), budget=args.budget),
+        api_keys=keys,
+        allowed_hosts=allowed_hosts_from(args.allowed_host),
+    )
     if not keys:
         logger.warning("no API key set: serving %s:%s without authentication", args.host, args.port)
     uvicorn.run(app, host=args.host, port=args.port)

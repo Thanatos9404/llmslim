@@ -118,6 +118,11 @@ def _line_count(text: str) -> int:
 # =====================================================================
 # Pre-compiled patterns — grouped by content type
 # =====================================================================
+#
+# These run over whole, untrusted inputs, so each must take linear time. A line's indent is
+# [^\S\n]* (whitespace but not a line break): with \s*, every line start in a run of blank lines
+# rescanned the rest of the run. A delimited span excludes its own opening delimiter ([^\[\]\n],
+# [^()\n], [^<>]), so a run of "[" or "<a " can't make every start scan to the end of the text.
 
 # --- JSON ---
 _JSON_KEY_VALUE_RE = re.compile(r'"[^"]+"\s*:', re.MULTILINE)
@@ -130,13 +135,13 @@ _YAML_BLOCK_SCALAR_RE = re.compile(r":\s*[|>][-+]?\s*$", re.MULTILINE)
 
 # --- Markdown ---
 _MD_HEADING_RE = re.compile(r"^#{1,6}\s+\S", re.MULTILINE)
-_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+_MD_LINK_RE = re.compile(r"\[([^\[\]\n]+)\]\(([^()\n]+)\)")
 _MD_BOLD_ITALIC_RE = re.compile(r"(?:\*{1,3}|_{1,3})\S")
 _MD_FENCE_RE = re.compile(r"^```", re.MULTILINE)
-_MD_LIST_RE = re.compile(r"^\s*[-*+]\s+\S", re.MULTILINE)
+_MD_LIST_RE = re.compile(r"^[^\S\n]*[-*+]\s+\S", re.MULTILINE)
 
 # --- HTML ---
-_HTML_TAG_RE = re.compile(r"</?[a-zA-Z][\w-]*(?:\s[^>]*)?>", re.MULTILINE)
+_HTML_TAG_RE = re.compile(r"</?[a-zA-Z][\w-]*(?:\s[^<>]*)?>", re.MULTILINE)
 _HTML_DOCTYPE_RE = re.compile(r"<!DOCTYPE\s+html", re.IGNORECASE)
 _HTML_COMMON_TAGS_RE = re.compile(
     r"<(?:html|head|body|div|span|p|a|img|script|style|table|form|input|button)\b",
@@ -149,22 +154,22 @@ _XML_XMLNS_RE = re.compile(r"\bxmlns\s*=", re.IGNORECASE)
 _XML_CDATA_RE = re.compile(r"<!\[CDATA\[")
 
 # --- Python ---
-_PY_DEF_RE = re.compile(r"^\s*def\s+\w+\s*\(", re.MULTILINE)
-_PY_CLASS_RE = re.compile(r"^\s*class\s+\w+", re.MULTILINE)
+_PY_DEF_RE = re.compile(r"^[^\S\n]*def\s+\w+\s*\(", re.MULTILINE)
+_PY_CLASS_RE = re.compile(r"^[^\S\n]*class\s+\w+", re.MULTILINE)
 _PY_IMPORT_RE = re.compile(r"^(?:import|from)\s+\w+", re.MULTILINE)
-_PY_DECORATOR_RE = re.compile(r"^\s*@\w+", re.MULTILINE)
+_PY_DECORATOR_RE = re.compile(r"^[^\S\n]*@\w+", re.MULTILINE)
 _PY_DOCSTRING_RE = re.compile(r'""".*?"""|\'\'\'.*?\'\'\'', re.DOTALL)
 
 # --- JavaScript ---
 _JS_FUNCTION_RE = re.compile(r"\bfunction\s+\w+\s*\(|=>\s*[{(]", re.MULTILINE)
-_JS_CONST_LET_RE = re.compile(r"^\s*(?:const|let|var)\s+\w+", re.MULTILINE)
-_JS_EXPORT_RE = re.compile(r"^\s*(?:export|module\.exports)", re.MULTILINE)
+_JS_CONST_LET_RE = re.compile(r"^[^\S\n]*(?:const|let|var)\s+\w+", re.MULTILINE)
+_JS_EXPORT_RE = re.compile(r"^[^\S\n]*(?:export|module\.exports)", re.MULTILINE)
 _JS_REQUIRE_RE = re.compile(r"\brequire\s*\(", re.MULTILINE)
-_JS_IMPORT_RE = re.compile(r"^\s*import\s+.*\s+from\s+", re.MULTILINE)
+_JS_IMPORT_RE = re.compile(r"^[^\S\n]*import\s+.*\s+from\s+", re.MULTILINE)
 
 # --- TypeScript ---
-_TS_INTERFACE_RE = re.compile(r"^\s*(?:export\s+)?interface\s+\w+", re.MULTILINE)
-_TS_TYPE_RE = re.compile(r"^\s*(?:export\s+)?type\s+\w+\s*=", re.MULTILINE)
+_TS_INTERFACE_RE = re.compile(r"^[^\S\n]*(?:export\s+)?interface\s+\w+", re.MULTILINE)
+_TS_TYPE_RE = re.compile(r"^[^\S\n]*(?:export\s+)?type\s+\w+\s*=", re.MULTILINE)
 _TS_ANNOTATION_RE = re.compile(r":\s*(?:string|number|boolean|any|void|never)\b")
 
 # --- SQL ---
@@ -177,7 +182,7 @@ _SQL_KEYWORD_RE = re.compile(
 
 # --- Chat ---
 _CHAT_ROLE_RE = re.compile(
-    r"^\s*(?:User|Assistant|Human|AI|System|Bot)\s*:", re.MULTILINE | re.IGNORECASE
+    r"^[^\S\n]*(?:User|Assistant|Human|AI|System|Bot)\s*:", re.MULTILINE | re.IGNORECASE
 )
 _CHAT_JSON_ROLE_RE = re.compile(r'"role"\s*:\s*"(?:user|assistant|system)"', re.IGNORECASE)
 
@@ -194,10 +199,10 @@ _SYS_IMPERATIVE_RE = re.compile(
 
 # --- RAG context ---
 _RAG_DOC_MARKER_RE = re.compile(
-    r"(?:^|\n)\s*(?:Document\s*\d+|Context|Source|Passage|Chunk|Reference)\s*:",
+    r"(?:^|\n)[^\S\n]*(?:Document\s*\d+|Context|Source|Passage|Chunk|Reference)\s*:",
     re.IGNORECASE,
 )
-_RAG_SEPARATOR_RE = re.compile(r"(?:^|\n)\s*[-=]{3,}\s*(?:$|\n)")
+_RAG_SEPARATOR_RE = re.compile(r"(?:^|\n)[^\S\n]*[-=]{3,}[^\S\n]*(?:$|\n)")
 
 # --- Log file ---
 _LOG_TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}")
@@ -207,7 +212,7 @@ _LOG_BRACKET_LEVEL_RE = re.compile(r"\[(?:DEBUG|INFO|WARN|ERROR|FATAL)\]")
 # --- Config file ---
 _CONFIG_KV_RE = re.compile(r"^[A-Z_][A-Z0-9_]*\s*=\s*\S", re.MULTILINE)
 _CONFIG_INI_SECTION_RE = re.compile(r"^\[[\w.-]+\]\s*$", re.MULTILINE)
-_CONFIG_COMMENT_RE = re.compile(r"^\s*[#;]", re.MULTILINE)
+_CONFIG_COMMENT_RE = re.compile(r"^[^\S\n]*[#;]", re.MULTILINE)
 
 # --- API documentation ---
 _API_METHOD_RE = re.compile(r"\b(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/", re.MULTILINE)

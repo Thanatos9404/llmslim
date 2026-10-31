@@ -606,11 +606,49 @@ def _cut_chars(text: str, limit: int) -> str:
 # ------------------------------------------------------------------ selection
 
 
+@dataclass
+class Trace:
+    """What selection decided about each piece, recorded only for ``Memory.search(..., explain=True)``.
+
+    ``outcome`` maps a piece (by ``id``) to the last thing that happened to it: ``"kept"``, a reason it was kept in
+    part (``"user_turn_cap"``, ``"last_resort"``, ``"cut_at_fit"``) or a reason it was left out (``"over_budget"``,
+    ``"over_share"``, ``"duplicate"``, ``"dropped_at_fit"``, ``"detail_kept"``). A piece with no outcome was never
+    tried: the budget, or its pool's share, was full first."""
+
+    pools: List[Tuple[str, str, List[Piece], bool]] = field(default_factory=list)
+    outcome: Dict[int, str] = field(default_factory=dict)
+    slots: Dict[Tuple[int, int], Piece] = field(default_factory=dict)  # (turn, part) -> kept piece
+    user_room: Optional[int] = None
+    user_cap: Optional[int] = None
+
+    def pool(self, name: str, kind: str, pieces: Sequence[Piece], scored: bool = True) -> None:
+        """Record a pool of candidates: its name, the kind of its pieces, and whether they were ranked."""
+        self.pools.append((name, kind, list(pieces), scored))
+
+    def keep(self, piece: Piece, outcome: str = "kept") -> None:
+        self.slots[(piece.turn, piece.part)] = piece
+        self.outcome[id(piece)] = outcome
+
+    def refuse(self, piece: Piece, reason: str) -> None:
+        self.outcome[id(piece)] = reason
+
+    def mark(self, turn: int, part: int, outcome: str) -> None:
+        """What happened later to the piece kept at (turn, part)."""
+        piece = self.slots.get((turn, part))
+        if piece is not None:
+            self.outcome[id(piece)] = outcome
+
+
 class Selection:
     """Greedy fill of one budget from ranked pieces, with per-turn label costs and near-duplicate removal."""
 
     def __init__(
-        self, turns: Sequence[Turn], budget: int, query: str, dedup: Optional[float] = None
+        self,
+        turns: Sequence[Turn],
+        budget: int,
+        query: str,
+        dedup: Optional[float] = None,
+        trace: Optional[Trace] = None,
     ):
         self.turns = turns
         self.budget = budget
@@ -623,6 +661,7 @@ class Selection:
         self.exact: Set[Tuple[str, ...]] = set()
         self.per_session: Dict[int, int] = {}
         self.stamps: Dict[int, Set[str]] = {}  # per session: the full stamps of its kept turns
+        self.trace = trace
 
     def label(self, turn: int, first: bool = True) -> str:
         """A turn's label: its full stamp when ``first`` (the first kept turn of its session, or one whose time
@@ -662,8 +701,16 @@ class Selection:
             parts = [(s.text, s.block) for s in piece.segs]
             text, cost = piece.text, piece.tokens
         cost += 2 if piece.turn in self.kept else self.label_cost(piece.turn)
-        if self.used + cost > limit or self.duplicate(text):
+        if self.used + cost > limit:
+            if self.trace is not None:
+                self.trace.refuse(piece, "over_share" if limit < self.budget else "over_budget")
             return False
+        if self.duplicate(text):
+            if self.trace is not None:
+                self.trace.refuse(piece, "duplicate")
+            return False
+        if self.trace is not None:
+            self.trace.keep(piece, "user_turn_cap" if trimmed else "kept")
         if piece.turn not in self.kept:
             session = self.turns[piece.turn].session
             self.per_session[session] = self.per_session.get(session, 0) + 1
@@ -699,18 +746,26 @@ class Selection:
         body = join(parts)
         return labelled(self.label(turn, first), body), partial
 
-    def render(self) -> Tuple[List[str], List[Tuple[int, bool]]]:
-        """Kept turns in date order: one text per session (empty when nothing of it is kept), and (turn, partial).
-        Each turn shows its own time: its full stamp when it is the first kept turn of its session or its time
-        differs from the one shown last there, else its date."""
-        sessions: Dict[int, List[str]] = {}
+    def blocks(self) -> List[Tuple[int, int, str, bool]]:
+        """Kept turns in date order as (session, turn, block, partial). Each turn shows its own time: its full stamp
+        when it is the first kept turn of its session or its time differs from the one shown last there, else its
+        date."""
         shown: Dict[int, str] = {}
-        recalled = []
+        out = []
         for turn in sorted(self.kept):
             t = self.turns[turn]
             block, partial = self.render_turn(turn, shown.get(t.session) != t.stamp)
             shown[t.session] = t.stamp
-            sessions.setdefault(t.session, []).append(block)
+            out.append((t.session, turn, block, partial))
+        return out
+
+    def render(self) -> Tuple[List[str], List[Tuple[int, bool]]]:
+        """Kept turns in date order (see ``blocks``): one text per session (empty when nothing of it is kept), and
+        (turn, partial)."""
+        sessions: Dict[int, List[str]] = {}
+        recalled = []
+        for session, turn, block, partial in self.blocks():
+            sessions.setdefault(session, []).append(block)
             recalled.append((turn, partial))
         count = max((t.session for t in self.turns), default=-1) + 1
         return ["\n".join(sessions.get(s, [])) for s in range(count)], recalled
@@ -725,6 +780,8 @@ class Selection:
         if weakest is None or sum(len(p) for p in self.kept.values()) <= 1:
             return False
         _, turn, part = weakest
+        if self.trace is not None:
+            self.trace.mark(turn, part, "dropped_at_fit")
         del self.kept[turn][part]
         if not self.kept[turn]:
             del self.kept[turn]
@@ -774,8 +831,10 @@ def select_turns(
     *,
     user_share: Optional[float] = None,
     expansion: str = "",
+    trace: Optional[Trace] = None,
 ) -> Selection:
-    """Fill ``budget`` from the user pool (up to its share) and the reply pool, then top up from both."""
+    """Fill ``budget`` from the user pool (up to its share) and the reply pool, then top up from both. ``trace``
+    records what was decided about each piece (for ``Memory.search(..., explain=True)``)."""
     share = USER_SHARE if user_share is None else user_share
     user, other = pools(turns, budget)
     # A request's words widen a question that has Latin-script words of its own. A question with none is matched on
@@ -794,7 +853,10 @@ def select_turns(
             pool, score_pool(pool, turns, ranked_query, scorer, n, by_turn, recency)
         ):
             piece.score = value
-    chosen = Selection(turns, budget, ranked_query)
+    if trace is not None:
+        trace.pool("user", "turn", user)
+        trace.pool("reply", "window", other)
+    chosen = Selection(turns, budget, ranked_query, trace=trace)
     fill(chosen, user, other, budget, share, scorer is None, cap_for_user_turn(budget))
     return chosen
 
@@ -814,6 +876,8 @@ def fill(
     user_order = sorted(user, key=lambda p: (-p.score, p.turn))
     other_order = sorted(other, key=lambda p: (-p.score, p.turn, p.part))
     user_room = int(budget * share)
+    if chosen.trace is not None:
+        chosen.trace.user_room, chosen.trace.user_cap = user_room, cap or None
     taken: Set[int] = set()
     for piece in user_order:
         if lexical and piece.score <= 0:
@@ -856,6 +920,8 @@ def last_resort(chosen: Selection, order: Sequence[Piece], budget: int) -> None:
         parts = [(text, False)]
     chosen.used = count_tokens(text) + chosen.label_cost(best.turn)
     chosen.kept[best.turn] = {best.part: (parts, best.score, True)}
+    if chosen.trace is not None:
+        chosen.trace.keep(best, "last_resort")
     chosen.per_session[chosen.turns[best.turn].session] = 1
     chosen.stamps[chosen.turns[best.turn].session] = {chosen.turns[best.turn].stamp}
 
@@ -893,8 +959,12 @@ def fit(
             chars = _cut_chars(flat, room)
             cut = [(chars, False)] if chars else []
         if not cut or cut == pieces:
+            if chosen.trace is not None:
+                chosen.trace.mark(turn, part, "dropped_at_fit")
             chosen.kept.clear()
         else:
+            if chosen.trace is not None:
+                chosen.trace.mark(turn, part, "cut_at_fit")
             chosen.kept[turn][part] = (cut, score, True)
 
 

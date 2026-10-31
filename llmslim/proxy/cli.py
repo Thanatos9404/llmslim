@@ -156,6 +156,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow binding an interface other than loopback.",
     )
+    parser.add_argument(
+        "--allowed-host",
+        action="append",
+        default=[],
+        metavar="HOST",
+        help="A host name clients reach the proxy by, besides localhost, 127.0.0.1 and ::1 (repeatable). Requests "
+        "to other names are refused, so a web page can't reach the proxy through DNS rebinding. With --allow-remote "
+        "on another interface, every name is accepted unless you set this.",
+    )
     _policy_arguments(parser)
     return parser
 
@@ -217,7 +226,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"the upstream {upstream} is this proxy itself; unset ANTHROPIC_BASE_URL or pass --upstream"
         )
     store = ProxyStore(args.db)
-    app = create_proxy_app(store=store, upstream=upstream, policy=_policy(args))
+    allowed = args.allowed_host or ([] if _loopback(args.host) else ["*"])
+    app = create_proxy_app(
+        store=store, upstream=upstream, policy=_policy(args), allowed_hosts=allowed
+    )
     print(f"LLMSlim proxy on http://{args.host}:{args.port} -> {upstream}", file=sys.stderr)
     print(
         f"Point your agent at it: ANTHROPIC_BASE_URL=http://{args.host}:{args.port}",

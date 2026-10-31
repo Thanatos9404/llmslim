@@ -73,6 +73,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
   `build_wrap_parser`. The commands are unchanged.
 
+### Security
+From a security review of 1.0's HTTP server, MCP server, proxy and the website's functions.
+- **Web pages can no longer use a keyless `llmslim serve` or the proxy.** A server on 127.0.0.1 is reachable from
+  any page the user opens: a cross-site "simple" POST could store a memory (a planted instruction that later reached
+  the user's prompts) or start an expensive `fit`, and DNS rebinding let a page read and delete every memory,
+  including the `default` user that `llmslim mcp` keeps in the same `~/.llmslim/memory.db`. A keyless `serve` and the
+  proxy now answer only requests whose `Host` names this machine (`localhost`, a `*.localhost` name, 127.0.0.0/8,
+  `[::1]`) and refuse with a 403 any request whose `Origin` is another site. Clients that send no `Origin` (curl, SDKs,
+  agents) are not affected.
+  - **Behaviour change:** a keyless server reached by another name now answers 403. Add the name with
+    `--allowed-host` (repeatable; `*` for any), `LLMSLIM_ALLOWED_HOSTS` or `create_app(..., allowed_hosts=[...])`.
+    Servers with API keys accept any `Host` as before, unless you pin names the same way. The proxy takes
+    `--allowed-host` and `create_proxy_app(..., allowed_hosts=[...])`; with `--allow-remote` on another interface it
+    accepts any name unless you set one.
+- **Quadratic-time inputs.** Text that `serve`, `llmslim mcp`, the proxy and the website's Studio functions process
+  could hold a CPU for minutes. Each case is now linear, and `tests/test_security_dos.py` times the old worst cases:
+  - restoring code-span placeholders after sentence splitting searched every sentence for every span
+    (`llmslim.tokenization`). 80,000 backticks took 1.8 s to compress and the time quadrupled with each doubling:
+    about 5 minutes at the server's 1 MB limit, and `fit` compresses up to four times;
+  - content detection's `^\s*` patterns rescanned a run of blank lines from every line start, and the Markdown link
+    and HTML tag patterns rescanned from every `[` and `<a ` (`llmslim.analysis`, and the list-item patterns in
+    `llmslim.ranking`). 90,000 characters of `[` took 12 s to plan on the website's planner;
+  - the YAML optimizer's inline-comment pattern on a long run of whitespace.
+- **`fit` holds its budget for any text.** `/v1/context/fit` and MCP `fit_context` returned all 600,000+ tokens of a
+  text that compression keeps whole (one long code block, or a run of inline code) for a budget of 2,000, so text an
+  attacker controls could blow up a prompt's size and cost. The result is now cut to the longest head that fits.
+- **Hostile JSON is a 400, not a 500.** `serve` answered over-deep JSON, values of the wrong type (`"messages": 5`)
+  and out-of-range timestamps with a 500. A lone surrogate (`"\ud800"`) was kept by the in-process store and then
+  broke every read of that scope; it is now refused before anything is stored. `Memory.add` refuses a timestamp with
+  no UTC time (9999-12-31T23:59-01:00) with a `ValueError`.
+- **XML with entity declarations is never parsed** by the XML optimizer, so entity-expansion bombs ("billion laughs",
+  quadratic blowup) can't run even on a Python built with an old expat. Such text is compressed as plain text.
+  Recent expat already refused them.
+- The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
+
 ### Fixed
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
   starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and

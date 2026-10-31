@@ -182,7 +182,8 @@ def test_the_http_server_runs_on_postgres(table):
 
     store = PostgresStore(URL, table=table)
     try:
-        client = TestClient(create_app(Memory(store)))
+        # Keyless, so it answers only loopback names, as it would on 127.0.0.1.
+        client = TestClient(create_app(Memory(store)), base_url="http://127.0.0.1:8080")
         client.post(
             "/v1/memories", json={"user_id": "asha", "messages": "I moved to Pune last month."}
         )

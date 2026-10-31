@@ -387,7 +387,10 @@ def _as_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):
         moment = value
     elif isinstance(value, (int, float)) and not isinstance(value, bool):
-        moment = datetime.fromtimestamp(float(value), tz=timezone.utc)
+        try:
+            moment = datetime.fromtimestamp(float(value), tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):  # OSError: out of range on Windows
+            raise ValueError("timestamp is out of range") from None
     elif isinstance(value, str):
         text = value.strip()
         moment = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text)
@@ -395,7 +398,12 @@ def _as_datetime(value: Any) -> datetime:
         raise TypeError(
             f"timestamp must be a datetime, epoch seconds or ISO-8601 text, not {type(value).__name__}"
         )
-    return moment if moment.tzinfo is not None else moment.replace(tzinfo=timezone.utc)
+    moment = moment if moment.tzinfo is not None else moment.replace(tzinfo=timezone.utc)
+    try:  # stored and compared in UTC: 9999-12-31T23:59-01:00 has no UTC time, and a stored one broke every read
+        moment.astimezone(timezone.utc)
+    except OverflowError:
+        raise ValueError("timestamp is out of range") from None
+    return moment
 
 
 def _text_of(content: Any) -> str:

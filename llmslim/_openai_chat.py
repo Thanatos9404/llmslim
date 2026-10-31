@@ -5,7 +5,9 @@ OpenAI-compatible upstream fixed in the server's configuration. For each request
 
 1. **Recalls.** Searches the scope's memory with the latest user message, and adds what it finds as ONE new user
    message immediately before that message, framed as data inside an untrusted ``<llmslim_context>`` block. The
-   system prompt and every message the client sent are forwarded unchanged and in order.
+   system prompt and every message the client sent are forwarded unchanged and in order. The client re-sends its
+   history without last turn's recalled message, so consecutive requests share a prompt-cache prefix only up to the
+   previous user turn; ``recall=False`` (store-only) forwards every request exactly as sent.
 2. **Forwards** the request to the upstream with the server's own upstream key, and passes the answer back: JSON as
    it came, a stream chunk by chunk.
 3. **Stores** the new turns after a successful answer: the latest user message (when it is the last message, a new

@@ -1,0 +1,6 @@
+{"role": "user", "content": "My cat is called Biscuit.", "timestamp": "2025-01-05T10:00:00Z", "session_id": "s-1"}
+{"role": "assistant", "content": "Biscuit is a great name for a cat.", "timestamp": "2025-01-05T10:00:05Z", "session_id": "s-1"}
+{"role": "system", "content": "You are helpful.", "session_id": "s-1"}
+{"role": "user", "content": [{"type": "text", "text": "I switched to the night shift in February."}], "timestamp": 1738576800, "session_id": "s-2"}
+{"role": "tool", "content": "TOOL-OUTPUT-MARKER", "session_id": "s-2"}
+{"role": "assistant", "content": "Night shifts are tiring; keep a steady sleep schedule.", "session_id": "s-2"}

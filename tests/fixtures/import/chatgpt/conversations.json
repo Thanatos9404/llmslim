@@ -1,0 +1,457 @@
+[
+  {
+    "title": "Lisbon trip",
+    "create_time": 1714550399.0,
+    "update_time": 1714550700.0,
+    "mapping": {
+      "c1-root": {
+        "id": "c1-root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "c1-sys"
+        ]
+      },
+      "c1-sys": {
+        "id": "c1-sys",
+        "message": {
+          "id": "c1-sys",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-root",
+        "children": [
+          "c1-u1"
+        ]
+      },
+      "c1-u1": {
+        "id": "c1-u1",
+        "message": {
+          "id": "c1-u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm planning a trip to Lisbon in May."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-sys",
+        "children": [
+          "c1-a1"
+        ]
+      },
+      "c1-a1": {
+        "id": "c1-a1",
+        "message": {
+          "id": "c1-a1",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550410.5,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Lisbon in May is lovely: mild and sunny."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-u1",
+        "children": [
+          "c1-u2-old",
+          "c1-u2-new"
+        ]
+      },
+      "c1-u2-old": {
+        "id": "c1-u2-old",
+        "message": {
+          "id": "c1-u2-old",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550500.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "ABANDONED-BRANCH-MARKER: my budget is 500 euros."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-a1",
+        "children": [
+          "c1-a2-old"
+        ]
+      },
+      "c1-a2-old": {
+        "id": "c1-a2-old",
+        "message": {
+          "id": "c1-a2-old",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550510.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "ABANDONED-REPLY-MARKER"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-u2-old",
+        "children": []
+      },
+      "c1-u2-new": {
+        "id": "c1-u2-new",
+        "message": {
+          "id": "c1-u2-new",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My budget for the Lisbon trip is 1200 euros."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-a1",
+        "children": [
+          "c1-th"
+        ]
+      },
+      "c1-th": {
+        "id": "c1-th",
+        "message": {
+          "id": "c1-th",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550601.0,
+          "update_time": null,
+          "content": {
+            "content_type": "thoughts",
+            "thoughts": [
+              {
+                "summary": "Budget",
+                "content": "THINKING-MARKER"
+              }
+            ],
+            "source_analysis_msg_id": "x"
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-u2-new",
+        "children": [
+          "c1-code"
+        ]
+      },
+      "c1-code": {
+        "id": "c1-code",
+        "message": {
+          "id": "c1-code",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550602.0,
+          "update_time": null,
+          "content": {
+            "content_type": "code",
+            "language": "unknown",
+            "text": "print(1200 / 7)"
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "python",
+          "channel": null
+        },
+        "parent": "c1-th",
+        "children": [
+          "c1-tool"
+        ]
+      },
+      "c1-tool": {
+        "id": "c1-tool",
+        "message": {
+          "id": "c1-tool",
+          "author": {
+            "role": "tool",
+            "name": "python",
+            "metadata": {}
+          },
+          "create_time": 1714550603.0,
+          "update_time": null,
+          "content": {
+            "content_type": "execution_output",
+            "text": "171.42857142857142 TOOL-OUTPUT-MARKER"
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-code",
+        "children": [
+          "c1-a2"
+        ]
+      },
+      "c1-a2": {
+        "id": "c1-a2",
+        "message": {
+          "id": "c1-a2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1714550610.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "That is about 171 euros a day for a week."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-tool",
+        "children": [
+          "c1-u3"
+        ]
+      },
+      "c1-u3": {
+        "id": "c1-u3",
+        "message": {
+          "id": "c1-u3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              {
+                "content_type": "image_asset_pointer",
+                "asset_pointer": "file-service://file-abc",
+                "size_bytes": 1000,
+                "width": 10,
+                "height": 10
+              },
+              "Here is the hotel I booked."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c1-a2",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "c1-u3",
+    "plugin_ids": null,
+    "conversation_id": "conv-0001",
+    "conversation_template_id": null,
+    "gizmo_id": null,
+    "is_archived": false,
+    "safe_urls": [],
+    "default_model_slug": "gpt-5",
+    "id": "conv-0001"
+  },
+  {
+    "title": "Keyboard",
+    "create_time": 1717200000.0,
+    "update_time": 1717200100.0,
+    "mapping": {
+      "c2-root": {
+        "id": "c2-root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "c2-ctx"
+        ]
+      },
+      "c2-ctx": {
+        "id": "c2-ctx",
+        "message": {
+          "id": "c2-ctx",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": null,
+          "update_time": null,
+          "content": {
+            "content_type": "user_editable_context",
+            "user_profile": "PROFILE-MARKER",
+            "user_instructions": "Be brief."
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          },
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c2-root",
+        "children": [
+          "c2-u1"
+        ]
+      },
+      "c2-u1": {
+        "id": "c2-u1",
+        "message": {
+          "id": "c2-u1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1717200010.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Which keyboard layout do I use?"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c2-ctx",
+        "children": [
+          "c2-a1"
+        ]
+      },
+      "c2-a1": {
+        "id": "c2-a1",
+        "message": {
+          "id": "c2-a1",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1717200020.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "You mentioned you use Colemak."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all",
+          "channel": null
+        },
+        "parent": "c2-u1",
+        "children": []
+      }
+    },
+    "current_node": "c2-a1",
+    "conversation_id": "conv-0002",
+    "id": "conv-0002"
+  }
+]

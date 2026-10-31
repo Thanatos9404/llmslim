@@ -742,6 +742,29 @@ def test_context_to_dict_round_trips_turns(memory):
     assert data["turns"][0]["content"] == "I like tea" and "score" in data["turns"][0]
 
 
+@pytest.mark.parametrize(
+    "name", ["fits", "lookup", "advice", "conflicts", "summary_small", "window", "people"]
+)
+def test_search_explains_itself_the_same_on_every_store(memory, name):
+    """explain=True on this store gives the explanation it gives in process (tests/test_memory_explain.py has the
+    rest): the histories have fixed ids and times, so the two must be equal field for field."""
+    from tests import _memory_search_cases as cases
+
+    case = {c[0]: c for c in cases.CASES}[name]
+    here = cases.run(case, memory.store, explain=True)
+    baseline = cases.run(case, InMemoryStore(), explain=True)
+    assert here.text == baseline.text and here.explanation == baseline.explanation
+    explanation = here.explanation
+    scope = {key: value for key, value in case[3].items() if key.endswith("_id")}
+    assert [t.id for t in explanation.turns] == [i.id for i in memory.get_all(**scope)]
+    kept = {t.id: t.status == "clipped" for t in explanation.turns if t.status != "dropped"}
+    assert kept == {t.item.id: t.partial for t in here.turns}
+    total = sum(t.tokens for t in explanation.turns) + sum(s.tokens for s in explanation.sections)
+    assert total + explanation.unattributed_tokens == here.tokens
+    assert here.to_dict()["explanation"] == explanation.to_dict()
+    assert "explanation" not in cases.run(case, InMemoryStore()).to_dict()
+
+
 # ---------------------------------------------------------------- stores
 
 

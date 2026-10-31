@@ -6,16 +6,38 @@ against Mem0 and Zep. Turns live in a :class:`MemoryStore`: in this process (:cl
 file (:class:`SQLiteStore`), in Postgres (:class:`PostgresStore`, ``pip install "llmslim[postgres]"``) or in MongoDB
 (:class:`MongoStore`, ``pip install "llmslim[mongodb]"``).
 
-Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes.
+``Memory.search(..., explain=True)`` also says why each turn was kept, cut or left out (:class:`SearchExplanation`).
+
+Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes, and
+:func:`import_history` (``llmslim import``) brings in a Mem0 export, Claude Code transcripts, ChatGPT and Claude.ai
+data exports, or generic JSONL.
 """
 
 from ._core import Memory
-from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
+from ._import import import_history
+from ._import_types import HistoryImportError, ImportedSession, ImportLimits, ImportReport
+from ._types import (
+    ExplainedCandidate,
+    ExplainedSection,
+    ExplainedTurn,
+    MemoryContext,
+    MemoryItem,
+    RecalledTurn,
+    Scope,
+    SearchExplanation,
+)
 from .mongo import MongoStore
 from .postgres import PostgresStore
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
 __all__ = [
+    "ExplainedCandidate",
+    "ExplainedSection",
+    "ExplainedTurn",
+    "HistoryImportError",
+    "ImportLimits",
+    "ImportReport",
+    "ImportedSession",
     "InMemoryStore",
     "Memory",
     "MemoryContext",
@@ -26,4 +48,6 @@ __all__ = [
     "RecalledTurn",
     "SQLiteStore",
     "Scope",
+    "SearchExplanation",
+    "import_history",
 ]

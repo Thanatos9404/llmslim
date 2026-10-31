@@ -8,18 +8,22 @@ Usage:
     llmslim mcp --db memory.db          # memory and context tools for MCP clients
     llmslim serve --db memory.db        # the same over HTTP, for apps in any language
     llmslim wrap claude                 # run Claude Code with long tool output compressed, cache-safe
+    llmslim import claude-code          # bring Claude Code history (or chatgpt, claude-ai, mem0, jsonl) into memory
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 from .analysis import analyze as run_analysis
 from .core import compress
 from .cost import estimate_cost_savings, list_supported_models
+from .memory._import_types import FORMATS
 from .modes import list_modes
 from .planning import PolicyPreset, plan_context
 from .runtime import ContextRuntime
@@ -209,6 +213,184 @@ def build_context_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--fail-on-infeasible", action="store_true")
     return parser
+
+
+IMPORT_FORMATS = ("auto", *FORMATS)
+
+
+def build_import_parser() -> argparse.ArgumentParser:
+    """Build the ``llmslim import`` parser: chat history from other tools into LLMSlim memory."""
+    from .mcp_server import DEFAULT_DB
+
+    parser = argparse.ArgumentParser(
+        prog="llmslim import",
+        description=(
+            "Import chat history into LLMSlim memory, verbatim and with no model call: Claude Code transcripts, "
+            "ChatGPT and Claude.ai data exports, Mem0 exports or generic JSONL. Importing again adds only what "
+            "is new. Thinking is never imported, tool output only with --include-tool-output, and obvious "
+            "credentials are redacted first. See docs/IMPORT.md."
+        ),
+    )
+    parser.add_argument(
+        "format",
+        choices=IMPORT_FORMATS,
+        help="The format of PATH; 'auto' tells them apart from what the file holds.",
+    )
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help=(
+            "File or folder to import: a .jsonl transcript, a project folder or ~/.claude for claude-code "
+            "(the default); the export zip, its folder or conversations.json for chatgpt and claude-ai; "
+            "a JSON or JSONL file for mem0 and jsonl."
+        ),
+    )
+    parser.add_argument(
+        "--db",
+        default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
+        help=f"SQLite file or postgresql:// URL to import into (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+    )
+    parser.add_argument(
+        "--user-id",
+        default=os.environ.get("LLMSLIM_USER_ID") or None,
+        help=(
+            "Store every turn under this user (env LLMSLIM_USER_ID). Otherwise a record's own user_id "
+            '(mem0, jsonl) is kept, else "default", the user llmslim mcp serves by default.'
+        ),
+    )
+    parser.add_argument(
+        "--agent-id",
+        default=os.environ.get("LLMSLIM_AGENT_ID") or None,
+        help="Store every turn under this agent (env LLMSLIM_AGENT_ID).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Read and count everything, store nothing (a SQLite file is opened read-only).",
+    )
+    parser.add_argument(
+        "--since",
+        default=None,
+        help="Only turns at or after this time (ISO-8601, e.g. 2025-01-31).",
+    )
+    parser.add_argument("--until", default=None, help="Only turns before this time (ISO-8601).")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Stop after importing this many new turns."
+    )
+    parser.add_argument(
+        "--include-tool-output",
+        action="store_true",
+        help="Also import tool calls and results (off by default: tool output is where secrets usually are).",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Stop at the first malformed or oversized record instead of skipping and counting it.",
+    )
+    parser.add_argument(
+        "--no-redact",
+        action="store_true",
+        help="Store text as it is, without replacing API keys, tokens and private keys.",
+    )
+    parser.add_argument("--json", action="store_true", help="Print the report as JSON on stdout.")
+    return parser
+
+
+def _import_summary(report: Any, target: str) -> str:
+    from .memory._import_types import FORMAT_NAMES
+
+    users = sorted({session.user_id for session in report.sessions})
+    verb = "Would import" if report.dry_run else "Imported"
+    lines = [
+        f"{verb} {FORMAT_NAMES.get(report.format, report.format)} history from {report.source}",
+        f"  into:        {target}" + (f" (user {', '.join(users)})" if users else ""),
+        f"  files:       {report.files}",
+        f"  sessions:    {len(report.sessions)}",
+        f"  turns:       {report.imported} {'to import' if report.dry_run else 'imported'}, "
+        f"{report.duplicates} already there, {report.skipped_total} skipped",
+    ]
+    if report.skipped:
+        lines.append(
+            "  skipped:     " + ", ".join(f"{reason} {n}" for reason, n in report.skipped.items())
+        )
+    if report.malformed:
+        lines.append(f"  malformed:   {report.malformed} (not valid JSON, or not in the format)")
+    if report.redactions:
+        total = sum(report.redactions.values())
+        kinds = ", ".join(f"{kind} {n}" for kind, n in report.redactions.items())
+        lines.append(f"  redacted:    {total} credential{'s' if total != 1 else ''} ({kinds})")
+    if report.limited:
+        lines.append("  stopped at --limit; run it again to import the rest")
+    for error in report.errors:
+        lines.append(f"  error:       {error}")
+    if report.dry_run:
+        lines.append("  dry run: nothing was stored")
+    return "\n".join(lines)
+
+
+def _emit(text: str, stream: Any) -> None:
+    """Print ``text``, replacing what the stream's encoding can't show (a title in another script, printed to a
+    Windows console or a redirected file), instead of failing on it."""
+    try:
+        print(text, file=stream)
+    except UnicodeEncodeError:
+        encoding = getattr(stream, "encoding", None) or "utf-8"
+        print(text.encode(encoding, "replace").decode(encoding), file=stream)
+
+
+def _run_import_command(argv: Sequence[str]) -> int:
+    from .memory import HistoryImportError, import_history
+    from .memory._import_sources import default_claude_dir
+    from .memory.postgres import is_postgres_url
+
+    parser = build_import_parser()
+    args = parser.parse_args(argv)
+    if args.path is None:
+        if args.format != "claude-code":
+            parser.error(f"name the file or folder to import for {args.format}")
+        args.path = str(default_claude_dir())
+    target = args.db if is_postgres_url(args.db) else str(Path(args.db).expanduser())
+    display = "a Postgres database" if is_postgres_url(args.db) else target
+
+    def progress(session: Any) -> None:
+        title = f" {session.title!r}" if session.title else ""
+        _emit(
+            f"  {session.session_id}{title}: {session.turns} turns, {session.imported} new, "
+            f"{session.duplicates} already there",
+            sys.stderr,
+        )
+
+    try:
+        report = import_history(
+            args.path,
+            target,
+            format=args.format,
+            user_id=args.user_id,
+            agent_id=args.agent_id,
+            since=args.since,
+            until=args.until,
+            limit=args.limit,
+            include_tool_output=args.include_tool_output,
+            dry_run=args.dry_run,
+            strict=args.strict,
+            redact=not args.no_redact,
+            on_session=None if args.json else progress,
+        )
+    except (ValueError, TypeError) as exc:
+        if not isinstance(exc, HistoryImportError):
+            parser.error(str(exc))
+        _emit(f"llmslim import: error: {exc}", sys.stderr)
+        return 1
+    except (
+        Exception
+    ) as exc:  # the store could not be opened or written: a fatal error, not a traceback
+        _emit(f"llmslim import: error: {type(exc).__name__}: {exc}", sys.stderr)
+        return 1
+    if args.json:
+        _emit(json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True), sys.stdout)
+    else:
+        _emit(_import_summary(report, display), sys.stdout)
+    return 0 if report.ok else 1
 
 
 def _load_tool_catalog(path: str) -> List[Dict[str, Any]]:
@@ -415,6 +597,8 @@ def main(argv=None) -> int:
         return _run_tools_command(arguments[1:])
     if arguments and arguments[0] == "plan":
         return _run_plan_command(arguments[1:])
+    if arguments and arguments[0] == "import":
+        return _run_import_command(arguments[1:])
     if arguments and arguments[0] == "mcp":
         from .mcp_server import main as run_mcp_server
 

@@ -154,6 +154,7 @@ INTERNAL = frozenset(
 COMMANDS: Tuple[Tuple[str, str, str], ...] = (
     ("llmslim.cli", "build_parser", STABLE),
     ("llmslim.cli", "build_context_parser", STABLE),
+    ("llmslim.cli", "build_import_parser", STABLE),
     ("llmslim.cli", "build_plan_parser", STABLE),
     ("llmslim.cli", "build_tools_parser", STABLE),
     ("llmslim.mcp_server", "build_parser", STABLE),

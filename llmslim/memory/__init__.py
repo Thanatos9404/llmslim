@@ -7,10 +7,14 @@ file (:class:`SQLiteStore`) or in Postgres (:class:`PostgresStore`, ``pip instal
 
 ``Memory.search(..., explain=True)`` also says why each turn was kept, cut or left out (:class:`SearchExplanation`).
 
-Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes.
+Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes, and
+:func:`import_history` (``llmslim import``) brings in a Mem0 export, Claude Code transcripts, ChatGPT and Claude.ai
+data exports, or generic JSONL.
 """
 
 from ._core import Memory
+from ._import import import_history
+from ._import_types import HistoryImportError, ImportedSession, ImportLimits, ImportReport
 from ._types import (
     ExplainedCandidate,
     ExplainedSection,
@@ -28,6 +32,10 @@ __all__ = [
     "ExplainedCandidate",
     "ExplainedSection",
     "ExplainedTurn",
+    "HistoryImportError",
+    "ImportLimits",
+    "ImportReport",
+    "ImportedSession",
     "InMemoryStore",
     "Memory",
     "MemoryContext",
@@ -38,4 +46,5 @@ __all__ = [
     "SQLiteStore",
     "Scope",
     "SearchExplanation",
+    "import_history",
 ]

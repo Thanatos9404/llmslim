@@ -67,6 +67,45 @@
       },
       "status": "stable"
     },
+    "llmslim import": {
+      "arguments": {
+        "--agent-id": {},
+        "--db": {},
+        "--dry-run": {
+          "flag": true
+        },
+        "--include-tool-output": {
+          "flag": true
+        },
+        "--json": {
+          "flag": true
+        },
+        "--limit": {},
+        "--no-redact": {
+          "flag": true
+        },
+        "--since": {},
+        "--strict": {
+          "flag": true
+        },
+        "--until": {},
+        "--user-id": {},
+        "format": {
+          "choices": [
+            "auto",
+            "chatgpt",
+            "claude-ai",
+            "claude-code",
+            "jsonl",
+            "mem0"
+          ]
+        },
+        "path": {
+          "nargs": "?"
+        }
+      },
+      "status": "stable"
+    },
     "llmslim mcp": {
       "arguments": {
         "--agent-id": {},
@@ -3176,6 +3215,76 @@
           "signature": "(id: str, role: str, created_at: datetime, session: Optional[int], pool: Optional[str], status: str, reason: Optional[str], tokens: int, share: float, candidates: Tuple[ExplainedCandidate, ...] = ()) -> None",
           "status": "stable"
         },
+        "HistoryImportError": {
+          "bases": [
+            "ValueError"
+          ],
+          "kind": "class",
+          "members": {},
+          "signature": null,
+          "status": "stable"
+        },
+        "ImportLimits": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "max_depth": "attribute: int",
+            "max_file_bytes": "attribute: int",
+            "max_record_bytes": "attribute: int",
+            "max_turn_chars": "attribute: int",
+            "max_zip_members": "attribute: int",
+            "max_zip_ratio": "attribute: float"
+          },
+          "signature": "(max_file_bytes: int = 1073741824, max_record_bytes: int = 33554432, max_depth: int = 64, max_turn_chars: int = 100000, max_zip_members: int = 100000, max_zip_ratio: float = 100.0) -> None",
+          "status": "stable"
+        },
+        "ImportReport": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "dry_run": "attribute: bool",
+            "duplicates": "attribute: int",
+            "errors": "attribute: Tuple[str, ...]",
+            "files": "attribute: int",
+            "format": "attribute: str",
+            "imported": "attribute: int",
+            "limited": "attribute: bool",
+            "malformed": "attribute: int",
+            "ok": "property",
+            "redactions": "attribute: Mapping[str, int]",
+            "sessions": "attribute: Tuple[ImportedSession, ...]",
+            "skipped": "attribute: Mapping[str, int]",
+            "skipped_total": "property",
+            "source": "attribute: str",
+            "to_dict": "method () -> Dict[str, Any]"
+          },
+          "signature": "(format: str, source: str, dry_run: bool, files: int, sessions: Tuple[ImportedSession, ...], imported: int, duplicates: int, malformed: int, skipped: Mapping[str, int] = <factory>, redactions: Mapping[str, int] = <factory>, errors: Tuple[str, ...] = (), limited: bool = False) -> None",
+          "status": "stable"
+        },
+        "ImportedSession": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "duplicates": "attribute: int",
+            "format": "attribute: str",
+            "imported": "attribute: int",
+            "run_id": "attribute: Optional[str]",
+            "session_id": "attribute: str",
+            "skipped": "attribute: int",
+            "title": "attribute: Optional[str]",
+            "to_dict": "method () -> Dict[str, Any]",
+            "turns": "attribute: int",
+            "user_id": "attribute: str"
+          },
+          "signature": "(format: str, session_id: str, title: Optional[str], run_id: Optional[str], user_id: str, turns: int, imported: int, duplicates: int, skipped: int) -> None",
+          "status": "stable"
+        },
         "InMemoryStore": {
           "bases": [
             "object"
@@ -3354,6 +3463,11 @@
             "user_turn_cap": "attribute: Optional[int]"
           },
           "signature": "(mode: str, route: Optional[str], budget: int, tokens: int, history_tokens: int, room: int, user_room: Optional[int], user_turn_cap: Optional[int], clipped: bool, unattributed_tokens: int, turns: Tuple[ExplainedTurn, ...], sections: Tuple[ExplainedSection, ...]) -> None",
+          "status": "stable"
+        },
+        "import_history": {
+          "kind": "function",
+          "signature": "(source: Union[str, os.PathLike[str]], memory: Union[Memory, MemoryStore, str, os.PathLike[str], None], *, format: str = 'auto', user_id: Optional[str] = None, agent_id: Optional[str] = None, since: Any = None, until: Any = None, limit: Optional[int] = None, include_tool_output: bool = False, dry_run: bool = False, strict: bool = False, redact: bool = True, limits: Optional[ImportLimits] = None, on_session: Optional[Callable[[ImportedSession], None]] = None) -> ImportReport",
           "status": "stable"
         }
       },

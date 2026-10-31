@@ -53,6 +53,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ExplainedCandidate` and `ExplainedSection` are exported from `llmslim.memory` with `SearchExplanation`.
   - `llmslim serve` takes `"explain": true` on `POST /v1/memories/search` and adds `explanation` to the response.
     The `recall` tool of `llmslim mcp` and `Mem0Memory` are unchanged.
+- **`llmslim import`: bring your chat history into memory in one command** (`llmslim.memory.import_history` in
+  Python). It reads Claude Code transcripts (`~/.claude/projects`, the default), ChatGPT and Claude.ai data exports
+  (the zip as downloaded, its folder or `conversations.json`), a Mem0 export (`get_all` output or a list of
+  memories) and generic JSONL, or tells them apart with `auto`. Each message is stored verbatim under its original
+  time, one session per transcript or conversation, with no model call. See `docs/IMPORT.md`.
+  - **Only what was said.** User and assistant text by default. Thinking is never imported, tool calls and results
+    only with `--include-tool-output`. ChatGPT conversations follow `current_node`, the thread you saw last, not the
+    branches you left. Mem0 memories keep their own `user_id`, `agent_id` and `run_id`, so `Mem0Memory` filters find
+    them.
+  - **Idempotent.** Turn ids come from the source's message ids (or, without them, a content hash per session), so
+    importing again stores only what is new. `--dry-run`, `--since`/`--until`, `--limit`, `--strict`, `--json`.
+  - **Untrusted input.** JSONL is streamed line by line and `conversations.json` one conversation at a time. Files,
+    records, nesting depth and turns are capped (`ImportLimits`), zip archives are read in place with zip-bomb and
+    path-traversal checks, and malformed records are skipped and counted.
+  - **Credentials redacted first** (best-effort): API keys, AWS keys, private key blocks, bearer tokens, passwords
+    in URLs and key-like `api_key = ...` values become `[REDACTED:<kind>]` before anything is stored.
+  - New in `llmslim.memory`: `import_history`, `ImportReport`, `ImportedSession`, `ImportLimits` and
+    `HistoryImportError`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its

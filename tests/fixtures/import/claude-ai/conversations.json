@@ -1,0 +1,96 @@
+[
+  {
+    "uuid": "ca-conv-1",
+    "name": "Balcony garden",
+    "created_at": "2025-04-10T08:00:00.000000Z",
+    "updated_at": "2025-04-10T08:10:00.000000Z",
+    "account": {
+      "uuid": "acct-0001"
+    },
+    "chat_messages": [
+      {
+        "uuid": "ca-m1",
+        "text": "I grow tomatoes on a north-facing balcony in Pune.",
+        "content": [
+          {
+            "start_timestamp": "2025-04-10T08:00:00.000000Z",
+            "stop_timestamp": "2025-04-10T08:00:00.000000Z",
+            "type": "text",
+            "text": "I grow tomatoes on a north-facing balcony in Pune.",
+            "citations": []
+          }
+        ],
+        "sender": "human",
+        "created_at": "2025-04-10T08:00:00.000000Z",
+        "updated_at": "2025-04-10T08:00:00.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "ca-m2",
+        "text": "",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "THINKING-MARKER",
+            "summaries": []
+          },
+          {
+            "type": "tool_use",
+            "name": "web_search",
+            "input": {
+              "query": "tomatoes in shade"
+            }
+          },
+          {
+            "type": "tool_result",
+            "name": "web_search",
+            "content": [
+              {
+                "type": "text",
+                "text": "TOOL-OUTPUT-MARKER"
+              }
+            ],
+            "is_error": false
+          },
+          {
+            "type": "text",
+            "text": "North-facing balconies get little direct sun; try cherry tomatoes.",
+            "citations": []
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2025-04-10T08:00:30.000000Z",
+        "updated_at": "2025-04-10T08:00:30.000000Z",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "ca-m3",
+        "text": "Thanks! Here is my soil test.",
+        "sender": "human",
+        "created_at": "2025-04-10T13:35:00.000000+05:30",
+        "updated_at": "2025-04-10T13:35:00.000000+05:30",
+        "attachments": [
+          {
+            "file_name": "soil.txt",
+            "file_size": 20,
+            "file_type": "text/plain",
+            "extracted_content": "ATTACHMENT-MARKER"
+          }
+        ],
+        "files": []
+      }
+    ]
+  },
+  {
+    "uuid": "ca-conv-2",
+    "name": "",
+    "created_at": "2025-05-01T10:00:00Z",
+    "updated_at": "2025-05-01T10:00:00Z",
+    "account": {
+      "uuid": "acct-0001"
+    },
+    "chat_messages": []
+  }
+]

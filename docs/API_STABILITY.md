@@ -162,10 +162,12 @@ Everything else is internal and may change in any release:
 ## Command line, HTTP, MCP and environment
 
 **Command line.** The commands `llmslim` (compress), `llmslim context`, `llmslim plan`, `llmslim tools`,
-`llmslim mcp` and `llmslim serve`, and their flags and arguments, are stable. `--json` output may gain fields but
-keeps the ones it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are experimental, and
-so are the chat endpoint's flags of `llmslim serve` (`--upstream-url`, `--memory-budget`, `--store-only`,
-`--upstream-timeout`).
+`llmslim import`, `llmslim mcp` and `llmslim serve`, and their flags and arguments, are stable. `--json` output may
+gain fields but keeps the ones it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are
+experimental, and so are the chat endpoint's flags of `llmslim serve` (`--upstream-url`, `--memory-budget`,
+`--store-only`, `--upstream-timeout`). The formats `llmslim import` reads belong to other tools and are not published
+specifications: what it reads from each one, and how it counts what it skips, is output content, so a minor release
+may follow a change in a format.
 
 **HTTP (`llmslim serve`).** The routes and methods (`/healthz` and everything under `/v1` except the experimental
 chat endpoint, `/v1/chat/completions` and `/v1/models`), the request fields, the

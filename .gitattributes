@@ -1,0 +1,2 @@
+# A Claude Code transcript as a Windows editor saves it: a byte-order mark and CRLF line endings, kept as they are.
+tests/fixtures/import/claude-code/projects/-home-dev-notes/*.jsonl -text

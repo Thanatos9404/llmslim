@@ -5,15 +5,23 @@ the history that answers a question within a token budget, with the query-focuse
 against Mem0 and Zep. Turns live in a :class:`MemoryStore`: in this process (:class:`InMemoryStore`), in a SQLite
 file (:class:`SQLiteStore`) or in Postgres (:class:`PostgresStore`, ``pip install "llmslim[postgres]"``).
 
-Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes.
+Coming from Mem0? :class:`llmslim.memory.compat.Mem0Memory` has Mem0's method names and return shapes, and
+:func:`import_history` (``llmslim import``) brings in a Mem0 export, Claude Code transcripts, ChatGPT and Claude.ai
+data exports, or generic JSONL.
 """
 
 from ._core import Memory
+from ._import import import_history
+from ._import_types import HistoryImportError, ImportedSession, ImportLimits, ImportReport
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
 from .postgres import PostgresStore
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
 __all__ = [
+    "HistoryImportError",
+    "ImportLimits",
+    "ImportReport",
+    "ImportedSession",
     "InMemoryStore",
     "Memory",
     "MemoryContext",
@@ -23,4 +31,5 @@ __all__ = [
     "RecalledTurn",
     "SQLiteStore",
     "Scope",
+    "import_history",
 ]

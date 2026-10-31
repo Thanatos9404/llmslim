@@ -835,16 +835,56 @@ export const API_REFERENCE_DOCS: DocPage[] = [
     "slug": "api-llmslim-memory",
     "title": "API reference: llmslim.memory",
     "subtitle": "Memory, its stores and its result types, with their signatures and docstrings.",
-    "description": "Signatures, type annotations and docstrings of the 9 public names in llmslim.memory, generated from the source of llmslim 0.12.0.",
+    "description": "Signatures, type annotations and docstrings of the 14 public names in llmslim.memory, generated from the source of llmslim 0.12.0.",
     "category": "API Reference",
     "searchIntent": "LLMSlim Python API reference for llmslim.memory: signatures, parameters and return types.",
     "lastUpdated": "October 2026",
-    "readingTime": "10 min read",
+    "readingTime": "16 min read",
     "sections": [
       {
         "id": "about",
         "title": "About this reference",
         "content": "Each entry is a name you import from llmslim.memory: agent memory with no LLM in the loop: Memory, its stores and its result types. It shows the full signature with its type annotations, and the docstring. The page is generated from the source of llmslim 0.12.0 by scripts/api_reference.py, so it changes only when the code does."
+      },
+      {
+        "id": "historyimporterror",
+        "title": "HistoryImportError",
+        "content": "A history file that can't be imported: missing or unreadable, of an unknown format, over a size limit, an unsafe zip archive, or (with strict=True) a malformed record. The message says which file and why.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim.memory import HistoryImportError",
+          "code": "class HistoryImportError(ValueError):\n    \"\"\"A history file that can't be imported: missing or unreadable, of an unknown format, over a size limit, an\n    unsafe zip archive, or (with ``strict=True``) a malformed record. The message says which file and why.\n    \"\"\""
+        }
+      },
+      {
+        "id": "importlimits",
+        "title": "ImportLimits",
+        "content": "Bounds on what import_history reads, so a hostile or broken file fails clearly instead of exhausting memory or the stack. Every input is treated as untrusted.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim.memory import ImportLimits",
+          "code": "class ImportLimits:\n    \"\"\"Bounds on what :func:`~llmslim.memory.import_history` reads, so a hostile or broken file fails clearly\n    instead of exhausting memory or the stack. Every input is treated as untrusted.\n\n    Args:\n        max_file_bytes: Largest file read, in bytes: a JSONL file, a ``conversations.json`` or a Mem0 export, and,\n            inside a zip archive, the member read (its uncompressed size).\n        max_record_bytes: Largest single record, in characters: one JSONL line, or one element of a JSON array\n            (one ChatGPT or Claude.ai conversation, one Mem0 memory). A larger one is skipped and counted.\n        max_depth: Deepest nesting of arrays and objects in one record. A deeper record is skipped and counted\n            before it is parsed, so a nesting bomb can't exhaust the parser.\n        max_turn_chars: Longest turn stored, in characters. A longer one is skipped and counted.\n        max_zip_members: Most entries a zip archive may list.\n        max_zip_ratio: Highest compression ratio (uncompressed over compressed size) of the zip member read, when it\n            is over 1 MiB uncompressed. A zip bomb is far above it; JSON exports compress about 5 to 20 times.\n    \"\"\"\n\n    max_file_bytes: int = 1 << 30\n    max_record_bytes: int = 32 * _MIB\n    max_depth: int = 64\n    max_turn_chars: int = 100000\n    max_zip_members: int = 100000\n    max_zip_ratio: float = 100.0"
+        }
+      },
+      {
+        "id": "importreport",
+        "title": "ImportReport",
+        "content": "What import_history did.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim.memory import ImportReport",
+          "code": "class ImportReport:\n    \"\"\"What :func:`~llmslim.memory.import_history` did.\n\n    ``imported`` counts the turns stored (in a dry run, the turns that would be), ``duplicates`` the turns already\n    in memory from an earlier import, ``skipped`` the turns and records left out by reason (``thinking``,\n    ``tool_output``, ``meta``, ``system``, ``attachment``, ``other_branch``, ``subagent``, ``unsupported``,\n    ``empty``, ``outside_window``, ``too_large``, ``too_deep``), and ``malformed`` the lines or records that were not\n    valid JSON or not in the format's shape. ``redactions`` counts the credentials replaced, by kind. ``errors``\n    lists the files that could not be read at all; the other files were still imported. ``limited`` is true when\n    the import stopped at ``limit``.\n    \"\"\"\n\n    format: str\n    source: str\n    dry_run: bool\n    files: int\n    sessions: Tuple[ImportedSession, ...]\n    imported: int\n    duplicates: int\n    malformed: int\n    skipped: Mapping[str, int] = field(default_factory=dict)\n    redactions: Mapping[str, int] = field(default_factory=dict)\n    errors: Tuple[str, ...] = ()\n    limited: bool = False\n\n    @property\n    def ok(self) -> bool:\n        \"\"\"True when every file was read: no entry in ``errors``.\"\"\"\n\n    @property\n    def skipped_total(self) -> int:\n        \"\"\"All the turns and records left out, over every reason.\"\"\"\n\n    def to_dict(self) -> Dict[str, Any]:\n        \"\"\"The report as plain JSON-ready data (what ``llmslim import --json`` prints).\"\"\""
+        }
+      },
+      {
+        "id": "importedsession",
+        "title": "ImportedSession",
+        "content": "One session (a Claude Code transcript, a ChatGPT or Claude.ai conversation, or one scope of a Mem0 export or JSONL file) as import_history imported it.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim.memory import ImportedSession",
+          "code": "class ImportedSession:\n    \"\"\"One session (a Claude Code transcript, a ChatGPT or Claude.ai conversation, or one scope of a Mem0 export or\n    JSONL file) as :func:`~llmslim.memory.import_history` imported it.\n\n    ``turns`` counts the turns found to import; ``imported`` the new ones stored (or, in a dry run, that would be),\n    ``duplicates`` the ones already in memory, and ``skipped`` the ones left out here (outside ``since``/``until``,\n    over ``max_turn_chars``, or empty once credentials were redacted).\n    \"\"\"\n\n    format: str\n    session_id: str\n    title: Optional[str]\n    run_id: Optional[str]\n    user_id: str\n    turns: int\n    imported: int\n    duplicates: int\n    skipped: int\n\n    def to_dict(self) -> Dict[str, Any]:\n        \"\"\"The session as plain JSON-ready data.\"\"\""
+        }
       },
       {
         "id": "inmemorystore",
@@ -934,6 +974,16 @@ export const API_REFERENCE_DOCS: DocPage[] = [
           "language": "python",
           "filename": "from llmslim.memory import Scope",
           "code": "class Scope:\n    \"\"\"Whose memory an operation reads or writes, in Mem0's terms.\n\n    ``user_id`` is the person, ``agent_id`` the agent, and ``run_id`` one session or run. A field left as ``None``\n    matches every value when reading, so ``Scope(user_id=\"u1\")`` reads all of u1's sessions with every agent. At least\n    one field must be set: an empty scope would read or delete everyone's memory.\n    \"\"\"\n\n    user_id: Optional[str] = None\n    agent_id: Optional[str] = None\n    run_id: Optional[str] = None\n\n    def matches(\n        self,\n        user_id: Optional[str],\n        agent_id: Optional[str],\n        run_id: Optional[str],\n    ) -> bool:\n        ..."
+        }
+      },
+      {
+        "id": "import-history",
+        "title": "import_history()",
+        "content": "Import chat history from another tool into memory, verbatim, as llmslim import does.",
+        "codeSnippet": {
+          "language": "python",
+          "filename": "from llmslim.memory import import_history",
+          "code": "def import_history(\n    source: Union[str, os.PathLike[str]],\n    memory: Union[Memory, MemoryStore, str, os.PathLike[str], None],\n    *,\n    format: str = 'auto',\n    user_id: Optional[str] = None,\n    agent_id: Optional[str] = None,\n    since: Any = None,\n    until: Any = None,\n    limit: Optional[int] = None,\n    include_tool_output: bool = False,\n    dry_run: bool = False,\n    strict: bool = False,\n    redact: bool = True,\n    limits: Optional[ImportLimits] = None,\n    on_session: Optional[Callable[[ImportedSession], None]] = None,\n) -> ImportReport:\n    \"\"\"Import chat history from another tool into memory, verbatim, as ``llmslim import`` does.\n\n    Reads Claude Code transcripts (``~/.claude/projects``), a ChatGPT or Claude.ai data export (the zip as\n    downloaded, its folder, or ``conversations.json``), a Mem0 export (``get_all`` output or a list of memories) or\n    generic JSONL (one ``{\"role\", \"content\", \"timestamp\"?, \"session_id\"?, \"user_id\"?}`` per line). Each session\n    becomes a ``run_id`` and each message a turn with its original time. Only what the user and the assistant said is\n    imported: reasoning (\"thinking\") never is, and tool calls and results only with ``include_tool_output``.\n\n    Importing is idempotent: each turn's id is derived from its source id (or, without one, from its content and\n    position in its session), so importing the same history again stores only what is new. Every file is untrusted\n    and read within ``limits``; see ``docs/IMPORT.md``. No model is called and nothing leaves the machine.\n\n    Args:\n        source: The file or folder to read. ``~`` is expanded.\n        memory: Where the turns go: a :class:`~llmslim.memory.Memory`, a store, a SQLite path or a\n            ``postgresql://`` URL. ``None`` only with ``dry_run``.\n        format: ``\"claude-code\"``, ``\"chatgpt\"``, ``\"claude-ai\"``, ``\"mem0\"``, ``\"jsonl\"`` or ``\"auto\"``, which\n            tells them apart from what the file holds (not its name).\n        user_id: The user every turn is stored under. When ``None``, a record's own ``user_id`` (Mem0, JSONL) is\n            kept, else ``\"default\"``, the user ``llmslim mcp`` serves when none is named.\n        agent_id: The agent every turn is stored under; when ``None``, a record's own ``agent_id``, if any.\n        since: Import only turns at or after this time (a datetime, epoch seconds or ISO-8601 text).\n        until: Import only turns before this time.\n        limit: Stop after this many new turns.\n        include_tool_output: Also import tool calls and their results, as ``tool`` turns. Off by default: tool\n            output (shell output, file contents) is where secrets usually are.\n        dry_run: Read and count everything, store nothing. A SQLite file is opened read-only, and one that does not\n            exist is not created.\n        strict: Stop with :class:`HistoryImportError` at the first malformed or oversized record, instead of\n            skipping and counting it.\n        redact: Replace obvious credentials (API keys, AWS keys, private key blocks, bearer tokens, passwords in\n            URLs) with ``[REDACTED:<kind>]`` before anything is stored. Best-effort; see ``docs/IMPORT.md``.\n        limits: Size and nesting bounds on what is read; :class:`ImportLimits` has the defaults.\n        on_session: Called with each :class:`ImportedSession` as it is done, for progress.\n\n    Returns:\n        An :class:`ImportReport` with what was imported, skipped (by reason), malformed and redacted.\n\n    Raises:\n        HistoryImportError: The source can't be read at all, its format can't be told, a size limit is exceeded,\n            a zip archive is unsafe, or (with ``strict``) a record is malformed. A file that fails part way through\n            is listed in the report's ``errors`` instead, with what was imported before it kept.\n        ValueError: An unknown ``format``, an unreadable ``since`` or ``until``, or a ``limit`` below 1.\n\n    Example:\n        >>> from llmslim.memory import Memory, import_history\n        >>> memory = Memory(\"memory.db\")\n        >>> report = import_history(\"~/.claude/projects\", memory, format=\"claude-code\")\n        >>> print(report.imported, \"turns imported,\", report.duplicates, \"already there\")\n    \"\"\""
         }
       }
     ],

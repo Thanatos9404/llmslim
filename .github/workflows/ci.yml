@@ -167,7 +167,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mongodb: ["6.0", "7.0", "8.0"]
+        # mongo:8.0 exits at start on the ubuntu-26.04 runners' Linux 6.19+ kernel (SERVER-121912).
+        mongodb: ["6.0", "7.0", "8.2"]
     services:
       mongodb:
         image: mongo:${{ matrix.mongodb }}

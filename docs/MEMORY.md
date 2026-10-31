@@ -241,7 +241,7 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 
 **MongoDB details:**
 - Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer). CI runs every memory test against MongoDB 6.0,
-  7.0 and 8.0, standalone and as a one-node replica set.
+  7.0 and 8.2, standalone and as a one-node replica set.
 - Pass a URL, and the store opens its own `MongoClient` and closes it in `close()`. You can pass your own
   `pymongo.MongoClient` or `pymongo.database.Database` instead; `close()` leaves those open.
   ```python

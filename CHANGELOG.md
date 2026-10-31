@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     16 MB.
   - Errors raised while opening the store have the URL's password and secret options removed, and `repr` shows
     only the database and collection.
-  - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.0, standalone with authentication and as a
+  - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.2, standalone with authentication and as a
     one-node replica set. Guide: `docs/MEMORY.md`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages

@@ -28,6 +28,16 @@ function layout(heading: string, paragraphs: string[], action?: { label: string;
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#fbfbfa;color:#141413;font-family:Arial,Helvetica,sans-serif"><div style="max-width:520px;margin:0 auto"><h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(heading)}</h1>${body}${button}<p style="margin:32px 0 0;color:#6b6a65;font-size:12px">${BRAND} · https://www.llmslim.app</p></div></body></html>`
 }
 
+/**
+ * The name an email may greet its reader by. Until the address is verified, the name on the
+ * account was typed by whoever signed up, who may not own the address: putting it in our email
+ * would let a stranger write a line of their own (a fake offer, a link-like domain) into a message
+ * that arrives from llmslim.app.
+ */
+export function greetingName(user: { name?: string | null; emailVerified?: boolean | null }): string | null {
+  return user.emailVerified === true ? (user.name ?? null) : null
+}
+
 function greeting(name: string | null | undefined): string {
   const trimmed = name?.trim()
   return trimmed ? `Hi ${trimmed},` : "Hi,"

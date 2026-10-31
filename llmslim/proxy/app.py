@@ -4,6 +4,10 @@ Every request is forwarded to the upstream API with its headers, including the c
 this process never stores or logs. Only ``POST /v1/messages`` and ``POST /v1/messages/count_tokens`` bodies are
 rewritten (see :mod:`llmslim.proxy.rewrite`); responses, including streamed ones, pass through untouched. If a
 rewrite fails, the original body is forwarded, so the proxy never breaks a request it could not improve.
+
+The upstream is fixed when the app is made: a request only chooses the path and query. The proxy answers only
+requests addressed to this machine by name (or to ``allowed_hosts``) that no other web page sent, so a page the user
+opens can't use it through DNS rebinding or a cross-site request (see :mod:`llmslim._local_http`).
 """
 
 from __future__ import annotations
@@ -11,8 +15,9 @@ from __future__ import annotations
 import json
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any, AsyncIterator, Callable, Iterable, Optional
 
+from .._local_http import HostGuard, HostPolicy
 from .rewrite import Policy, RewriteReport, rewrite_request
 from .store import ProxyStore
 
@@ -60,6 +65,7 @@ def create_proxy_app(
     policy: Policy = Policy(),
     on_report: Optional[Callable[[RewriteReport], None]] = None,
     transport: Any = None,
+    allowed_hosts: Iterable[str] = (),
 ) -> Any:
     """A Starlette app that forwards to ``upstream`` and compresses tool output in Messages requests.
 
@@ -69,12 +75,16 @@ def create_proxy_app(
         policy: Which tool output to compress, and how far.
         on_report: Called with each request's :class:`RewriteReport` that changed something.
         transport: An ``httpx`` transport, for tests.
+        allowed_hosts: Host names the proxy answers to besides ``localhost``, 127.0.0.0/8 and ``::1``; ``["*"]`` for
+            any (``llmslim proxy --allow-remote`` on a non-loopback interface). Other requests, and requests another
+            web page sent, get a 403.
     """
     try:
         import httpx
         from starlette.applications import Starlette
         from starlette.background import BackgroundTask
         from starlette.concurrency import run_in_threadpool
+        from starlette.middleware import Middleware
         from starlette.requests import Request
         from starlette.responses import StreamingResponse
         from starlette.routing import Route
@@ -126,28 +136,20 @@ def create_proxy_app(
             for name, value in request.headers.raw
             if name.decode("latin-1").lower() not in _DROP
         ]
-        upstream_request = client.build_request(
-            request.method,
-            httpx.URL(path=path, query=request.url.query.encode("latin-1")),
-            headers=headers,
-            content=body,
-        )
+        try:
+            upstream_request = client.build_request(
+                request.method,
+                httpx.URL(path=path, query=request.url.query.encode("latin-1")),
+                headers=headers,
+                content=body,
+            )
+        except httpx.InvalidURL:  # a path httpx can't send, such as one starting with "//"
+            return _error(400, "invalid_request_error", "LLMSlim proxy: invalid request path")
         try:
             response = await client.send(upstream_request, stream=True)
         except httpx.HTTPError as error:
             logger.warning("LLMSlim proxy could not reach %s: %s", upstream, type(error).__name__)
-            message = json.dumps(
-                {
-                    "type": "error",
-                    "error": {
-                        "type": "api_error",
-                        "message": f"LLMSlim proxy could not reach {upstream}",
-                    },
-                }
-            ).encode("utf-8")
-            return StreamingResponse(
-                iter([message]), status_code=502, media_type="application/json"
-            )
+            return _error(502, "api_error", f"LLMSlim proxy could not reach {upstream}")
         streamed = StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
@@ -160,5 +162,24 @@ def create_proxy_app(
         ]
         return streamed
 
+    def _error(status: int, kind: str, message: str) -> StreamingResponse:
+        return StreamingResponse(
+            iter([_error_body(kind, message)]), status_code=status, media_type="application/json"
+        )
+
+    def forbidden(message: str) -> tuple[bytes, str]:
+        return _error_body("permission_error", f"LLMSlim proxy: {message}"), "application/json"
+
     methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
-    return Starlette(routes=[Route("/{path:path}", forward, methods=methods)], lifespan=lifespan)
+    return Starlette(
+        routes=[Route("/{path:path}", forward, methods=methods)],
+        lifespan=lifespan,
+        middleware=[Middleware(HostGuard, policy=HostPolicy(allowed_hosts), reject=forbidden)],
+    )
+
+
+def _error_body(kind: str, message: str) -> bytes:
+    """An error in the Anthropic API's shape, so clients show it like any other API error."""
+    return json.dumps({"type": "error", "error": {"type": kind, "message": message}}).encode(
+        "utf-8"
+    )

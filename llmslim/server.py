@@ -25,7 +25,6 @@ give full access to every scope, so call the server from your backend, never fro
 from __future__ import annotations
 
 import argparse
-import hmac
 import ipaddress
 import json
 import logging
@@ -34,7 +33,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence, TypedDict
 
 from ._fit import fit_text
-from ._local_http import HostGuard, HostPolicy
+from ._local_http import BearerKeys, HostGuard, policy_for
 from .memory import Memory
 from .memory._core import storage_target
 from .tokens import count_tokens
@@ -95,20 +94,11 @@ def create_app(
 
     from . import __version__
 
-    keys = [key.encode("utf-8") for key in api_keys]
-    if allowed_hosts is None:
-        policy = HostPolicy(["*"] if keys else ())
-    else:
-        policy = HostPolicy(allowed_hosts, origins=not keys)
+    keys = BearerKeys(api_keys)
+    policy = policy_for(allowed_hosts, keyed=bool(keys))
 
     def authorized(request: Request) -> bool:
-        if not keys:
-            return True
-        scheme, _, token = request.headers.get("authorization", "").partition(" ")
-        presented = token.strip().encode("utf-8")
-        # Compare against every key, so the time taken doesn't reveal which one nearly matched.
-        matches = [hmac.compare_digest(presented, key) for key in keys]
-        return scheme.lower() == "bearer" and any(matches)
+        return keys.accepts(request.headers.get("authorization"))
 
     async def body(request: Request) -> Dict[str, Any]:
         declared = request.headers.get("content-length")

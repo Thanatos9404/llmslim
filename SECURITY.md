@@ -27,22 +27,26 @@ errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
 
 ## Local servers: `llmslim serve`, `llmslim mcp` and `llmslim proxy`
 
-- **Binding.** `llmslim serve` and `llmslim proxy` bind 127.0.0.1 by default. `serve` refuses any other interface
-  without an API key; `proxy` refuses one without `--allow-remote`. `llmslim mcp` speaks stdio only.
-- **Authentication.** `serve` compares bearer keys in constant time against every configured key; keys are at least 16
-  characters. Without keys, every `/v1` route is open, so it is for loopback use only. Keys give full access to every
-  scope: call `serve` from your backend and map your users to `user_id` there. `llmslim mcp` fixes the user and agent
-  when it starts; no tool takes them as arguments, and `forget` refuses ids outside that scope.
+- **Binding.** `llmslim serve`, `llmslim mcp --transport http` and `llmslim proxy` bind 127.0.0.1 by default.
+  `serve` and `mcp` refuse any other interface without an API key; `proxy` refuses one without `--allow-remote`.
+  `llmslim mcp` speaks stdio unless started with `--transport http`.
+- **Authentication.** `serve` and `mcp` over HTTP share one check: bearer keys are compared in constant time against
+  every configured key, and keys are at least 16 characters. Without keys, every `/v1` route of `serve` and the `mcp`
+  endpoint are open, so they are for loopback use only. `serve` keys give full access to every scope: call `serve`
+  from your backend and map your users to `user_id` there. `llmslim mcp` fixes the user and agent when it starts, over
+  stdio and HTTP alike; no tool takes them as arguments, `forget` refuses ids outside that scope, and every key of an
+  HTTP server reaches that one scope only.
 - **Web pages.** A server on loopback is reachable from any page the user opens: by cross-site "simple" requests, and
-  by DNS rebinding, which lets the page read the answers. A keyless `serve` and the proxy answer only requests whose
-  `Host` names this machine (or a host given with `--allowed-host`), and refuse with a 403 any request whose `Origin`
-  is another site. Neither sends CORS headers.
+  by DNS rebinding, which lets the page read the answers. A keyless `serve`, a keyless `mcp` over HTTP and the proxy
+  answer only requests whose `Host` names this machine (or a host given with `--allowed-host`), and refuse with a 403
+  any request whose `Origin` is another site. None of them sends CORS headers.
 - **The proxy is not an open relay.** Its upstream is fixed at start; a request chooses only the path and query.
   Client credentials are forwarded to that upstream only, never stored or logged.
 - **Input limits.** `serve` caps bodies at 1 MB before parsing (413), budgets at 100,000 tokens and list pages at 1,000.
   Over-deep JSON, values of the wrong type or out of range, and text that isn't valid Unicode are 400s with a fixed
-  error shape; unexpected errors are a bare 500 with no traceback. Storage queries are parameterised (SQLite and
-  Postgres), and no file path is built from request input.
+  error shape; unexpected errors are a bare 500 with no traceback. `mcp` over HTTP caps bodies at 1 MB too (413),
+  answers malformed JSON-RPC with a 400, and keeps no session between requests. Storage queries are parameterised
+  (SQLite and Postgres), and no file path is built from request input.
 - **Algorithmic cost.** Content detection, sentence splitting, code-span handling and the YAML comment stripper take
   linear time on any input; `tests/test_security_dos.py` times each against inputs that used to take quadratic time.
   `fit` (`/v1/context/fit`, MCP `fit_context`) holds its budget for any text. XML with entity declarations is never

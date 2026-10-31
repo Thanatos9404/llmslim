@@ -993,3 +993,28 @@ def test_serve_and_mcp_open_mongodb_from_db(monkeypatch):
     monkeypatch.setenv("LLMSLIM_MEMORY_DB", URL)
     assert server.build_parser().parse_args([]).db == URL
     _drop("llmslim_memory")
+
+
+@needs_db
+def test_llmslim_import_writes_to_mongodb_without_printing_the_url(capsys):
+    from pathlib import Path
+
+    from llmslim.cli import main
+
+    history = Path(__file__).parent / "fixtures" / "import" / "jsonl" / "history.jsonl"
+    try:
+        assert main(["import", "jsonl", str(history), "--db", URL]) == 0
+        first = capsys.readouterr()
+        assert "4 imported" in first.out and "MongoDB" in first.out + first.err
+        assert main(["import", "jsonl", str(history), "--db", URL]) == 0
+        again = capsys.readouterr()
+        assert "0 imported, 4 already there" in again.out
+        for shown in (first, again):
+            assert URL not in shown.out + shown.err
+        store = MongoStore(URL)
+        try:
+            assert [i.run_id for i in store.list(Scope(run_id="s-1"))] == ["s-1", "s-1"]
+        finally:
+            store.close()
+    finally:
+        _drop("llmslim_memory")

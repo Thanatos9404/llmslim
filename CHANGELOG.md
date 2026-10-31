@@ -16,6 +16,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
 ### Added
+- **`Memory.search(..., explain=True)` says why each turn was kept, cut or left out.** The context carries an
+  `explanation` (`SearchExplanation`), built from what the search decided:
+  - for every stored turn of the scope, those outside the time window included: its pool, `status` (`kept`,
+    `clipped` or `dropped`) and `reason`, the tokens its block takes in the text and its share of the budget;
+  - for every candidate a turn had (a user turn, a reply's windows, a summary's opening): its rank and score in its
+    pool, its size and what became of it;
+  - for each section (standing requests, preferences, conflicts): whether it is shown and why not, its cap, and
+    every statement it weighed, best first;
+  - the reasons are concrete: over the budget, over its pool's share, a duplicate, outside the time window, dropped
+    at the exact count, cut by the last resort, and so on. `docs/MEMORY.md` lists them all.
+
+  Each block is counted on the returned text, so with tiktoken the turns' and sections' tokens add up to the
+  context's count exactly; any remainder (with the 4-characters-per-token estimate) is `unattributed_tokens`. The
+  explanation names turns by id and never repeats their text. `to_dict()` gives JSON and `from_dict()` reads it back.
+  With `explain` off, the default, the output is byte-for-byte what it was and no extra work is done:
+  `tests/fixtures/memory_search_golden.json` pins 30 searches recorded before the change. `ExplainedTurn`,
+  `ExplainedCandidate` and `ExplainedSection` are exported from `llmslim.memory` with `SearchExplanation`.
+  - `llmslim serve` takes `"explain": true` on `POST /v1/memories/search` and adds `explanation` to the response.
+    The `recall` tool of `llmslim mcp` and `Mem0Memory` are unchanged.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its

@@ -79,6 +79,36 @@ def test_add_search_and_the_answer_comes_back(client):
     assert any(turn["content"] == "I'm allergic to peanuts." for turn in body["turns"])
 
 
+def test_search_explains_itself_when_asked(client):
+    peanuts = _add(client, "I'm allergic to peanuts.", user_id="asha")[0]["id"]
+    for day in range(30):
+        _add(client, f"Day {day}: what should I cook with lentils tonight?", user_id="asha")
+    query = {"query": "Am I allergic to anything?", "user_id": "asha", "budget": 60}
+
+    def search(**extra):
+        return client.post("/v1/memories/search", json={**query, **extra}, headers=AUTH)
+
+    plain, off, null = search().json(), search(explain=False).json(), search(explain=None).json()
+    response = search(explain=True)
+    assert response.status_code == 200
+    body = response.json()
+    assert all("explanation" not in other for other in (plain, off, null))
+    assert body["text"] == plain["text"] == off["text"] and body["turns"] == plain["turns"]
+    explanation = body["explanation"]
+    assert explanation["mode"] == "turns" and explanation["tokens"] == body["tokens"]
+    assert len(explanation["turns"]) == 31
+    turns = {turn["id"]: turn for turn in explanation["turns"]}
+    assert turns[peanuts]["status"] == "kept" and turns[peanuts]["candidates"][0]["rank"] == 1
+    assert [s["name"] for s in explanation["sections"]] == ["requests", "preferences", "conflicts"]
+    for wrong in ("yes", 1, [True]):
+        refused = search(explain=wrong)
+        assert refused.status_code == 400
+        assert refused.json()["error"] == {
+            "type": "invalid_request",
+            "message": "explain must be true or false",
+        }
+
+
 def test_items_list_get_update_delete(client):
     first, second = _add(
         client,

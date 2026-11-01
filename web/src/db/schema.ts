@@ -99,8 +99,8 @@ export const passkey = pgTable(
 
 /**
  * Fixed-window counters for both rate-limit layers. One atomic upsert per request, so concurrent
- * requests on different serverless instances cannot slip past the limit. Keys are "ip|<path>" or
- * "email|<hmac>|<path>"; no raw email or IP is stored.
+ * requests on different serverless instances cannot slip past the limit. Keys are "ip|<hmac>" (of the
+ * IP and path) or "email|<hmac>|<path>"; no raw email or IP is stored.
  */
 export const rateLimit = pgTable(
   "rate_limit",

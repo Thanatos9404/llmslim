@@ -4,7 +4,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { greetingName, resetPasswordMail } from "@/lib/auth/email"
-import { pruneExpired } from "@/lib/auth/housekeeping"
+import { HOUSEKEEPING_INTERVAL_MS, housekeepingDue, pruneExpired } from "@/lib/auth/housekeeping"
 import { BUDGETED_MAIL, MAIL_BUDGET, mailbox, withinMailBudget } from "@/lib/auth/mail-budget"
 import { SECRET, testAuth, testDatabase, tokenFrom } from "./helpers"
 
@@ -179,5 +179,35 @@ describe("pruneExpired", () => {
     expect(ids).not.toContain("old-state")
     // The live session still works after the clean-up.
     expect((await t.call("/get-session", { cookie: signIn.cookie })).json).not.toBeNull()
+  })
+
+  it("deletes security log entries past 180 days and counters whose window ended, as the privacy policy says", async () => {
+    const t = await testAuth()
+    const now = Date.now()
+    await t.client.query("delete from auth_event")
+    await t.client.query("delete from rate_limit")
+    await t.client.query(
+      "insert into auth_event (type, created_at) values ('sign_in_success', now() - interval '181 days'), ('sign_in_success', now() - interval '179 days')",
+    )
+    await t.client.query("insert into rate_limit (key, count, window_start, window_seconds) values ('ended', 1, $1, 86400), ('open', 1, $2, 86400)", [
+      now - 24 * HOUR - 2 * HOUR,
+      now - 23 * HOUR,
+    ])
+    await pruneExpired(t.db, now)
+    const events = await t.client.query<{ age: number }>("select extract(day from now() - created_at)::int as age from auth_event")
+    expect(events.rows.map((row) => row.age)).toEqual([179])
+    const counters = await t.client.query<{ key: string }>("select key from rate_limit")
+    expect(counters.rows.map((row) => row.key)).toEqual(["open"])
+  })
+})
+
+describe("housekeepingDue", () => {
+  it("runs on an instance's first request, then at most once per interval", () => {
+    const start = 1_900_000_000_000
+    housekeepingDue(start) // whatever an earlier test left, this instance has now run
+    expect(housekeepingDue(start + 1)).toBe(false)
+    expect(housekeepingDue(start + HOUSEKEEPING_INTERVAL_MS - 1)).toBe(false)
+    expect(housekeepingDue(start + HOUSEKEEPING_INTERVAL_MS)).toBe(true)
+    expect(housekeepingDue(start + HOUSEKEEPING_INTERVAL_MS + 1)).toBe(false)
   })
 })

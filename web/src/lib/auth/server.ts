@@ -20,7 +20,7 @@ import { createDatabase } from "@/db/client"
 import { recordAuthEvent, hashIdentifier, type AuthEventType } from "./audit"
 import { getAuthConfig, type AuthConfig } from "./config"
 import { accountDeletedMail, existingAccountMail, greetingName, passwordChangedMail, resetPasswordMail, sendMail, verificationMail, type Mail } from "./email"
-import { HOUSEKEEPING_SAMPLE, pruneExpired } from "./housekeeping"
+import { housekeepingDue, pruneExpired } from "./housekeeping"
 import { withinMailBudget } from "./mail-budget"
 import { consume, peek, type AnyPgDatabase } from "./rate-limit-store"
 import { DEFAULT_RULE, EMAIL_RULES, IP_RULES, isEmailLimitedPath, rateLimitMessage } from "./rate-limits"
@@ -266,7 +266,8 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
       window: DEFAULT_RULE.window,
       max: DEFAULT_RULE.max,
       customRules: IP_RULES,
-      customStorage: { consume: (key, rule) => consume(db, `ip|${key}`, rule) },
+      // Better Auth's key holds the client IP; only a keyed hash of it is stored.
+      customStorage: { consume: (key, rule) => consume(db, `ip|${hashIdentifier(secret, "ip", key)}`, rule) },
     },
 
     advanced: {
@@ -332,7 +333,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
         const body = (ctx.body ?? {}) as Record<string, unknown>
         const headers = ctx.request?.headers ?? ctx.headers
 
-        if (Math.random() < HOUSEKEEPING_SAMPLE) {
+        if (housekeepingDue()) {
           background(pruneExpired(db).catch((error) => console.error("[accounts] could not prune expired rows:", error instanceof Error ? error.message : "unknown error")))
         }
 

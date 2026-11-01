@@ -214,6 +214,54 @@ def test_user_share_reserves_room_for_user_turns(memory, monkeypatch):
     assert len(users) > len(fewer)
 
 
+def test_a_short_reply_gets_its_sessions_relevance(memory):
+    # A conversation of short turns on both sides (two people, or an agent that answers briefly). The answer is a
+    # reply that shares no word with the question, in the one session about it. A user turn there inherits that
+    # session's relevance; a one-window reply used to inherit only its own, so it scored 0 and waited behind the
+    # older turns for the leftover budget.
+    for day in range(20):
+        say(memory, day, f"Day {day}: nothing new today.", f"Day {day}: sounds like a calm one.")
+    say(memory, 21, "I started a pottery class on Monday.", "Which pottery studio is it?")
+    say(memory, 21, "The one on Elm Street.", "Wear an apron, clay gets everywhere.", minutes=5)
+    context = memory.search("What did you say about my pottery class?", user_id="u1", budget=160)
+    assert context.compressed and context.tokens <= 160
+    assert "Wear an apron, clay gets everywhere." in context.text
+    hit = [t for t in context.turns if t.item.content.startswith("Wear an apron")]
+    assert hit and hit[0].item.role == "assistant" and not hit[0].partial
+
+
+def test_reply_windows_inherit_from_their_reply_and_short_replies_from_their_session():
+    long = " ".join(f"Point {k}: the garden shed needs a new felt roof." for k in range(40))
+    turns = [
+        _turn("Tell me about the shed.", "user", session=0),
+        _turn(long, "assistant", session=0, minutes=1),
+        _turn("Start with the felt roof.", "assistant", session=0, minutes=2),
+        _turn("Nice.", "assistant", session=0, minutes=3),
+        _turn("Thanks for the help.", "user", session=1, minutes=4),
+        _turn("Any time.", "assistant", session=1, minutes=5),
+    ]
+    user, other = _turns.pools(turns, 2000)
+    assert turns[1].parts > 1 and turns[2].parts == turns[3].parts == turns[5].parts == 1
+    # with by_turn (REPLY_GROUP): a window of a longer reply is grouped with its reply, and the replies of one window
+    # with the session's other replies of one window, as user turns are with the session's user turns
+    assert {(p.turn, _turns._group(p, turns, True)) for p in other} == {
+        (1, 1),
+        (2, -1),
+        (3, -1),
+        (5, -2),
+    }
+    assert [_turns._group(p, turns, False) for p in user] == [-1, -2]
+    assert {_turns._group(p, turns, False) for p in other} == {-1, -2}
+    # so a one-window reply with no word of the question still scores in a session whose replies match it
+    scores = dict(
+        zip(
+            [p.turn for p in other],
+            _turns.score_pool(other, turns, "felt roof", None, _turns.RERANK_REPLY, True),
+        )
+    )
+    assert scores[2] > scores[3] > 0 and scores[5] == 0
+
+
 def test_long_user_turns_keep_their_relevant_sentences_and_are_partial(memory):
     filler(memory, days=20)
     rambling = " ".join(

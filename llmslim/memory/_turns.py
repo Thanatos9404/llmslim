@@ -10,7 +10,8 @@ themselves, not on rendered session text:
   A user turn is kept whole when it fits its cap; a longer one keeps its most relevant sentences and is marked
   partial.
 * **Replies are cut into windows** of a few sentences (code blocks and tables stay whole), ranked in their own pool,
-  and fill the rest of the budget. A window inherits part of its reply's relevance.
+  and fill the rest of the budget. A window inherits part of its reply's relevance. A reply of one window inherits
+  part of its session's instead (the relevance of the session's replies of one window), as a user turn does.
 * **Repeated text is dropped** (``DEDUP_OVERLAP``): a candidate whose word 5-grams are mostly in the text already
   kept adds nothing.
 * **One labelled, dated block per turn.** Each kept turn is rendered as ``[date] role: text``: prose on that line
@@ -47,9 +48,9 @@ WINDOW_MIN = 60
 WINDOW_MAX = 200
 RERANK_USER = 160  # user turns the reranker reads (the strongest lexical candidates)
 RERANK_REPLY = 80  # reply windows the reranker reads
-REPLY_GROUP = (
-    True  # a reply window inherits part of its whole reply's relevance (else its session's)
-)
+# A reply window inherits part of its whole reply's relevance, and a reply of one window part of its session's
+# (``score_pool``). When this is off, every reply window inherits its session's.
+REPLY_GROUP = True
 DEDUP_OVERLAP = 0.8  # share of a candidate's word 5-grams already kept above which it is left out
 SHINGLE = 5
 SLACK = 1.0  # the context never runs over the budget (Memory.search clips what fit leaves over)
@@ -419,15 +420,29 @@ def score_pool(
     recency: bool = True,
 ) -> List[float]:
     """Relevance of each piece to ``query``: LLMSlim's lexical ranking (BM25 with feedback and bonuses; a piece
-    inherits part of its group's relevance, the group being its turn when ``by_turn`` else its session), then the
-    reranker over the ``candidates`` strongest lexical candidates when one is set. ``recency`` as in ``rank_units``."""
+    inherits part of its group's relevance), then the reranker over the ``candidates`` strongest lexical candidates
+    when one is set. ``recency`` as in ``rank_units``.
+
+    The group is the piece's session (the pool's pieces from that session), or with ``by_turn`` its turn: a window
+    then inherits part of its whole reply's relevance. A reply of one window would only inherit its own, so it is
+    grouped by its session instead, with the session's other replies of one window, as a user turn is grouped with
+    the session's user turns. A short reply (a person's turn in a conversation between two people, or an agent's
+    one-line answer) then gets the same help from its session as the user turns around it."""
     if not pieces:
         return []
     units = [
-        Unit(k, p.turn if by_turn else turns[p.turn].session, p.text, p.tokens, "", "\n")
-        for k, p in enumerate(pieces)
+        Unit(k, _group(p, turns, by_turn), p.text, p.tokens, "", "\n") for k, p in enumerate(pieces)
     ]
     return rank_units(units, query, scorer, candidates, recency)
+
+
+def _group(piece: Piece, turns: Sequence[Turn], by_turn: bool) -> int:
+    """The group ``piece`` inherits relevance from (see ``score_pool``): its turn (numbered from 0) when ``by_turn``
+    and the turn has more than one window, else its session (numbered from -1 down, so the two never meet)."""
+    turn = turns[piece.turn]
+    if by_turn and turn.parts > 1:
+        return piece.turn
+    return -1 - turn.session
 
 
 # Letters outside the Latin alphabet: Chinese, Japanese, Korean, Cyrillic, Arabic and so on. LLMSlim's lexical

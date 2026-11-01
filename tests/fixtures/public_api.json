@@ -109,8 +109,19 @@
     "llmslim mcp": {
       "arguments": {
         "--agent-id": {},
+        "--allowed-host": {},
+        "--api-key": {},
         "--budget": {},
         "--db": {},
+        "--host": {},
+        "--path": {},
+        "--port": {},
+        "--transport": {
+          "choices": [
+            "http",
+            "stdio"
+          ]
+        },
         "--user-id": {}
       },
       "status": "stable"
@@ -257,6 +268,9 @@
     "LLMSLIM_ALLOWED_HOSTS",
     "LLMSLIM_API_KEYS",
     "LLMSLIM_HOST",
+    "LLMSLIM_MCP_API_KEYS",
+    "LLMSLIM_MCP_HOST",
+    "LLMSLIM_MCP_PORT",
     "LLMSLIM_MEMORY_DB",
     "LLMSLIM_PORT",
     "LLMSLIM_PROXY_DB",

@@ -10,8 +10,8 @@ import type { LLMSlim, MemoryContext, MemoryItem } from "../src/index.js";
 import { memoryProcessor, memoryTools } from "../src/mastra.js";
 
 /**
- * CI also runs this file against the oldest `@mastra/core` the package supports (`LLMSLIM_MASTRA_FLOOR=1`), which
- * predates AI SDK 7 models: there the mock speaks the AI SDK 6 model spec, whose results have the same shape.
+ * CI also runs this file against the oldest `@mastra/core` the package supports (`LLMSLIM_MASTRA_FLOOR=1`): there the
+ * mock speaks the AI SDK 6 model spec, whose results have the same shape, so models on either spec are covered.
  */
 const floor = Boolean(process.env.LLMSLIM_MASTRA_FLOOR);
 const MockModel = floor ? (MockLanguageModelV3 as unknown as typeof MockLanguageModelV4) : MockLanguageModelV4;
@@ -290,6 +290,26 @@ describe("memoryProcessor", () => {
         { role: "assistant", content: "Koregaon Park." },
       ],
     ]);
+  });
+
+  it("saves the reply exactly once, every time", async () => {
+    // @mastra/core before 1.29.1 sometimes passed output processors the reply twice, as two messages, in about one
+    // run in two; repeating the call makes a regression show up on every CI run.
+    for (let run = 0; run < 50; run++) {
+      const { client, added } = fakeClient();
+      const agent = agentWith(scriptedModel([{ text: "Koregaon Park." }]), { outputProcessors: [memoryProcessor({ client, userId: "asha" })] });
+      await agent.generate([
+        { role: "user", content: "I moved to Pune." },
+        { role: "assistant", content: "Noted." },
+        { role: "user", content: "Which area, did I say?" },
+      ]);
+      expect(added.map((request) => request.messages)).toEqual([
+        [
+          { role: "user", content: "Which area, did I say?" },
+          { role: "assistant", content: "Koregaon Park." },
+        ],
+      ]);
+    }
   });
 
   it("saves a streamed reply once the stream has been read", async () => {

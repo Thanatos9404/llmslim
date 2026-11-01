@@ -69,7 +69,7 @@ injected text can't read another user's memory.
 
 ## Mastra
 
-`llmslim/mastra` (with `@mastra/core` 1.11 or newer, which needs Node 22.13+) gives an agent the same
+`llmslim/mastra` (with `@mastra/core` 1.29.1 or newer, which needs Node 22.13+) gives an agent the same
 `recall_memory` and `remember` tools, plus an output processor that saves each user message and reply.
 
 ```ts

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="auth-shell flex min-h-screen flex-col">
+    <div className="auth-shell backdrop-clip flex min-h-screen flex-col">
       <SiteHeader />
       {children}
       <SiteFooter />

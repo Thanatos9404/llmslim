@@ -506,13 +506,18 @@ def test_search_stays_within_a_budget_the_gap_marker_used_to_overrun():
 
 
 def test_a_session_of_notes_keeps_one_note_per_line_under_one_date():
-    # r6's read path: each kept note is its own labelled line; the shared time is shown in full once, on the first
-    # kept note, and the others show the date alone (main renders the shared stamp as a header line instead).
+    # Each kept note is its own labelled line. The shared time is shown in full once, on the first kept note; the
+    # others show the role alone (with date_format="%Y-%m-%d", the date alone, as in 0.12).
     context = notes_in_one_session().search(QUESTION, user_id="demo", budget=70)
     assert context.compressed
     first, *rest = context.text.split("\n")
     assert first.startswith("[2026-10-24 (Sat) 07:43] user: ") and rest
-    assert all(line.startswith("[2026-10-24] user: ") for line in rest)
+    assert all(line.startswith("user: ") for line in rest)
+    dated = notes_in_one_session()
+    dated.date_format = "%Y-%m-%d"
+    first_dated, *rest_dated = dated.search(QUESTION, user_id="demo", budget=70).text.split("\n")
+    assert first_dated.startswith("[2026-10-24 (Sat) 07:43] user: ") and rest_dated
+    assert all(line.startswith("[2026-10-24] user: ") for line in rest_dated)
     assert (
         "user: Run the tests with `pnpm test -- --runInBand`; the parallel run is flaky on CI."
         in context.text

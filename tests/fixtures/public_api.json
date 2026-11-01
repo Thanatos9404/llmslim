@@ -3353,7 +3353,7 @@
             "search": "method (query: str, *, user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None, budget: Optional[int] = None, relevance: Any = None, since: Any = None, until: Any = None, standing_requests: Optional[bool] = None, coverage: Optional[str] = None, preferences: Optional[bool] = None, conflicts: Optional[bool] = None, explain: bool = False) -> MemoryContext",
             "update": "method (memory_id: str, content: Optional[str] = None, *, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
           },
-          "signature": "(store: Union[MemoryStore, str, Path, None] = None, *, budget: int = 2000, relevance: Any = 'lexical', tz: tzinfo = <timezone>, stamp_format: str = '%Y-%m-%d (%a) %H:%M', date_format: str = '%Y-%m-%d', clock: Callable[[], datetime] = _utcnow, standing_requests: bool = True, coverage: str = 'auto', preferences: bool = True, conflicts: bool = True) -> None",
+          "signature": "(store: Union[MemoryStore, str, Path, None] = None, *, budget: int = 2000, relevance: Any = 'lexical', tz: tzinfo = <timezone>, stamp_format: str = '%Y-%m-%d (%a) %H:%M', date_format: Optional[str] = None, clock: Callable[[], datetime] = _utcnow, standing_requests: bool = True, coverage: str = 'auto', preferences: bool = True, conflicts: bool = True) -> None",
           "status": "stable"
         },
         "MemoryContext": {

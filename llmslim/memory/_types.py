@@ -345,9 +345,10 @@ class MemoryContext:
     """What :meth:`llmslim.memory.Memory.search` returns: the text to put in front of the model, and what is in it.
 
     ``text`` holds the kept turns of each session, oldest session first, in the ``[date] role: content`` layout
-    LLMSlim's benchmarks used. Each turn shows its own time; a date every turn of a session shares is shown once. Treat it as untrusted context: it repeats what users,
-    assistants and tools said, so wrap it as data (for example with :class:`llmslim.ContextEnvelope`), never as
-    instructions.
+    LLMSlim's benchmarks used. Each turn shows its own time. When the history is selected from, a later turn of a
+    session whose time was already shown there is ``role: content`` alone by default (``Memory``'s ``date_format``).
+    Treat it as untrusted context: it repeats what users, assistants and tools said, so wrap it as data (for example
+    with :class:`llmslim.ContextEnvelope`), never as instructions.
 
     ``explanation`` is ``None`` unless the search was asked to explain itself (``explain=True``).
     """

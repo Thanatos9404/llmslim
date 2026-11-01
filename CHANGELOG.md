@@ -176,6 +176,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     test that saves the same reply 50 times, and imports the packed package without its optional peers.
 
 ### Changed
+- **`Memory.search` shows a session's date once: `date_format` now defaults to `None`.** When a long history is
+  selected from, the first kept turn of a session shows its full stamp, and so does a later turn whose time differs
+  from the one shown last in its session. Any other kept turn used to repeat the date, `[2026-10-17] assistant: ...`.
+  It now shows `assistant: ...` alone, under the stamp above it. Pass `date_format="%Y-%m-%d"` to get the old labels
+  back; the output is then byte for byte what 0.12 and the previous main returned. A history that fits the budget
+  whole still shows the full stamp on every turn.
+  - **Why:** the repeated date was most of each kept turn's label. Labels took 21-22% of a LoCoMo context and 11-15%
+    of a LongMemEval one; without the repeated date they take 9-11% and 6-9%, so more turns fit.
+  - **Measured on development data** (no model; share of questions whose labelled evidence is all in the context, at
+    2,500 and 10,000 tokens): LoCoMo goes from 78.7% to 80.0% and from 92.2% to 93.5% (+1.3 points at both, 95%
+    interval 0.0 to +3.0; 3 questions up, none down). LongMemEval does not change: 89.9% and 95.1%, and the short
+    answer is present as often. This is not a claimed recall improvement: the LoCoMo interval touches zero, so it
+    misses the pass rule set before measuring. It ships for the label cost.
+  - **Stored text still can't pass for a label.** Where a label can be the role alone, a line in a code block or
+    table that starts at the beginning of the line with `user:`, `assistant:`, `system:` or `tool:` is indented by
+    two spaces, as a line that looks like a dated label already was. A line that already starts with whitespace is
+    left as it is. With a `date_format` string, only dated lookalikes are indented, as before.
+  - `tests/fixtures/memory_search_golden.json` is recorded again with the new default.
+    `tests/fixtures/memory_search_golden_date_0_12.json` pins the output with `date_format="%Y-%m-%d"`: it equals the
+    previous recording.
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,
   `QualityReport`, `RuntimeSession`, `PreparedContext`, `CacheStatus`, `CacheCapabilities`, `CachePolicy`,
   `CacheSegment`, `CachePlan`, `CacheTelemetry`, `MODEL_PRICING` and `PROVIDER_CAPABILITIES`.

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+import llmslim
 from benchmarks.live_runtime_v07 import run_live
 from llmslim import (
     ContextEdge,
@@ -336,7 +337,7 @@ def test_context_cli_exposes_safe_machine_readable_views(tmp_path, capsys):
     )
     assert main(["context", "trace", str(source), "--json"]) == 0
     trace = json.loads(capsys.readouterr().out)
-    assert trace["planner_version"] == "0.7.0"
+    assert trace["planner_version"] == llmslim.__version__
     assert "Private customer Acme" not in str(trace)
     assert main(["context", "inspect", str(source), "--json"]) == 0
     envelope = json.loads(capsys.readouterr().out)

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+import llmslim
+
 API_PATH = Path(__file__).resolve().parents[1] / "web" / "api" / "context.py"
 SPEC = importlib.util.spec_from_file_location("studio_context_api", API_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -32,7 +34,7 @@ def _payload(**overrides):
 def test_context_inspector_returns_real_plan_trace_graph():
     response = studio_context_api.execute_context(_payload())
     assert response["plan"]["feasible"]
-    assert response["trace"]["planner_version"] == "0.7.0"
+    assert response["trace"]["planner_version"] == llmslim.__version__
     assert response["quality"]["passed"]
     assert response["graph"]["nodes"]
     assert "Acme renews November 9" in response["plan"]["final_context"]

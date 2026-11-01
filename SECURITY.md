@@ -35,7 +35,8 @@ errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
   endpoint are open, so they are for loopback use only. `serve` keys give full access to every scope: call `serve`
   from your backend and map your users to `user_id` there. `llmslim mcp` fixes the user and agent when it starts, over
   stdio and HTTP alike; no tool takes them as arguments, `forget` refuses ids outside that scope, and every key of an
-  HTTP server reaches that one scope only.
+  HTTP server reaches that one scope only. Its keys come from `LLMSLIM_MCP_API_KEYS`, never from `serve`'s
+  `LLMSLIM_API_KEYS`, and a key found in both gets a warning.
 - **Web pages.** A server on loopback is reachable from any page the user opens: by cross-site "simple" requests, and
   by DNS rebinding, which lets the page read the answers. A keyless `serve`, a keyless `mcp` over HTTP and the proxy
   answer only requests whose `Host` names this machine (or a host given with `--allowed-host`), and refuse with a 403

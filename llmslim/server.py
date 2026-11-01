@@ -368,9 +368,14 @@ def is_loopback(host: str) -> bool:
         return False
 
 
-def api_keys_from(values: Sequence[str], environ: Mapping[str, str] = os.environ) -> List[str]:
-    """API keys from ``--api-key`` flags, else from ``LLMSLIM_API_KEYS`` (comma-separated)."""
-    raw = list(values) or environ.get("LLMSLIM_API_KEYS", "").split(",")
+def api_keys_from(
+    values: Sequence[str],
+    environ: Mapping[str, str] = os.environ,
+    *,
+    variable: str = "LLMSLIM_API_KEYS",
+) -> List[str]:
+    """API keys from ``--api-key`` flags, else from the ``variable`` environment variable (comma-separated)."""
+    raw = list(values) or environ.get(variable, "").split(",")
     keys = [key.strip() for key in raw if key.strip()]
     short = [key for key in keys if len(key) < MIN_KEY_LENGTH]
     if short:

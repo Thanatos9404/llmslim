@@ -162,13 +162,14 @@ def test_stdio_stays_the_default_and_is_unchanged(monkeypatch, tmp_path):
 
 
 def test_stdio_ignores_the_shared_key_and_host_variables(monkeypatch, tmp_path):
-    """LLMSLIM_API_KEYS and the host variables may be set for other servers; a stdio server doesn't mind them."""
+    """The key and host variables may be set for other servers; a stdio server doesn't mind them."""
     ran = []
     monkeypatch.setattr(
         "mcp.server.mcpserver.MCPServer.run",
         lambda self, transport="stdio", **_: ran.append(transport),
     )
     monkeypatch.setenv("LLMSLIM_API_KEYS", KEY)
+    monkeypatch.setenv("LLMSLIM_MCP_API_KEYS", DESKTOP_KEY)
     monkeypatch.setenv("LLMSLIM_ALLOWED_HOSTS", "memory.example.com")
     monkeypatch.setenv("LLMSLIM_MCP_HOST", "0.0.0.0")
     monkeypatch.setenv("LLMSLIM_MCP_PORT", "9000")
@@ -200,6 +201,7 @@ def started(monkeypatch):
     monkeypatch.setattr(uvicorn.Server, "run", lambda self, *a, **k: servers.append(self))
     for name in (
         "LLMSLIM_API_KEYS",
+        "LLMSLIM_MCP_API_KEYS",
         "LLMSLIM_ALLOWED_HOSTS",
         "LLMSLIM_MCP_HOST",
         "LLMSLIM_MCP_PORT",
@@ -219,7 +221,7 @@ def test_http_defaults_flags_and_environment(started, monkeypatch, tmp_path):
     assert config.app.policy.any is False  # keyless: loopback names only, with the Origin check
     monkeypatch.setenv("LLMSLIM_MCP_HOST", "0.0.0.0")
     monkeypatch.setenv("LLMSLIM_MCP_PORT", "9123")
-    monkeypatch.setenv("LLMSLIM_API_KEYS", f"{KEY}, {DESKTOP_KEY}")
+    monkeypatch.setenv("LLMSLIM_MCP_API_KEYS", f"{KEY}, {DESKTOP_KEY}")
     monkeypatch.setenv("LLMSLIM_ALLOWED_HOSTS", "memory.example.com")
     assert main(["--transport", "http", "--db", db]) == 0
     config = started[-1].config
@@ -289,11 +291,38 @@ def test_bad_ports_and_paths_are_usage_errors(
     assert "error:" in capsys.readouterr().err
 
 
+def test_serve_keys_are_not_mcp_keys(started, monkeypatch, capsys, tmp_path):
+    """LLMSLIM_API_KEYS reaches every user's memory through llmslim serve, so an MCP server never takes it."""
+    db = str(tmp_path / "memory.db")
+    monkeypatch.setenv("LLMSLIM_API_KEYS", KEY)
+    with pytest.raises(SystemExit) as raised:
+        main(["--transport", "http", "--db", db, "--host", "0.0.0.0"])
+    message = str(raised.value)
+    assert (
+        "set LLMSLIM_MCP_API_KEYS" in message and "LLMSLIM_API_KEYS is llmslim serve's" in message
+    )
+    assert KEY not in message and not started
+    assert main(["--transport", "http", "--db", db]) == 0  # loopback runs keyless, and says why
+    assert started[-1].config.app.policy.any is False
+    err = capsys.readouterr().err
+    assert "No MCP key (LLMSLIM_MCP_API_KEYS); LLMSLIM_API_KEYS is llmslim serve's" in err
+    assert "(no API key: this machine only)" in err
+    monkeypatch.setenv("LLMSLIM_MCP_API_KEYS", f"{DESKTOP_KEY},{KEY}")
+    assert main(["--transport", "http", "--db", db]) == 0
+    err = capsys.readouterr().err
+    assert "Warning: a key of this MCP server is also in LLMSLIM_API_KEYS" in err
+    assert KEY not in err and DESKTOP_KEY not in err
+    monkeypatch.setenv("LLMSLIM_MCP_API_KEYS", DESKTOP_KEY)
+    assert main(["--transport", "http", "--db", db]) == 0
+    err = capsys.readouterr().err
+    assert "Warning" not in err and "No MCP key" not in err
+
+
 def test_the_startup_line_names_the_url_and_never_the_key(
     started, monkeypatch, capsys, caplog, tmp_path
 ):
     caplog.set_level(logging.DEBUG)
-    monkeypatch.setenv("LLMSLIM_API_KEYS", DESKTOP_KEY)
+    monkeypatch.setenv("LLMSLIM_MCP_API_KEYS", DESKTOP_KEY)
     argv = ["--transport", "http", "--db", str(tmp_path / "memory.db"), "--user-id", "asha"]
     assert (
         main(
@@ -813,9 +842,14 @@ def test_the_command_end_to_end(tmp_path):
     env = {
         **os.environ,
         "PYTHONPATH": os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]),
-        "LLMSLIM_API_KEYS": KEY,
+        "LLMSLIM_MCP_API_KEYS": KEY,
     }
-    for name in ("LLMSLIM_MCP_HOST", "LLMSLIM_MCP_PORT", "LLMSLIM_ALLOWED_HOSTS"):
+    for name in (
+        "LLMSLIM_API_KEYS",
+        "LLMSLIM_MCP_HOST",
+        "LLMSLIM_MCP_PORT",
+        "LLMSLIM_ALLOWED_HOSTS",
+    ):
         env.pop(name, None)
     command = [
         sys.executable,

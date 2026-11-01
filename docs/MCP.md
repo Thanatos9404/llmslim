@@ -56,15 +56,16 @@ others recall.
 **1. Make a key and start the server.** It needs the same `mcp` extra; nothing else.
 
 ```bash
-export LLMSLIM_API_KEYS="$(llmslim serve --new-key)"     # keep it; each client sends it
+export LLMSLIM_MCP_API_KEYS="$(llmslim serve --new-key)"     # keep it; each client sends it
 llmslim mcp --transport http --user-id asha --db ~/.llmslim/memory.db
 # LLMSlim MCP server on http://127.0.0.1:8000/mcp, memory of user "asha" (every request needs an API key)
 ```
 
 It binds 127.0.0.1 unless you pass `--host`, and it refuses any other interface without a key. You can give several
 keys (one per machine, so you can revoke one by restarting without it): repeat `--api-key`, or separate them with
-commas in `LLMSLIM_API_KEYS`. `llmslim serve` reads the same variable; pass `--api-key` to either server if their keys
-should differ.
+commas in `LLMSLIM_MCP_API_KEYS`. These keys reach only the user and agent this server holds. `llmslim serve`'s keys
+(`LLMSLIM_API_KEYS`) reach every user's memory, so the MCP server never reads that variable, and warns if one of its
+keys is also there.
 
 **2. Put it behind TLS.** The key travels in a header, so anything past this machine must be HTTPS. Keep the server
 on 127.0.0.1 and let a reverse proxy on the same host terminate TLS. With [Caddy](https://caddyserver.com), which gets
@@ -157,7 +158,7 @@ work around that with `--allowed-host`: give it a key.
 | `--host HOST` | `LLMSLIM_MCP_HOST` | `127.0.0.1` | Interface to bind. Any other than loopback needs a key. |
 | `--port N` | `LLMSLIM_MCP_PORT` | `8000` | Port. |
 | `--path PATH` | | `/mcp` | URL path of the MCP endpoint. |
-| `--api-key KEY` | `LLMSLIM_API_KEYS` | none | A bearer key clients must send (at least 16 characters); repeat for several. The variable is comma-separated. |
+| `--api-key KEY` | `LLMSLIM_MCP_API_KEYS` | none | A bearer key clients must send (at least 16 characters); repeat for several. The variable is comma-separated. `LLMSLIM_API_KEYS`, `llmslim serve`'s, is not read. |
 | `--allowed-host HOST` | `LLMSLIM_ALLOWED_HOSTS` | none | A host name clients reach the server by, besides the loopback ones; repeat for several, or `*` for any. Without a key, other names are refused (403). With keys, any name is accepted unless you set this. |
 
 These options apply only with `--transport http`; passing one with stdio is an error. There is no environment

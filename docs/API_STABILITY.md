@@ -186,8 +186,8 @@ refuses a store with a newer schema rather than misreading it.
 
 | Variable | Read by | Status |
 |---|---|---|
-| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` (the last two also `llmslim mcp --transport http`) | Stable |
-| `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT` | `llmslim mcp --transport http` | Experimental |
+| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` (the last also `llmslim mcp --transport http`) | Stable |
+| `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT`, `LLMSLIM_MCP_API_KEYS` | `llmslim mcp --transport http` | Experimental |
 | `LLMSLIM_MEMORY_DB` | `llmslim serve`, `llmslim mcp` | Stable |
 | `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |

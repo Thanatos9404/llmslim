@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`llmslim mcp --transport http` shares one memory across machines.** The MCP server also speaks MCP's Streamable
   HTTP transport, so the clients on a laptop, a desktop and a CI runner can use one memory. It follows
   `llmslim serve`:
-  - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_API_KEYS`), compared in constant time
-    against every key. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never logged
+  - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_MCP_API_KEYS`), compared in constant
+    time against every key. `llmslim serve`'s `LLMSLIM_API_KEYS` reach every user, so they are not read, and a key
+    in both gets a warning. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never logged
     or echoed. Without a key, the server refuses any interface but loopback;
   - without a key, it answers only requests addressed to this machine by name that no other web page sent, so DNS
     rebinding and cross-site requests get a 403. `--allowed-host` and `LLMSLIM_ALLOWED_HOSTS` add names, or pin them

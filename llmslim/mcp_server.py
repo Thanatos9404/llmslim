@@ -13,9 +13,10 @@ steered by injected text cannot read or delete another user's memory. Recalled t
 instructions.
 
 ``llmslim mcp --transport http`` serves the same tools over MCP's Streamable HTTP transport, so several machines can
-share one memory. It follows ``llmslim serve``: bearer keys (``--api-key``, ``LLMSLIM_API_KEYS``), no interface but
-loopback without a key, and a keyless server answers only requests addressed to this machine that no other web page
-sent. Every key reaches the one scope the server was started with.
+share one memory. It follows ``llmslim serve``: bearer keys (``--api-key``, ``LLMSLIM_MCP_API_KEYS``), no interface
+but loopback without a key, and a keyless server answers only requests addressed to this machine that no other web
+page sent. Every key reaches the one scope the server was started with. The keys are not ``llmslim serve``'s
+(``LLMSLIM_API_KEYS``), which reach every user's memory.
 """
 
 from __future__ import annotations
@@ -38,6 +39,8 @@ DEFAULT_USER = "default"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_PATH = "/mcp"
+KEYS_VARIABLE = "LLMSLIM_MCP_API_KEYS"
+SERVE_KEYS_VARIABLE = "LLMSLIM_API_KEYS"  # llmslim serve's keys: not read here
 HEALTH_PATH = "/healthz"
 #: Seconds that requests still running at shutdown get to finish.
 SHUTDOWN_GRACE_SECONDS = 10
@@ -425,8 +428,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--api-key",
         action="append",
         default=[],
-        help="A bearer key clients must send; repeat for several (env LLMSLIM_API_KEYS, comma-separated). Every key "
-        "reaches the one user and agent this server holds.",
+        help="A bearer key clients must send; repeat for several (env LLMSLIM_MCP_API_KEYS, comma-separated). Every "
+        "key reaches the one user and agent this server holds. llmslim serve's LLMSLIM_API_KEYS is not read.",
     )
     parser.add_argument(
         "--allowed-host",
@@ -480,13 +483,27 @@ def _serve_http(args: argparse.Namespace, parser: argparse.ArgumentParser) -> in
     except ValueError as error:
         parser.error(str(error))
     try:
-        keys = api_keys_from(args.api_key)
+        keys = api_keys_from(args.api_key, variable=KEYS_VARIABLE)
     except ValueError as error:
         raise SystemExit(str(error)) from error
+    serve_keys = {
+        key.strip() for key in os.environ.get(SERVE_KEYS_VARIABLE, "").split(",") if key.strip()
+    }
+    not_read = (
+        f"; {SERVE_KEYS_VARIABLE} is llmslim serve's and is not read here" if serve_keys else ""
+    )
     if not keys and not is_loopback(host):
         raise SystemExit(
-            f"refusing to serve on {host} without an API key: set LLMSLIM_API_KEYS or pass --api-key "
-            "(make one with: llmslim serve --new-key)"
+            f"refusing to serve on {host} without an API key: set {KEYS_VARIABLE} or pass --api-key "
+            f"(make one with: llmslim serve --new-key){not_read}"
+        )
+    if not keys and serve_keys:
+        print(f"No MCP key ({KEYS_VARIABLE}){not_read}.", file=sys.stderr)
+    if serve_keys.intersection(keys):
+        print(
+            f"Warning: a key of this MCP server is also in {SERVE_KEYS_VARIABLE}, where llmslim serve lets it read "
+            "every user's memory. Give MCP clients keys of their own.",
+            file=sys.stderr,
         )
     try:
         import uvicorn

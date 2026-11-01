@@ -2,7 +2,7 @@
 
 ``pip install "llmslim[mongodb]"``. Works with MongoDB 6.0 or newer, standalone or as a replica set, self-hosted or on
 MongoDB Atlas. ``Memory("mongodb://...")`` uses it, and so do ``llmslim serve --db mongodb://...`` and
-``llmslim mcp --db mongodb://...`` (``mongodb+srv://`` too).
+``llmslim mcp --db mongodb://...`` (``mongodb+srv://`` too: PyMongo installs dnspython, which resolves it).
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set
 from urllib.parse import unquote
 
 from ._types import MemoryItem, Scope
@@ -32,6 +32,7 @@ _INT64 = (-(2**63), 2**63 - 1)
 _SECRET_OPTION = re.compile(r"password|secret|token|authmechanismproperties", re.IGNORECASE)
 _DUPLICATE_KEY = 11000
 _INDEX_OPTIONS_CONFLICT = 85  # the same keys are already indexed under another name
+_LOOKUP_BATCH = 1000  # ids per query when checking which are stored
 
 
 def is_mongodb_url(value: Any) -> bool:
@@ -55,9 +56,10 @@ class MongoStore:
     the schema version and the counter that orders turns, are created when the store opens if they don't exist.
     Creating them again changes nothing, so several processes can start at once. A collection written by a newer
     llmslim is refused rather than misread. On a replica set or a sharded cluster each :meth:`add` is one transaction,
-    so a batch is stored whole or not at all, even if the connection drops partway. A standalone server has no
-    transactions; there a batch that fails partway is undone instead. Reads go to the primary, so a turn is readable as
-    soon as it is added.
+    so a batch is stored whole or not at all, even if the connection drops partway. MongoDB aborts a transaction that
+    runs longer than 60 seconds by default, so add a long history in batches (``llmslim import`` writes at most 500
+    turns or about 4 MB at a time). A standalone server has no transactions; there a batch that fails partway is undone
+    instead. Reads go to the primary, so a turn is readable as soon as it is added.
 
     Every caller value is stored and matched as data: ids and scope values must be strings and are compared with
     ``$eq``, and metadata whose keys MongoDB would read as operators or paths (a leading ``$``, a ``.``) is kept as JSON
@@ -300,6 +302,15 @@ class MongoStore:
 
     def delete_scope(self, scope: Scope) -> int:
         return int(self._turns.delete_many(_scope_filter(scope)).deleted_count)
+
+    def _existing_ids(self, ids: Sequence[str]) -> Set[str]:
+        """Which of ``ids`` are stored, in one query per thousand ids where :meth:`get` takes one each (for imports)."""
+        found: Set[str] = set()
+        for start in range(0, len(ids), _LOOKUP_BATCH):
+            chunk = [_text(item_id, "memory id") for item_id in ids[start : start + _LOOKUP_BATCH]]
+            rows = self._turns.find({"_id": {"$in": chunk}}, {"_id": 1})
+            found.update(row["_id"] for row in rows)
+        return found
 
 
 # ---------------------------------------------------------------------- documents

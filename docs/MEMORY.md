@@ -240,8 +240,10 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 - Times are stored as `TIMESTAMPTZ` and come back in UTC, whatever the session time zone.
 
 **MongoDB details:**
-- Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer). CI runs every memory test against MongoDB 6.0,
-  7.0 and 8.2, standalone and as a one-node replica set.
+- Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer; it brings dnspython, which `mongodb+srv://`
+  URLs need). CI runs every memory test against MongoDB 6.0, 7.0 and 8.2, standalone and as a one-node replica set,
+  and again with exactly PyMongo 4.13.0; and it runs `llmslim serve`, `llmslim mcp --transport http` and
+  `llmslim import` from the built wheel against MongoDB, through a restart of the database.
 - Pass a URL, and the store opens its own `MongoClient` and closes it in `close()`. You can pass your own
   `pymongo.MongoClient` or `pymongo.database.Database` instead; `close()` leaves those open.
   ```python
@@ -254,10 +256,25 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
   and `config` are refused: to log in against `admin`, add `authSource=admin` to the URL and keep the memory in a
   database of its own. One collection holds the turns (`llmslim_memory`, or `collection=...`); use one per application or tenant if
   you like.
-- **Atlas:** use the `mongodb+srv://` URL from "Connect > Drivers", with the database in the path
-  (`mongodb+srv://user:<password>@cluster0.example.mongodb.net/llmslim?retryWrites=true&w=majority`). The database user
-  needs the `readWrite` role on that database, which includes creating indexes. Allow your server's IP address in
-  Atlas's network access list.
+- **Atlas:** use the `mongodb+srv://` URL from "Connect > Drivers", with the database in the path:
+  ```bash
+  export LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net/llmslim?retryWrites=true&w=majority"
+  ```
+  - **Network access:** add the public IP address of every machine that runs llmslim (your server, your CI runner) to
+    the project's IP access list. A machine that isn't on it can't connect, and the store fails to open after
+    PyMongo's 30-second server selection timeout with `ServerSelectionTimeoutError`.
+  - **The database user** needs the `readWrite` role on the memory's database (`llmslim` above), nothing more: that
+    role covers creating the collections and indexes. It doesn't need `atlasAdmin` or any role on `admin`.
+  - **Collections and indexes are created when the store opens,** if they don't exist (see Indexes below), so there
+    is nothing to set up in Atlas beforehand, and several processes can open the store at once.
+  - Escape special characters in the password (`@` is `%40`, `:` is `%3A`, `/` is `%2F`), or PyMongo refuses the URL.
+  - The `+srv` name is resolved through DNS (SRV and TXT records) when the store opens; the TXT record supplies
+    `authSource=admin` and the replica set name, and TLS is on.
+  - If TLS verification fails on macOS with Python from python.org, run its `Install Certificates.command` once.
+- **Timeouts:** PyMongo waits up to 30 seconds for a reachable server before an operation fails. Add
+  `serverSelectionTimeoutMS=5000` (milliseconds) to the URL to fail sooner while the database is down. `llmslim serve`
+  answers a request that hits an unreachable database with a 503 and `llmslim mcp` with a tool error, and both work
+  again, without a restart, as soon as the database is back.
 - **What is stored:** one document per turn: `_id` (the turn's id), `seq`, `role`, `content`, `user_id`, `agent_id`,
   `run_id`, `created_at` and `updated_at` as UTC dates, `created_at_us` and `updated_at_us` (the same times in
   microseconds since 1970, which reads use, because a BSON date keeps only milliseconds), and `metadata`. Metadata is
@@ -273,7 +290,10 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
   On a replica set or a sharded cluster (Atlas is always one), each `add` is one transaction: a batch is stored
   whole or not at all, even if the connection drops partway, as on Postgres. A standalone server has no
   transactions; there a batch that hits a duplicate id is undone, so it leaves nothing behind, but a connection lost
-  in the middle of a batch can leave part of it stored.
+  in the middle of a batch can leave part of it stored. MongoDB aborts a transaction that runs longer than 60 seconds
+  by default (`transactionLifetimeLimitSeconds`), so keep each `add` to a few thousand turns or a few megabytes over a
+  slow link: `llmslim import` writes at most 500 turns or about 4 MB at a time, and checks which turns are already
+  stored a thousand ids per query.
 - **Caller values are data:** ids and scope values must be strings and are matched with `$eq`, never built into a
   query as text. Text that isn't valid Unicode (a lone surrogate) is refused with `UnicodeEncodeError` before anything
   is stored, as in `SQLiteStore`. A turn over 16 MB (BSON's limit for one document) is refused with `ValueError`.

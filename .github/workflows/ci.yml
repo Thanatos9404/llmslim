@@ -99,9 +99,82 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/info)" = 401
           curl -fsS -H "Authorization: Bearer $KEY" -H 'content-type: application/json'             -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8080/v1/memories
           curl -fsS -H "Authorization: Bearer $KEY" -H 'content-type: application/json'             -d '{"user_id": "ci", "query": "Where did I move to?"}' http://127.0.0.1:8080/v1/memories/search | grep -q Pune
+      - name: Start MongoDB and Postgres beside the image
+        env:
+          # Characters a URL must escape, so the URL the image gets is escaped and both forms are looked for below.
+          MONGO_PASSWORD: "img:Pa55@word/x"
+        run: |
+          docker network create llmslim-net
+          docker run -d --name mongo --network llmslim-net \
+            -e MONGO_INITDB_ROOT_USERNAME=llmslim -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASSWORD" mongo:8.2
+          docker run -d --name postgres --network llmslim-net \
+            -e POSTGRES_USER=llmslim -e POSTGRES_PASSWORD=llmslim -e POSTGRES_DB=llmslim postgres:17
+          for i in $(seq 1 60); do
+            docker exec mongo mongosh --quiet -u llmslim -p "$MONGO_PASSWORD" --authenticationDatabase admin \
+              --eval 'db.adminCommand({ping: 1}).ok' 2>/dev/null | grep -q 1 && break
+            sleep 2
+          done
+          for i in $(seq 1 60); do docker exec postgres pg_isready -U llmslim && break; sleep 1; done
+      - name: The image on MongoDB answers add, search, list and delete, through a restart and an outage
+        env:
+          MONGO_PASSWORD: "img:Pa55@word/x"
+        run: |
+          set -euo pipefail
+          KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+          ESCAPED=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["MONGO_PASSWORD"], safe=""))')
+          docker run -d --name llmslim-mongo --network llmslim-net -p 8081:8080 -e LLMSLIM_API_KEYS="$KEY" \
+            -e LLMSLIM_MEMORY_DB="mongodb://llmslim:${ESCAPED}@mongo:27017/llmslim?authSource=admin" llmslim-server
+          api() { curl -sS --max-time 90 -H "Authorization: Bearer $KEY" -H 'content-type: application/json' "$@"; }
+          stored() {
+            docker exec mongo mongosh --quiet -u llmslim -p "$MONGO_PASSWORD" --authenticationDatabase admin llmslim \
+              --eval 'db.llmslim_memory.countDocuments({user_id: "ci"})'
+          }
+          search='{"user_id": "ci", "query": "Where did I move to?"}'
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8081/healthz && break; sleep 1; done
+          api -f -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8081/v1/memories > added.json
+          ID=$(python3 -c 'import json; print(json.load(open("added.json"))["items"][0]["id"])')
+          api -f -d "$search" http://127.0.0.1:8081/v1/memories/search | grep Pune > /dev/null
+          api -f -d '{"user_id": "ci", "query": "Where?", "explain": true}' http://127.0.0.1:8081/v1/memories/search | grep explanation > /dev/null
+          api -f "http://127.0.0.1:8081/v1/memories?user_id=ci" | grep "$ID" > /dev/null
+          test "$(stored)" = 1
+          echo "MongoDB restarts; the same server answers again"
+          docker restart mongo
+          for i in $(seq 1 30); do api -f -d "$search" http://127.0.0.1:8081/v1/memories/search > found.json && break; sleep 2; done
+          grep -q Pune found.json
+          echo "MongoDB is down: a 503 that names no host, URL or driver"
+          docker stop mongo
+          test "$(api -o down.json -w '%{http_code}' -d "$search" http://127.0.0.1:8081/v1/memories/search)" = 503
+          cat down.json; echo
+          python3 -c 'import json; assert json.load(open("down.json"))["error"]["type"] == "store_unavailable"'
+          if grep -E -q 'mongodb|Traceback|27017|Timeout' down.json; then echo "the 503 leaks details"; exit 1; fi
+          curl -fsS http://127.0.0.1:8081/healthz
+          docker start mongo
+          for i in $(seq 1 30); do api -f -X DELETE "http://127.0.0.1:8081/v1/memories/$ID" && break; sleep 2; done
+          test "$(stored)" = 0
+          docker logs llmslim-mongo > image-mongo.log 2>&1
+          cat image-mongo.log
+          if grep -F -q -e "$MONGO_PASSWORD" -e "$ESCAPED" image-mongo.log added.json found.json down.json; then
+            echo "the MongoDB password was printed"; exit 1
+          fi
+          if grep -q Traceback image-mongo.log; then echo "a traceback in the server log"; exit 1; fi
+          grep -q "memory store unavailable" image-mongo.log
+      - name: The image on Postgres answers add, search and delete
+        run: |
+          set -euo pipefail
+          KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+          docker run -d --name llmslim-postgres --network llmslim-net -p 8082:8080 -e LLMSLIM_API_KEYS="$KEY" \
+            -e LLMSLIM_MEMORY_DB="postgresql://llmslim:llmslim@postgres:5432/llmslim" llmslim-server
+          api() { curl -sS --max-time 90 -H "Authorization: Bearer $KEY" -H 'content-type: application/json' "$@"; }
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8082/healthz && break; sleep 1; done
+          api -f -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8082/v1/memories > added.json
+          ID=$(python3 -c 'import json; print(json.load(open("added.json"))["items"][0]["id"])')
+          api -f -d '{"user_id": "ci", "query": "Where did I move to?"}' http://127.0.0.1:8082/v1/memories/search | grep Pune > /dev/null
+          api -f -X DELETE "http://127.0.0.1:8082/v1/memories/$ID" | grep '"deleted":1' > /dev/null
+          test "$(docker exec postgres psql -U llmslim -tAc 'SELECT count(*) FROM llmslim_memory')" = 0
       - name: Server log
         if: always()
-        run: docker logs llmslim || true
+        run: |
+          for name in llmslim llmslim-mongo llmslim-postgres; do echo "--- $name"; docker logs "$name" || true; done
 
   typescript-client:
     name: TypeScript client against the server
@@ -192,13 +265,18 @@ jobs:
         run: pytest tests/test_memory.py tests/test_memory_postgres.py -o addopts="" -q -rs
 
   mongodb-store:
-    name: Memory on MongoDB ${{ matrix.mongodb }}
+    name: Memory on MongoDB ${{ matrix.mongodb }}${{ matrix.pymongo && format(' with pymongo {0}', matrix.pymongo) || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # mongo:8.0 exits at start on the ubuntu-26.04 runners' Linux 6.19+ kernel (SERVER-121912).
         mongodb: ["6.0", "7.0", "8.2"]
+        pymongo: [""]
+        include:
+          # The oldest PyMongo the mongodb extra allows (pymongo>=4.13,<5), on the newest server.
+          - mongodb: "8.2"
+            pymongo: "4.13.0"
     services:
       mongodb:
         image: mongo:${{ matrix.mongodb }}
@@ -214,6 +292,11 @@ jobs:
           python-version: "3.12"
       - name: Install llmslim with the mongodb and server extras
         run: pip install -e ".[mongodb,server]" pytest httpx2
+      - name: Pin PyMongo to ${{ matrix.pymongo }}
+        if: matrix.pymongo
+        run: |
+          pip install "pymongo==${{ matrix.pymongo }}"
+          python -c "import pymongo, dns.version; assert pymongo.version == '${{ matrix.pymongo }}', pymongo.version; print('pymongo', pymongo.version, 'dnspython', dns.version.version)"
       - name: Wait for the MongoDB service
         run: |
           python - <<'EOF'
@@ -224,7 +307,7 @@ jobs:
       - name: Memory tests against a standalone server, with authentication
         env:
           LLMSLIM_TEST_MONGODB_URL: mongodb://llmslim:llmslim@127.0.0.1:27017/llmslim_test?authSource=admin
-        run: pytest tests/test_memory.py tests/test_memory_selection.py tests/test_memory_mongo.py -o addopts="" -q -rs
+        run: pytest tests/test_memory.py tests/test_memory_selection.py tests/test_memory_mongo.py tests/test_store_outage.py -o addopts="" -q -rs
       - name: Start a one-node replica set
         run: |
           docker run -d --name mongo-rs -p 27018:27018 mongo:${{ matrix.mongodb }} --replSet rs0 --port 27018 --bind_ip_all
@@ -248,6 +331,78 @@ jobs:
       - name: Replica set log
         if: failure()
         run: docker logs mongo-rs || true
+
+  mongodb-e2e:
+    name: MongoDB ${{ matrix.mongodb }} end to end from the wheel (${{ matrix.topology }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb: ["6.0", "8.2"]
+        topology: ["standalone with auth", "replica set"]
+    env:
+      # Characters a URL must escape: the tests look for both forms in everything the commands print and answer.
+      MONGO_PASSWORD: "e2e:Pa55@word/x"
+      VENV: ${{ github.workspace }}/../wheel-venv
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build the wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel --outdir dist
+      - name: Install the wheel with the mongodb, server and mcp extras in a clean environment
+        run: |
+          python -m venv "$VENV"
+          "$VENV/bin/python" -m pip install "$(ls dist/llmslim-*.whl)[mongodb,server,mcp]" pytest
+          if "$VENV/bin/python" -m pip show llmslim | grep -i "editable project location"; then exit 1; fi
+      - name: Start MongoDB ${{ matrix.mongodb }} (standalone, with authentication)
+        if: matrix.topology == 'standalone with auth'
+        run: |
+          docker run -d --name mongo-e2e -p 27017:27017 \
+            -e MONGO_INITDB_ROOT_USERNAME=llmslim -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASSWORD" mongo:${{ matrix.mongodb }}
+          ESCAPED=$("$VENV/bin/python" -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["MONGO_PASSWORD"], safe=""))')
+          echo "LLMSLIM_TEST_MONGODB_URL=mongodb://llmslim:${ESCAPED}@127.0.0.1:27017/llmslim_e2e?authSource=admin" >> "$GITHUB_ENV"
+      - name: Start MongoDB ${{ matrix.mongodb }} (a one-node replica set)
+        if: matrix.topology == 'replica set'
+        run: |
+          docker run -d --name mongo-e2e -p 27018:27018 mongo:${{ matrix.mongodb }} --replSet rs0 --port 27018 --bind_ip_all
+          "$VENV/bin/python" - <<'EOF'
+          import time
+          import pymongo
+          client = pymongo.MongoClient("mongodb://127.0.0.1:27018/?directConnection=true", serverSelectionTimeoutMS=60000)
+          client.admin.command("replSetInitiate", {"_id": "rs0", "members": [{"_id": 0, "host": "127.0.0.1:27018"}]})
+          EOF
+          echo "LLMSLIM_TEST_MONGODB_URL=mongodb://127.0.0.1:27018/llmslim_e2e?replicaSet=rs0" >> "$GITHUB_ENV"
+          echo "LLMSLIM_E2E_BIG_IMPORT=20000" >> "$GITHUB_ENV"
+      - name: Wait for MongoDB to take writes
+        run: |
+          "$VENV/bin/python" - <<'EOF'
+          import os
+          import time
+          import pymongo
+          for _ in range(120):
+              try:
+                  with pymongo.MongoClient(os.environ["LLMSLIM_TEST_MONGODB_URL"], serverSelectionTimeoutMS=2000) as client:
+                      if client.admin.command("hello").get("isWritablePrimary"):
+                          break
+              except pymongo.errors.PyMongoError:
+                  pass
+              time.sleep(1)
+          else:
+              raise SystemExit("MongoDB did not start")
+          EOF
+      - name: serve, mcp, import and the chat endpoint, run from the wheel
+        env:
+          LLMSLIM_E2E_MONGODB_CONTAINER: mongo-e2e
+        run: |
+          LLMSLIM_E2E_BIN="$VENV/bin" "$VENV/bin/pytest" tests/e2e --import-mode=importlib -p no:cacheprovider \
+            -o addopts="" -v -rs -s
+      - name: MongoDB log
+        if: failure()
+        run: docker logs mongo-e2e 2>&1 | tail -200 || true
 
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})

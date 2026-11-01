@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import sqlite3
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 from ._core import Memory, storage_target
 from ._import_sources import READERS, RawSession, Tally, detect, parse_time
@@ -28,7 +29,13 @@ from .stores import MemoryStore, SQLiteStore
 
 DEFAULT_USER = "default"  # the user ``llmslim mcp`` serves when none is named
 _ID_VERSION = "llmslim-import/1"
+# Turns per write, and per lookup of ids already stored.
 _BATCH = 500
+# And at most about this many bytes per write. Each write is one transaction on a MongoDB replica set or Atlas, which
+# MongoDB aborts after 60 seconds by default and which holds server cache until it commits; 500 turns of up to
+# max_turn_chars each could otherwise be 200 MB in one transaction, too slow over a home connection to a cloud database.
+_BATCH_BYTES = 4 * 1024 * 1024
+_TURN_OVERHEAD = 256  # the id, role, scope, times and field names of a stored turn
 
 Lookup = Callable[[List[str]], Set[str]]
 Writer = Callable[[List[MemoryItem]], None]
@@ -90,6 +97,10 @@ def _nothing_stored(ids: List[str]) -> Set[str]:
 
 
 def _store_lookup(store: MemoryStore) -> Lookup:
+    if isinstance(store, MongoStore):
+        # One query per batch of ids rather than one per turn: a cloud database is a network round trip away.
+        return store._existing_ids
+
     def lookup(ids: List[str]) -> Set[str]:
         return {item_id for item_id in ids if store.get(item_id) is not None}
 
@@ -161,13 +172,34 @@ def _target(
     )
 
 
+def _size(item: MemoryItem) -> int:
+    """About how many bytes ``item`` takes to write: its text as UTF-8, its metadata as JSON, and the other fields."""
+    text = len(item.content.encode("utf-8", "surrogatepass"))
+    return text + len(json.dumps(item.metadata, ensure_ascii=False, default=str)) + _TURN_OVERHEAD
+
+
+def _batches(items: List[MemoryItem]) -> Iterator[List[MemoryItem]]:
+    """``items`` in order, in batches of at most ``_BATCH`` turns and about ``_BATCH_BYTES`` (a single larger turn
+    is a batch of its own)."""
+    batch: List[MemoryItem] = []
+    size = 0
+    for item in items:
+        weight = _size(item)
+        if batch and (len(batch) >= _BATCH or size + weight > _BATCH_BYTES):
+            yield batch
+            batch, size = [], 0
+        batch.append(item)
+        size += weight
+    if batch:
+        yield batch
+
+
 def _write(write: Writer, lookup: Lookup, items: List[MemoryItem]) -> Tuple[List[MemoryItem], int]:
     """Store ``items`` in batches. Returns what was stored and how many turns turned out to be there already (another
     import running at the same time)."""
     stored: List[MemoryItem] = []
     raced = 0
-    for start in range(0, len(items), _BATCH):
-        batch = items[start : start + _BATCH]
+    for batch in _batches(items):
         try:
             write(batch)
             stored.extend(batch)

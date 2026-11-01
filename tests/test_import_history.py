@@ -1071,6 +1071,64 @@ def test_a_turn_stored_by_a_concurrent_import_counts_as_a_duplicate():
     assert len(store.list(Scope(user_id="default"))) == 4
 
 
+class Recording(InMemoryStore):
+    """Keeps every batch it is given, to see how an import writes."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.batches: list = []
+
+    def add(self, items):
+        self.batches.append(list(items))
+        super().add(items)
+
+
+def test_writes_are_bounded_in_turns_and_in_bytes(tmp_path, monkeypatch):
+    # Each write is one transaction on a MongoDB replica set, which MongoDB aborts after 60 seconds: 500 turns of up
+    # to 100,000 characters each would be up to 200 MB in one. Writes are capped in turns and in bytes.
+    from llmslim.memory import _import
+
+    monkeypatch.setattr(_import, "_BATCH_BYTES", 200_000)
+    short = [{"role": "user", "content": f"note {n}", "session_id": "short"} for n in range(1_100)]
+    # Two bytes per character in UTF-8, so a byte count, not a character count, has to hold the bound.
+    long = [
+        {"role": "assistant", "content": f"{n} " + "é" * 30_000, "session_id": "long"}
+        for n in range(20)
+    ]
+    huge = [{"role": "user", "content": "ü" * 150_000, "session_id": "huge"}]
+    path = _write_jsonl(tmp_path / "big.jsonl", short + long + huge)
+    store = Recording()
+    report = import_history(path, store, limits=ImportLimits(max_turn_chars=200_000))
+    assert report.imported == 1_121 and report.ok
+    sizes = [len(batch) for batch in store.batches]
+    assert sizes[:3] == [500, 500, 100]  # the short session: by count
+    for batch in store.batches[3:-1]:  # the long one: by bytes, three 60 KB turns to a write
+        assert sum(_import._size(item) for item in batch) <= 200_000
+    assert sizes[3:] == [3] * 6 + [2] + [
+        1
+    ]  # a turn over the bound on its own is still written whole
+    stored = [item.content for batch in store.batches for item in batch]
+    assert stored == [record["content"] for record in short + long + huge]  # in order, each once
+
+
+def test_a_batch_is_never_empty_and_a_turns_size_counts_utf8_and_metadata():
+    from llmslim.memory import MemoryItem, _import
+
+    def turn(content, **metadata):
+        moment = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return MemoryItem(
+            id="t", role="user", content=content, created_at=moment, metadata=metadata
+        )
+
+    assert list(_import._batches([])) == []
+    ascii_turn, wide = turn("a" * 1000), turn("€" * 1000)
+    assert _import._size(wide) - _import._size(ascii_turn) == 2000  # three bytes against one
+    tagged = turn("a" * 1000, title="x" * 500)
+    assert _import._size(tagged) > _import._size(ascii_turn) + 500
+    # A lone surrogate is counted, not raised on here; the store refuses it with its own error.
+    assert _import._size(turn("\ud800")) > 0
+
+
 def test_a_store_that_cannot_write_is_a_clear_error():
     class Broken(InMemoryStore):
         def add(self, items):

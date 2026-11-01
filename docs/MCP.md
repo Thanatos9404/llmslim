@@ -136,8 +136,8 @@ work around that with `--allowed-host`: give it a key.
   are dropped. The `session` argument only narrows a search within the scope. `forget` refuses ids from other scopes.
 - **For several people, run one server each**, each with its own `--user-id`, keys and port (or path behind the
   proxy, with `--path`). They can share one database: SQLite for a few processes on one host, Postgres
-  (`--db postgresql://...`, `llmslim[postgres]`) for more, or for servers on several hosts. Each server still reaches
-  only its own scope.
+  (`--db postgresql://...`, `llmslim[postgres]`) or MongoDB (`--db mongodb://...` or `mongodb+srv://...`,
+  `llmslim[mongodb]`) for more, or for servers on several hosts. Each server still reaches only its own scope.
 - To give an application full access to every user's memory, use [`llmslim serve`](SERVER.md) from your backend, not
   this server.
 
@@ -145,7 +145,9 @@ work around that with `--allowed-host`: give it a key.
 
 - **Stateless, with JSON responses.** Each `POST` to the endpoint carries one MCP exchange; the server keeps no
   session between requests and opens no event stream. So it works behind any load balancer without sticky sessions,
-  a restart doesn't break connected clients, and several replicas can serve one Postgres memory. `GET` and `DELETE`
+  a restart doesn't break connected clients, and several replicas can serve one Postgres or MongoDB memory. While
+  that database can't be reached, the tools that need it fail with "the memory store can't be reached right now; try
+  again shortly" (no host or driver error), and they work again once it is back, with no restart. `GET` and `DELETE`
   on the endpoint answer 405. Clients on the 2026-07-28 MCP revision and those that start with `initialize` both work.
 - **Limits.** Request bodies are capped at 1 MB (413), as in `llmslim serve`. Malformed JSON and JSON-RPC are 400s
   with a JSON-RPC error, never a 500. On shutdown (Ctrl+C or SIGTERM), requests already running get 10 seconds to

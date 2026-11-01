@@ -34,6 +34,30 @@ docker build -t llmslim .
 docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" -v llmslim-data:/data llmslim
 ```
 
+The image keeps memory in `/data/memory.db` (a volume) unless `LLMSLIM_MEMORY_DB` is a database URL. It has the
+Postgres and MongoDB drivers, so it runs on either with no other change:
+
+```bash
+# MongoDB 6.0+ or Atlas: the database user needs readWrite on the database in the path
+docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
+  -e LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net/llmslim" llmslim
+
+# Postgres 12+
+docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
+  -e LLMSLIM_MEMORY_DB="postgresql://llmslim:<password>@db.example.com:5432/llmslim" llmslim
+```
+
+- Pass the URL in the environment rather than as `--db`, so the password stays out of the container's command line.
+- From another container on the same Docker network, use the database container's name as the host
+  (`mongodb://llmslim:<password>@mongo:27017/llmslim?authSource=admin`): `localhost` in the container is the container
+  itself.
+- Collections, tables and indexes are created when the server starts. If the database can't be reached or the login
+  fails, the server exits at start with one line saying why, without the URL or its password.
+- Once it is running, a database restart or outage makes the requests that need the database answer 503 until it is
+  back, with no restart of the server. `GET /healthz` keeps answering: it checks the process, not the database.
+
+CI builds the image and runs it against MongoDB, through a restart and an outage, and against Postgres.
+
 | Flag | Environment variable | Default |
 |---|---|---|
 | `--host` | `LLMSLIM_HOST` | `127.0.0.1` (`0.0.0.0` in the image) |
@@ -58,8 +82,11 @@ LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net
 ## API
 
 All bodies and responses are JSON. Errors look like `{"error": {"type": "invalid_request", "message": "..."}}`, with
-status 400, 401, 403, 404, 413 or 501. A value of the wrong type or out of range, JSON nested past the parser's
-limit, and text that isn't valid Unicode (a lone surrogate such as `"\ud800"`) are 400s.
+status 400, 401, 403, 404, 413, 500, 501 or 503. A value of the wrong type or out of range, JSON nested past the
+parser's limit, and text that isn't valid Unicode (a lone surrogate such as `"\ud800"`) are 400s. When the memory's
+database (Postgres or MongoDB) can't be reached, the answer is a 503 with `"type": "store_unavailable"` and
+`Retry-After: 5`: retry it. Its message names no host, URL or driver error, and the server logs one line with the
+error's type. Any other failure is a 500 (`"type": "server_error"`), with the traceback in the server's log only.
 
 | Method and path | Body or query | Returns |
 |---|---|---|

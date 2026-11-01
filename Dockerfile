@@ -1,7 +1,10 @@
-# LLMSlim memory server: memory and context over HTTP, one SQLite file, no model calls.
+# LLMSlim memory server: memory and context over HTTP, no model calls. One SQLite file in /data by default, or
+# Postgres or MongoDB: the image has both drivers.
 #   docker build -t llmslim .
 #   docker run -p 8080:8080 -e LLMSLIM_API_KEYS="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" \
 #     -v llmslim-data:/data llmslim
+#   docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<key>" \
+#     -e LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net/llmslim" llmslim
 # The server refuses to start on 0.0.0.0 without an API key.
 FROM python:3.12-slim
 
@@ -16,7 +19,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /src
 COPY pyproject.toml README.md LICENSE ./
 COPY llmslim ./llmslim
-RUN pip install ".[server]" \
+RUN pip install ".[server,postgres,mongodb]" \
     && python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" \
     && useradd --create-home --uid 10001 llmslim \
     && mkdir -p /data \

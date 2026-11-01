@@ -60,6 +60,8 @@ from ._openai_chat import (
 )
 from .memory import Memory
 from .memory._core import storage_target
+from .memory._errors import UNAVAILABLE_MESSAGE, store_unavailable
+from .memory.mongo import _scrub, _url_secrets
 from .tokens import count_tokens
 
 logger = logging.getLogger("llmslim.server")
@@ -159,6 +161,22 @@ def create_app(
                 # number) is the caller's mistake: a 400 that says so, not a 500.
                 return JSONResponse(
                     {"error": {"type": "invalid_request", "message": str(error)}}, 400
+                )
+            except Exception as error:
+                if store_unavailable(error):
+                    # The database is down or unreachable (restarting, a network cut): a 503 the client can retry.
+                    # The driver's message names hosts, so it stays out of the answer and the log.
+                    logger.warning(
+                        "memory store unavailable (%s): answered 503", type(error).__name__
+                    )
+                    return JSONResponse(
+                        {"error": {"type": "store_unavailable", "message": UNAVAILABLE_MESSAGE}},
+                        503,
+                        headers={"Retry-After": "5"},
+                    )
+                logger.exception("%s %s failed", request.method, request.url.path)
+                return JSONResponse(
+                    {"error": {"type": "server_error", "message": "the request failed"}}, 500
                 )
 
         return run
@@ -504,6 +522,19 @@ def chat_upstream_from(
     return ChatUpstream(args.upstream_url, api_key=key, **options)
 
 
+def open_memory(db: str, *, budget: int, program: str) -> Memory:
+    """The memory at ``--db`` for a command that serves it. A store that can't be opened (the database is down, the
+    credentials are wrong, its extra is not installed) ends the command with a one-line error instead of a traceback,
+    with the URL's password and secret options removed."""
+    try:
+        return Memory(storage_target(db), budget=budget)
+    except Exception as error:
+        message = f"{type(error).__name__}: {error}"
+        if "://" in db:
+            message = _scrub(message, _url_secrets(db))
+        raise SystemExit(f"{program}: could not open the memory store: {message}") from None
+
+
 def allowed_hosts_from(
     values: Sequence[str], environ: Mapping[str, str] = os.environ
 ) -> Optional[List[str]]:
@@ -537,7 +568,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except ImportError as error:  # pragma: no cover - exercised only without the extra
         raise _missing_server_extra() from error
     app = create_app(
-        Memory(storage_target(args.db), budget=args.budget),
+        open_memory(args.db, budget=args.budget, program="llmslim serve"),
         api_keys=keys,
         allowed_hosts=allowed_hosts_from(args.allowed_host),
         chat=chat,

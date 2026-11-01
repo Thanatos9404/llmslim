@@ -117,8 +117,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     16 MB.
   - Errors raised while opening the store have the URL's password and secret options removed, and `repr` shows
     only the database and collection.
+  - `mongodb+srv://` needs nothing beyond the extra: PyMongo requires dnspython, which resolves it. Tests answer the
+    SRV and TXT lookups locally, with no network, and connect through them to the test server.
   - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.2, standalone with authentication and as a
-    one-node replica set. Guide: `docs/MEMORY.md`.
+    one-node replica set, and once more with exactly PyMongo 4.13.0, the extra's floor. A separate job builds the
+    wheel, installs it with `[mongodb,server,mcp]` in a clean environment, and runs the real commands against
+    MongoDB 6.0 and 8.2, standalone with authentication and as a replica set: `llmslim serve` (add, search,
+    `explain`, list, update, delete, two servers on one memory), `llmslim mcp --transport http` with an MCP client,
+    `llmslim import` of every format (MongoDB stores what SQLite stores), the chat endpoint against a stand-in
+    upstream, a 20,000-turn import into the replica set, and a restart and a stop of MongoDB under running servers.
+    No output, answer or error shows the URL's password. Guide: `docs/MEMORY.md`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its
@@ -186,6 +194,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `llmslim.server` exports `create_app` and `main`. `api_keys_from` and `is_loopback` are internal.
 - `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
   `build_wrap_parser`. The commands are unchanged.
+- **A database that is down is a clean, retryable error.** When Postgres or MongoDB can't be reached (restarting, a
+  network cut), `llmslim serve` answers a 503 with `"type": "store_unavailable"` and `Retry-After: 5`, and logs one
+  line with the error's type; it used to answer a plain-text 500 and log a traceback. The `llmslim mcp` tools fail
+  with "the memory store can't be reached right now; try again shortly". Neither shows a host, URL or driver message,
+  and both work again when the database is back, without a restart. Any other failure in a `serve` route is a JSON
+  500 (`"type": "server_error"`), with the traceback in the log only.
+- `llmslim serve` and `llmslim mcp` exit at start with one line (`could not open the memory store: <error>`) when
+  the store can't be opened, such as an unreachable database, a wrong password or a missing extra, instead of a
+  traceback. The URL's password is never shown.
+- **`llmslim import` writes at most 500 turns or about 4 MB at a time.** Each write is one transaction on a MongoDB
+  replica set or Atlas, which MongoDB aborts after 60 seconds by default, and 500 turns of up to 100,000 characters
+  each could make one 200 MB transaction. On MongoDB it also checks which turns are already stored a thousand ids
+  per query instead of one query per turn, so importing again over a slow link to Atlas no longer takes a round trip
+  per turn.
 
 ### Security
 From a security review of 1.0's HTTP server, MCP server, proxy and the website's functions.
@@ -231,6 +253,10 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   of its IPv6 address on every request. The Sarvam step already did this.
 
 ### Fixed
+- **The Docker image runs on Postgres and MongoDB.** It installed only the `server` extra, so with
+  `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
+  now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,
+  through a restart and an outage) and against Postgres. `docs/SERVER.md` shows both.
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
   starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and
   `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now

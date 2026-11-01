@@ -277,6 +277,144 @@ def test_a_failed_connection_does_not_show_the_password():
     _secretless(caught.value, "Tr0ub4dor%263", "Tr0ub4dor&3")
 
 
+# ---------------------------------------------------------------- mongodb+srv:// (Atlas), with DNS answered here
+
+
+class _Answer(list):
+    """What dnspython's ``resolve`` returns, as far as PyMongo reads it."""
+
+    rrset = SimpleNamespace(ttl=60)
+
+
+def _srv_record(host: str, port: int) -> SimpleNamespace:
+    target = SimpleNamespace(to_text=lambda omit_final_dot=False: host)
+    return SimpleNamespace(target=target, port=port, priority=0, weight=0)
+
+
+def _fake_dns(monkeypatch, hosts, txt=None):
+    """Answer the SRV and TXT lookups for ``cluster0.llmslim.test`` the way Atlas's DNS does, with no network:
+    ``hosts`` are (name, port) pairs and ``txt`` the options of the TXT record. Returns what was looked up."""
+    import dns.resolver
+
+    asked = []
+
+    def resolve(name, rdtype, *args, **kwargs):
+        asked.append((str(name), rdtype))
+        if rdtype == "SRV" and str(name) == "_mongodb._tcp.cluster0.llmslim.test":
+            return _Answer(_srv_record(host, port) for host, port in hosts)
+        if rdtype == "TXT" and str(name) == "cluster0.llmslim.test":
+            if txt is None:
+                raise dns.resolver.NoAnswer()
+            return _Answer([SimpleNamespace(strings=[txt.encode()])])
+        raise dns.resolver.NXDOMAIN()
+
+    monkeypatch.setattr(dns.resolver, "resolve", resolve)
+    return asked
+
+
+def _route(monkeypatch, to_host: str) -> None:
+    """Send connections to any ``*.llmslim.test`` host to ``to_host`` (keeping the port), with no DNS."""
+    import socket
+
+    real = socket.getaddrinfo
+
+    def getaddrinfo(host, port, *args, **kwargs):
+        if isinstance(host, str) and host.endswith(".llmslim.test"):
+            host = to_host
+        return real(host, port, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+
+@needs_pymongo
+def test_the_mongodb_extra_brings_what_srv_urls_need(monkeypatch):
+    # mongodb+srv:// is resolved through dnspython, which PyMongo requires (since 4.3), so the extra alone covers
+    # Atlas: no separate install.
+    from importlib.metadata import requires
+
+    from pymongo.uri_parser import parse_uri
+
+    assert any(r.replace(" ", "").startswith("dnspython") for r in requires("pymongo") or [])
+    asked = _fake_dns(
+        monkeypatch,
+        [("node0.llmslim.test", 27017), ("node1.llmslim.test", 27017)],
+        txt="authSource=admin&replicaSet=atlas-abc-shard-0",
+    )
+    parsed = parse_uri(
+        "mongodb+srv://shop:pw@cluster0.llmslim.test/app?retryWrites=true&w=majority"
+    )
+    assert sorted(parsed["nodelist"]) == [
+        ("node0.llmslim.test", 27017),
+        ("node1.llmslim.test", 27017),
+    ]
+    options = parsed["options"]
+    assert options["tls"] is True  # an SRV URL turns TLS on, as Atlas requires
+    assert options["authSource"] == "admin" and options["replicaSet"] == "atlas-abc-shard-0"
+    assert parsed["database"] == "app"
+    assert ("_mongodb._tcp.cluster0.llmslim.test", "SRV") in asked
+
+
+@needs_pymongo
+def test_an_srv_url_that_does_not_resolve_fails_without_the_password(monkeypatch):
+    from pymongo.errors import ConfigurationError
+
+    _fake_dns(monkeypatch, [])
+    with pytest.raises(ConfigurationError) as caught:
+        MongoStore("mongodb+srv://shop:Tr0ub4dor%263@nowhere.llmslim.test/app")
+    _secretless(caught.value, "Tr0ub4dor%263", "Tr0ub4dor&3")
+
+
+@needs_pymongo
+def test_an_srv_url_connects_to_the_hosts_its_records_name(monkeypatch):
+    from pymongo.errors import ServerSelectionTimeoutError
+
+    _fake_dns(monkeypatch, [("node0.llmslim.test", 1)], txt="authSource=admin")
+    _route(monkeypatch, "127.0.0.1")  # port 1: nothing listens there
+    with pytest.raises(ServerSelectionTimeoutError) as caught:
+        MongoStore(
+            "mongodb+srv://shop:Tr0ub4dor%263@cluster0.llmslim.test/app?serverSelectionTimeoutMS=300"
+        )
+    assert "node0.llmslim.test" in str(caught.value)  # the host from the SRV record was tried
+    _secretless(caught.value, "Tr0ub4dor%263", "Tr0ub4dor&3")
+
+
+@needs_db
+def test_memory_on_an_srv_url_end_to_end(monkeypatch, collection):
+    """The test server reached through mongodb+srv://, its DNS records answered here: the URL Atlas gives works."""
+    from urllib.parse import quote
+
+    from pymongo.uri_parser import parse_uri
+
+    parsed = parse_uri(URL)
+    host, port = parsed["nodelist"][0]
+    options = parsed["options"]
+    txt = "&".join(
+        f"{name}={options[name]}" for name in ("authSource", "replicaSet") if name in options
+    )
+    login = ""
+    if parsed["username"]:
+        login = f"{quote(parsed['username'], safe='')}:{quote(parsed['password'], safe='')}@"
+    # TLS off only because the test server has no certificate; Atlas keeps the default, on.
+    srv = f"mongodb+srv://{login}cluster0.llmslim.test/{_url_database()}?tls=false"
+    asked = _fake_dns(monkeypatch, [("node0.llmslim.test", port)], txt=txt or None)
+    _route(monkeypatch, host)
+    store = MongoStore(srv, collection=collection)
+    try:
+        memory = Memory(store, clock=clock)
+        memory.add("I moved to Pune last month.", user_id="asha")
+        assert "Pune" in memory.search("Where did I move to?", user_id="asha").text
+        assert store._transactions == bool(options.get("replicaSet"))
+    finally:
+        store.close()
+    assert ("_mongodb._tcp.cluster0.llmslim.test", "SRV") in asked
+    assert ("cluster0.llmslim.test", "TXT") in asked
+    reopened = MongoStore(URL, collection=collection)  # the same data, through the plain URL
+    try:
+        assert contents(reopened.list(Scope(user_id="asha"))) == ["I moved to Pune last month."]
+    finally:
+        reopened.close()
+
+
 def test_metadata_is_a_document_unless_mongodb_would_read_its_keys():
     assert _metadata_fields({"source": "chat", "n": 3, "tags": ["a", {"b": None}]}) == {
         "metadata": {"source": "chat", "n": 3, "tags": ["a", {"b": None}]}
@@ -1103,3 +1241,65 @@ def test_llmslim_import_writes_to_mongodb_without_printing_the_url(capsys):
             store.close()
     finally:
         _drop("llmslim_memory")
+
+
+class _CountingFinds:
+    """A collection that counts its ``find`` calls and passes everything through."""
+
+    def __init__(self, inner) -> None:
+        self.inner, self.finds = inner, 0
+
+    def find(self, *args, **kwargs):
+        self.finds += 1
+        return self.inner.find(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
+@needs_db
+def test_stored_ids_are_looked_up_a_thousand_at_a_time(store, monkeypatch):
+    stored = [item(f"turn {n}") for n in range(5)]
+    store.add(stored)
+    counting = _CountingFinds(store._turns)
+    monkeypatch.setattr(store, "_turns", counting)
+    ids = [f"missing-{n}" for n in range(2_400)] + [i.id for i in stored] + HOSTILE
+    assert store._existing_ids(ids) == {i.id for i in stored}  # operator-like ids match nothing
+    assert counting.finds == 3
+    assert store._existing_ids([]) == set()
+    with pytest.raises(TypeError):
+        store._existing_ids([{"$ne": None}])
+
+
+@needs_db
+def test_an_import_writes_in_bounded_transactions_and_looks_up_in_batches(
+    collection, monkeypatch, tmp_path
+):
+    import pymongo
+
+    from llmslim.memory import import_history
+
+    path = tmp_path / "history.jsonl"
+    lines = [{"role": "user", "content": f"note {n}", "session_id": "s"} for n in range(1_200)]
+    path.write_text("\n".join(json.dumps(line) for line in lines), encoding="utf-8")
+    store = MongoStore(URL, collection=collection)
+    # Each stored id is checked in batches, never with one round trip per turn.
+    monkeypatch.setattr(store, "get", lambda item_id: pytest.fail("looked up one turn at a time"))
+    with pymongo.MongoClient(URL) as client:
+
+        def committed() -> int:
+            if not store._transactions:
+                return 0
+            return int(client.admin.command("serverStatus")["transactions"]["totalCommitted"])
+
+        before = committed()
+        try:
+            report = import_history(path, store)
+            again = import_history(path, store)
+            assert report.imported == 1_200 and report.duplicates == 0
+            assert again.imported == 0 and again.duplicates == 1_200
+            assert len(store.list(Scope(user_id="default"))) == 1_200
+        finally:
+            store.close()
+        if store._transactions:  # one transaction per write of at most 500 turns: 500, 500 and 200
+            assert committed() - before == 3

@@ -22,17 +22,18 @@ page sent. Every key reaches the one scope the server was started with. The keys
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Awaitable, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from ._fit import fit_text
 from ._local_http import BearerKeys, HostGuard, policy_for
 from .memory import Memory, MemoryItem
-from .memory._core import storage_target
-from .server import MAX_BODY_BYTES, allowed_hosts_from, api_keys_from, is_loopback
+from .memory._errors import UNAVAILABLE_MESSAGE, store_unavailable
+from .server import MAX_BODY_BYTES, allowed_hosts_from, api_keys_from, is_loopback, open_memory
 
 DEFAULT_DB = Path.home() / ".llmslim" / "memory.db"
 DEFAULT_USER = "default"
@@ -101,6 +102,16 @@ def build_server(
         version=__version__,
     )
 
+    @contextlib.contextmanager
+    def reachable() -> Iterator[None]:
+        """A database that is down fails the tool with a message the model can act on, not the driver's own."""
+        try:
+            yield
+        except Exception as error:
+            if store_unavailable(error):
+                raise ToolError(UNAVAILABLE_MESSAGE) from None
+            raise
+
     def owned(memory_id: str) -> Optional[MemoryItem]:
         item = memory.get(memory_id)
         if item is None:
@@ -128,12 +139,13 @@ def build_server(
         """
         if role not in _ROLES:
             raise ToolError(f"role must be one of {', '.join(_ROLES)}")
-        items = memory.add(
-            [{"role": role, "content": text}],
-            user_id=user_id,
-            agent_id=agent_id,
-            run_id=session or None,
-        )
+        with reachable():
+            items = memory.add(
+                [{"role": role, "content": text}],
+                user_id=user_id,
+                agent_id=agent_id,
+                run_id=session or None,
+            )
         if not items:
             return "Nothing stored: the message was empty."
         return f"Stored as {items[0].id}."
@@ -153,9 +165,10 @@ def build_server(
             session: Optional conversation id to search only that conversation.
         """
         try:
-            context = memory.search(
-                query, budget=budget, user_id=user_id, agent_id=agent_id, run_id=session or None
-            )
+            with reachable():
+                context = memory.search(
+                    query, budget=budget, user_id=user_id, agent_id=agent_id, run_id=session or None
+                )
         except ValueError as error:  # an empty query or a budget below one token
             raise ToolError(str(error)) from error
         if not context.text and context.history_tokens:
@@ -177,7 +190,8 @@ def build_server(
             limit: How many to list, at most 100.
             session: Optional conversation id to list only that conversation.
         """
-        items = memory.get_all(user_id=user_id, agent_id=agent_id, run_id=session or None)
+        with reachable():
+            items = memory.get_all(user_id=user_id, agent_id=agent_id, run_id=session or None)
         items = sorted(items, key=lambda item: (item.created_at, item.seq), reverse=True)[
             : max(1, min(limit, 100))
         ]
@@ -200,9 +214,10 @@ def build_server(
         Args:
             memory_id: The id of the message to delete.
         """
-        if owned(memory_id) is None:
-            return f"No stored message has the id {memory_id}."
-        memory.delete(memory_id)
+        with reachable():
+            if owned(memory_id) is None:
+                return f"No stored message has the id {memory_id}."
+            memory.delete(memory_id)
         return f"Deleted {memory_id}."
 
     @server.tool(
@@ -464,7 +479,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ]
     if http_only:
         parser.error(f"{', '.join(http_only)} only apply with --transport http")
-    memory = Memory(storage_target(args.db), budget=args.budget)
+    memory = open_memory(args.db, budget=args.budget, program="llmslim mcp")
     server = build_server(memory, user_id=args.user_id, agent_id=args.agent_id)
     server.run("stdio")
     return 0
@@ -509,7 +524,7 @@ def _serve_http(args: argparse.Namespace, parser: argparse.ArgumentParser) -> in
         import uvicorn
     except ImportError as error:  # pragma: no cover - uvicorn comes with the MCP SDK
         raise _missing_mcp() from error
-    memory = Memory(storage_target(args.db), budget=args.budget)
+    memory = open_memory(args.db, budget=args.budget, program="llmslim mcp")
     server = build_server(memory, user_id=args.user_id, agent_id=args.agent_id)
     app = http_app(
         server, api_keys=keys, allowed_hosts=allowed_hosts_from(args.allowed_host), path=endpoint

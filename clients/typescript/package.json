@@ -1,6 +1,6 @@
 {
   "name": "llmslim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Long-term memory and context fitting for AI agents, with no LLM in the loop: the client for llmslim serve, with Vercel AI SDK and Mastra integrations.",
   "license": "MIT",
   "author": "Yashvardhan Thanvi",

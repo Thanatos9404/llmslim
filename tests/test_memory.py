@@ -9,7 +9,15 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from llmslim.memory import InMemoryStore, Memory, MemoryItem, PostgresStore, Scope, SQLiteStore
+from llmslim.memory import (
+    InMemoryStore,
+    Memory,
+    MemoryItem,
+    MongoStore,
+    PostgresStore,
+    Scope,
+    SQLiteStore,
+)
 from llmslim.memory.compat import Mem0Memory
 from llmslim.tokens import count_tokens
 
@@ -21,7 +29,12 @@ def clock():
 
 
 POSTGRES_URL = os.environ.get("LLMSLIM_TEST_POSTGRES_URL")
-STORES = ["memory", "sqlite"] + (["postgres"] if POSTGRES_URL else [])
+MONGODB_URL = os.environ.get("LLMSLIM_TEST_MONGODB_URL")
+STORES = (
+    ["memory", "sqlite"]
+    + (["postgres"] if POSTGRES_URL else [])
+    + (["mongodb"] if MONGODB_URL else [])
+)
 
 
 @pytest.fixture
@@ -34,12 +47,28 @@ def postgres_table():
         conn.execute(f"DROP TABLE IF EXISTS {table}, {table}_meta")
 
 
+@pytest.fixture
+def mongodb_collection():
+    """A fresh collection name in the test database, dropped afterwards with its _meta collection."""
+    pymongo = pytest.importorskip("pymongo")
+    collection = f"llmslim_test_{uuid.uuid4().hex[:12]}"
+    yield collection
+    with pymongo.MongoClient(MONGODB_URL) as client:
+        database = client.get_default_database("llmslim")
+        database.drop_collection(collection)
+        database.drop_collection(f"{collection}_meta")
+
+
 @pytest.fixture(params=STORES)
 def memory(request, tmp_path):
     if request.param == "memory":
         return Memory(InMemoryStore(), clock=clock)
     if request.param == "sqlite":
         return Memory(SQLiteStore(tmp_path / "memory.db"), clock=clock)
+    if request.param == "mongodb":
+        mongo = MongoStore(MONGODB_URL, collection=request.getfixturevalue("mongodb_collection"))
+        request.addfinalizer(mongo.close)
+        return Memory(mongo, clock=clock)
     table = request.getfixturevalue("postgres_table")
     store = PostgresStore(POSTGRES_URL, table=table, max_size=2)
     request.addfinalizer(store.close)
@@ -711,6 +740,29 @@ def test_context_to_dict_round_trips_turns(memory):
     memory.add("I like tea", user_id="u1")
     data = memory.search("tea", user_id="u1").to_dict()
     assert data["turns"][0]["content"] == "I like tea" and "score" in data["turns"][0]
+
+
+@pytest.mark.parametrize(
+    "name", ["fits", "lookup", "advice", "conflicts", "summary_small", "window", "people"]
+)
+def test_search_explains_itself_the_same_on_every_store(memory, name):
+    """explain=True on this store gives the explanation it gives in process (tests/test_memory_explain.py has the
+    rest): the histories have fixed ids and times, so the two must be equal field for field."""
+    from tests import _memory_search_cases as cases
+
+    case = {c[0]: c for c in cases.CASES}[name]
+    here = cases.run(case, memory.store, explain=True)
+    baseline = cases.run(case, InMemoryStore(), explain=True)
+    assert here.text == baseline.text and here.explanation == baseline.explanation
+    explanation = here.explanation
+    scope = {key: value for key, value in case[3].items() if key.endswith("_id")}
+    assert [t.id for t in explanation.turns] == [i.id for i in memory.get_all(**scope)]
+    kept = {t.id: t.status == "clipped" for t in explanation.turns if t.status != "dropped"}
+    assert kept == {t.item.id: t.partial for t in here.turns}
+    total = sum(t.tokens for t in explanation.turns) + sum(s.tokens for s in explanation.sections)
+    assert total + explanation.unattributed_tokens == here.tokens
+    assert here.to_dict()["explanation"] == explanation.to_dict()
+    assert "explanation" not in cases.run(case, InMemoryStore()).to_dict()
 
 
 # ---------------------------------------------------------------- stores

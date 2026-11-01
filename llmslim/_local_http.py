@@ -1,4 +1,5 @@
-"""Host and Origin checks for LLMSlim's own HTTP servers (``llmslim serve`` and ``llmslim proxy``).
+"""Host, Origin and API-key checks, and JSON body reading, for LLMSlim's own HTTP servers (``llmslim serve``,
+``llmslim mcp --transport http`` and ``llmslim proxy``).
 
 A server on the loopback interface is still reachable from any web page the user opens:
 
@@ -10,15 +11,117 @@ A server on the loopback interface is still reachable from any web page the user
 
 So a local server answers only requests whose ``Host`` names this machine (or a host its operator allowed), and
 refuses browser requests from any other origin. Non-browser clients send no ``Origin`` and are not affected.
+
+``serve`` and ``mcp`` share :class:`BearerKeys` and :func:`policy_for`, so their API keys and Host rules behave the
+same.
 """
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
-from typing import Any, Awaitable, Callable, Iterable, Optional, Tuple
+import json
+from typing import Any, Awaitable, Callable, Dict, Iterable, NoReturn, Optional, Tuple
 from urllib.parse import urlsplit
 
 ANY_HOST = "*"
+
+
+class HTTPError(Exception):
+    """An error a server answers as ``{"error": {"type": kind, "message": message}}`` with ``status``."""
+
+    def __init__(self, status: int, kind: str, message: str) -> None:
+        super().__init__(message)
+        self.status, self.kind, self.message = status, kind, message
+
+
+def check_text(payload: Any) -> None:
+    """Refuse strings (keys too) that are not valid Unicode, such as a lone surrogate from a ``\\ud800`` escape.
+
+    Such text can't be written as UTF-8: a file or Postgres store refuses it, but the in-process store kept it, and
+    then every later read of that scope failed. Iterative, so nesting can't exhaust the stack here.
+    """
+    stack = [payload]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise HTTPError(
+                    400, "invalid_request", "text must be valid Unicode (no lone surrogates)"
+                ) from None
+        elif isinstance(value, dict):
+            stack.extend(value.keys())
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
+
+
+def _no_constants(name: str) -> NoReturn:
+    raise ValueError(f"{name} is not valid JSON")
+
+
+async def read_json_object(request: Any, max_bytes: int, *, strict: bool = False) -> Dict[str, Any]:
+    """The body of a Starlette ``request`` as a JSON object, read in chunks and refused past ``max_bytes`` (413).
+
+    Bodies that are not JSON, not UTF-8, nested past the interpreter's stack or not an object, and text that isn't
+    valid Unicode, are 400s. ``strict`` also refuses ``NaN`` and ``Infinity``, which Python's parser accepts but
+    which can't be sent on as JSON.
+    """
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > max_bytes:
+        raise HTTPError(413, "payload_too_large", f"request body is over {max_bytes} bytes")
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > max_bytes:
+            raise HTTPError(413, "payload_too_large", f"request body is over {max_bytes} bytes")
+    try:
+        if strict:
+            payload = json.loads(raw or b"{}", parse_constant=_no_constants)
+        else:
+            payload = json.loads(raw or b"{}")
+    except ValueError as error:
+        raise HTTPError(400, "invalid_json", f"request body is not valid JSON: {error}") from error
+    except RecursionError:  # arrays or objects nested past the interpreter's stack
+        raise HTTPError(400, "invalid_json", "request body is nested too deeply") from None
+    if not isinstance(payload, dict):
+        raise HTTPError(400, "invalid_request", "request body must be a JSON object")
+    check_text(payload)
+    return payload
+
+
+class BearerKeys:
+    """The API keys a server accepts as ``Authorization: Bearer <key>``. No keys means no authentication."""
+
+    def __init__(self, keys: Iterable[str] = ()) -> None:
+        self._keys = tuple(key.encode("utf-8") for key in keys)
+
+    def __bool__(self) -> bool:
+        return bool(self._keys)
+
+    def accepts(self, authorization: Optional[str]) -> bool:
+        """Whether an ``Authorization`` header value carries one of the keys; always true without keys."""
+        if not self._keys:
+            return True
+        scheme, _, token = (authorization or "").partition(" ")
+        presented = token.strip().encode("utf-8")
+        # Compare against every key, so the time taken doesn't reveal which one nearly matched.
+        matches = [hmac.compare_digest(presented, key) for key in self._keys]
+        return scheme.lower() == "bearer" and any(matches)
+
+
+def policy_for(allowed_hosts: Optional[Iterable[str]], *, keyed: bool) -> "HostPolicy":
+    """The Host and Origin rules of a server that does (``keyed``) or doesn't require an API key.
+
+    Without ``allowed_hosts``, a keyless server answers only loopback names and refuses other origins, and a server
+    with keys answers any name. With them, both answer only loopback names and those hosts, and a keyless server still
+    refuses other origins.
+    """
+    if allowed_hosts is None:
+        return HostPolicy([ANY_HOST] if keyed else ())
+    return HostPolicy(allowed_hosts, origins=not keyed)
 
 
 def host_name(value: str) -> str:

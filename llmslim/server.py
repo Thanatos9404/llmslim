@@ -10,8 +10,10 @@ JSON API mirrors :class:`llmslim.memory.Memory`:
 ``PATCH  /v1/memories/{id}``          correct its ``content`` or ``metadata``
 ``DELETE /v1/memories/{id}``          delete one message
 ``DELETE /v1/memories?user_id=...``   delete a whole scope
-``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens
+``POST   /v1/memories/search``        the messages that answer ``query`` within ``budget`` tokens (``explain`` says why)
 ``POST   /v1/context/fit``            shrink ``text`` to ``budget`` tokens around an optional ``query``
+``POST   /v1/chat/completions``       OpenAI-compatible chat with memory, when started with an upstream (experimental)
+``GET    /v1/models``                 the upstream's models, when started with an upstream (experimental)
 ``GET    /healthz``                   liveness, without authentication
 ====================================  =====================================================================
 
@@ -25,16 +27,37 @@ give full access to every scope, so call the server from your backend, never fro
 from __future__ import annotations
 
 import argparse
-import hmac
 import ipaddress
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence, TypedDict
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    TypedDict,
+)
+from urllib.parse import urlsplit
 
 from ._fit import fit_text
-from ._local_http import HostGuard, HostPolicy
+from ._local_http import BearerKeys, HostGuard, policy_for, read_json_object
+from ._local_http import HTTPError as _HTTPError
+from ._openai_chat import (
+    DEFAULT_MEMORY_BUDGET,
+    DEFAULT_READ_TIMEOUT,
+    UPSTREAM_KEY_ENV,
+    UPSTREAM_URL_ENV,
+    ChatRelay,
+    ChatUpstream,
+)
 from .memory import Memory
 from .memory._core import storage_target
 from .tokens import count_tokens
@@ -51,12 +74,6 @@ _SCOPE_KEYS = ("user_id", "agent_id", "run_id")
 _RELEVANCE = ("lexical", "semantic")
 
 
-class _HTTPError(Exception):
-    def __init__(self, status: int, kind: str, message: str) -> None:
-        super().__init__(message)
-        self.status, self.kind, self.message = status, kind, message
-
-
 def _missing_server_extra() -> ImportError:
     return ImportError(
         'The LLMSlim server needs Starlette and Uvicorn: pip install "llmslim[server]"'
@@ -70,6 +87,7 @@ def create_app(
     max_body_bytes: int = MAX_BODY_BYTES,
     max_budget: int = MAX_BUDGET,
     allowed_hosts: Optional[Sequence[str]] = None,
+    chat: Optional[ChatUpstream] = None,
 ) -> Any:
     """A Starlette app that serves ``memory`` over the JSON API above.
 
@@ -82,6 +100,9 @@ def create_app(
             for any. By default, a server without API keys answers only loopback names and refuses requests that
             another web page sent (403), and a server with keys answers any host. Set it with keys to pin the names
             your deployment is reached by.
+        chat: Turns on ``POST /v1/chat/completions`` and ``GET /v1/models``, forwarded to this OpenAI-compatible
+            upstream with recalled memory added and new turns stored (experimental; see ``docs/SERVER.md``).
+            Without it those routes answer 404.
     """
     try:
         from starlette.applications import Starlette
@@ -95,46 +116,16 @@ def create_app(
 
     from . import __version__
 
-    keys = [key.encode("utf-8") for key in api_keys]
-    if allowed_hosts is None:
-        policy = HostPolicy(["*"] if keys else ())
-    else:
-        policy = HostPolicy(allowed_hosts, origins=not keys)
+    keys = BearerKeys(api_keys)
+    policy = policy_for(allowed_hosts, keyed=bool(keys))
+
+    relay = ChatRelay(memory, chat, max_budget=max_budget) if chat is not None else None
 
     def authorized(request: Request) -> bool:
-        if not keys:
-            return True
-        scheme, _, token = request.headers.get("authorization", "").partition(" ")
-        presented = token.strip().encode("utf-8")
-        # Compare against every key, so the time taken doesn't reveal which one nearly matched.
-        matches = [hmac.compare_digest(presented, key) for key in keys]
-        return scheme.lower() == "bearer" and any(matches)
+        return keys.accepts(request.headers.get("authorization"))
 
     async def body(request: Request) -> Dict[str, Any]:
-        declared = request.headers.get("content-length")
-        if declared is not None and declared.isdigit() and int(declared) > max_body_bytes:
-            raise _HTTPError(
-                413, "payload_too_large", f"request body is over {max_body_bytes} bytes"
-            )
-        raw = b""
-        async for chunk in request.stream():
-            raw += chunk
-            if len(raw) > max_body_bytes:
-                raise _HTTPError(
-                    413, "payload_too_large", f"request body is over {max_body_bytes} bytes"
-                )
-        try:
-            payload = json.loads(raw or b"{}")
-        except ValueError as error:
-            raise _HTTPError(
-                400, "invalid_json", f"request body is not valid JSON: {error}"
-            ) from error
-        except RecursionError:  # arrays or objects nested past the interpreter's stack
-            raise _HTTPError(400, "invalid_json", "request body is nested too deeply") from None
-        if not isinstance(payload, dict):
-            raise _HTTPError(400, "invalid_request", "request body must be a JSON object")
-        _check_text(payload)
-        return payload
+        return await read_json_object(request, max_body_bytes)
 
     def budget_of(value: Any, default: int) -> int:
         if value is None:
@@ -245,6 +236,9 @@ def create_app(
             raise _HTTPError(
                 400, "invalid_request", f"relevance must be one of {', '.join(_RELEVANCE)}"
             )
+        explain = payload.get("explain")
+        if explain is not None and not isinstance(explain, bool):
+            raise _HTTPError(400, "invalid_request", "explain must be true or false")
         context = await run_in_threadpool(
             lambda: memory.search(
                 payload.get("query", ""),
@@ -252,6 +246,7 @@ def create_app(
                 relevance=relevance,
                 since=payload.get("since"),
                 until=payload.get("until"),
+                explain=bool(explain),
                 **_scope(payload),
             )
         )
@@ -294,6 +289,42 @@ def create_app(
         handler = {"GET": get_item, "PATCH": update_item, "DELETE": delete_item}[request.method]
         return await endpoint(handler)(request)
 
+    def chat_route(handler: Callable[[Request, ChatRelay], Awaitable[Any]]) -> Callable[..., Any]:
+        async def run(request: Request) -> Any:
+            if not authorized(request):
+                return JSONResponse(
+                    {"error": {"type": "unauthorized", "message": "missing or invalid API key"}},
+                    status_code=401,
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            if relay is None:
+                message = (
+                    "the chat endpoint is off: start llmslim serve with --upstream-url "
+                    f"(or {UPSTREAM_URL_ENV}) to turn it on"
+                )
+                return JSONResponse({"error": {"type": "not_found", "message": message}}, 404)
+            try:
+                return await handler(request, relay)
+            except _HTTPError as error:
+                return JSONResponse(
+                    {"error": {"type": error.kind, "message": error.message}}, error.status
+                )
+
+        return run
+
+    async def chat_completions(request: Request, relay: ChatRelay) -> Any:
+        payload = await read_json_object(request, max_body_bytes, strict=True)
+        return await relay.complete(payload, request.headers)
+
+    async def models(request: Request, relay: ChatRelay) -> Any:
+        return await relay.models()
+
+    @asynccontextmanager
+    async def lifespan(app: Any) -> AsyncIterator[None]:
+        yield
+        if relay is not None:
+            await relay.aclose()
+
     routes = [
         Route("/healthz", health, methods=["GET"]),
         Route("/v1/info", endpoint(info), methods=["GET"]),
@@ -301,6 +332,8 @@ def create_app(
         Route("/v1/memories/search", endpoint(search), methods=["POST"]),
         Route("/v1/memories/{memory_id}", memory_item, methods=["GET", "PATCH", "DELETE"]),
         Route("/v1/context/fit", endpoint(fit), methods=["POST"]),
+        Route("/v1/chat/completions", chat_route(chat_completions), methods=["POST"]),
+        Route("/v1/models", chat_route(models), methods=["GET"]),
     ]
 
     def forbidden(message: str) -> tuple[bytes, str]:
@@ -309,6 +342,7 @@ def create_app(
 
     return Starlette(
         routes=routes,
+        lifespan=lifespan,
         middleware=[Middleware(HostGuard, policy=policy, reject=forbidden)],
     )
 
@@ -331,29 +365,6 @@ def _scope(source: Mapping[str, Any]) -> _Scope:
     return scope
 
 
-def _check_text(payload: Any) -> None:
-    """Refuse strings (keys too) that are not valid Unicode, such as a lone surrogate from a ``\\ud800`` escape.
-
-    Such text can't be written as UTF-8: a file or Postgres store refuses it, but the in-process store kept it, and
-    then every later read of that scope failed. Iterative, so nesting can't exhaust the stack here.
-    """
-    stack = [payload]
-    while stack:
-        value = stack.pop()
-        if isinstance(value, str):
-            try:
-                value.encode("utf-8")
-            except UnicodeEncodeError:
-                raise _HTTPError(
-                    400, "invalid_request", "text must be valid Unicode (no lone surrogates)"
-                ) from None
-        elif isinstance(value, dict):
-            stack.extend(value.keys())
-            stack.extend(value.values())
-        elif isinstance(value, list):
-            stack.extend(value)
-
-
 def _bounded(value: Optional[str], name: str, default: int, low: int, high: int) -> int:
     if value is None:
         return default
@@ -374,9 +385,14 @@ def is_loopback(host: str) -> bool:
         return False
 
 
-def api_keys_from(values: Sequence[str], environ: Mapping[str, str] = os.environ) -> List[str]:
-    """API keys from ``--api-key`` flags, else from ``LLMSLIM_API_KEYS`` (comma-separated)."""
-    raw = list(values) or environ.get("LLMSLIM_API_KEYS", "").split(",")
+def api_keys_from(
+    values: Sequence[str],
+    environ: Mapping[str, str] = os.environ,
+    *,
+    variable: str = "LLMSLIM_API_KEYS",
+) -> List[str]:
+    """API keys from ``--api-key`` flags, else from the ``variable`` environment variable (comma-separated)."""
+    raw = list(values) or environ.get(variable, "").split(",")
     keys = [key.strip() for key in raw if key.strip()]
     short = [key for key in keys if len(key) < MIN_KEY_LENGTH]
     if short:
@@ -404,7 +420,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file or postgresql:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file, postgresql:// or mongodb:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--api-key",
@@ -428,7 +444,64 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--new-key", action="store_true", help="Print a new random API key and exit."
     )
+    chat = parser.add_argument_group(
+        "chat endpoint (experimental)",
+        "POST /v1/chat/completions: an OpenAI-compatible endpoint that adds memory to any client. Off unless an "
+        f"upstream is set. The upstream's key is read from {UPSTREAM_KEY_ENV} only, never from a flag.",
+    )
+    chat.add_argument(
+        "--upstream-url",
+        default=os.environ.get(UPSTREAM_URL_ENV) or None,
+        metavar="URL",
+        help="OpenAI-compatible base URL to forward chat requests to, such as https://api.openai.com/v1 "
+        f"(env {UPSTREAM_URL_ENV}). Turns the chat endpoint on.",
+    )
+    chat.add_argument(
+        "--memory-budget",
+        type=int,
+        default=None,
+        metavar="TOKENS",
+        help=f"Most tokens of recalled memory added to a chat request (default {DEFAULT_MEMORY_BUDGET}).",
+    )
+    chat.add_argument(
+        "--store-only",
+        action="store_true",
+        help="Store each chat turn but never add recalled memory: requests reach the upstream as the client sent "
+        "them, so every prompt-cache prefix is kept.",
+    )
+    chat.add_argument(
+        "--upstream-timeout",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="Seconds to wait for the upstream to start answering, and between streamed chunks "
+        f"(default {DEFAULT_READ_TIMEOUT:g}).",
+    )
     return parser
+
+
+def chat_upstream_from(
+    args: argparse.Namespace, environ: Mapping[str, str] = os.environ
+) -> Optional[ChatUpstream]:
+    """The chat endpoint's configuration from parsed ``llmslim serve`` arguments, or ``None`` when it is off.
+
+    Raises:
+        ValueError: The URL or a number is invalid, or a chat option is given without ``--upstream-url``.
+    """
+    if not args.upstream_url:
+        if args.memory_budget is not None or args.store_only or args.upstream_timeout is not None:
+            raise ValueError(
+                "--memory-budget, --store-only and --upstream-timeout need --upstream-url "
+                f"(or {UPSTREAM_URL_ENV})"
+            )
+        return None
+    options: Dict[str, Any] = {"recall": not args.store_only}
+    if args.memory_budget is not None:
+        options["memory_budget"] = args.memory_budget
+    if args.upstream_timeout is not None:
+        options["read_timeout"] = args.upstream_timeout
+    key = environ.get(UPSTREAM_KEY_ENV, "").strip() or None
+    return ChatUpstream(args.upstream_url, api_key=key, **options)
 
 
 def allowed_hosts_from(
@@ -451,6 +524,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise SystemExit("--budget must be a positive number of tokens")
     try:
         keys = api_keys_from(args.api_key)
+        chat = chat_upstream_from(args)
     except ValueError as error:
         raise SystemExit(str(error)) from error
     if not keys and not is_loopback(args.host):
@@ -466,14 +540,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         Memory(storage_target(args.db), budget=args.budget),
         api_keys=keys,
         allowed_hosts=allowed_hosts_from(args.allowed_host),
+        chat=chat,
     )
     if not keys:
         logger.warning("no API key set: serving %s:%s without authentication", args.host, args.port)
+    if chat is not None:
+        upstream = urlsplit(chat.base)
+        logger.warning(
+            "chat endpoint on (experimental): POST /v1/chat/completions forwards to %s://%s%s, %s",
+            upstream.scheme,
+            upstream.netloc,
+            upstream.path,
+            "with an upstream key"
+            if chat.api_key
+            else f"with no upstream key ({UPSTREAM_KEY_ENV} unset)",
+        )
+        if chat.api_key and upstream.scheme == "http" and not is_loopback(upstream.hostname or ""):
+            logger.warning(
+                "the upstream key goes over plain HTTP to %s; use https:// outside a private network",
+                upstream.hostname,
+            )
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
 
 
-__all__ = ["create_app", "main"]
+__all__ = ["ChatUpstream", "create_app", "main"]
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

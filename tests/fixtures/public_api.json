@@ -67,11 +67,61 @@
       },
       "status": "stable"
     },
+    "llmslim import": {
+      "arguments": {
+        "--agent-id": {},
+        "--db": {},
+        "--dry-run": {
+          "flag": true
+        },
+        "--include-tool-output": {
+          "flag": true
+        },
+        "--json": {
+          "flag": true
+        },
+        "--limit": {},
+        "--no-redact": {
+          "flag": true
+        },
+        "--since": {},
+        "--strict": {
+          "flag": true
+        },
+        "--until": {},
+        "--user-id": {},
+        "format": {
+          "choices": [
+            "auto",
+            "chatgpt",
+            "claude-ai",
+            "claude-code",
+            "jsonl",
+            "mem0"
+          ]
+        },
+        "path": {
+          "nargs": "?"
+        }
+      },
+      "status": "stable"
+    },
     "llmslim mcp": {
       "arguments": {
         "--agent-id": {},
+        "--allowed-host": {},
+        "--api-key": {},
         "--budget": {},
         "--db": {},
+        "--host": {},
+        "--path": {},
+        "--port": {},
+        "--transport": {
+          "choices": [
+            "http",
+            "stdio"
+          ]
+        },
         "--user-id": {}
       },
       "status": "stable"
@@ -146,10 +196,23 @@
         "--budget": {},
         "--db": {},
         "--host": {},
+        "--memory-budget": {
+          "status": "experimental"
+        },
         "--new-key": {
           "flag": true
         },
-        "--port": {}
+        "--port": {},
+        "--store-only": {
+          "flag": true,
+          "status": "experimental"
+        },
+        "--upstream-timeout": {
+          "status": "experimental"
+        },
+        "--upstream-url": {
+          "status": "experimental"
+        }
       },
       "status": "stable"
     },
@@ -218,14 +281,28 @@
     "LLMSLIM_ALLOWED_HOSTS",
     "LLMSLIM_API_KEYS",
     "LLMSLIM_HOST",
+    "LLMSLIM_MCP_API_KEYS",
+    "LLMSLIM_MCP_HOST",
+    "LLMSLIM_MCP_PORT",
     "LLMSLIM_MEMORY_DB",
     "LLMSLIM_PORT",
     "LLMSLIM_PROXY_DB",
     "LLMSLIM_PROXY_UPSTREAM",
     "LLMSLIM_RERANK_MODEL",
+    "LLMSLIM_UPSTREAM_API_KEY",
+    "LLMSLIM_UPSTREAM_URL",
     "LLMSLIM_USER_ID"
   ],
   "http": {
+    "experimental_routes": {
+      "/v1/chat/completions": [
+        "POST"
+      ],
+      "/v1/models": [
+        "GET",
+        "HEAD"
+      ]
+    },
     "routes": {
       "/healthz": [
         "GET",
@@ -3113,6 +3190,139 @@
     },
     "llmslim.memory": {
       "names": {
+        "ExplainedCandidate": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "from_dict": "classmethod (data: Mapping[str, Any]) -> ExplainedCandidate",
+            "kind": "attribute: str",
+            "part": "attribute: int",
+            "pool": "attribute: str",
+            "rank": "attribute: Optional[int]",
+            "reason": "attribute: Optional[str]",
+            "score": "attribute: Optional[float]",
+            "side": "attribute: Optional[str]",
+            "status": "attribute: str",
+            "to_dict": "method () -> Dict[str, Any]",
+            "tokens": "attribute: int",
+            "turn_id": "attribute: str"
+          },
+          "signature": "(turn_id: str, pool: str, kind: str, part: int, rank: Optional[int], score: Optional[float], tokens: int, status: str, reason: Optional[str] = None, side: Optional[str] = None) -> None",
+          "status": "stable"
+        },
+        "ExplainedSection": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "candidates": "attribute: Tuple[ExplainedCandidate, ...]",
+            "cap": "attribute: int",
+            "from_dict": "classmethod (data: Mapping[str, Any]) -> ExplainedSection",
+            "name": "attribute: str",
+            "reason": "attribute: Optional[str]",
+            "share": "attribute: float",
+            "shown": "attribute: bool",
+            "to_dict": "method () -> Dict[str, Any]",
+            "tokens": "attribute: int"
+          },
+          "signature": "(name: str, shown: bool, reason: Optional[str], cap: int, tokens: int, share: float, candidates: Tuple[ExplainedCandidate, ...] = ()) -> None",
+          "status": "stable"
+        },
+        "ExplainedTurn": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "candidates": "attribute: Tuple[ExplainedCandidate, ...]",
+            "created_at": "attribute: datetime",
+            "from_dict": "classmethod (data: Mapping[str, Any]) -> ExplainedTurn",
+            "id": "attribute: str",
+            "pool": "attribute: Optional[str]",
+            "reason": "attribute: Optional[str]",
+            "role": "attribute: str",
+            "session": "attribute: Optional[int]",
+            "share": "attribute: float",
+            "status": "attribute: str",
+            "to_dict": "method () -> Dict[str, Any]",
+            "tokens": "attribute: int"
+          },
+          "signature": "(id: str, role: str, created_at: datetime, session: Optional[int], pool: Optional[str], status: str, reason: Optional[str], tokens: int, share: float, candidates: Tuple[ExplainedCandidate, ...] = ()) -> None",
+          "status": "stable"
+        },
+        "HistoryImportError": {
+          "bases": [
+            "ValueError"
+          ],
+          "kind": "class",
+          "members": {},
+          "signature": null,
+          "status": "stable"
+        },
+        "ImportLimits": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "max_depth": "attribute: int",
+            "max_file_bytes": "attribute: int",
+            "max_record_bytes": "attribute: int",
+            "max_turn_chars": "attribute: int",
+            "max_zip_members": "attribute: int",
+            "max_zip_ratio": "attribute: float"
+          },
+          "signature": "(max_file_bytes: int = 1073741824, max_record_bytes: int = 33554432, max_depth: int = 64, max_turn_chars: int = 100000, max_zip_members: int = 100000, max_zip_ratio: float = 100.0) -> None",
+          "status": "stable"
+        },
+        "ImportReport": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "dry_run": "attribute: bool",
+            "duplicates": "attribute: int",
+            "errors": "attribute: Tuple[str, ...]",
+            "files": "attribute: int",
+            "format": "attribute: str",
+            "imported": "attribute: int",
+            "limited": "attribute: bool",
+            "malformed": "attribute: int",
+            "ok": "property",
+            "redactions": "attribute: Mapping[str, int]",
+            "sessions": "attribute: Tuple[ImportedSession, ...]",
+            "skipped": "attribute: Mapping[str, int]",
+            "skipped_total": "property",
+            "source": "attribute: str",
+            "to_dict": "method () -> Dict[str, Any]"
+          },
+          "signature": "(format: str, source: str, dry_run: bool, files: int, sessions: Tuple[ImportedSession, ...], imported: int, duplicates: int, malformed: int, skipped: Mapping[str, int] = <factory>, redactions: Mapping[str, int] = <factory>, errors: Tuple[str, ...] = (), limited: bool = False) -> None",
+          "status": "stable"
+        },
+        "ImportedSession": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "duplicates": "attribute: int",
+            "format": "attribute: str",
+            "imported": "attribute: int",
+            "run_id": "attribute: Optional[str]",
+            "session_id": "attribute: str",
+            "skipped": "attribute: int",
+            "title": "attribute: Optional[str]",
+            "to_dict": "method () -> Dict[str, Any]",
+            "turns": "attribute: int",
+            "user_id": "attribute: str"
+          },
+          "signature": "(format: str, session_id: str, title: Optional[str], run_id: Optional[str], user_id: str, turns: int, imported: int, duplicates: int, skipped: int) -> None",
+          "status": "stable"
+        },
         "InMemoryStore": {
           "bases": [
             "object"
@@ -3140,7 +3350,7 @@
             "delete_all": "method (*, user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None) -> int",
             "get": "method (memory_id: str) -> Optional[MemoryItem]",
             "get_all": "method (*, user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None, since: Any = None, until: Any = None) -> List[MemoryItem]",
-            "search": "method (query: str, *, user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None, budget: Optional[int] = None, relevance: Any = None, since: Any = None, until: Any = None, standing_requests: Optional[bool] = None, coverage: Optional[str] = None, preferences: Optional[bool] = None, conflicts: Optional[bool] = None) -> MemoryContext",
+            "search": "method (query: str, *, user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None, budget: Optional[int] = None, relevance: Any = None, since: Any = None, until: Any = None, standing_requests: Optional[bool] = None, coverage: Optional[str] = None, preferences: Optional[bool] = None, conflicts: Optional[bool] = None, explain: bool = False) -> MemoryContext",
             "update": "method (memory_id: str, content: Optional[str] = None, *, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
           },
           "signature": "(store: Union[MemoryStore, str, Path, None] = None, *, budget: int = 2000, relevance: Any = 'lexical', tz: tzinfo = <timezone>, stamp_format: str = '%Y-%m-%d (%a) %H:%M', date_format: str = '%Y-%m-%d', clock: Callable[[], datetime] = _utcnow, standing_requests: bool = True, coverage: str = 'auto', preferences: bool = True, conflicts: bool = True) -> None",
@@ -3156,6 +3366,7 @@
             "compressed": "property",
             "conflicts": "attribute: Tuple[RecalledTurn, ...]",
             "elapsed_ms": "attribute: float",
+            "explanation": "attribute: Optional[SearchExplanation]",
             "history_tokens": "attribute: int",
             "preferences": "attribute: Tuple[RecalledTurn, ...]",
             "query": "attribute: str",
@@ -3167,7 +3378,7 @@
             "tokens": "attribute: int",
             "turns": "attribute: Tuple[RecalledTurn, ...]"
           },
-          "signature": "(query: str, text: str, turns: Tuple[RecalledTurn, ...], tokens: int, budget: int, history_tokens: int, sessions_total: int, sessions_kept: int, elapsed_ms: float = 0.0, requests: Tuple[RecalledTurn, ...] = (), preferences: Tuple[RecalledTurn, ...] = (), conflicts: Tuple[RecalledTurn, ...] = ()) -> None",
+          "signature": "(query: str, text: str, turns: Tuple[RecalledTurn, ...], tokens: int, budget: int, history_tokens: int, sessions_total: int, sessions_kept: int, elapsed_ms: float = 0.0, requests: Tuple[RecalledTurn, ...] = (), preferences: Tuple[RecalledTurn, ...] = (), conflicts: Tuple[RecalledTurn, ...] = (), explanation: Optional[SearchExplanation] = None) -> None",
           "status": "stable"
         },
         "MemoryItem": {
@@ -3205,6 +3416,23 @@
             "update": "method (item_id: str, *, content: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
           },
           "signature": "(*args, **kwargs)",
+          "status": "stable"
+        },
+        "MongoStore": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "add": "method (items: Sequence[MemoryItem]) -> None",
+            "close": "method () -> None",
+            "delete": "method (item_id: str) -> bool",
+            "delete_scope": "method (scope: Scope) -> int",
+            "get": "method (item_id: str) -> Optional[MemoryItem]",
+            "list": "method (scope: Scope, *, since: Optional[datetime] = None, until: Optional[datetime] = None) -> List[MemoryItem]",
+            "update": "method (item_id: str, *, content: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
+          },
+          "signature": "(client: Any, *, database: Optional[str] = None, collection: str = 'llmslim_memory') -> None",
           "status": "stable"
         },
         "PostgresStore": {
@@ -3266,6 +3494,35 @@
             "user_id": "attribute: Optional[str]"
           },
           "signature": "(user_id: Optional[str] = None, agent_id: Optional[str] = None, run_id: Optional[str] = None) -> None",
+          "status": "stable"
+        },
+        "SearchExplanation": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "budget": "attribute: int",
+            "clipped": "attribute: bool",
+            "from_dict": "classmethod (data: Mapping[str, Any]) -> SearchExplanation",
+            "history_tokens": "attribute: int",
+            "mode": "attribute: str",
+            "room": "attribute: int",
+            "route": "attribute: Optional[str]",
+            "sections": "attribute: Tuple[ExplainedSection, ...]",
+            "to_dict": "method () -> Dict[str, Any]",
+            "tokens": "attribute: int",
+            "turns": "attribute: Tuple[ExplainedTurn, ...]",
+            "unattributed_tokens": "attribute: int",
+            "user_room": "attribute: Optional[int]",
+            "user_turn_cap": "attribute: Optional[int]"
+          },
+          "signature": "(mode: str, route: Optional[str], budget: int, tokens: int, history_tokens: int, room: int, user_room: Optional[int], user_turn_cap: Optional[int], clipped: bool, unattributed_tokens: int, turns: Tuple[ExplainedTurn, ...], sections: Tuple[ExplainedSection, ...]) -> None",
+          "status": "stable"
+        },
+        "import_history": {
+          "kind": "function",
+          "signature": "(source: Union[str, os.PathLike[str]], memory: Union[Memory, MemoryStore, str, os.PathLike[str], None], *, format: str = 'auto', user_id: Optional[str] = None, agent_id: Optional[str] = None, since: Any = None, until: Any = None, limit: Optional[int] = None, include_tool_output: bool = False, dry_run: bool = False, strict: bool = False, redact: bool = True, limits: Optional[ImportLimits] = None, on_session: Optional[Callable[[ImportedSession], None]] = None) -> ImportReport",
           "status": "stable"
         }
       },
@@ -3847,9 +4104,29 @@
     },
     "llmslim.server": {
       "names": {
+        "ChatUpstream": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "api_key": "attribute: Optional[str]",
+            "base": "property",
+            "connect_timeout": "attribute: float",
+            "max_messages": "attribute: int",
+            "memory_budget": "attribute: int",
+            "read_timeout": "attribute: float",
+            "recall": "attribute: bool",
+            "store": "attribute: bool",
+            "transport": "attribute: Any",
+            "url": "attribute: str"
+          },
+          "signature": "(url: str, api_key: Optional[str] = None, memory_budget: int = 1000, recall: bool = True, store: bool = True, connect_timeout: float = 10.0, read_timeout: float = 120.0, max_messages: int = 1000, transport: Any = None) -> None",
+          "status": "experimental"
+        },
         "create_app": {
           "kind": "function",
-          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000, allowed_hosts: Optional[Sequence[str]] = None) -> Any",
+          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000, allowed_hosts: Optional[Sequence[str]] = None, chat: Optional[ChatUpstream] = None) -> Any",
           "status": "stable"
         },
         "main": {

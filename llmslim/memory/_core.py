@@ -6,6 +6,7 @@ import logging
 import re
 import time
 import uuid
+from dataclasses import replace
 from datetime import datetime, timezone, tzinfo
 from functools import lru_cache
 from pathlib import Path
@@ -15,7 +16,7 @@ from ..focus import Unit, _query_terms, _stem
 from ..planning.scoring import lexical_relevance
 from ..rerank import resolve_relevance
 from ..tokens import count_tokens
-from . import _turns
+from . import _explain, _turns
 from ._routing import (
     ADVICE,
     LOOKUP,
@@ -28,6 +29,7 @@ from ._routing import (
     states_preference,
 )
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
+from .mongo import MongoStore, is_mongodb_url
 from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
@@ -494,8 +496,9 @@ def _clip(parts: Sequence[str], budget: int) -> List[str]:
 
 
 def storage_target(db: str) -> Union[str, Path]:
-    """What ``Memory`` should open for a ``--db`` value: a Postgres URL as it is, or a SQLite path whose folder exists."""
-    if is_postgres_url(db):
+    """What ``Memory`` should open for a ``--db`` value: a Postgres or MongoDB URL as it is, or a SQLite path whose
+    folder exists."""
+    if is_postgres_url(db) or is_mongodb_url(db):
         return db
     path = Path(db).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -513,8 +516,9 @@ class Memory:
     history and question give the same text (see ``docs/MEMORY.md``, Limits).
 
     Args:
-        store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, or ``None`` for an
-            in-process store.
+        store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, a
+            ``postgresql://`` URL (:class:`~llmslim.memory.PostgresStore`), a ``mongodb://`` or ``mongodb+srv://`` URL
+            (:class:`~llmslim.memory.MongoStore`), or ``None`` for an in-process store.
         budget: Default token budget for :meth:`search`.
         relevance: Default relevance for :meth:`search`: ``"lexical"`` (no model), ``"semantic"`` (LLMSlim's optional
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
@@ -575,6 +579,8 @@ class Memory:
             self.store: MemoryStore = InMemoryStore()
         elif is_postgres_url(store):
             self.store = PostgresStore(store)
+        elif is_mongodb_url(store):
+            self.store = MongoStore(store)
         elif isinstance(store, (str, Path)):
             self.store = SQLiteStore(store)
         else:
@@ -698,6 +704,7 @@ class Memory:
         coverage: Optional[str] = None,
         preferences: Optional[bool] = None,
         conflicts: Optional[bool] = None,
+        explain: bool = False,
     ) -> MemoryContext:
         """The part of a scope's history that answers ``query``, within ``budget`` tokens.
 
@@ -710,6 +717,11 @@ class Memory:
         sections at the top; an overview question is answered from the opening of many turns (see
         ``standing_requests``, ``coverage``, ``preferences`` and ``conflicts`` on :class:`Memory`, which these
         arguments override for one call).
+
+        With ``explain=True`` the context also carries a :class:`~llmslim.memory.SearchExplanation` as
+        ``explanation``: for every stored turn of the scope and every statement a section weighed, its pool, rank and
+        score, the tokens it takes and its share of the budget, and whether it was kept whole, clipped or dropped,
+        with the reason. The text and everything else are the same as without it.
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be non-empty text")
@@ -734,6 +746,8 @@ class Memory:
         requests: Tuple[RecalledTurn, ...] = ()
         liked: Tuple[RecalledTurn, ...] = ()
         disputed: Tuple[RecalledTurn, ...] = ()
+        # What each step decided, for the explanation; None (and no extra work) unless it was asked for.
+        notes = _explain.SearchTrace(items) if explain else None
         if history_tokens <= budget:
             turns: List[RecalledTurn] = []
             for session, part in zip(sessions, documents):
@@ -748,30 +762,57 @@ class Memory:
             sections: List[str] = []
             expansion = ""
             if standing and kind in _REQUEST_ROUTES:
-                lane, requests, expansion = self._standing_requests(items, query, budget, scorer)
+                lane, requests, expansion = self._standing_requests(
+                    items, query, budget, scorer, notes.requests if notes else None
+                )
                 sections.append(lane)
+            elif notes is not None:
+                notes.requests.reason = "route" if standing else "disabled"
             if stated and kind in _PREFERENCE_ROUTES:
                 left = budget - (count_tokens(sections[0] + "\n\n") if any(sections) else 0)
                 lane, liked = self._preferences(
-                    items, query, budget, scorer, {t.item.id for t in requests}, left
+                    items,
+                    query,
+                    budget,
+                    scorer,
+                    {t.item.id for t in requests},
+                    left,
+                    notes.preferences if notes else None,
                 )
                 sections.append(lane)
+            elif notes is not None:
+                notes.preferences.reason = "route" if stated else "disabled"
             if flagged and kind in _CONFLICT_ROUTES and history_check(query):
-                lane, disputed = self._conflicts(items, query, budget, scorer)
+                lane, disputed = self._conflicts(
+                    items, query, budget, scorer, notes.conflicts if notes else None
+                )
                 sections.append(lane)
+            elif notes is not None:
+                notes.conflicts.reason = (
+                    "disabled"
+                    if not flagged
+                    else "route"
+                    if kind not in _CONFLICT_ROUTES
+                    else "not_history_check"
+                )
             prefix = "\n\n".join(part for part in sections if part)
             room = budget - (count_tokens(prefix + "\n\n") if prefix else 0)
             units = _turns.build_turns(sessions, self._stamp, self._date)
+            selection = notes.selection if notes is not None else None
             if overview:
-                chosen = self._digest(units, query, room, scorer)
+                chosen = self._digest(units, query, room, scorer, selection)
             else:
-                chosen = _turns.select_turns(units, query, room, scorer, expansion=expansion)
+                chosen = _turns.select_turns(
+                    units, query, room, scorer, expansion=expansion, trace=selection
+                )
             kept, recalled, tokens = _turns.fit(chosen, budget, prefix)
             turns = [
                 RecalledTurn(item, round(lexical_relevance(query, item.content), 4), partial)
                 for item, partial in _turns.as_items(units, recalled)
             ]
             text = _join([prefix, *kept])
+            if notes is not None:
+                notes.selected(kind, "digest" if overview else "turns", room, units, chosen, text)
             if (
                 tokens > budget
             ):  # the last resort: the longest prefix of whole words within the budget
@@ -801,6 +842,28 @@ class Memory:
             preferences=liked,
             conflicts=disputed,
         )
+        if notes is not None:
+            everything: Sequence[MemoryItem] = items
+            if since is not None or until is not None:
+                # The turns the time window left out are named too, so the scope is read again without it (a turn
+                # stored in the window since the first read was never a candidate, so it is not named).
+                window = self._window(since, until)
+                start, end = window["since"], window["until"]
+                outside = [
+                    item
+                    for item in self.store.list(Scope(user_id, agent_id, run_id))
+                    if (start is not None and item.created_at < start)
+                    or (end is not None and item.created_at >= end)
+                ]
+                everything = sorted(
+                    [*items, *outside], key=lambda item: (item.created_at, item.seq)
+                )
+            context = replace(
+                context,
+                explanation=notes.explain(
+                    context, everything, sessions, [self._lines(session) for session in sessions]
+                ),
+            )
         # What was read and how, never what was said: no query or turn text is logged.
         _LOGGER.debug(
             "search: %s, %d of %d history tokens in a budget of %d, %d of %d turns, %d of %d sessions, "
@@ -842,7 +905,11 @@ class Memory:
 
     def _render(self, session: Sequence[MemoryItem]) -> str:
         # Every turn carries its own stamp (a session whose turns share one renders as before).
-        return "\n".join(f"[{self._stamp(item)}] {item.role}: {item.content}" for item in session)
+        return "\n".join(self._lines(session))
+
+    def _lines(self, session: Sequence[MemoryItem]) -> List[str]:
+        """A session's turns as the whole history shows them, one ``[stamp] role: content`` block each."""
+        return [f"[{self._stamp(item)}] {item.role}: {item.content}" for item in session]
 
     def _stamp(self, item: MemoryItem) -> str:
         return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
@@ -860,13 +927,16 @@ class Memory:
         share: float,
         limit: int,
         room: Optional[int] = None,
+        trace: Optional[_explain.SectionTrace] = None,
     ) -> Tuple[str, Tuple[RecalledTurn, ...], List[Tuple[MemoryItem, str]]]:
         """A section of user statements (requests or preferences): the ones that best match ``query`` (LLMSlim's
         lexical ranking, then the reranker over the strongest candidates when one is set), at most ``limit`` and
         within ``share`` of the budget (and of ``room``, what the sections above left of it), shown in date order
         (the latest last, so an update reads after what it replaces). Returns (text, recalled turns, chosen in rank
-        order)."""
+        order). ``trace`` records what was decided about each statement (for ``search(..., explain=True)``)."""
         if not candidates:
+            if trace is not None:
+                trace.reason = "no_candidates"
             return "", (), []
         units = [
             Unit(k, k, said, count_tokens(said), "", "\n") for k, (_, said) in enumerate(candidates)
@@ -878,6 +948,8 @@ class Memory:
         )
         room = budget if room is None else room
         cap = min(int(budget * share), room)
+        if trace is not None:
+            trace.ranked(header, candidates, [u.tokens for u in units], scores, order, cap)
         used = count_tokens(header)
         chosen: List[Tuple[MemoryItem, str, str]] = []
         shown = set()
@@ -888,6 +960,8 @@ class Memory:
             if _SECTION_DEDUP:
                 key = _squash(said).casefold()
                 if key in shown:
+                    if trace is not None:
+                        trace.outcome[k] = "duplicate"
                     continue
                 shown.add(key)
             line = f"- [{self._stamp(item)}] {said}"
@@ -896,10 +970,16 @@ class Memory:
             # lose it to the share; the others must fit within the share. (A quarter, not half: at a budget of a
             # hundred tokens, a section line of half of it left no room for the turns that answer the question.)
             if used + cost > (max(cap, room // _SECTION_FIRST_ROOM) if not chosen else cap):
+                if trace is not None:
+                    trace.outcome[k] = "over_share"
                 continue
             chosen.append((item, line, said))
+            if trace is not None:
+                trace.picked.append((k, line))
             used += cost
         if not chosen:
+            if trace is not None:
+                trace.reason = "nothing_fit"
             return "", (), []
         ranked = [(item, said) for item, _, said in chosen]
         chosen.sort(key=lambda c: (c[0].created_at, c[0].seq))
@@ -920,6 +1000,7 @@ class Memory:
         query: str,
         budget: int,
         scorer: Any,
+        trace: Optional[_explain.SectionTrace] = None,
     ) -> Tuple[str, Tuple[RecalledTurn, ...], str]:
         """The user's explicit standing requests (see ``_EXPLICIT``) that best match the question, at most
         ``_REQUEST_LIMIT`` within ``_STANDING_SHARE`` of the budget. Only the sentences that make the request are
@@ -940,6 +1021,7 @@ class Memory:
             scorer,
             _STANDING_SHARE,
             _REQUEST_LIMIT,
+            trace=trace,
         )
         expansion = _request_terms(ranked[0][1]) if ranked else ""
         return text, recalled, expansion
@@ -952,6 +1034,7 @@ class Memory:
         scorer: Any,
         skip: Iterable[str],
         room: int,
+        trace: Optional[_explain.SectionTrace] = None,
     ) -> Tuple[str, Tuple[RecalledTurn, ...]]:
         """The user's statements of preference (see ``_routing.PREFERENCE``) that best match the question, at most
         ``_PREFERENCE_LIMIT`` within ``_PREFERENCE_SHARE`` of the budget; only the sentences that state them, each
@@ -964,6 +1047,14 @@ class Memory:
             for said in [_preferences_in(item.content)]
             if said
         ]
+        if trace is not None:  # named in the explanation: their preferences are not weighed again
+            trace.skipped = [
+                (item, said)
+                for item in items
+                if item.role == "user" and item.id in skipped
+                for said in [_preferences_in(item.content)]
+                if said
+            ]
         text, recalled, _ = self._section(
             _PREFERENCE_HEADER,
             candidates,
@@ -973,6 +1064,7 @@ class Memory:
             _PREFERENCE_SHARE,
             _PREFERENCE_LIMIT,
             room,
+            trace,
         )
         return text, recalled
 
@@ -982,6 +1074,7 @@ class Memory:
         query: str,
         budget: int,
         scorer: Any,
+        trace: Optional[_explain.SectionTrace] = None,
     ) -> Tuple[str, Tuple[RecalledTurn, ...]]:
         """For a yes-or-no question about the user's past: the user's statements that bear on it most (the
         ``_CONFLICT_POOL`` best, within ``_CONFLICT_RELEVANCE`` of the best one, ranked like the other sections), when
@@ -995,6 +1088,8 @@ class Memory:
             for said in _statements_in(item.content)
         ]
         if not candidates:
+            if trace is not None:
+                trace.reason = "no_candidates"
             return "", ()
         units = [
             Unit(k, k, said, _turns.tokens_of(said), "", "\n")
@@ -1007,14 +1102,29 @@ class Memory:
             key=lambda k: (-scores[k], candidates[k][0].created_at, candidates[k][0].seq, k),
         )
         best = scores[order[0]]
+        cap = int(budget * _CONFLICT_SHARE)
+        if trace is not None:
+            trace.ranked(
+                _CONFLICT_HEADER, candidates, [u.tokens for u in units], scores, order, cap
+            )
         if best <= 0:
+            if trace is not None:
+                trace.dismiss(order, "no_match", section=True)
             return "", ()
         pool = [k for k in order[:_CONFLICT_POOL] if scores[k] >= _CONFLICT_RELEVANCE * best]
         denied = [k for k in pool if _NEGATION.search(candidates[k][1])]
         affirmed = [k for k in pool if not _NEGATION.search(candidates[k][1])]
+        if trace is not None:
+            trace.dismiss([k for k in order if k not in pool], "not_in_pool")
+            trace.sides.update(dict.fromkeys(denied, "denies"))
+            trace.sides.update(dict.fromkeys(affirmed, "affirms"))
+            trace.dismiss(
+                denied[_CONFLICT_PER_SIDE:] + affirmed[_CONFLICT_PER_SIDE:], "per_side_limit"
+            )
         if not denied or not affirmed:
+            if trace is not None:
+                trace.dismiss(pool, "no_disagreement", section=True)
             return "", ()
-        cap = int(budget * _CONFLICT_SHARE)
         used = count_tokens(_CONFLICT_HEADER)
         chosen: List[Tuple[MemoryItem, str, str]] = []
         sides = set()
@@ -1026,6 +1136,8 @@ class Memory:
             item, said = candidates[k]
             key = _squash(said).casefold()
             if key in shown:
+                if trace is not None:
+                    trace.outcome[k] = "duplicate"
                 continue
             found = _NEGATION.search(said)
             start = found.start() if found else _focus_offset(said, query)
@@ -1033,12 +1145,19 @@ class Memory:
             line = f"- [{self._stamp(item)}] {text}"
             cost = count_tokens(line)
             if used + cost > (max(cap, budget // 4) if n < 2 else cap):
+                if trace is not None:
+                    trace.outcome[k] = "over_share"
                 continue
             shown.add(key)
             sides.add(found is not None)
             chosen.append((item, line, said))
+            if trace is not None:
+                trace.picked.append((k, line))
             used += cost
         if len(sides) < 2:
+            if trace is not None:  # a statement of one side only fitted, or none did
+                picked = [k for k, _ in trace.picked]
+                trace.dismiss(picked, "one_sided" if picked else "nothing_fit", section=True)
             return "", ()
         chosen.sort(key=lambda c: (c[0].created_at, c[0].seq))
         text = "\n".join([_CONFLICT_HEADER] + [line for _, line, _ in chosen])
@@ -1053,14 +1172,20 @@ class Memory:
         return text, recalled
 
     def _digest(
-        self, units: Sequence[_turns.Turn], query: str, budget: int, scorer: Any
+        self,
+        units: Sequence[_turns.Turn],
+        query: str,
+        budget: int,
+        scorer: Any,
+        trace: Optional[_turns.Trace] = None,
     ) -> _turns.Selection:
         """For an overview question: the opening of each user turn and each reply (see ``_LEAD_TOKENS``; a reply's
         opening pleasantry is skipped), with the reply's outline (see ``_outline``). All of them if they fit; else
         the most relevant ones, user openings first up to ``_DIGEST_USER_SHARE`` of the budget
         (``_SMALL_DIGEST_USER_SHARE`` below ``_OVERVIEW_DETAIL_MIN``, where no reply passage is kept whole), or
         ``_ORDER_USER_SHARE`` for a question about the order of what the user brought up (see ``_turns.fill``).
-        Shown in date order."""
+        Shown in date order. ``trace`` records what was decided about each piece (for
+        ``search(..., explain=True)``)."""
         user: List[_turns.Piece] = []
         other: List[_turns.Piece] = []
         for k, turn in enumerate(units):
@@ -1079,7 +1204,8 @@ class Memory:
             piece = _turns.Piece(k, 0, [_turns.Segment(said)], said, count_tokens(said))
             piece.trimmed = _squash(said) != _squash(turn.item.content)
             (user if role == "user" else other).append(piece)
-        chosen = _turns.Selection(units, budget, query, dedup=_DIGEST_DEDUP)
+        chosen = _turns.Selection(units, budget, query, dedup=_DIGEST_DEDUP, trace=trace)
+        openings = (user, other)  # for the explanation: the pools before any opening is set aside
         detail = int(budget * _OVERVIEW_DETAIL_SHARE)
         if ordering(query) or budget < _OVERVIEW_DETAIL_MIN:
             detail = 0
@@ -1090,10 +1216,15 @@ class Memory:
             )
             for piece, value in zip(windows, scores):
                 piece.score = value
+            if trace is not None:
+                trace.pool("detail", "window", windows)
             for piece in sorted(windows, key=lambda p: (-p.score, p.turn, p.part)):
                 if detail - chosen.used < 8:
                     break
                 chosen.take(piece, detail)
+            if trace is not None:  # a passage of the turn is kept whole: its opening is not used
+                for piece in [p for p in user + other if p.turn in chosen.kept]:
+                    trace.refuse(piece, "detail_kept")
             user = [p for p in user if p.turn not in chosen.kept]
             other = [p for p in other if p.turn not in chosen.kept]
             for piece in user + other:
@@ -1103,6 +1234,9 @@ class Memory:
         whole = sum(p.tokens + _turns.tokens_of(chosen.label(p.turn, False)) + 1 for p in pieces)
         whole += sum(_turns.tokens_of(chosen.label(turn)) for turn in sessions.values())
         if whole <= budget - chosen.used:
+            if trace is not None:
+                trace.pool("user", "opening", openings[0], scored=False)
+                trace.pool("reply", "opening", openings[1], scored=False)
             for piece in pieces:
                 chosen.take(piece, budget)
             return chosen
@@ -1112,6 +1246,9 @@ class Memory:
                 _turns.score_pool(pool, units, query, scorer, _turns.RERANK_REPLY, False),
             ):
                 piece.score = value
+        if trace is not None:
+            trace.pool("user", "opening", openings[0])
+            trace.pool("reply", "opening", openings[1])
         if ordering(query):
             share = _ORDER_USER_SHARE
         else:

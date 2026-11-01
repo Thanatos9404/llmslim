@@ -16,6 +16,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
 ### Added
+- **`llmslim mcp --transport http` shares one memory across machines.** The MCP server also speaks MCP's Streamable
+  HTTP transport, so the clients on a laptop, a desktop and a CI runner can use one memory. It follows
+  `llmslim serve`:
+  - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_MCP_API_KEYS`), compared in constant
+    time against every key. `llmslim serve`'s `LLMSLIM_API_KEYS` reach every user, so they are not read, and a key
+    in both gets a warning. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never
+    logged or echoed. Without a key, the server refuses any interface but loopback;
+  - without a key, it answers only requests addressed to this machine by name that no other web page sent, so DNS
+    rebinding and cross-site requests get a 403. `--allowed-host` and `LLMSLIM_ALLOWED_HOSTS` add names, or pin them
+    on a server with keys;
+  - one server holds one scope, the `--user-id` and `--agent-id` it was started with, and every key reaches that
+    scope and nothing else. No tool takes a user or agent id, as over stdio. For several people, run one server
+    each; they can share a database;
+  - it is stateless and answers in JSON, so it runs behind any reverse proxy or load balancer, and a restart doesn't
+    break connected clients. Bodies are capped at 1 MB (413), malformed JSON-RPC is a 400, `GET /healthz` answers
+    without a key, and requests still running at shutdown get 10 seconds to finish;
+  - `--host` (`LLMSLIM_MCP_HOST`, default 127.0.0.1), `--port` (`LLMSLIM_MCP_PORT`, default 8000) and `--path`
+    (default `/mcp`). The startup line prints the URL and the scope, never a key.
+
+  stdio stays the default and is unchanged; the HTTP options are refused with it. `docs/MCP.md` shows the setup
+  behind TLS, the client configuration for Claude Code, VS Code and Cursor, and who can read whose memory. The HTTP
+  transport is experimental in its first release (`docs/API_STABILITY.md`).
+- **An OpenAI-compatible chat endpoint in `llmslim serve` that adds memory to any client (experimental).** Start the
+  server with `--upstream-url` (an OpenAI-compatible base URL) and the upstream's key in `LLMSLIM_UPSTREAM_API_KEY`,
+  and `POST /v1/chat/completions` works with any client that takes an OpenAI base URL: the OpenAI SDKs, and voice
+  platforms with a custom LLM setting. `docs/SERVER.md` has curl, SDK and voice-platform examples.
+  - **Scope** comes from `X-LLMSlim-User-Id` (or the request's `user` field), `X-LLMSlim-Agent-Id` and
+    `X-LLMSlim-Session-Id`. Without a user or agent id, memory is not touched and the request passes through.
+  - **Recall:** the latest user message searches the user's memory within `--memory-budget` tokens (default 1000),
+    and what it finds goes in one user message just before that message, framed as data in an untrusted
+    `<llmslim_context>` block. Turns the request already carries are left out. Nothing the client sent is edited or
+    reordered, but the recalled message isn't in the history the client re-sends, so each request misses the prompt
+    cache on its last turn. `--store-only` (or `X-LLMSlim-Memory: store-only`) keeps every request byte-identical.
+  - **Storage:** after a successful answer, the new user turn and the reply's text are stored word for word, once.
+    Nothing is stored when the upstream fails or a stream breaks off. When the client goes away mid-stream (a voice
+    caller talking over the reply), the user turn is stored without the reply, and a retry of that request within 10
+    minutes doesn't store it again.
+  - **Streams** pass through chunk by chunk. The upstream connection is closed however a stream ends.
+  - **Security:** the upstream is fixed by the server, so no request field or header can redirect it, and redirects
+    are not followed. The client's key is never forwarded, and the upstream's key never reaches answers, errors or
+    logs. Memory failures never fail the call.
+  - `GET /v1/models` lists the upstream's models. The `server` extra now installs httpx.
+- **`Memory.search(..., explain=True)` says why each turn was kept, cut or left out.** The context carries an
+  `explanation` (`SearchExplanation`), built from what the search decided:
+  - for every stored turn of the scope, those outside the time window included: its pool, `status` (`kept`,
+    `clipped` or `dropped`) and `reason`, the tokens its block takes in the text and its share of the budget;
+  - for every candidate a turn had (a user turn, a reply's windows, a summary's opening): its rank and score in its
+    pool, its size and what became of it;
+  - for each section (standing requests, preferences, conflicts): whether it is shown and why not, its cap, and
+    every statement it weighed, best first;
+  - the reasons are concrete: over the budget, over its pool's share, a duplicate, outside the time window, dropped
+    at the exact count, cut by the last resort, and so on. `docs/MEMORY.md` lists them all.
+
+  Each block is counted on the returned text, so with tiktoken the turns' and sections' tokens add up to the
+  context's count exactly; any remainder (with the 4-characters-per-token estimate) is `unattributed_tokens`. The
+  explanation names turns by id and never repeats their text. `to_dict()` gives JSON and `from_dict()` reads it back.
+  With `explain` off, the default, the output is byte-for-byte what it was and no extra work is done:
+  `tests/fixtures/memory_search_golden.json` pins 30 searches recorded before the change. `ExplainedTurn`,
+  `ExplainedCandidate` and `ExplainedSection` are exported from `llmslim.memory` with `SearchExplanation`.
+  - `llmslim serve` takes `"explain": true` on `POST /v1/memories/search` and adds `explanation` to the response.
+    The `recall` tool of `llmslim mcp` and `Mem0Memory` are unchanged.
+- **`llmslim import`: bring your chat history into memory in one command** (`llmslim.memory.import_history` in
+  Python). It reads Claude Code transcripts (`~/.claude/projects`, the default), ChatGPT and Claude.ai data exports
+  (the zip as downloaded, its folder or `conversations.json`), a Mem0 export (`get_all` output or a list of
+  memories) and generic JSONL, or tells them apart with `auto`. Each message is stored verbatim under its original
+  time, one session per transcript or conversation, with no model call. See `docs/IMPORT.md`.
+  - **Only what was said.** User and assistant text by default. Thinking is never imported, tool calls and results
+    only with `--include-tool-output`. ChatGPT conversations follow `current_node`, the thread you saw last, not the
+    branches you left. Mem0 memories keep their own `user_id`, `agent_id` and `run_id`, so `Mem0Memory` filters find
+    them.
+  - **Idempotent.** Turn ids come from the source's message ids (or, without them, a content hash per session), so
+    importing again stores only what is new. `--dry-run`, `--since`/`--until`, `--limit`, `--strict`, `--json`.
+  - **Untrusted input.** JSONL is streamed line by line and `conversations.json` one conversation at a time. Files,
+    records, nesting depth and turns are capped (`ImportLimits`), zip archives are read in place with zip-bomb and
+    path-traversal checks, and malformed records are skipped and counted.
+  - **Credentials redacted first** (best-effort): API keys, AWS keys, private key blocks, bearer tokens, passwords
+    in URLs and key-like `api_key = ...` values become `[REDACTED:<kind>]` before anything is stored.
+  - New in `llmslim.memory`: `import_history`, `ImportReport`, `ImportedSession`, `ImportLimits` and
+    `HistoryImportError`.
+- **`MongoStore` keeps memory in MongoDB** (`pip install "llmslim[mongodb]"`, PyMongo).
+  - `Memory("mongodb://...")` and `mongodb+srv://` URLs (Atlas) use it, and so do `llmslim serve --db`,
+    `llmslim mcp --db` and `llmslim import --db`. Several processes or machines can share one memory on MongoDB 6.0+,
+    standalone or as a replica set.
+  - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database is
+    `database=...`, else the URL's, else `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
+    (`llmslim_memory`, or `collection=...`).
+  - It creates an index per scope field and a unique index on the order number when it opens, and creating them
+    again changes nothing, so several processes can start at once. A collection written by a newer llmslim is
+    refused.
+  - Turns come back in the same order as in every other store, ties included: each batch takes its order numbers
+    in one atomic update. On a replica set or sharded cluster each batch is one transaction, so it is stored whole
+    or not at all, even if the connection drops partway. On a standalone server, which has no transactions, a batch
+    with a duplicate id is undone and leaves nothing behind.
+  - Times are stored as UTC dates and also in microseconds, so they come back exactly, although a BSON date keeps
+    only milliseconds.
+  - Caller values are data, never operators: ids and scope values must be strings and are matched with `$eq`, and
+    metadata whose keys MongoDB would read as operators or paths (`$where`, `a.b`) is stored as JSON text and comes
+    back as given. Lone surrogates are refused before anything is stored, as in `SQLiteStore`, and so is a turn over
+    16 MB.
+  - Errors raised while opening the store have the URL's password and secret options removed, and `repr` shows
+    only the database and collection.
+  - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.2, standalone with authentication and as a
+    one-node replica set. Guide: `docs/MEMORY.md`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its
@@ -118,15 +221,6 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   quadratic blowup) can't run even on a Python built with an old expat. Such text is compressed as plain text.
   Recent expat already refused them.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
-
-### Fixed
-- **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
-  starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and
-  `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now
-  call `parse` when the SDK has it and `digitise` otherwise, so the whole supported range (0.1.34 up to 0.2) works.
-  The job is still created once, with the SDK's retries off.
-
-### Security
 - **Site: the Studio's "Answer with Sarvam" step is no longer a general-purpose model.** The visitor chooses both the
   context and the question, and the Origin check stops other web pages, not scripts, so with the step enabled anyone
   could get any question answered on the project's Sarvam key, within the spend limits. The function now sends its
@@ -135,6 +229,13 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
 - **Site: per-instance rate limits count an IPv6 client by its /64.** `/api/studio`, `/api/compress`, `/api/plan`
   and `/api/context` counted each address, so a client could dodge the limit by changing the interface identifier
   of its IPv6 address on every request. The Sarvam step already did this.
+
+### Fixed
+- **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
+  starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and
+  `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now
+  call `parse` when the SDK has it and `digitise` otherwise, so the whole supported range (0.1.34 up to 0.2) works.
+  The job is still created once, with the SDK's retries off.
 
 ## [0.12.0] - 2026-10-27
 

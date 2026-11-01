@@ -55,8 +55,8 @@ dependencies = [
 [project.optional-dependencies]
 semantic = ["sentence-transformers>=2.2"]
 mcp = ["mcp>=2.0,<3", "httpx2>=2.5,<3", "tiktoken>=0.5"]
-# llmslim serve: the HTTP API for memory and context.
-server = ["starlette>=0.40", "uvicorn>=0.30", "tiktoken>=0.5"]
+# llmslim serve: the HTTP API for memory and context. httpx forwards the chat endpoint to its upstream.
+server = ["starlette>=0.40", "uvicorn>=0.30", "tiktoken>=0.5", "httpx>=0.27,<1"]
 # PostgresStore for llmslim.memory (and llmslim serve / mcp with --db postgresql://...).
 postgres = ["psycopg[binary]>=3.2,<4", "psycopg-pool>=3.2,<4"]
 # llmslim proxy / llmslim wrap: the local tool-output proxy for coding agents.

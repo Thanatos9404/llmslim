@@ -1005,6 +1005,75 @@ const result = await generateText({
       { label: "AI SDK memory docs", href: "https://ai-sdk.dev/docs/agents/memory" },
     ],
   },
+  mastra: {
+    slug: "mastra", name: "Mastra", iconKey: "mastra", category: "Framework", badgeText: "Memory tools",
+    tagline: "Long-term memory for Mastra agents as tools and an output processor, with no LLM writing your memory and nothing injected into the prompt.",
+    description: "The llmslim npm package is a client for an llmslim serve server. Its llmslim/mastra entry gives a Mastra agent recall_memory and remember tools, and an output processor that saves each user message and reply. Messages are stored word for word and selected at read time within a token budget, so nothing is summarized or extracted into a wrong fact. Recalled memory reaches the model as a tool result, which stays in the agent's history like any other message.",
+    installation: { packageManager: "npm", command: `npm install llmslim @mastra/core   # @mastra/core 1.11 or newer` },
+    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file or Postgres). Call it from your backend: an API key gives access to every user's memory.",
+    setup: [
+      { caption: "Start the memory server:", language: "bash", filename: "terminal", code: `pip install "llmslim[server]"
+llmslim serve          # http://127.0.0.1:8080; set LLMSLIM_API_KEYS to serve beyond localhost` },
+    ],
+    architectureFlow: [
+      "memoryProcessor is an output processor. Once per generate() or stream() it saves the latest user message and the reply's text to llmslim serve. It saves nothing when a guardrail stopped the run, when the run was aborted or failed, or while it waits for a tool approval.",
+      "memoryTools gives the agent recall_memory and remember. The scope comes from your code for each request, through Mastra's request context, never from a tool argument, so a model steered by injected text can't read another user's memory.",
+      "recall_memory returns the stored messages that answer the query, whole and under their dates, within a token budget, labelled as data, not instructions.",
+      "Neither one changes the prompt, so prompt caches keep hitting and Claude's preserved thinking stays valid. There is no input processor that injects memory.",
+    ],
+    codeExample: { language: "typescript", filename: "agent.ts", code: `import { Agent } from "@mastra/core/agent";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { LLMSlim } from "llmslim";
+import { memoryProcessor, memoryTools, type MemoryOptions } from "llmslim/mastra";
+
+const memory: MemoryOptions = {
+  client: new LLMSlim(), // LLMSLIM_BASE_URL and LLMSLIM_API_KEY, or pass baseUrl and apiKey
+  // Whose memory: the signed-in user, from your server, for each request.
+  scope: (requestContext) => ({ userId: requestContext.get(MASTRA_RESOURCE_ID_KEY) }),
+};
+
+export const assistant = new Agent({
+  id: "assistant",
+  name: "Assistant",
+  instructions: "You are a helpful assistant.",
+  model: "anthropic/claude-haiku-5-5",
+  tools: { ...memoryTools(memory) }, // recall_memory and remember
+  outputProcessors: [memoryProcessor(memory)], // after any guardrails
+});` },
+    options: [
+      { name: "client", defaultValue: "required", meaning: "An LLMSlim client: new LLMSlim({ baseUrl, apiKey }), defaults from LLMSLIM_BASE_URL and LLMSLIM_API_KEY." },
+      { name: "scope", defaultValue: "none", meaning: "A function of Mastra's request context that returns the userId, agentId and runId of each request. With no id, the tools refuse and nothing is saved." },
+      { name: "userId / agentId / runId", defaultValue: "none", meaning: "Fixed ids instead of scope, for an agent that serves one user." },
+      { name: "budget", defaultValue: "the server's", meaning: "Most tokens recall_memory returns (memoryTools only)." },
+      { name: "onError", defaultValue: "console.warn", meaning: "Called when saving fails; the response is returned either way (memoryProcessor only)." },
+    ],
+    deploymentGuide: "Run llmslim serve next to your Mastra server (Docker image or pip), with an API key and Postgres when several instances share one memory. On Mastra's server, auth.mapUserToResourceId sets MASTRA_RESOURCE_ID_KEY from the signed-in user, and a client can't override it.",
+    optimizationTips: [
+      "List memoryProcessor after output processors that can stop or redact a reply: it saves what they leave.",
+      "Let the agent call recall_memory before answering anything that may depend on earlier conversations; the tool description says so.",
+      "Use runId to keep one conversation's memory separate when that matters.",
+    ],
+    benchmarks: [],
+    limitations: [
+      "Lexical recall matches words, not meanings: forms of a word match (move, moved), but a paraphrase such as allergy against allergic can miss. The server's semantic mode (llmslim[semantic]) covers paraphrases.",
+      "@mastra/core 1.11 or newer, which needs Node 22.13 or newer.",
+      "The save is awaited, so a slow server delays the response up to the client's timeoutMs.",
+    ],
+    faqs: [
+      { question: "Why no input processor that adds memory to the prompt?", answer: "Memory added to the system prompt, or as a message next to the latest user message, isn't in the history the agent resends, so the next request differs from what the model saw before: prompt caches miss, and on Claude models with thinking the reasoning can't be kept. A tool result is part of the history, so nothing changes." },
+      { question: "Does it call a model to build memory?", answer: "No. Messages are stored word for word and selected at read time; writes cost nothing and nothing becomes a wrong extracted fact." },
+    ],
+    troubleshooting: [
+      { issue: "A tool call fails with \"needs a userId, agentId or runId\"", solution: "scope returned no id for this request. Set MASTRA_RESOURCE_ID_KEY in the request context (Mastra's auth does it), or pass a fixed userId." },
+      { issue: "LLMSlimError with status 0 and type unreachable", solution: "The client could not reach llmslim serve. Check baseUrl (or LLMSLIM_BASE_URL) and that the server is running." },
+    ],
+    links: [
+      { label: "npm: llmslim", href: "https://www.npmjs.com/package/llmslim" },
+      { label: "TypeScript client on GitHub", href: `${siteConfig.github}/tree/main/clients/typescript` },
+      { label: "llmslim serve guide", href: `${siteConfig.github}/blob/main/docs/SERVER.md` },
+      { label: "Mastra processors docs", href: "https://mastra.ai/docs/agents/processors" },
+    ],
+  },
   "claude-code": {
     slug: "claude-code", name: "Claude Code", iconKey: "anthropic", category: "Local & Edge", badgeText: "Coding agent proxy",
     tagline: "Run Claude Code through a local proxy that shrinks long tool output once and resends the same bytes every turn, so prompt caching and thinking keep working.",

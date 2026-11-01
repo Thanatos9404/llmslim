@@ -162,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   `SECURITY.md` shows how to verify each one with `gh attestation verify` and `pypi-attestations`.
 - The build and SBOM steps also run on pull requests that touch packaging, without attesting or publishing.
-- **Mastra memory in the TypeScript client** (`llmslim/mastra`, not on npm yet). With `@mastra/core` 1.11 or newer:
+- **Mastra memory in the TypeScript client** (`llmslim/mastra`, on npm as `llmslim` 0.2.0). With `@mastra/core` 1.11
+  or newer:
   - `memoryTools()` gives an agent the same `recall_memory` and `remember` tools as `llmslim/ai-sdk`;
   - `memoryProcessor()` is an output processor that saves the latest user message and the reply, word for word, once
     per `generate()` or `stream()`. It saves nothing when a guardrail's tripwire stopped the run, when the run was

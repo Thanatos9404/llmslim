@@ -166,6 +166,10 @@ describe("rate limiting", () => {
     let passkeyStatus = 0
     for (let attempt = 0; attempt < 61; attempt++) passkeyStatus = (await t.call("/passkey/generate-authenticate-options", { ip: "203.0.113.98" })).status
     expect(passkeyStatus).toBe(429)
+    // The per-IP counters are keyed by an HMAC: the table never holds the address.
+    const keys = await t.client.query<{ key: string }>("select key from rate_limit where key like 'ip|%'")
+    expect(keys.rows.length).toBeGreaterThan(0)
+    expect(keys.rows.some((row) => row.key.includes("203.0.113"))).toBe(false)
   })
 
   it("limits forgot-password per email", async () => {

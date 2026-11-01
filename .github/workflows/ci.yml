@@ -66,9 +66,12 @@ jobs:
         run: npm run build
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
-      - name: End-to-end tests (Playwright, next start, Postgres 17)
+      - name: End-to-end tests (Playwright, next start, Postgres 17, least-privilege login)
         env:
+          # The owner migrates and grants; the site runs as llmslim_app with production's grants
+          # (scripts/db/app-role.sql), so a migration that adds a table without a grant fails here.
           E2E_DATABASE_URL: postgresql://llmslim:llmslim@127.0.0.1:5432/llmslim_e2e
+          E2E_APP_DATABASE_URL: postgresql://llmslim_app:llmslim_app@127.0.0.1:5432/llmslim_e2e
         run: npm run test:e2e
       - name: Playwright traces
         if: failure()

@@ -75,6 +75,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     in URLs and key-like `api_key = ...` values become `[REDACTED:<kind>]` before anything is stored.
   - New in `llmslim.memory`: `import_history`, `ImportReport`, `ImportedSession`, `ImportLimits` and
     `HistoryImportError`.
+- **`MongoStore` keeps memory in MongoDB** (`pip install "llmslim[mongodb]"`, PyMongo).
+  - `Memory("mongodb://...")` and `mongodb+srv://` URLs (Atlas) use it, and so do `llmslim serve --db`,
+    `llmslim mcp --db` and `llmslim import --db`. Several processes or machines can share one memory on MongoDB 6.0+,
+    standalone or as a replica set.
+  - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database is
+    `database=...`, else the URL's, else `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
+    (`llmslim_memory`, or `collection=...`).
+  - It creates an index per scope field and a unique index on the order number when it opens, and creating them
+    again changes nothing, so several processes can start at once. A collection written by a newer llmslim is
+    refused.
+  - Turns come back in the same order as in every other store, ties included: each batch takes its order numbers
+    in one atomic update. On a replica set or sharded cluster each batch is one transaction, so it is stored whole
+    or not at all, even if the connection drops partway. On a standalone server, which has no transactions, a batch
+    with a duplicate id is undone and leaves nothing behind.
+  - Times are stored as UTC dates and also in microseconds, so they come back exactly, although a BSON date keeps
+    only milliseconds.
+  - Caller values are data, never operators: ids and scope values must be strings and are matched with `$eq`, and
+    metadata whose keys MongoDB would read as operators or paths (`$where`, `a.b`) is stored as JSON text and comes
+    back as given. Lone surrogates are refused before anything is stored, as in `SQLiteStore`, and so is a turn over
+    16 MB.
+  - Errors raised while opening the store have the URL's password and secret options removed, and `repr` shows
+    only the database and collection.
+  - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.2, standalone with authentication and as a
+    one-node replica set. Guide: `docs/MEMORY.md`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its

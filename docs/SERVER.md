@@ -38,15 +38,16 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" -v llmslim-data:/data l
 |---|---|---|
 | `--host` | `LLMSLIM_HOST` | `127.0.0.1` (`0.0.0.0` in the image) |
 | `--port` | `LLMSLIM_PORT` | `8080` |
-| `--db` (a SQLite path or a `postgresql://` URL) | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` (`/data/memory.db` in the image) |
+| `--db` (a SQLite path, or a `postgresql://`, `mongodb://` or `mongodb+srv://` URL) | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` (`/data/memory.db` in the image) |
 | `--api-key` (repeatable) | `LLMSLIM_API_KEYS` (comma-separated) | none |
 | `--allowed-host` (repeatable; `*` for any) | `LLMSLIM_ALLOWED_HOSTS` (comma-separated) | none: loopback names only without a key, any name with keys |
 | `--budget` | | `2000` tokens for search |
 
-To run several server processes or machines on one memory, point `--db` at Postgres. It needs `pip install "llmslim[server,postgres]"`:
+To run several server processes or machines on one memory, point `--db` at Postgres or MongoDB. Postgres needs `pip install "llmslim[server,postgres]"`, MongoDB `pip install "llmslim[server,mongodb]"`:
 
 ```bash
 LLMSLIM_MEMORY_DB="postgresql://llmslim:<password>@db.example.com:5432/llmslim" llmslim serve --host 0.0.0.0
+LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net/llmslim" llmslim serve --host 0.0.0.0
 ```
 
 ## API

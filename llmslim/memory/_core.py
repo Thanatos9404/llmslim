@@ -29,6 +29,7 @@ from ._routing import (
     states_preference,
 )
 from ._types import MemoryContext, MemoryItem, RecalledTurn, Scope
+from .mongo import MongoStore, is_mongodb_url
 from .postgres import PostgresStore, is_postgres_url
 from .stores import InMemoryStore, MemoryStore, SQLiteStore
 
@@ -495,8 +496,9 @@ def _clip(parts: Sequence[str], budget: int) -> List[str]:
 
 
 def storage_target(db: str) -> Union[str, Path]:
-    """What ``Memory`` should open for a ``--db`` value: a Postgres URL as it is, or a SQLite path whose folder exists."""
-    if is_postgres_url(db):
+    """What ``Memory`` should open for a ``--db`` value: a Postgres or MongoDB URL as it is, or a SQLite path whose
+    folder exists."""
+    if is_postgres_url(db) or is_mongodb_url(db):
         return db
     path = Path(db).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -514,8 +516,9 @@ class Memory:
     history and question give the same text (see ``docs/MEMORY.md``, Limits).
 
     Args:
-        store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, or ``None`` for an
-            in-process store.
+        store: Where turns live: a :class:`~llmslim.memory.MemoryStore`, a path to a SQLite file, a
+            ``postgresql://`` URL (:class:`~llmslim.memory.PostgresStore`), a ``mongodb://`` or ``mongodb+srv://`` URL
+            (:class:`~llmslim.memory.MongoStore`), or ``None`` for an in-process store.
         budget: Default token budget for :meth:`search`.
         relevance: Default relevance for :meth:`search`: ``"lexical"`` (no model), ``"semantic"`` (LLMSlim's optional
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
@@ -576,6 +579,8 @@ class Memory:
             self.store: MemoryStore = InMemoryStore()
         elif is_postgres_url(store):
             self.store = PostgresStore(store)
+        elif is_mongodb_url(store):
+            self.store = MongoStore(store)
         elif isinstance(store, (str, Path)):
             self.store = SQLiteStore(store)
         else:

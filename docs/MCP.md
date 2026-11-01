@@ -186,7 +186,7 @@ The tools carry MCP annotations (`readOnlyHint`, `destructiveHint`), so a client
 
 | Flag | Environment variable | Default | Meaning |
 |---|---|---|---|
-| `--db PATH` | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` | The SQLite file that holds the memory, or a `postgresql://` URL (`llmslim[postgres]`). |
+| `--db PATH` | `LLMSLIM_MEMORY_DB` | `~/.llmslim/memory.db` | The SQLite file that holds the memory, or a `postgresql://` URL (`llmslim[postgres]`) or a `mongodb://` URL (`llmslim[mongodb]`). |
 | `--user-id ID` | `LLMSLIM_USER_ID` | `default` | Whose memory this server holds. |
 | `--agent-id ID` | `LLMSLIM_AGENT_ID` | none | Optionally, the agent, so each agent keeps its own memory. |
 | `--budget N` | | `2000` | The default token budget for `recall`. |

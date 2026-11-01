@@ -151,9 +151,9 @@ Everything else is internal and may change in any release:
   `llmslim.context_policy`, `llmslim.core`, `llmslim.cost`, `llmslim.embeddings`, `llmslim.envelope`,
   `llmslim.focus`, `llmslim.modes`, `llmslim.optimizers`, `llmslim.pipelines`, `llmslim.quality`, `llmslim.ranking`,
   `llmslim.rerank`, `llmslim.rewrite`, `llmslim.runtime`, `llmslim.self_hosted`, `llmslim.tokenization`, the
-  modules inside `llmslim.planning`, `llmslim.memory.stores` and `llmslim.memory.postgres`. Import their names from
-  `llmslim`, `llmslim.planning` or `llmslim.memory`. A name may move between implementation modules in a minor
-  release;
+  modules inside `llmslim.planning`, `llmslim.memory.stores`, `llmslim.memory.postgres` and
+  `llmslim.memory.mongo`. Import their names from `llmslim`, `llmslim.planning` or `llmslim.memory`. A name may move
+  between implementation modules in a minor release;
 - `llmslim.cli` as a Python module (the command line itself is covered below, including `python -m llmslim.cli`);
 - `llmslim.hosted`, the controls of the hosted Sarvam demo;
 - `llmslim.integrations.gptme_plugin`, which gptme loads through its entry point;
@@ -178,9 +178,9 @@ and output schemas (names, types and which inputs are required) and their read-o
 are stable, over stdio and over HTTP. A minor release may add tools and optional inputs. Tool descriptions and the
 server instructions are prompts for models: they may change in any minor release to make models use the tools better.
 
-**Stored memory.** A SQLite file or Postgres table written by a 1.x release opens in every later 1.x release. If a
-release changes the schema, it upgrades the store when it opens it, and the CHANGELOG says so. An older release
-refuses a store with a newer schema rather than misreading it.
+**Stored memory.** A SQLite file, Postgres table or MongoDB collection written by a 1.x release opens in every later
+1.x release. If a release changes the schema, it upgrades the store when it opens it, and the CHANGELOG says so. An
+older release refuses a store with a newer schema rather than misreading it.
 
 **Environment variables.**
 

@@ -22,6 +22,7 @@ from ._import_types import (
 )
 from ._redact import redact as redact_text
 from ._types import MemoryItem, Scope
+from .mongo import MongoStore, is_mongodb_url
 from .postgres import PostgresStore, is_postgres_url
 from .stores import MemoryStore, SQLiteStore
 
@@ -141,8 +142,8 @@ def _target(
         return _store_lookup(store), (None if dry_run else store.add), nothing
     if isinstance(memory, (str, os.PathLike)):
         target = os.fspath(memory)
-        if is_postgres_url(target):
-            store = PostgresStore(target)
+        if is_postgres_url(target) or is_mongodb_url(target):
+            store = PostgresStore(target) if is_postgres_url(target) else MongoStore(target)
             return _store_lookup(store), (None if dry_run else store.add), store.close
         path = Path(target).expanduser()
         if dry_run:
@@ -155,7 +156,7 @@ def _target(
     if all(hasattr(memory, name) for name in ("add", "get", "list")):
         return _store_lookup(memory), (None if dry_run else memory.add), nothing
     raise TypeError(
-        "memory must be a Memory, a MemoryStore, a SQLite path or a postgresql:// URL, "
+        "memory must be a Memory, a MemoryStore, a SQLite path, or a postgresql:// or mongodb:// URL, "
         f"not {type(memory).__name__}"
     )
 
@@ -221,8 +222,8 @@ def import_history(
 
     Args:
         source: The file or folder to read. ``~`` is expanded.
-        memory: Where the turns go: a :class:`~llmslim.memory.Memory`, a store, a SQLite path or a
-            ``postgresql://`` URL. ``None`` only with ``dry_run``.
+        memory: Where the turns go: a :class:`~llmslim.memory.Memory`, a store, a SQLite path, or a
+            ``postgresql://`` or ``mongodb://`` URL. ``None`` only with ``dry_run``.
         format: ``"claude-code"``, ``"chatgpt"``, ``"claude-ai"``, ``"mem0"``, ``"jsonl"`` or ``"auto"``, which
             tells them apart from what the file holds (not its name).
         user_id: The user every turn is stored under. When ``None``, a record's own ``user_id`` (Mem0, JSONL) is

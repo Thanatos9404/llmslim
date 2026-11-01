@@ -6,8 +6,8 @@ A store only persists and lists turns; it never ranks, summarizes or calls a mod
 * :class:`SQLiteStore`: one SQLite file (Python's built-in ``sqlite3``, no extra dependency). The default when
   :class:`~llmslim.memory.Memory` is given a path.
 
-Any object with the :class:`MemoryStore` methods works, so Postgres, MongoDB or Neo4j stores can be added without
-touching selection.
+Any object with the :class:`MemoryStore` methods works, so other databases can be added without touching selection;
+:class:`~llmslim.memory.PostgresStore` and :class:`~llmslim.memory.MongoStore` are two.
 """
 
 from __future__ import annotations

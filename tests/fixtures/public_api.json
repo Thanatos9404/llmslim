@@ -3394,6 +3394,23 @@
           "signature": "(*args, **kwargs)",
           "status": "stable"
         },
+        "MongoStore": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "add": "method (items: Sequence[MemoryItem]) -> None",
+            "close": "method () -> None",
+            "delete": "method (item_id: str) -> bool",
+            "delete_scope": "method (scope: Scope) -> int",
+            "get": "method (item_id: str) -> Optional[MemoryItem]",
+            "list": "method (scope: Scope, *, since: Optional[datetime] = None, until: Optional[datetime] = None) -> List[MemoryItem]",
+            "update": "method (item_id: str, *, content: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
+          },
+          "signature": "(client: Any, *, database: Optional[str] = None, collection: str = 'llmslim_memory') -> None",
+          "status": "stable"
+        },
         "PostgresStore": {
           "bases": [
             "object"

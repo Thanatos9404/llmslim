@@ -9,7 +9,15 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from llmslim.memory import InMemoryStore, Memory, MemoryItem, PostgresStore, Scope, SQLiteStore
+from llmslim.memory import (
+    InMemoryStore,
+    Memory,
+    MemoryItem,
+    MongoStore,
+    PostgresStore,
+    Scope,
+    SQLiteStore,
+)
 from llmslim.memory.compat import Mem0Memory
 from llmslim.tokens import count_tokens
 
@@ -21,7 +29,12 @@ def clock():
 
 
 POSTGRES_URL = os.environ.get("LLMSLIM_TEST_POSTGRES_URL")
-STORES = ["memory", "sqlite"] + (["postgres"] if POSTGRES_URL else [])
+MONGODB_URL = os.environ.get("LLMSLIM_TEST_MONGODB_URL")
+STORES = (
+    ["memory", "sqlite"]
+    + (["postgres"] if POSTGRES_URL else [])
+    + (["mongodb"] if MONGODB_URL else [])
+)
 
 
 @pytest.fixture
@@ -34,12 +47,28 @@ def postgres_table():
         conn.execute(f"DROP TABLE IF EXISTS {table}, {table}_meta")
 
 
+@pytest.fixture
+def mongodb_collection():
+    """A fresh collection name in the test database, dropped afterwards with its _meta collection."""
+    pymongo = pytest.importorskip("pymongo")
+    collection = f"llmslim_test_{uuid.uuid4().hex[:12]}"
+    yield collection
+    with pymongo.MongoClient(MONGODB_URL) as client:
+        database = client.get_default_database("llmslim")
+        database.drop_collection(collection)
+        database.drop_collection(f"{collection}_meta")
+
+
 @pytest.fixture(params=STORES)
 def memory(request, tmp_path):
     if request.param == "memory":
         return Memory(InMemoryStore(), clock=clock)
     if request.param == "sqlite":
         return Memory(SQLiteStore(tmp_path / "memory.db"), clock=clock)
+    if request.param == "mongodb":
+        mongo = MongoStore(MONGODB_URL, collection=request.getfixturevalue("mongodb_collection"))
+        request.addfinalizer(mongo.close)
+        return Memory(mongo, clock=clock)
     table = request.getfixturevalue("postgres_table")
     store = PostgresStore(POSTGRES_URL, table=table, max_size=2)
     request.addfinalizer(store.close)

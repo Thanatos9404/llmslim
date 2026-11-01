@@ -57,7 +57,8 @@ class ModelInput:
 
 @dataclass(frozen=True)
 class ContextTrace:
-    """Local diagnostics. Item IDs are hashed; prompt bodies are absent."""
+    """Local diagnostics. Item IDs are hashed; prompt bodies are absent. ``planner_version`` is the LLMSlim release
+    that made the plan (``llmslim.__version__``), and ``trace_id`` is derived from the envelope and that release."""
 
     trace_id: str
     session_hash: Optional[str]

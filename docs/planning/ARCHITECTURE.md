@@ -63,4 +63,6 @@ snapshot. The planner never executes a tool.
 warnings, fallbacks and validation. Use `to_dict(include_content=False)` for a
 content-free trace; MongoDB trace persistence does this by default. Metrics are
 local only. Token and cost values are labeled estimates; provider usage is
-recorded separately by integrations.
+recorded separately by integrations. `metrics.planner_version` is the LLMSlim
+release that made the plan (`llmslim.__version__`): within one release, the
+same input and options give the same plan.

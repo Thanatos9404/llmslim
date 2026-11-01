@@ -27,13 +27,13 @@ from .models import (
     ModelProfile,
     PlanMetrics,
     PlanStatus,
+    planner_version,
 )
 from .planner import AdaptiveContextPlanner
 from .policy import PlannerPolicy, PolicyPreset, resolve_policy
 from .scoring import score_item
 from .validation import validate_selection
 
-PLANNER_VERSION = "0.7.0"
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)*\b")
 
 
@@ -312,7 +312,7 @@ def plan_context_v2(
     before_cost = profile.estimate_input_cost(envelope_tokens)
     after_cost = profile.estimate_input_cost(final_tokens)
     metrics = PlanMetrics(
-        planner_version=PLANNER_VERSION,
+        planner_version=planner_version(),
         policy=objective,
         model=profile.model_id,
         total_candidates=sum(len(group.candidates) for group in groups) if groups else len(items),
@@ -355,4 +355,11 @@ def plan_context_v2(
     return plan, quality, graph, exclusions
 
 
-__all__ = ["plan_context_v2", "PLANNER_VERSION"]
+def __getattr__(name: str) -> str:
+    # PLANNER_VERSION was a fixed "0.7.0"; it is now the release that plans (see models.planner_version).
+    if name == "PLANNER_VERSION":
+        return planner_version()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+__all__ = ["plan_context_v2"]

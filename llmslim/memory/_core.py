@@ -511,8 +511,8 @@ class Memory:
     Nothing is summarized or extracted on the way in, so writes cost no model call and a stored turn never turns into
     a wrong "fact". On the way out, :meth:`search` ranks the stored turns against the question and returns what
     answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the
-    replies, one labelled and dated block per turn, in date order. No LLM is called to write or to read (by default no
-    model runs at all; ``relevance="semantic"`` adds a small local cross-encoder), and on one installation the same
+    replies, one labelled block per turn under its date, in date order. No LLM is called to write or to read (by
+    default no model runs at all; ``relevance="semantic"`` adds a small local cross-encoder), and on one installation the same
     history and question give the same text (see ``docs/MEMORY.md``, Limits).
 
     Args:
@@ -524,10 +524,12 @@ class Memory:
             22M cross-encoder, ``pip install "llmslim[semantic]"``) or a ``scorer(query, texts)`` callable.
         tz: Time zone for the turn dates shown to the model. Defaults to UTC.
         stamp_format: strftime format of those dates. The default reads like 2026-10-17 (Sat) 14:05.
-        date_format: strftime format of the shorter date shown, when a long history is selected from, on a kept turn
-            whose time is the one shown last in its session (the first kept turn of a session, and a turn whose time
-            differs, show ``stamp_format``). The default reads like 2026-10-17. Pass ``stamp_format`` again to show
-            the full stamp on every turn.
+        date_format: What a kept turn shows, when a long history is selected from, if its time is the one shown last
+            in its session (the first kept turn of a session, and a turn whose time differs, show ``stamp_format``).
+            ``None`` (the default) shows no date there, only ``role: text`` under the stamp above it. A strftime format
+            shows that date, ``[date] role: text``: ``"%Y-%m-%d"`` gives the labels of 0.12 and earlier. Pass
+            ``stamp_format`` again to show the full stamp on every turn. A history that fits whole is shown with the
+            full stamp on every turn either way.
         clock: Returns "now" for turns added without a timestamp. For tests.
         standing_requests: When the history does not fit and the question asks for help or is not a plain lookup of
             a past fact, show the user's earlier explicit standing requests ("Always ...", "From now on ...", "I'd
@@ -564,7 +566,7 @@ class Memory:
         relevance: Any = "lexical",
         tz: tzinfo = timezone.utc,
         stamp_format: str = "%Y-%m-%d (%a) %H:%M",
-        date_format: str = "%Y-%m-%d",
+        date_format: Optional[str] = None,
         clock: Callable[[], datetime] = _utcnow,
         standing_requests: bool = True,
         coverage: str = "auto",
@@ -710,8 +712,9 @@ class Memory:
 
         If the whole history fits, all of it is returned. Otherwise the stored turns are ranked against the question
         and the budget is filled with the user's turns (a reserved share, whole where they fit) and the most relevant
-        parts of the replies, each kept turn rendered as one ``[date] role: text`` block, in date order. The kind of
-        question decides the rest (see ``llmslim.memory._routing``): a plain lookup gets the whole budget, except
+        parts of the replies, each kept turn rendered as one ``[date] role: text`` block, in date order (by default a
+        later turn of a session whose time was already shown there is ``role: text``; see ``date_format`` on
+        :class:`Memory`). The kind of question decides the rest (see ``llmslim.memory._routing``): a plain lookup gets the whole budget, except
         that a question about whether something happened also gets the user's statements on it that may conflict; a
         request for help also gets the standing requests and stated preferences that bear on it, in their own
         sections at the top; an overview question is answered from the opening of many turns (see
@@ -914,7 +917,10 @@ class Memory:
     def _stamp(self, item: MemoryItem) -> str:
         return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
 
-    def _date(self, item: MemoryItem) -> str:
+    def _date(self, item: MemoryItem) -> Optional[str]:
+        """What a later kept turn of a session shows when its time was already shown there: None for no date."""
+        if self.date_format is None:
+            return None
         return item.created_at.astimezone(self.tz).strftime(self.date_format)
 
     def _section(

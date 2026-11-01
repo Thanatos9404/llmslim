@@ -14,10 +14,12 @@ themselves, not on rendered session text:
   part of its session's instead (the relevance of the session's replies of one window), as a user turn does.
 * **Repeated text is dropped** (``DEDUP_OVERLAP``): a candidate whose word 5-grams are mostly in the text already
   kept adds nothing.
-* **One labelled, dated block per turn.** Each kept turn is rendered as ``[date] role: text``: prose on that line
-  (markdown headings folded into the sentence they head, so no heading stands alone), code blocks and tables on the
-  lines below, fenced. Kept turns appear in date order, with a blank line between sessions. Text inside a turn can
-  never start a line that looks like another turn's label.
+* **One labelled block per turn, under its date.** A kept turn is rendered as ``[date] role: text``: prose on that
+  line (markdown headings folded into the sentence they head, so no heading stands alone), code blocks and tables on
+  the lines below, fenced. The first kept turn of a session shows its full stamp, and so does a later one whose time
+  differs from the one shown last in its session. Any other kept turn shows ``role: text`` alone (``Turn.date``
+  None, ``Memory``'s default), or a short date. Kept turns appear in date order, with a blank line between sessions.
+  Text inside a turn can never start a line that looks like another turn's label.
 
 Everything here is deterministic: the same history, question and settings give the same text.
 """
@@ -71,6 +73,12 @@ _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 # turn that would start a line this way is indented, so stored text can never pass for another turn.
 _LABEL_LIKE = re.compile(
     r"^\s*\[[^\]\n]{1,60}\]\s*(?:user|assistant|system|tool)\s*:", re.IGNORECASE
+)
+# Where a turn's label can be its role alone ("user: ..." on a turn with no date to show), a stored line that starts
+# with a role and a colon looks like a label too, and is indented as well. A line that already starts with
+# whitespace (an indented "user: ..." in a config file) cannot pass for such a label, so it is left as it is.
+_ROLE_LIKE = re.compile(
+    r"^(?:\s*\[[^\]\n]{1,60}\]\s*)?(?:user|assistant|system|tool)\s*:", re.IGNORECASE
 )
 _WORDS = re.compile(r"\w+", re.UNICODE)
 
@@ -272,14 +280,16 @@ def segments_of(content: str) -> Tuple[Segment, ...]:
     return tuple(segments(content))
 
 
-def _guard(block: str) -> str:
-    """A code block or table with any line that looks like a turn label indented, so it cannot pass for one."""
-    return "\n".join("  " + line if _LABEL_LIKE.match(line) else line for line in block.split("\n"))
+def _guard(block: str, label: "re.Pattern[str]" = _LABEL_LIKE) -> str:
+    """A code block or table with any line that looks like a turn label (``label``) indented, so it cannot pass for
+    one."""
+    return "\n".join("  " + line if label.match(line) else line for line in block.split("\n"))
 
 
-def join(parts: Sequence[Tuple[str, bool]]) -> str:
+def join(parts: Sequence[Tuple[str, bool]], label: "re.Pattern[str]" = _LABEL_LIKE) -> str:
     """Segments (text, is_block) as one turn's text: prose on one line, blocks on their own lines. Text that opens
-    with a block starts with a line break, so the block's first line never shares the turn's label line."""
+    with a block starts with a line break, so the block's first line never shares the turn's label line. A block line
+    that looks like a turn label (``label``; ``_ROLE_LIKE`` where a label can be the role alone) is indented."""
     # The text is built from pieces (never empty) and joined once: rebuilding it for every part took time quadratic
     # in a long turn's length, on every search.
     pieces: List[str] = []
@@ -292,7 +302,7 @@ def join(parts: Sequence[Tuple[str, bool]]) -> str:
                     break
                 pieces.pop()
             pieces.append("\n")
-            guarded = _guard(text)
+            guarded = _guard(text, label)
             if guarded:
                 pieces.append(guarded)
             pieces.append("\n")
@@ -348,7 +358,9 @@ class Turn:
     stamp: str  # the full stamp, shown on the first kept turn of its session
     segs: List[Segment] = field(default_factory=list)
     parts: int = 0  # how many windows (or 1 for a user turn)
-    date: str = ""  # the short stamp, shown on the session's other kept turns
+    # What a later kept turn of the session shows when its time was already shown there: this short date, no date at
+    # all (None: the role alone), or the full stamp again ("").
+    date: Optional[str] = ""
 
 
 def cap_for_user_turn(budget: int) -> int:
@@ -680,14 +692,19 @@ class Selection:
 
     def label(self, turn: int, first: bool = True) -> str:
         """A turn's label: its full stamp when ``first`` (the first kept turn of its session, or one whose time
-        differs from the one shown last in its session), else its date."""
+        differs from the one shown last in its session), else as ``Turn.date`` says: the role alone when it is None,
+        the short date when it is set, the full stamp again when it is empty."""
         t = self.turns[turn]
-        stamp = t.stamp if first or not t.date else t.date
-        return f"[{stamp}] {t.item.role}: "
+        if first or t.date == "":
+            return f"[{t.stamp}] {t.item.role}: "
+        if t.date is None:
+            return f"{t.item.role}: "
+        return f"[{t.date}] {t.item.role}: "
 
     def label_cost(self, turn: int) -> int:
-        """What a new turn's label adds: a full stamp when no kept turn of its session has its time yet, else a
-        date (an estimate: the exact labels depend on the order of the kept turns, and ``fit`` counts them)."""
+        """What a new turn's label adds: a full stamp when no kept turn of its session has its time yet, else the
+        shorter label ``label`` gives a later turn, the role alone by default (an estimate: the exact labels depend
+        on the order of the kept turns, and ``fit`` counts them)."""
         t = self.turns[turn]
         first = t.stamp not in self.stamps.get(t.session, ())
         return tokens_of(self.label(turn, first)) + 1
@@ -758,7 +775,7 @@ class Selection:
         if previous != t.parts - 1:
             parts.append((GAP.strip(), False))
             partial = True
-        body = join(parts)
+        body = join(parts, _ROLE_LIKE if t.date is None else _LABEL_LIKE)
         return labelled(self.label(turn, first), body), partial
 
     def blocks(self) -> List[Tuple[int, int, str, bool]]:
@@ -806,9 +823,11 @@ class Selection:
 def build_turns(
     sessions: Sequence[Sequence[MemoryItem]],
     stamp: Callable[[MemoryItem], str],
-    date: Optional[Callable[[MemoryItem], str]] = None,
+    date: Optional[Callable[[MemoryItem], Optional[str]]] = None,
 ) -> List[Turn]:
-    """Every turn of ``sessions`` (in session order, then stored order) with its labels and cached segments."""
+    """Every turn of ``sessions`` (in session order, then stored order) with its labels and cached segments.
+    ``date`` gives each ``Turn.date`` (None for no date on a later turn); without it, every kept turn shows its full
+    stamp."""
     turns: List[Turn] = []
     for s, session in enumerate(sessions):
         for item in session:

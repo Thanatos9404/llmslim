@@ -31,9 +31,9 @@
   }
  },
  "lookup": {
-  "sha256": "74634237a402e55f8fc9272ee40bff95e85027db45929ae49b1b064638bcc109",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: can you suggest a recipe with lentils and rice for dinner tonight?\n[2026-03-02] assistant: Day 0: try a simple khichdi with ghee, cumin and a side of pickle.\n\n[2026-04-12 (Sun) 09:30] user: By the way, I moved to 14 Lane 5, Koregaon Park, Pune last month.\n[2026-04-12] assistant: Thanks, I have noted your new address in Koregaon Park.",
-  "tokens": 130,
+  "sha256": "1f0a937c0b48b27c060758bf11398641f789ceb97703bd1fb5a55aabdb879593",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: can you suggest a recipe with lentils and rice for dinner tonight?\nassistant: Day 0: try a simple khichdi with ghee, cumin and a side of pickle.\n\n[2026-04-12 (Sun) 09:30] user: By the way, I moved to 14 Lane 5, Koregaon Park, Pune last month.\nassistant: Thanks, I have noted your new address in Koregaon Park.",
+  "tokens": 114,
   "turns": [
    [
     "m0001",
@@ -97,8 +97,8 @@
   }
  },
  "requests": {
-  "sha256": "5e638d8b46e29ad160cda42ef0d95d1fc13aed497d7a2997ad338748592c8b34",
-  "text": "Requests the user made earlier:\n- [2026-03-05 (Thu) 09:35] Always include comparative analysis of multiple solution methods when I ask about triangle area.\n\n[2026-03-02 (Mon) 09:30] assistant: Day 0: try a simple khichdi with ghee, cumin and a side of pickle.\n\n[2026-03-05 (Thu) 09:30] user: Day 3: can you suggest a recipe with lentils and rice for dinner tonight?\n[2026-03-05 (Thu) 09:35] user: Always include comparative analysis of multiple solution methods when I ask about triangle area.\n[2026-03-05] assistant: Understood.\n\n[2026-04-12 (Sun) 09:30] assistant: Thanks, I have noted your new address in Koregaon Park.",
+  "sha256": "11b5bdb09e2c3d09f38948dedaf049f085233bf00092b6f0bb05b1d0460ef85d",
+  "text": "Requests the user made earlier:\n- [2026-03-05 (Thu) 09:35] Always include comparative analysis of multiple solution methods when I ask about triangle area.\n\n[2026-03-02 (Mon) 09:30] assistant: Day 0: try a simple khichdi with ghee, cumin and a side of pickle.\n\n[2026-03-05 (Thu) 09:30] user: Day 3: can you suggest a recipe with lentils and rice for dinner tonight?\n[2026-03-05 (Thu) 09:35] user: Always include comparative analysis of multiple solution methods when I ask about triangle area.\nassistant: Understood.\n\n[2026-04-12 (Sun) 09:30] user: By the way, I moved to 14 Lane 5, Koregaon Park, Pune last month.",
   "tokens": 187,
   "turns": [
    [
@@ -118,7 +118,7 @@
     false
    ],
    [
-    "m0082",
+    "m0081",
     false
    ]
   ],
@@ -131,9 +131,9 @@
   }
  },
  "advice": {
-  "sha256": "bb466b5fb2d751000262fa4ced9940955b46008d89b06df550c69d8657f25d2a",
-  "text": "Requests the user made earlier:\n- [2026-03-09 (Mon) 09:35] Always keep dinner suggestions under 500 calories.\n- [2026-03-11 (Wed) 09:35] From now on, always give prices in rupees.\n\nPreferences the user stated earlier:\n- [2026-03-05 (Thu) 09:35] I prefer vegetarian meals that take under 20 minutes.\n\n[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\n[2026-03-02] assistant: ... Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. Tip 6: rinse the lentils and rice well before cooking dinner. Tip 7: rinse the lentils and rice well before cooking dinner. Tip 8: rinse the lentils and rice well before cooking dinner. Tip 9: rinse the lentils and rice well before cooking dinner. ...\n\n[2026-03-03 (Tue) 09:30] user: Day 1: what should I cook for dinner with lentils and rice?\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n\n[2026-03-07 (Sat) 09:35] user: I usually shop at the farmers market on Saturdays.",
-  "tokens": 382,
+  "sha256": "f20fd12da4d5bb6ee804b489c80cc13cd95df60e0e8cd9bdd6b76f349d90c94f",
+  "text": "Requests the user made earlier:\n- [2026-03-09 (Mon) 09:35] Always keep dinner suggestions under 500 calories.\n- [2026-03-11 (Wed) 09:35] From now on, always give prices in rupees.\n\nPreferences the user stated earlier:\n- [2026-03-05 (Thu) 09:35] I prefer vegetarian meals that take under 20 minutes.\n\n[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\nassistant: ... Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. Tip 6: rinse the lentils and rice well before cooking dinner. Tip 7: rinse the lentils and rice well before cooking dinner. Tip 8: rinse the lentils and rice well before cooking dinner. Tip 9: rinse the lentils and rice well before cooking dinner. ...\n\n[2026-03-03 (Tue) 09:30] user: Day 1: what should I cook for dinner with lentils and rice?\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n\n[2026-03-07 (Sat) 09:35] user: I usually shop at the farmers market on Saturdays.\nassistant: Nice.",
+  "tokens": 378,
   "turns": [
    [
     "m0001",
@@ -158,6 +158,10 @@
    [
     "m0051",
     false
+   ],
+   [
+    "m0052",
+    false
    ]
   ],
   "sections": {
@@ -172,9 +176,9 @@
   }
  },
  "advice_sections_off": {
-  "sha256": "a9c643dec2f95c211705c013d3ed3bb9264a2a4fcb8917f6ec89d02b6d75f194",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\n[2026-03-02] assistant: ... Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. Tip 6: rinse the lentils and rice well before cooking dinner. Tip 7: rinse the lentils and rice well before cooking dinner. Tip 8: rinse the lentils and rice well before cooking dinner. Tip 9: rinse the lentils and rice well before cooking dinner. Tip 10: rinse the lentils and rice well before cooking dinner. Tip 11: rinse the lentils and rice well before cooking dinner.\n\n[2026-03-03 (Tue) 09:30] user: Day 1: what should I cook for dinner with lentils and rice?\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n\n[2026-03-05 (Thu) 09:35] assistant: Got it.\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n\n[2026-03-08 (Sun) 09:30] user: Day 6: what should I cook for dinner with lentils and rice?\n\n[2026-03-10 (Tue) 09:30] user: Day 8: what should I cook for dinner with lentils and rice?",
-  "tokens": 379,
+  "sha256": "f473d5206086b1fb71fd3178c1e43a50e9188c03bf0f3efff59a3bf2aff4a4d6",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\nassistant: ... Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. Tip 6: rinse the lentils and rice well before cooking dinner. Tip 7: rinse the lentils and rice well before cooking dinner. Tip 8: rinse the lentils and rice well before cooking dinner. Tip 9: rinse the lentils and rice well before cooking dinner. Tip 10: rinse the lentils and rice well before cooking dinner. Tip 11: rinse the lentils and rice well before cooking dinner.\n\n[2026-03-03 (Tue) 09:30] user: Day 1: what should I cook for dinner with lentils and rice?\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n\n[2026-03-07 (Sat) 09:35] user: I usually shop at the farmers market on Saturdays.\n\n[2026-03-08 (Sun) 09:30] user: Day 6: what should I cook for dinner with lentils and rice?\n\n[2026-03-10 (Tue) 09:30] user: Day 8: what should I cook for dinner with lentils and rice?",
+  "tokens": 378,
   "turns": [
    [
     "m0001",
@@ -193,11 +197,11 @@
     false
    ],
    [
-    "m0050",
+    "m0009",
     false
    ],
    [
-    "m0009",
+    "m0051",
     false
    ],
    [
@@ -216,9 +220,9 @@
   }
  },
  "conflicts": {
-  "sha256": "71a7e5ea6e084bd02659d9c8f14174cfa5564358a34188568630d141d098a889",
-  "text": "Statements the user made on this that may conflict (in date order):\n- [2026-03-06 (Fri) 09:35] I went skydiving over the Dubai desert with my cousin last spring.\n- [2026-03-14 (Sat) 09:35] I have never gone skydiving, heights scare me too much.\n\n[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\n[2026-03-02] assistant: ... Tip 10: rinse the lentils and rice well before cooking dinner. Tip 11: rinse the lentils and rice well before cooking dinner.\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n[2026-03-06 (Fri) 09:35] user: I went skydiving over the Dubai desert with my cousin last spring.\n\n[2026-03-14 (Sat) 09:30] user: Day 12: what should I cook for dinner with lentils and rice?\n[2026-03-14 (Sat) 09:35] user: I have never gone skydiving, heights scare me too much.",
-  "tokens": 278,
+  "sha256": "2ed6a782b741611a6b99896acb96d74118d81438aa4866d5091a11e1245de98d",
+  "text": "Statements the user made on this that may conflict (in date order):\n- [2026-03-06 (Fri) 09:35] I went skydiving over the Dubai desert with my cousin last spring.\n- [2026-03-14 (Sat) 09:35] I have never gone skydiving, heights scare me too much.\n\n[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\nassistant: For dinner on day 0, lentils and rice make a great khichdi. Tip 0: rinse the lentils and rice well before cooking dinner. Tip 1: rinse the lentils and rice well before cooking dinner. ...\n\n[2026-03-06 (Fri) 09:30] user: Day 4: what should I cook for dinner with lentils and rice?\n[2026-03-06 (Fri) 09:35] user: I went skydiving over the Dubai desert with my cousin last spring.\n\n[2026-03-14 (Sat) 09:30] user: Day 12: what should I cook for dinner with lentils and rice?\n[2026-03-14 (Sat) 09:35] user: I have never gone skydiving, heights scare me too much.",
+  "tokens": 288,
   "turns": [
    [
     "m0001",
@@ -255,9 +259,9 @@
   }
  },
  "conflicts_small": {
-  "sha256": "04b59a5e476d9e4f41d0360fe3521a63bbf8db8bd53f96a77d910e6a68d15e68",
-  "text": "[2026-03-14 (Sat) 09:35] user: I have never gone skydiving, heights scare me too much.\n[2026-03-14] assistant: Understood.",
-  "tokens": 44,
+  "sha256": "5522ca99deb73a7e548633115ec1a31ab5e9df6b73dd0a40ce840a88dd29ca52",
+  "text": "[2026-03-14 (Sat) 09:35] user: I have never gone skydiving, heights scare me too much.\nassistant: Understood.",
+  "tokens": 36,
   "turns": [
    [
     "m0043",
@@ -275,9 +279,9 @@
   }
  },
  "moved": {
-  "sha256": "53b0b72eb7c34fae8192c7c31ec6c3b222f5a2de2101a200d59bba06b8206e92",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\n[2026-03-02] assistant: For dinner on day 0, lentils and rice make a great khichdi. Tip 0: rinse the lentils and rice well before cooking dinner. Tip 1: rinse the lentils and rice well before cooking dinner. Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n[2026-03-04 (Wed) 09:35] user: I live in Delhi, near Lodhi Garden.\n\n[2026-03-16 (Mon) 09:30] user: Day 14: what should I cook for dinner with lentils and rice?\n[2026-03-16 (Mon) 09:35] user: I moved to Pune last month, so I no longer live in Delhi.",
-  "tokens": 277,
+  "sha256": "d9221ab44b54dea888e706442c573012e90d2f71925caa9a546ba23ac84b1675",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: what should I cook for dinner with lentils and rice?\nassistant: For dinner on day 0, lentils and rice make a great khichdi. Tip 0: rinse the lentils and rice well before cooking dinner. Tip 1: rinse the lentils and rice well before cooking dinner. Tip 2: rinse the lentils and rice well before cooking dinner. Tip 3: rinse the lentils and rice well before cooking dinner. Tip 4: rinse the lentils and rice well before cooking dinner. Tip 5: rinse the lentils and rice well before cooking dinner. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n[2026-03-04 (Wed) 09:35] user: I live in Delhi, near Lodhi Garden.\nassistant: Lovely area.\n\n[2026-03-16 (Mon) 09:30] user: Day 14: what should I cook for dinner with lentils and rice?\n[2026-03-16 (Mon) 09:35] user: I moved to Pune last month, so I no longer live in Delhi.\nassistant: Noted.",
+  "tokens": 279,
   "turns": [
    [
     "m0001",
@@ -296,11 +300,19 @@
     false
    ],
    [
+    "m0034",
+    false
+   ],
+   [
     "m0029",
     false
    ],
    [
     "m0035",
+    false
+   ],
+   [
+    "m0036",
     false
    ]
   ],
@@ -311,9 +323,9 @@
   }
  },
  "moved_lookup": {
-  "sha256": "aa9f7aac4f8a0326bb0268361b472c0eae35f7a2fd2d5449e89eb99236f8770f",
-  "text": "[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n[2026-03-04 (Wed) 09:35] user: I live in Delhi, near Lodhi Garden.\n[2026-03-04] assistant: Lovely area.\n\n[2026-03-16 (Mon) 09:35] user: I moved to Pune last month, so I no longer live in Delhi.",
-  "tokens": 105,
+  "sha256": "cd7ee8133c2a4cea427a29c63f4f37b0502be9f492f8657ae0bea07c8fa1cc31",
+  "text": "[2026-03-04 (Wed) 09:30] user: Day 2: what should I cook for dinner with lentils and rice?\n[2026-03-04 (Wed) 09:35] user: I live in Delhi, near Lodhi Garden.\nassistant: Lovely area.\n\n[2026-03-16 (Mon) 09:35] user: I moved to Pune last month, so I no longer live in Delhi.\nassistant: Noted.",
+  "tokens": 102,
   "turns": [
    [
     "m0005",
@@ -330,6 +342,10 @@
    [
     "m0035",
     false
+   ],
+   [
+    "m0036",
+    false
    ]
   ],
   "sections": {
@@ -339,9 +355,9 @@
   }
  },
  "summary": {
-  "sha256": "824c57cd51300dabf49d9e0918fef4eb86edbdb01ca0687e81defe179571d06e",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n[2026-03-02] assistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\n[2026-03-03] assistant: For chapter 1 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 1 under ten pages\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n[2026-03-04] assistant: For chapter 2 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 2 under ten pages\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n[2026-03-05] assistant: For chapter 3 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 3 under ten pages\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\n[2026-03-06] assistant: For chapter 4 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 4 under ten pages\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\n[2026-03-07] assistant: For chapter 5 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 5 under ten pages\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\n[2026-03-08] assistant: For chapter 6 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 6 under ten pages\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.\n[2026-03-09] assistant: For chapter 7 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 7 under ten pages\n\n[2026-03-10 (Tue) 09:30] user: Day 8: today I finished chapter 8 of my thesis on river ecology.\n[2026-03-10] assistant: For chapter 8 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 8 under ten pages\n\n[2026-03-11 (Wed) 09:30] user: Day 9: today I finished chapter 9 of my thesis on river ecology.\n[2026-03-11] assistant: For chapter 9 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 9 under ten pages\n\n[2026-03-12 (Thu) 09:30] user: Day 10: today I finished chapter 10 of my thesis on river ecology.\n[2026-03-12] assistant: For chapter 10 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 10 under ten pages\n\n[2026-03-13 (Fri) 09:30] user: Day 11: today I finished chapter 11 of my thesis on river ecology.\n[2026-03-13] assistant: For chapter 11 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 11 under ten pages",
-  "tokens": 1079,
+  "sha256": "f0dd7c8fe269662d28f8a303f7480111f71ce68f36d20b45b700f268d6837827",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\nassistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\nassistant: For chapter 1 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 1 under ten pages\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\nassistant: For chapter 2 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 2 under ten pages\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\nassistant: For chapter 3 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 3 under ten pages\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\nassistant: For chapter 4 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 4 under ten pages\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\nassistant: For chapter 5 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 5 under ten pages\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\nassistant: For chapter 6 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 6 under ten pages\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.\nassistant: For chapter 7 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 7 under ten pages\n\n[2026-03-10 (Tue) 09:30] user: Day 8: today I finished chapter 8 of my thesis on river ecology.\nassistant: For chapter 8 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 8 under ten pages\n\n[2026-03-11 (Wed) 09:30] user: Day 9: today I finished chapter 9 of my thesis on river ecology.\nassistant: For chapter 9 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 9 under ten pages\n\n[2026-03-12 (Thu) 09:30] user: Day 10: today I finished chapter 10 of my thesis on river ecology.\nassistant: For chapter 10 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 10 under ten pages\n\n[2026-03-13 (Fri) 09:30] user: Day 11: today I finished chapter 11 of my thesis on river ecology.\nassistant: For chapter 11 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 11 under ten pages",
+  "tokens": 983,
   "turns": [
    [
     "m0001",
@@ -447,9 +463,9 @@
   }
  },
  "summary_small": {
-  "sha256": "6510918ee49427df41b9193e8c6d50c073bffe09c5a3cf06bb2c5790211eaf5e",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n[2026-03-02] assistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.",
-  "tokens": 124,
+  "sha256": "84e1ff6f128e5d7aca63fd4617abc8ad57a419a0a8f73a847b1110182dee8215",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\nassistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] assistant: For chapter 1 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 1 under ten pages",
+  "tokens": 144,
   "turns": [
    [
     "m0001",
@@ -460,7 +476,7 @@
     true
    ],
    [
-    "m0003",
+    "m0004",
     true
    ]
   ],
@@ -471,9 +487,9 @@
   }
  },
  "summary_detail": {
-  "sha256": "be147e6084b9092273038d2e174d358c93a9790ef74d1db1ee23371fe2621b15",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n[2026-03-02] assistant: Great question! For chapter 0 of your thesis, keep the sediment section short.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n...\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\n[2026-03-03] assistant: Great question! For chapter 1 of your thesis, keep the sediment section short. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n[2026-03-04] assistant: Great question! For chapter 2 of your thesis, keep the sediment section short. ...\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n[2026-03-05] assistant: Great question! For chapter 3 of your thesis, keep the sediment section short. ...\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\n[2026-03-06] assistant: Great question! For chapter 4 of your thesis, keep the sediment section short. ...\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\n[2026-03-07] assistant: Great question! For chapter 5 of your thesis, keep the sediment section short. ...\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\n[2026-03-08] assistant: Great question! For chapter 6 of your thesis, keep the sediment section short. ...\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.\n[2026-03-09] assistant: Great question! For chapter 7 of your thesis, keep the sediment section short. ...\n\n[2026-03-10 (Tue) 09:30] user: Day 8: today I finished chapter 8 of my thesis on river ecology.\n[2026-03-10] assistant: Great question! For chapter 8 of your thesis, keep the sediment section short. ...\n\n[2026-03-11 (Wed) 09:30] user: Day 9: today I finished chapter 9 of my thesis on river ecology.\n[2026-03-11] assistant: Great question! For chapter 9 of your thesis, keep the sediment section short. ...\n\n[2026-03-12 (Thu) 09:30] user: Day 10: today I finished chapter 10 of my thesis on river ecology.\n[2026-03-12] assistant: Great question! For chapter 10 of your thesis, keep the sediment section short. ...\n\n[2026-03-13 (Fri) 09:30] user: Day 11: today I finished chapter 11 of my thesis on river ecology.\n[2026-03-13] assistant: Great question! For chapter 11 of your thesis, keep the sediment section short. ...\n\n[2026-03-14 (Sat) 09:30] user: Day 12: today I finished chapter 12 of my thesis on river ecology.\n[2026-03-14] assistant: Great question! For chapter 12 of your thesis, keep the sediment section short. ...\n\n[2026-03-15 (Sun) 09:30] user: Day 13: today I finished chapter 13 of my thesis on river ecology.\n[2026-03-15] assistant: Great question! For chapter 13 of your thesis, keep the sediment section short. ...\n\n[2026-03-16 (Mon) 09:30] user: Day 14: today I finished chapter 14 of my thesis on river ecology.\n[2026-03-16] assistant: Great question! For chapter 14 of your thesis, keep the sediment section short. ...\n\n[2026-03-17 (Tue) 09:30] user: Day 15: today I finished chapter 15 of my thesis on river ecology.\n[2026-03-17] assistant: Great question! For chapter 15 of your thesis, keep the sediment section short. ...\n\n[2026-03-18 (Wed) 09:30] user: Day 16: today I finished chapter 16 of my thesis on river ecology.\n[2026-03-18] assistant: Great question! For chapter 16 of your thesis, keep the sediment section short. ...\n\n[2026-03-19 (Thu) 09:30] user: Day 17: today I finished chapter 17 of my thesis on river ecology.\n[2026-03-19] assistant: Great question! For chapter 17 of your thesis, keep the sediment section short. ...\n\n[2026-03-20 (Fri) 09:30] user: Day 18: today I finished chapter 18 of my thesis on river ecology.\n[2026-03-20] assistant: Great question! For chapter 18 of your thesis, keep the sediment section short. ...\n\n[2026-03-21 (Sat) 09:30] user: Day 19: today I finished chapter 19 of my thesis on river ecology.\n[2026-03-21] assistant: Great question! For chapter 19 of your thesis, keep the sediment section short. ...\n\n[2026-03-22 (Sun) 09:30] user: Day 20: today I finished chapter 20 of my thesis on river ecology.\n[2026-03-22] assistant: Great question! For chapter 20 of your thesis, keep the sediment section short. ...\n\n[2026-03-23 (Mon) 09:30] user: Day 21: today I finished chapter 21 of my thesis on river ecology.\n[2026-03-23] assistant: Great question! For chapter 21 of your thesis, keep the sediment section short. ...\n\n[2026-03-24 (Tue) 09:30] user: Day 22: today I finished chapter 22 of my thesis on river ecology.\n[2026-03-24] assistant: Great question! For chapter 22 of your thesis, keep the sediment section short. ...\n\n[2026-03-25 (Wed) 09:30] user: Day 23: today I finished chapter 23 of my thesis on river ecology.\n[2026-03-25] assistant: Great question! For chapter 23 of your thesis, keep the sediment section short. ...\n\n[2026-03-26 (Thu) 09:30] user: Day 24: today I finished chapter 24 of my thesis on river ecology.\n[2026-03-26] assistant: Great question! For chapter 24 of your thesis, keep the sediment section short. ...\n\n[2026-03-27 (Fri) 09:30] user: Day 25: today I finished chapter 25 of my thesis on river ecology.\n[2026-03-27] assistant: Great question! For chapter 25 of your thesis, keep the sediment section short. ...\n\n[2026-03-28 (Sat) 09:30] user: Day 26: today I finished chapter 26 of my thesis on river ecology.\n[2026-03-28] assistant: Great question! For chapter 26 of your thesis, keep the sediment section short. ...\n\n[2026-03-29 (Sun) 09:30] user: Day 27: today I finished chapter 27 of my thesis on river ecology.\n[2026-03-29] assistant: Great question! For chapter 27 of your thesis, keep the sediment section short. ...\n\n[2026-03-30 (Mon) 09:30] user: Day 28: today I finished chapter 28 of my thesis on river ecology.\n[2026-03-30] assistant: Great question! For chapter 28 of your thesis, keep the sediment section short. ...\n\n[2026-03-31 (Tue) 09:30] user: Day 29: today I finished chapter 29 of my thesis on river ecology.\n[2026-03-31] assistant: Great question! For chapter 29 of your thesis, keep the sediment section short. ...\n\n[2026-04-01 (Wed) 09:30] user: Day 30: today I finished chapter 30 of my thesis on river ecology.\n[2026-04-01] assistant: Great question! For chapter 30 of your thesis, keep the sediment section short. ...\n\n[2026-04-02 (Thu) 09:30] user: Day 31: today I finished chapter 31 of my thesis on river ecology.\n[2026-04-02] assistant: Great question! For chapter 31 of your thesis, keep the sediment section short. ...\n\n[2026-04-03 (Fri) 09:30] user: Day 32: today I finished chapter 32 of my thesis on river ecology.\n[2026-04-03] assistant: Great question! For chapter 32 of your thesis, keep the sediment section short. ...\n\n[2026-04-04 (Sat) 09:30] user: Day 33: today I finished chapter 33 of my thesis on river ecology.\n[2026-04-04] assistant: Great question! For chapter 33 of your thesis, keep the sediment section short. ...\n\n[2026-04-05 (Sun) 09:30] user: Day 34: today I finished chapter 34 of my thesis on river ecology.\n[2026-04-05] assistant: Great question! For chapter 34 of your thesis, keep the sediment section short. ...\n\n[2026-04-06 (Mon) 09:30] user: Day 35: today I finished chapter 35 of my thesis on river ecology.\n[2026-04-06] assistant: Great question! For chapter 35 of your thesis, keep the sediment section short. ...\n\n[2026-04-07 (Tue) 09:30] user: Day 36: today I finished chapter 36 of my thesis on river ecology.\n[2026-04-07] assistant: Great question! For chapter 36 of your thesis, keep the sediment section short. ...\n\n[2026-04-08 (Wed) 09:30] user: Day 37: today I finished chapter 37 of my thesis on river ecology.\n[2026-04-08] assistant: Great question! For chapter 37 of your thesis, keep the sediment section short. ...\n\n[2026-04-09 (Thu) 09:30] user: Day 38: today I finished chapter 38 of my thesis on river ecology.\n[2026-04-09] assistant: Great question! For chapter 38 of your thesis, keep the sediment section short. ...\n\n[2026-04-10 (Fri) 09:30] user: Day 39: today I finished chapter 39 of my thesis on river ecology.\n[2026-04-10] assistant: Great question! For chapter 39 of your thesis, keep the sediment section short. ...\n\n[2026-04-11 (Sat) 09:30] system: The user writes in British English.",
-  "tokens": 2523,
+  "sha256": "bf7054b83be528387a9ab8e49b032151ebbbe32d2b1a7184099f61a50bdf8f74",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\nassistant: Great question! For chapter 0 of your thesis, keep the sediment section short.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n...\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\nassistant: Great question! For chapter 1 of your thesis, keep the sediment section short. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\nassistant: Great question! For chapter 2 of your thesis, keep the sediment section short. ...\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\nassistant: Great question! For chapter 3 of your thesis, keep the sediment section short. ...\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\nassistant: Great question! For chapter 4 of your thesis, keep the sediment section short. ...\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\nassistant: Great question! For chapter 5 of your thesis, keep the sediment section short. ...\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\nassistant: Great question! For chapter 6 of your thesis, keep the sediment section short. ...\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.\nassistant: Great question! For chapter 7 of your thesis, keep the sediment section short. ...\n\n[2026-03-10 (Tue) 09:30] user: Day 8: today I finished chapter 8 of my thesis on river ecology.\nassistant: Great question! For chapter 8 of your thesis, keep the sediment section short. ...\n\n[2026-03-11 (Wed) 09:30] user: Day 9: today I finished chapter 9 of my thesis on river ecology.\nassistant: Great question! For chapter 9 of your thesis, keep the sediment section short. ...\n\n[2026-03-12 (Thu) 09:30] user: Day 10: today I finished chapter 10 of my thesis on river ecology.\nassistant: Great question! For chapter 10 of your thesis, keep the sediment section short. ...\n\n[2026-03-13 (Fri) 09:30] user: Day 11: today I finished chapter 11 of my thesis on river ecology.\nassistant: Great question! For chapter 11 of your thesis, keep the sediment section short. ...\n\n[2026-03-14 (Sat) 09:30] user: Day 12: today I finished chapter 12 of my thesis on river ecology.\nassistant: Great question! For chapter 12 of your thesis, keep the sediment section short. ...\n\n[2026-03-15 (Sun) 09:30] user: Day 13: today I finished chapter 13 of my thesis on river ecology.\nassistant: Great question! For chapter 13 of your thesis, keep the sediment section short. ...\n\n[2026-03-16 (Mon) 09:30] user: Day 14: today I finished chapter 14 of my thesis on river ecology.\nassistant: Great question! For chapter 14 of your thesis, keep the sediment section short. ...\n\n[2026-03-17 (Tue) 09:30] user: Day 15: today I finished chapter 15 of my thesis on river ecology.\nassistant: Great question! For chapter 15 of your thesis, keep the sediment section short. ...\n\n[2026-03-18 (Wed) 09:30] user: Day 16: today I finished chapter 16 of my thesis on river ecology.\nassistant: Great question! For chapter 16 of your thesis, keep the sediment section short. ...\n\n[2026-03-19 (Thu) 09:30] user: Day 17: today I finished chapter 17 of my thesis on river ecology.\nassistant: Great question! For chapter 17 of your thesis, keep the sediment section short. ...\n\n[2026-03-20 (Fri) 09:30] user: Day 18: today I finished chapter 18 of my thesis on river ecology.\nassistant: Great question! For chapter 18 of your thesis, keep the sediment section short. ...\n\n[2026-03-21 (Sat) 09:30] user: Day 19: today I finished chapter 19 of my thesis on river ecology.\nassistant: Great question! For chapter 19 of your thesis, keep the sediment section short. ...\n\n[2026-03-22 (Sun) 09:30] user: Day 20: today I finished chapter 20 of my thesis on river ecology.\nassistant: Great question! For chapter 20 of your thesis, keep the sediment section short. ...\n\n[2026-03-23 (Mon) 09:30] user: Day 21: today I finished chapter 21 of my thesis on river ecology.\nassistant: Great question! For chapter 21 of your thesis, keep the sediment section short. ...\n\n[2026-03-24 (Tue) 09:30] user: Day 22: today I finished chapter 22 of my thesis on river ecology.\nassistant: Great question! For chapter 22 of your thesis, keep the sediment section short. ...\n\n[2026-03-25 (Wed) 09:30] user: Day 23: today I finished chapter 23 of my thesis on river ecology.\nassistant: Great question! For chapter 23 of your thesis, keep the sediment section short. ...\n\n[2026-03-26 (Thu) 09:30] user: Day 24: today I finished chapter 24 of my thesis on river ecology.\nassistant: Great question! For chapter 24 of your thesis, keep the sediment section short. ...\n\n[2026-03-27 (Fri) 09:30] user: Day 25: today I finished chapter 25 of my thesis on river ecology.\nassistant: Great question! For chapter 25 of your thesis, keep the sediment section short. ...\n\n[2026-03-28 (Sat) 09:30] user: Day 26: today I finished chapter 26 of my thesis on river ecology.\nassistant: Great question! For chapter 26 of your thesis, keep the sediment section short. ...\n\n[2026-03-29 (Sun) 09:30] user: Day 27: today I finished chapter 27 of my thesis on river ecology.\nassistant: Great question! For chapter 27 of your thesis, keep the sediment section short. ...\n\n[2026-03-30 (Mon) 09:30] user: Day 28: today I finished chapter 28 of my thesis on river ecology.\nassistant: Great question! For chapter 28 of your thesis, keep the sediment section short. ...\n\n[2026-03-31 (Tue) 09:30] user: Day 29: today I finished chapter 29 of my thesis on river ecology.\nassistant: Great question! For chapter 29 of your thesis, keep the sediment section short. ...\n\n[2026-04-01 (Wed) 09:30] user: Day 30: today I finished chapter 30 of my thesis on river ecology.\nassistant: Great question! For chapter 30 of your thesis, keep the sediment section short. ...\n\n[2026-04-02 (Thu) 09:30] user: Day 31: today I finished chapter 31 of my thesis on river ecology.\nassistant: Great question! For chapter 31 of your thesis, keep the sediment section short. ...\n\n[2026-04-03 (Fri) 09:30] user: Day 32: today I finished chapter 32 of my thesis on river ecology.\nassistant: Great question! For chapter 32 of your thesis, keep the sediment section short. ...\n\n[2026-04-04 (Sat) 09:30] user: Day 33: today I finished chapter 33 of my thesis on river ecology.\nassistant: Great question! For chapter 33 of your thesis, keep the sediment section short. ...\n\n[2026-04-05 (Sun) 09:30] user: Day 34: today I finished chapter 34 of my thesis on river ecology.\nassistant: Great question! For chapter 34 of your thesis, keep the sediment section short. ...\n\n[2026-04-06 (Mon) 09:30] user: Day 35: today I finished chapter 35 of my thesis on river ecology.\nassistant: Great question! For chapter 35 of your thesis, keep the sediment section short. ...\n\n[2026-04-07 (Tue) 09:30] user: Day 36: today I finished chapter 36 of my thesis on river ecology.\nassistant: Great question! For chapter 36 of your thesis, keep the sediment section short. ...\n\n[2026-04-08 (Wed) 09:30] user: Day 37: today I finished chapter 37 of my thesis on river ecology.\nassistant: Great question! For chapter 37 of your thesis, keep the sediment section short. ...\n\n[2026-04-09 (Thu) 09:30] user: Day 38: today I finished chapter 38 of my thesis on river ecology.\nassistant: Great question! For chapter 38 of your thesis, keep the sediment section short. ...\n\n[2026-04-10 (Fri) 09:30] user: Day 39: today I finished chapter 39 of my thesis on river ecology.\nassistant: Great question! For chapter 39 of your thesis, keep the sediment section short. ...\n\n[2026-04-11 (Sat) 09:30] system: The user writes in British English.",
+  "tokens": 2203,
   "turns": [
    [
     "m0001",
@@ -807,9 +823,9 @@
   }
  },
  "ordering": {
-  "sha256": "05357c3e7bf212caf28bc517aa4ca473ab01d30afb65d51910ba2909d37dea20",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n[2026-03-02] assistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.\n\n[2026-03-10 (Tue) 09:30] user: Day 8: today I finished chapter 8 of my thesis on river ecology.",
-  "tokens": 362,
+  "sha256": "93fe1d4376440b879d31233e8490d57633770ad201964a031651e7298f357765",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\nassistant: For chapter 0 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 0 under ten pages\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\nassistant: For chapter 1 of your thesis, keep the sediment section short. Side note 0: the weather was mild and the train ran late again. Outline: Lead with the sediment data; Keep chapter 1 under ten pages\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n\n[2026-03-06 (Fri) 09:30] user: Day 4: today I finished chapter 4 of my thesis on river ecology.\n\n[2026-03-07 (Sat) 09:30] user: Day 5: today I finished chapter 5 of my thesis on river ecology.\n\n[2026-03-08 (Sun) 09:30] user: Day 6: today I finished chapter 6 of my thesis on river ecology.\n\n[2026-03-09 (Mon) 09:30] user: Day 7: today I finished chapter 7 of my thesis on river ecology.",
+  "tokens": 368,
   "turns": [
    [
     "m0001",
@@ -821,6 +837,10 @@
    ],
    [
     "m0003",
+    true
+   ],
+   [
+    "m0004",
     true
    ],
    [
@@ -846,10 +866,6 @@
    [
     "m0015",
     true
-   ],
-   [
-    "m0017",
-    true
    ]
   ],
   "sections": {
@@ -859,9 +875,9 @@
   }
  },
  "coverage_never": {
-  "sha256": "df63983fc52f1bff61de9c96bf15daece311691066ca016ede613b32192fa83c",
-  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n[2026-03-02] assistant: Great question! For chapter 0 of your thesis, keep the sediment section short. ... 1. **Lead with the sediment data**: it is the core. 2. **Keep chapter 0 under ten pages**: examiners skim.\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n[2026-03-03] assistant: Great question! For chapter 1 of your thesis, keep the sediment section short. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n[2026-03-04] assistant: Great question! For chapter 2 of your thesis, keep the sediment section short. ...\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\n[2026-03-05] assistant: Great question! For chapter 3 of your thesis, keep the sediment section short. ...\n\n[2026-03-06 (Fri) 09:30] assistant: Great question! For chapter 4 of your thesis, keep the sediment section short. ...",
-  "tokens": 390,
+  "sha256": "c2bb3fcca3f0305730a907ee21ac085e9673cfe8c0c8b8d7f3f6bd9a8eec7498",
+  "text": "[2026-03-02 (Mon) 09:30] user: Day 0: today I finished chapter 0 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\nassistant: Great question! For chapter 0 of your thesis, keep the sediment section short. ...\n\n[2026-03-03 (Tue) 09:30] user: Day 1: today I finished chapter 1 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\nassistant: Great question! For chapter 1 of your thesis, keep the sediment section short. ...\n\n[2026-03-04 (Wed) 09:30] user: Day 2: today I finished chapter 2 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\nassistant: Great question! For chapter 2 of your thesis, keep the sediment section short. ...\n\n[2026-03-05 (Thu) 09:30] user: Day 3: today I finished chapter 3 of my thesis on river ecology.\n```python\nimport pandas as pd\nflows = pd.read_csv('river.csv')\n```\nassistant: Great question! For chapter 3 of your thesis, keep the sediment section short. ...\n\n[2026-03-06 (Fri) 09:30] assistant: Great question! For chapter 4 of your thesis, keep the sediment section short. ...\n\n[2026-03-07 (Sat) 09:30] assistant: Great question! For chapter 5 of your thesis, keep the sediment section short. ...\n\n[2026-03-14 (Sat) 09:30] system: The user writes in British English.",
+  "tokens": 386,
   "turns": [
    [
     "m0001",
@@ -898,6 +914,14 @@
    [
     "m0010",
     true
+   ],
+   [
+    "m0012",
+    true
+   ],
+   [
+    "m0025",
+    false
    ]
   ],
   "sections": {
@@ -907,9 +931,9 @@
   }
  },
  "chinese": {
-  "sha256": "5f71f64619adf044be44980463e452a55aec6618250a60c8aa99534a4c13c47c",
-  "text": "[2026-03-15 (Sun) 09:30] user: 我的猫叫小白，它今年三岁了。\n[2026-03-15] assistant: 小白是个好名字。",
-  "tokens": 56,
+  "sha256": "31cc090f7e049d4d3bf98ce987000ac97dc5de2f9d40ec0c5c2d82c251f927f8",
+  "text": "[2026-03-15 (Sun) 09:30] user: 我的猫叫小白，它今年三岁了。\nassistant: 小白是个好名字。",
+  "tokens": 48,
   "turns": [
    [
     "m0025",
@@ -943,9 +967,9 @@
   }
  },
  "huge_user": {
-  "sha256": "5110be7bf816bc600b1eb48ad186005fddf8cf1b1173ab6d896ca7c04a1bea19",
-  "text": "[2026-03-02 (Mon) 09:30] user: On trip 0 we drove to a new town and stayed in a small hotel by the river. On trip 1 we drove to a new town and stayed in a small hotel by the river. On trip 2 we drove to a new town and stayed in a small hotel by the river. On trip 3 we drove to a new town and stayed in a small hotel by the river. ... My locker code at the gym is 4417. ...\n[2026-03-02] assistant: ... 59. Set option 59 in the config file and restart. ... The cache warms up in about a minute.",
-  "tokens": 146,
+  "sha256": "2394a56bd11e5f64898b72d64890173605e7b3ceb9accd3139f6855ba1a05fec",
+  "text": "[2026-03-02 (Mon) 09:30] user: On trip 0 we drove to a new town and stayed in a small hotel by the river. On trip 1 we drove to a new town and stayed in a small hotel by the river. On trip 2 we drove to a new town and stayed in a small hotel by the river. On trip 3 we drove to a new town and stayed in a small hotel by the river. ... My locker code at the gym is 4417. ...\nassistant: ... 59. Set option 59 in the config file and restart.\n```toml\n[cache]\nsize = 512\nttl = 60\n```\n...",
+  "tokens": 147,
   "turns": [
    [
     "m0001",

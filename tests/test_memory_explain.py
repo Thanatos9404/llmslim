@@ -81,9 +81,10 @@ SECTION_REASONS = {
     "nothing_fit",
     "clipped_at_end",
 }
-# A kept turn's label at the start of a line ("[2026-03-02 (Mon) 09:30] user: " or "[2026-03-02] user: ").
+# A kept turn's label at the start of a line: "[2026-03-02 (Mon) 09:30] user: ", or by default "user: " on a later
+# turn of a session whose time was already shown ("[2026-03-02] user: " with date_format="%Y-%m-%d").
 LABEL = re.compile(
-    r"^\[\d{4}-\d{2}-\d{2}(?: \(\w{3}\) \d{2}:\d{2})?\] (?:user|assistant|system|tool): ", re.M
+    r"^(?:\[\d{4}-\d{2}-\d{2}(?: \(\w{3}\) \d{2}:\d{2})?\] )?(?:user|assistant|system|tool): ", re.M
 )
 
 
@@ -127,6 +128,20 @@ def test_search_output_matches_the_golden_file(case, kind, tmp_path):
         pinned = cases.pinned(context)
         assert pinned["text"] == expected["text"]
         assert pinned == expected
+
+
+GOLDEN_DATE_0_12 = json.loads(cases.GOLDEN_DATE_0_12.read_text(encoding="utf-8"))
+
+
+@needs_tiktoken
+@pytest.mark.parametrize("kind", ["memory", "sqlite"])
+@pytest.mark.parametrize("case", cases.CASES, ids=CASE_IDS)
+def test_date_format_gives_back_the_0_12_output(case, kind, tmp_path):
+    # date_format="%Y-%m-%d" gives exactly what search returned before date_format defaulted to None: these hashes
+    # are the golden file's from before that change, ids, scores and token counts included.
+    store = store_for(kind, tmp_path / "memory.db")
+    context = cases.run(case, store, date_format=cases.DATE_0_12)
+    assert cases.pinned(context)["sha256"] == GOLDEN_DATE_0_12[case[0]]
 
 
 @pytest.mark.parametrize("case", cases.CASES, ids=CASE_IDS)
@@ -525,7 +540,10 @@ def test_sections_explain_each_statement():
 
 
 def test_digests_explain_openings_and_passages():
-    context, explanation = explained("summary")
+    # With 0.12's labels the openings of this case do not all fit 1,200 tokens, so they are ranked. With the default
+    # labels (no date on a later turn of a session) they all fit, and none is ranked.
+    assert all(c.rank is None for t in explained("summary")[1].turns for c in t.candidates)
+    context, explanation = explained("summary", date_format=cases.DATE_0_12)
     assert (explanation.mode, explanation.route) == ("digest", "overview")
     system = [t for t in explanation.turns if t.role == "system"]
     assert [(t.status, t.reason) for t in system] == [("dropped", "no_candidate")]

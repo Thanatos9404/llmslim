@@ -2,9 +2,12 @@
 
 Every turn gets a fixed id (``m0001``, ``m0002``, ...) and a fixed time, so a search's whole output, ids included, is
 the same on every run. The output of each case with ``explain`` off is pinned in
-``tests/fixtures/memory_search_golden.json``, recorded from ``Memory.search`` before it had an ``explain`` argument,
-with tiktoken's ``cl100k_base`` and the built-in sentence splitter. If a release changes what search selects on
-purpose, regenerate it and say so in the CHANGELOG::
+``tests/fixtures/memory_search_golden.json``, with tiktoken's ``cl100k_base`` and the built-in sentence splitter. It
+was first recorded from ``Memory.search`` before it had an ``explain`` argument, and again when ``date_format``'s
+default became ``None`` (no date on a later turn of a session whose time was already shown). The output with
+``date_format="%Y-%m-%d"``, the labels of 0.12, is pinned too, as one SHA-256 per case in
+``tests/fixtures/memory_search_golden_date_0_12.json``: it equals the first recording. If a release changes what
+search selects on purpose, regenerate both and say so in the CHANGELOG::
 
     python -m tests._memory_search_cases
 """
@@ -22,6 +25,11 @@ from llmslim.memory import InMemoryStore, Memory, MemoryContext, MemoryItem, Mem
 
 T0 = datetime(2026, 3, 2, 9, 30, tzinfo=timezone.utc)
 GOLDEN = Path(__file__).resolve().parent / "fixtures" / "memory_search_golden.json"
+GOLDEN_DATE_0_12 = (
+    Path(__file__).resolve().parent / "fixtures" / "memory_search_golden_date_0_12.json"
+)
+DATE_0_12 = "%Y-%m-%d"  # Memory's date_format before it defaulted to None
+_DEFAULT: Any = object()
 
 
 class History:
@@ -368,10 +376,15 @@ CASES: List[Case] = [
 ]
 
 
-def run(case: Case, store: Optional[MemoryStore] = None, **extra: Any) -> MemoryContext:
-    """The search of ``case`` on a fresh history in ``store``."""
+def run(
+    case: Case, store: Optional[MemoryStore] = None, *, date_format: Any = _DEFAULT, **extra: Any
+) -> MemoryContext:
+    """The search of ``case`` on a fresh history in ``store`` (with ``Memory(date_format=...)`` when given)."""
     _, build, query, options = case
-    return build(store).memory.search(query, **options, **extra)
+    memory = build(store).memory
+    if date_format is not _DEFAULT:
+        memory.date_format = date_format
+    return memory.search(query, **options, **extra)
 
 
 def output(context: MemoryContext) -> Dict[str, Any]:
@@ -417,7 +430,13 @@ def builtin_splitter() -> Iterator[None]:
 def write_golden() -> None:
     with builtin_splitter():
         golden = {case[0]: pinned(run(case)) for case in CASES}
+        labels_0_12 = {
+            case[0]: pinned(run(case, date_format=DATE_0_12))["sha256"] for case in CASES
+        }
     GOLDEN.write_text(json.dumps(golden, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    GOLDEN_DATE_0_12.write_text(
+        json.dumps(labels_0_12, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

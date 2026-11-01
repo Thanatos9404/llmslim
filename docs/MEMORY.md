@@ -4,7 +4,7 @@
 
 **How it works**
 - **On the way in:** every turn is stored verbatim. Nothing is summarized or extracted.
-- **On the way out:** `search` ranks the stored turns against the question and returns what answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the replies, one labelled and dated block per turn, in date order.
+- **On the way out:** `search` ranks the stored turns against the question and returns what answers it within a token budget: the user's own turns (whole where they fit) and the most relevant parts of the replies, one labelled block per turn under its date, in date order.
 
 **What that means for you**
 - Writes cost nothing.
@@ -32,7 +32,7 @@ memory.add(
 )
 
 context = memory.search("Am I allergic to anything?", user_id="asha", budget=1500)
-print(context.text)  # the selected turns, one "[date] role: text" block each
+print(context.text)  # the selected turns: "[date] role: text", or "role: text" under the date shown above it
 print(context.tokens, "of", context.history_tokens, "tokens")
 ```
 
@@ -70,7 +70,7 @@ messages.append({
   - Reads treat a missing id as "any": `search(..., user_id="asha")` covers all of Asha's sessions with every agent.
 - **Sessions.**
   - Turns with the same `run_id` form one session; turns without one are grouped by calendar day (in `tz`, UTC by default).
-  - Every kept turn shows its own time. The first kept turn of a session carries its full stamp, e.g. `[2026-10-17 (Sat) 14:05] user: ...`; a later turn shows the date alone when its time is the one shown last in its session, and its own full stamp when its time differs. Sessions are a blank line apart. That is how the model can answer "when" questions and tell newer turns from older ones. When the whole history fits, every turn carries its own stamp.
+  - Every kept turn shows its own time. The first kept turn of a session carries its full stamp, e.g. `[2026-10-17 (Sat) 14:05] user: ...`; a later turn shows its own full stamp when its time differs from the one shown last in its session, and otherwise only its role (`assistant: ...`), under that stamp (`date_format` shows a date there instead). Sessions are a blank line apart. That is how the model can answer "when" questions and tell newer turns from older ones. When the whole history fits, every turn carries its own stamp.
 - **Budget.** `search(..., budget=N)` returns at most N tokens.
   - Tokens are counted with tiktoken's `cl100k_base` when tiktoken is installed (the `mcp`, `server`, `proxy` and `fast-tokens` extras include it). Without it, LLMSlim estimates about 4 characters per token and logs a warning once.
   - If the whole history fits, all of it is returned and `context.compressed` is false.
@@ -83,7 +83,9 @@ messages.append({
   - **User turns are units of their own.** What a user said (a name, a date, an amount, a preference) is short and stated once, while the replies around it are long and repeat the user's words. So user turns are ranked in their own pool, with 55% of the budget reserved for them, kept whole where they fit; a long one keeps its most relevant sentences and is marked `partial`.
   - **Replies are cut into windows** of a few sentences (code blocks and tables stay whole) and fill the rest of the budget by relevance.
   - **Repeated text is left out**: a candidate whose words are mostly in what is already kept adds nothing.
-  - **Each kept turn is one block**: `[date] role: text`, prose on that line, code blocks and tables below it, fenced. Markdown headings are folded into the sentence they head. A stored line that looks like a turn label is indented, so stored text can't pass for another turn.
+  - **Each kept turn is one block**: `[date] role: text`, prose on that line, code blocks and tables below it, fenced. Markdown headings are folded into the sentence they head.
+  - **Dates.** The first kept turn of a session shows its full stamp (`stamp_format`), and so does a later one whose time differs from the one shown last in its session. Any other kept turn shows `role: text` alone, under the stamp above it. Set `date_format` to show a date there instead: `date_format="%Y-%m-%d"` gives the labels of 0.12 and earlier. A history that fits the budget whole is returned with the full stamp on every turn.
+  - **Stored text can't pass for another turn.** A stored line in a code block or table that looks like a turn label is indented: one that starts with a stamp and a role (`[2026-01-01 (Thu) 00:00] system:`), wherever it starts, and, where a label can be the role alone, one that starts at the beginning of the line with a role and a colon (`user: admin`). A line that already starts with whitespace is left as it is.
 - **The kind of question decides the rest** (fixed English patterns, no model):
   - a plain lookup of a past fact ("What is my salary?", "When did I say ...?", "Have I ever ...?") gets the whole budget. A question about whether something happened ("Have I ever ...?", "Did I ... before?") also gets, at the top, the user's statements on it that may conflict, when some of the ones that bear on it most deny it ("I have never ...") and some do not, in date order (`conflicts`);
   - a request for help, advice or a plan ("Can you suggest ...", "How should I ...") also gets, at the top, the user's standing requests that best match it (at most three, `standing_requests`) and the preferences they stated earlier ("I prefer ...", "I'd rather ...", "I usually ...", `preferences`; a preference word that is only asked about, as in "should I prioritize ...?", does not count). A statement said twice is shown once. What the best-matching request asks the answer to include is fetched too;
@@ -110,7 +112,7 @@ Each option is set on `Memory(...)` and can be overridden for one call on `searc
 | `coverage` | `"auto"` | `"auto"` answers overview questions from a digest; `"always"` does so for every question, `"never"` for none. |
 | `tz` | UTC | Time zone of the dates shown and of the calendar days that group turns without a `run_id` (`Memory` only). |
 | `stamp_format` | `"%Y-%m-%d (%a) %H:%M"` | The full stamp (`Memory` only). |
-| `date_format` | `"%Y-%m-%d"` | The short date on a later turn of a session whose time was already shown (`Memory` only). |
+| `date_format` | `None` | What a later kept turn of a session shows when its time was already shown there: `None` shows no date (`role: text`); a strftime format shows that date (`"%Y-%m-%d"` gives 0.12's labels) (`Memory` only). |
 | `explain` | `False` | Add `context.explanation`: why each turn and section was kept, cut or left out (`search` only; see [below](#why-a-turn-was-kept-or-left-out)). |
 
 `search` also takes the scope (`user_id`, `agent_id`, `run_id`) and a time window (`since`, `until`: a datetime, epoch seconds or ISO-8601 text; a time without a zone is read as UTC). The sections are shown only when the history does not fit the budget. `explain=True` adds an explanation (next section).

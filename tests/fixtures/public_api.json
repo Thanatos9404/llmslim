@@ -196,10 +196,23 @@
         "--budget": {},
         "--db": {},
         "--host": {},
+        "--memory-budget": {
+          "status": "experimental"
+        },
         "--new-key": {
           "flag": true
         },
-        "--port": {}
+        "--port": {},
+        "--store-only": {
+          "flag": true,
+          "status": "experimental"
+        },
+        "--upstream-timeout": {
+          "status": "experimental"
+        },
+        "--upstream-url": {
+          "status": "experimental"
+        }
       },
       "status": "stable"
     },
@@ -276,9 +289,20 @@
     "LLMSLIM_PROXY_DB",
     "LLMSLIM_PROXY_UPSTREAM",
     "LLMSLIM_RERANK_MODEL",
+    "LLMSLIM_UPSTREAM_API_KEY",
+    "LLMSLIM_UPSTREAM_URL",
     "LLMSLIM_USER_ID"
   ],
   "http": {
+    "experimental_routes": {
+      "/v1/chat/completions": [
+        "POST"
+      ],
+      "/v1/models": [
+        "GET",
+        "HEAD"
+      ]
+    },
     "routes": {
       "/healthz": [
         "GET",
@@ -4080,9 +4104,29 @@
     },
     "llmslim.server": {
       "names": {
+        "ChatUpstream": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "api_key": "attribute: Optional[str]",
+            "base": "property",
+            "connect_timeout": "attribute: float",
+            "max_messages": "attribute: int",
+            "memory_budget": "attribute: int",
+            "read_timeout": "attribute: float",
+            "recall": "attribute: bool",
+            "store": "attribute: bool",
+            "transport": "attribute: Any",
+            "url": "attribute: str"
+          },
+          "signature": "(url: str, api_key: Optional[str] = None, memory_budget: int = 1000, recall: bool = True, store: bool = True, connect_timeout: float = 10.0, read_timeout: float = 120.0, max_messages: int = 1000, transport: Any = None) -> None",
+          "status": "experimental"
+        },
         "create_app": {
           "kind": "function",
-          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000, allowed_hosts: Optional[Sequence[str]] = None) -> Any",
+          "signature": "(memory: Memory, *, api_keys: Sequence[str] = (), max_body_bytes: int = 1000000, max_budget: int = 100000, allowed_hosts: Optional[Sequence[str]] = None, chat: Optional[ChatUpstream] = None) -> Any",
           "status": "stable"
         },
         "main": {

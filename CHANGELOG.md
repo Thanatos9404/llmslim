@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llmslim serve`:
   - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_MCP_API_KEYS`), compared in constant
     time against every key. `llmslim serve`'s `LLMSLIM_API_KEYS` reach every user, so they are not read, and a key
-    in both gets a warning. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never logged
-    or echoed. Without a key, the server refuses any interface but loopback;
+    in both gets a warning. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never
+    logged or echoed. Without a key, the server refuses any interface but loopback;
   - without a key, it answers only requests addressed to this machine by name that no other web page sent, so DNS
     rebinding and cross-site requests get a 403. `--allowed-host` and `LLMSLIM_ALLOWED_HOSTS` add names, or pin them
     on a server with keys;
@@ -38,6 +38,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stdio stays the default and is unchanged; the HTTP options are refused with it. `docs/MCP.md` shows the setup
   behind TLS, the client configuration for Claude Code, VS Code and Cursor, and who can read whose memory. The HTTP
   transport is experimental in its first release (`docs/API_STABILITY.md`).
+- **An OpenAI-compatible chat endpoint in `llmslim serve` that adds memory to any client (experimental).** Start the
+  server with `--upstream-url` (an OpenAI-compatible base URL) and the upstream's key in `LLMSLIM_UPSTREAM_API_KEY`,
+  and `POST /v1/chat/completions` works with any client that takes an OpenAI base URL: the OpenAI SDKs, and voice
+  platforms with a custom LLM setting. `docs/SERVER.md` has curl, SDK and voice-platform examples.
+  - **Scope** comes from `X-LLMSlim-User-Id` (or the request's `user` field), `X-LLMSlim-Agent-Id` and
+    `X-LLMSlim-Session-Id`. Without a user or agent id, memory is not touched and the request passes through.
+  - **Recall:** the latest user message searches the user's memory within `--memory-budget` tokens (default 1000),
+    and what it finds goes in one user message just before that message, framed as data in an untrusted
+    `<llmslim_context>` block. Turns the request already carries are left out. Nothing the client sent is edited or
+    reordered, but the recalled message isn't in the history the client re-sends, so each request misses the prompt
+    cache on its last turn. `--store-only` (or `X-LLMSlim-Memory: store-only`) keeps every request byte-identical.
+  - **Storage:** after a successful answer, the new user turn and the reply's text are stored word for word, once.
+    Nothing is stored when the upstream fails or a stream breaks off. When the client goes away mid-stream (a voice
+    caller talking over the reply), the user turn is stored without the reply, and a retry of that request within 10
+    minutes doesn't store it again.
+  - **Streams** pass through chunk by chunk. The upstream connection is closed however a stream ends.
+  - **Security:** the upstream is fixed by the server, so no request field or header can redirect it, and redirects
+    are not followed. The client's key is never forwarded, and the upstream's key never reaches answers, errors or
+    logs. Memory failures never fail the call.
+  - `GET /v1/models` lists the upstream's models. The `server` extra now installs httpx.
 - **`Memory.search(..., explain=True)` says why each turn was kept, cut or left out.** The context carries an
   `explanation` (`SearchExplanation`), built from what the search decided:
   - for every stored turn of the scope, those outside the time window included: its pool, `status` (`kept`,

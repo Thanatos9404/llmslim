@@ -40,7 +40,6 @@ export async function consume(db: AnyPgDatabase, key: string, rule: Rule, now: n
       window_start = case when rate_limit.window_start + rate_limit.window_seconds * 1000 <= ${now} then ${now} else rate_limit.window_start end,
       window_seconds = case when rate_limit.window_start + rate_limit.window_seconds * 1000 <= ${now} then ${rule.window} else greatest(rate_limit.window_seconds, ${rule.window}) end
     returning count, window_start, window_seconds`)
-  if (Math.random() < 0.01) void prune(db, now).catch(() => undefined)
   return decide(rowsOf(result)[0], rule.max, now)
 }
 
@@ -53,7 +52,7 @@ export async function peek(db: AnyPgDatabase, key: string, rule: Rule, now: numb
   return decide({ ...row, count: Number(row.count) + 1 }, rule.max, now)
 }
 
-/** Drops counters whose window ended more than an hour ago. */
+/** Drops counters whose window ended more than an hour ago. The accounts clean-up (housekeeping.ts) runs it. */
 export async function prune(db: AnyPgDatabase, now: number = Date.now()): Promise<void> {
   await db.execute(sql`delete from rate_limit where window_start + window_seconds * 1000 < ${now - 3_600_000}`)
 }

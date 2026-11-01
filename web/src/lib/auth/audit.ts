@@ -6,7 +6,6 @@
  * best effort: a failed audit write is logged and never blocks sign-in.
  */
 import { createHmac } from "node:crypto"
-import { sql } from "drizzle-orm"
 import { authEvent } from "@/db/schema"
 import type { AnyPgDatabase } from "./rate-limit-store"
 
@@ -68,9 +67,6 @@ export async function recordAuthEvent(db: AnyPgDatabase, secret: string, input: 
       ipHash: ip ? hashIdentifier(secret, "ip", ip) : null,
       userAgent: truncateUserAgent(input.headers?.get("user-agent")),
     })
-    if (Math.random() < 0.005) {
-      await db.execute(sql`delete from auth_event where created_at < now() - make_interval(days => ${AUDIT_RETENTION_DAYS})`)
-    }
   } catch (error) {
     console.error(`[accounts] could not record the ${input.type} audit event:`, error instanceof Error ? error.message : "unknown error")
   }

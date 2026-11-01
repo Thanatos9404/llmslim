@@ -91,7 +91,7 @@ export const ARTICLES_REGISTRY: Record<string, DeepArticle> = {
         id: "keep-apart",
         title: "5. Keep memories apart",
         content: "By default every server reads and writes `~/.llmslim/memory.db` for the user `default`. Pass flags after `llmslim mcp` (for example `claude mcp add llmslim -- llmslim mcp --agent-id api-repo`) to keep memories apart. The user and agent ids are fixed when the server starts and no tool takes them as arguments, so text injected into a conversation can't make the server read or delete another user's memory.",
-        tableData: { headers: ["Flag", "Environment variable", "Default", "What it does"], rows: [["--db PATH", "LLMSLIM_MEMORY_DB", "~/.llmslim/memory.db", "The SQLite file for the memory, or a postgresql:// URL"], ["--user-id ID", "LLMSLIM_USER_ID", "default", "Whose memory this server holds"], ["--agent-id ID", "LLMSLIM_AGENT_ID", "none", "Optionally, the agent, so each agent keeps its own memory"], ["--budget N", "", "2000", "The default token budget for recall"]] },
+        tableData: { headers: ["Flag", "Environment variable", "Default", "What it does"], rows: [["--db PATH", "LLMSLIM_MEMORY_DB", "~/.llmslim/memory.db", "The SQLite file for the memory, or a postgresql://, mongodb:// or mongodb+srv:// URL"], ["--user-id ID", "LLMSLIM_USER_ID", "default", "Whose memory this server holds"], ["--agent-id ID", "LLMSLIM_AGENT_ID", "none", "Optionally, the agent, so each agent keeps its own memory"], ["--budget N", "", "2000", "The default token budget for recall"]] },
       },
       {
         id: "forget",
@@ -170,7 +170,7 @@ export const ARTICLES_REGISTRY: Record<string, DeepArticle> = {
       {
         id: "where-it-runs",
         title: "7. Where the data lives",
-        content: "By default the memory is a SQLite file on your machine (`~/.llmslim/memory.db`); a team can point it at its own Postgres instead. The package sends nothing to us and has no telemetry. Two things do reach the network: running through `uvx` downloads the package from PyPI the first time, and the tokenizer downloads one encoding file the first time and caches it.",
+        content: "By default the memory is a SQLite file on your machine (`~/.llmslim/memory.db`); a team can point it at its own Postgres or MongoDB (Atlas included) instead. The package sends nothing to us and has no telemetry. Two things do reach the network: running through `uvx` downloads the package from PyPI the first time, and the tokenizer downloads one encoding file the first time and caches it.",
       },
       {
         id: "try-it",

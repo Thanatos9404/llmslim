@@ -907,7 +907,7 @@ asyncio.run(main())` },
       explanation: "recall kept the one message that answers the question, 30 of the 113 tokens stored, and labelled it as data. The date is when the message was stored.",
     },
     options: [
-      { name: "--db", defaultValue: "~/.llmslim/memory.db", meaning: "The SQLite file that holds the memory. Also LLMSLIM_MEMORY_DB." },
+      { name: "--db", defaultValue: "~/.llmslim/memory.db", meaning: "The SQLite file that holds the memory, or a postgresql://, mongodb:// or mongodb+srv:// URL. Also LLMSLIM_MEMORY_DB." },
       { name: "--user-id", defaultValue: "\"default\"", meaning: "Whose memory this server holds. Also LLMSLIM_USER_ID." },
       { name: "--agent-id", defaultValue: "none", meaning: "Optionally, the agent, so each agent keeps its own memory. Also LLMSLIM_AGENT_ID." },
       { name: "--budget", defaultValue: "2000", meaning: "Default token budget for recall." },
@@ -945,7 +945,7 @@ asyncio.run(main())` },
     tagline: "Long-term memory for AI SDK agents as tools, with no LLM writing your memory and nothing injected into the prompt.",
     description: "The llmslim npm package is a client for an llmslim serve server. Its llmslim/ai-sdk entry gives the model recall_memory and remember tools, and a middleware that saves each user message and reply. Messages are stored word for word and selected at read time within a token budget, so nothing is summarized or extracted into a wrong fact. Recalled memory reaches the model as a tool result, which your app keeps in its history like any other message.",
     installation: { packageManager: "npm", command: `npm install llmslim ai   # ai 7; the client alone has no dependencies` },
-    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file or Postgres). Call it from your backend: an API key gives access to every user's memory.",
+    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file, Postgres or MongoDB). Call it from your backend: an API key gives access to every user's memory.",
     setup: [
       { caption: "Start the memory server:", language: "bash", filename: "terminal", code: `pip install "llmslim[server]"
 llmslim serve          # http://127.0.0.1:8080; set LLMSLIM_API_KEYS to serve beyond localhost` },
@@ -979,7 +979,7 @@ const result = await generateText({
       { name: "budget", defaultValue: "the server's", meaning: "Most tokens recall_memory returns (memoryTools only)." },
       { name: "onError", defaultValue: "console.warn", meaning: "Called when saving fails; the model's answer is returned either way (memoryMiddleware only)." },
     ],
-    deploymentGuide: "Run llmslim serve next to your app (Docker image or pip), with an API key and Postgres when several instances share one memory. Create the client on your server, map your signed-in user to userId, and pass memoryTools and memoryMiddleware to generateText or streamText.",
+    deploymentGuide: "Run llmslim serve next to your app (Docker image or pip), with an API key and Postgres or MongoDB when several instances share one memory. Create the client on your server, map your signed-in user to userId, and pass memoryTools and memoryMiddleware to generateText or streamText.",
     optimizationTips: [
       "Let the model call recall_memory before answering anything that may depend on earlier conversations; the tool description says so.",
       "Keep the user's own words: remember stores text verbatim, and recall matches on words.",
@@ -1010,7 +1010,7 @@ const result = await generateText({
     tagline: "Long-term memory for Mastra agents as tools and an output processor, with no LLM writing your memory and nothing injected into the prompt.",
     description: "The llmslim npm package is a client for an llmslim serve server. Its llmslim/mastra entry gives a Mastra agent recall_memory and remember tools, and an output processor that saves each user message and reply. Messages are stored word for word and selected at read time within a token budget, so nothing is summarized or extracted into a wrong fact. Recalled memory reaches the model as a tool result, which stays in the agent's history like any other message.",
     installation: { packageManager: "npm", command: `npm install llmslim @mastra/core   # @mastra/core 1.11 or newer` },
-    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file or Postgres). Call it from your backend: an API key gives access to every user's memory.",
+    installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file, Postgres or MongoDB). Call it from your backend: an API key gives access to every user's memory.",
     setup: [
       { caption: "Start the memory server:", language: "bash", filename: "terminal", code: `pip install "llmslim[server]"
 llmslim serve          # http://127.0.0.1:8080; set LLMSLIM_API_KEYS to serve beyond localhost` },
@@ -1047,7 +1047,7 @@ export const assistant = new Agent({
       { name: "budget", defaultValue: "the server's", meaning: "Most tokens recall_memory returns (memoryTools only)." },
       { name: "onError", defaultValue: "console.warn", meaning: "Called when saving fails; the response is returned either way (memoryProcessor only)." },
     ],
-    deploymentGuide: "Run llmslim serve next to your Mastra server (Docker image or pip), with an API key and Postgres when several instances share one memory. On Mastra's server, auth.mapUserToResourceId sets MASTRA_RESOURCE_ID_KEY from the signed-in user, and a client can't override it.",
+    deploymentGuide: "Run llmslim serve next to your Mastra server (Docker image or pip), with an API key and Postgres or MongoDB when several instances share one memory. On Mastra's server, auth.mapUserToResourceId sets MASTRA_RESOURCE_ID_KEY from the signed-in user, and a client can't override it.",
     optimizationTips: [
       "List memoryProcessor after output processors that can stop or redact a reply: it saves what they leave.",
       "Let the agent call recall_memory before answering anything that may depend on earlier conversations; the tool description says so.",

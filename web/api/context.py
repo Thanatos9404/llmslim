@@ -232,7 +232,7 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def do_POST(self) -> None:  # noqa: N802
-        client = self.headers.get("x-forwarded-for", "").split(",")[0].strip() or "anonymous"
+        client = _shared.client_key(self.headers.get("x-forwarded-for", ""))
         if not _allow_request(client, time.monotonic()):
             self._respond(
                 429,

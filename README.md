@@ -50,7 +50,7 @@ The first start downloads LLMSlim and its dependencies. If a client gives up wai
 ```python
 from llmslim.memory import Memory
 
-mem = Memory("memory.db")  # a SQLite file; Memory("postgresql://...") with llmslim[postgres]
+mem = Memory("memory.db")  # a SQLite file; or "postgresql://..." (llmslim[postgres]), "mongodb://..." (llmslim[mongodb])
 mem.add([{"role": "user", "content": "I'm allergic to peanuts."}], user_id="asha")
 context = mem.search("Am I allergic to anything?", user_id="asha", budget=1500)
 print(context.text)  # put it in your prompt as data, not instructions
@@ -75,7 +75,7 @@ If LLMSlim is useful, a star helps others find it. Feedback is welcome in [issue
 ## What it does
 
 - **Five MCP tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
-- **Stores messages word for word** in SQLite or Postgres. Nothing is summarized or extracted on the way in.
+- **Stores messages word for word** in SQLite, Postgres or MongoDB. Nothing is summarized or extracted on the way in.
 - **Recalls within a token budget.** `recall` returns the stored messages that answer a question, under their dates
   and whole where they fit, within the budget you set. `fit_context` shrinks a long log or document to a budget.
 - **Fixes the scope at server start.** The user and agent ids are set when the server starts, not by the model, so a
@@ -212,7 +212,7 @@ isolated behind extras:
 ```bash
 pip install "llmslim[sarvam]"   # Sarvam provider (official sarvamai SDK)
 pip install "llmslim[zoho]"     # CRM and WorkDrive context sources
-pip install "llmslim[mongodb]"  # explicit memory and Atlas retrieval
+pip install "llmslim[mongodb]"  # MongoStore memory, explicit context memory and Atlas retrieval
 ```
 
 See the [architecture](docs/planning/ARCHITECTURE.md),
@@ -387,7 +387,7 @@ pip install "llmslim[neo4j]"
 # Read-only Zoho CRM and WorkDrive context sources
 pip install "llmslim[zoho]"
 
-# Explicit MongoDB context memory and Atlas retrieval
+# MongoDB: Memory("mongodb://...") keeps memory there, plus explicit context memory and Atlas retrieval
 pip install "llmslim[mongodb]"
 
 # LangChain, LlamaIndex and Haystack adapters
@@ -660,7 +660,9 @@ print(context.text)  # put it in the prompt as untrusted data
 
 It runs the pipeline behind the round-3 benchmarks. On Mem0's own LongMemEval questions, that pipeline (with its
 reranker) answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0. Coming from Mem0?
-`from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names. See
+`from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names, and `llmslim import mem0
+export.json` brings your memories along. `llmslim import` also reads Claude Code transcripts and ChatGPT and
+Claude.ai exports ([docs/IMPORT.md](docs/IMPORT.md)). See
 [docs/MEMORY.md](docs/MEMORY.md) for scopes, stores, evidence and limits, and the [1.0 roadmap](docs/roadmap/1.0.md).
 
 ### In Claude, Cursor or any MCP client
@@ -675,6 +677,8 @@ claude mcp add llmslim -- llmslim mcp
 - **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
 - **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
+- **Several machines:** `llmslim mcp --transport http` (0.13.0 and newer) serves the same memory over HTTP behind bearer
+  keys, so your laptop and desktop share it; see [docs/MCP.md](docs/MCP.md#share-one-memory-across-machines).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
 
 **One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.12.0" llmslim mcp`, so it needs

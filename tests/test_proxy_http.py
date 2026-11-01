@@ -19,6 +19,9 @@ except RuntimeError:  # starlette 1.x needs httpx2 for its test client
 from llmslim.proxy import ProxyStore  # noqa: E402
 from llmslim.proxy.app import create_proxy_app  # noqa: E402
 
+# The proxy answers only requests addressed to this machine, as Claude Code's are.
+LOCAL = "http://127.0.0.1:8787"
+
 
 def make_log(failures: int = 1, lines: int = 600) -> str:
     out = [f"tests/test_api.py::test_case_{i} PASSED" for i in range(lines)]
@@ -151,7 +154,7 @@ def proxy(upstream, store):
         upstream="https://api.example.test",
         transport=httpx.MockTransport(upstream.handler),
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         yield client
 
 
@@ -224,7 +227,7 @@ def test_upstream_errors_and_bodies_pass_through(store):
     app = create_proxy_app(
         store=store, upstream="https://api.example.test", transport=httpx.MockTransport(handler)
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         response = client.post("/v1/messages", json=request(), headers=HEADERS)
     assert response.status_code == 429 and response.headers["retry-after"] == "3"
     assert response.json()["error"]["type"] == "rate_limit_error"
@@ -241,7 +244,7 @@ def test_compressed_responses_pass_through_as_bytes(store):
     app = create_proxy_app(
         store=store, upstream="https://api.example.test", transport=httpx.MockTransport(handler)
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         response = client.get("/v1/models")
     assert response.json() == {"ok": True}
 
@@ -257,7 +260,7 @@ def test_a_failed_rewrite_forwards_the_original(store, upstream, monkeypatch):
         transport=httpx.MockTransport(upstream.handler),
     )
     body = request(bash_call("c1"), result("c1", make_log()))
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         assert client.post("/v1/messages", json=body, headers=HEADERS).status_code == 200
     assert json.loads(upstream.requests[-1].content) == body
 
@@ -269,9 +272,75 @@ def test_unreachable_upstream_is_a_clear_502(store):
     app = create_proxy_app(
         store=store, upstream="https://api.example.test", transport=httpx.MockTransport(handler)
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         response = client.post("/v1/messages", json=request(), headers=HEADERS)
     assert response.status_code == 502 and "could not reach" in response.json()["error"]["message"]
+
+
+# ---------------------------------------------------------------- security (1.0 audit)
+
+
+def test_dns_rebinding_and_cross_site_requests_never_reach_the_upstream(proxy, upstream):
+    # A page on attacker.example rebound to 127.0.0.1 sends its own Host; a cross-site POST carries its Origin.
+    for headers in (
+        {"Host": "attacker.example:8787"},
+        {"Host": "10.0.0.5:8787"},
+        {"Origin": "https://attacker.example"},
+        {"Origin": "null"},
+    ):
+        response = proxy.post("/v1/messages", json=request(), headers={**HEADERS, **headers})
+        assert response.status_code == 403, headers
+        assert response.json()["error"]["type"] == "permission_error"
+    assert upstream.requests == []
+    # Claude Code sends no Origin and addresses the proxy by its loopback address.
+    for host in ("127.0.0.1:8787", "localhost:8787", "[::1]:8787"):
+        response = proxy.post("/v1/messages", json=request(), headers={**HEADERS, "Host": host})
+        assert response.status_code == 200, host
+
+
+def test_the_upstream_is_fixed_whatever_the_path(upstream, store):
+    app = create_proxy_app(
+        store=store,
+        upstream="https://api.example.test",
+        transport=httpx.MockTransport(upstream.handler),
+    )
+    with TestClient(app, base_url=LOCAL, raise_server_exceptions=False) as client:
+        for path in (
+            "/@evil.example/v1/models",
+            "/..%2F..%2Fv1/models",
+            "/v1/models?u=http://evil",
+        ):
+            client.get(path, headers=HEADERS)
+        # A path httpx can't send is a clean 400, not a 500.
+        bad = client.get("/%2F%2Fevil.example/v1/models", headers=HEADERS)
+    assert bad.status_code == 400 and bad.json()["error"]["type"] == "invalid_request_error"
+    assert {r.url.host for r in upstream.requests} == {"api.example.test"}
+    # The client's key goes to the configured upstream only.
+    assert all(r.headers["x-api-key"] == "sk-test" for r in upstream.requests)
+
+
+def test_allowed_hosts_and_remote_binding(store, upstream, monkeypatch):
+    app = create_proxy_app(
+        store=store,
+        upstream="https://api.example.test",
+        transport=httpx.MockTransport(upstream.handler),
+        allowed_hosts=["host.docker.internal"],
+    )
+    with TestClient(app, base_url="http://host.docker.internal:8787") as client:
+        assert client.post("/v1/messages", json=request(), headers=HEADERS).status_code == 200
+    from llmslim.proxy import cli
+
+    monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
+    monkeypatch.delenv("LLMSLIM_PROXY_UPSTREAM", raising=False)
+    made = {}
+    monkeypatch.setattr(cli, "create_proxy_app", lambda **kwargs: made.update(kwargs))
+    monkeypatch.setattr("uvicorn.run", lambda *args, **kwargs: None)
+    cli.main(["--db", ":memory:"])
+    assert made["allowed_hosts"] == []
+    cli.main(["--db", ":memory:", "--host", "0.0.0.0", "--allow-remote"])
+    assert made["allowed_hosts"] == ["*"]
+    cli.main(["--db", ":memory:", "--host", "0.0.0.0", "--allow-remote", "--allowed-host", "box"])
+    assert made["allowed_hosts"] == ["box"]
 
 
 # ---------------------------------------------------------------- the command line

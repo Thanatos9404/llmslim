@@ -10,7 +10,7 @@ import { isPasswordCompromised } from "better-auth/plugins/haveibeenpwned"
 import { account, session as sessionTable } from "@/db/schema"
 import { recordAuthEvent } from "@/lib/auth/audit"
 import { getAuthConfig } from "@/lib/auth/config"
-import { passwordChangedMail, sendMail } from "@/lib/auth/email"
+import { greetingName, passwordChangedMail, sendMail } from "@/lib/auth/email"
 import { GENERIC_ERROR, REAUTH_MESSAGE } from "@/lib/auth/messages"
 import { consume } from "@/lib/auth/rate-limit-store"
 import { rateLimitMessage } from "@/lib/auth/rate-limits"
@@ -74,7 +74,7 @@ export async function setPasswordAction(newPassword: unknown): Promise<ActionRes
   }
   await recordAuthEvent(context.db, config.secret ?? "", { type: "password_set", userId, headers: context.requestHeaders })
   try {
-    await sendMail(config.email, passwordChangedMail(context.current.user.email, context.current.user.name, `${config.baseURL}/forgot-password`, "added"))
+    await sendMail(config.email, passwordChangedMail(context.current.user.email, greetingName(context.current.user), `${config.baseURL}/forgot-password`, "added"))
   } catch {
     // A notice, not a requirement.
   }

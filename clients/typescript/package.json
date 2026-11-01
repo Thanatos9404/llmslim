@@ -1,7 +1,7 @@
 {
   "name": "llmslim",
   "version": "0.1.0",
-  "description": "Long-term memory and context fitting for AI agents, with no LLM in the loop: the client for llmslim serve, with Vercel AI SDK tools.",
+  "description": "Long-term memory and context fitting for AI agents, with no LLM in the loop: the client for llmslim serve, with Vercel AI SDK and Mastra integrations.",
   "license": "MIT",
   "author": "Yashvardhan Thanvi",
   "homepage": "https://llmslim.app",
@@ -17,6 +17,7 @@
     "agents",
     "context",
     "ai-sdk",
+    "mastra",
     "mem0",
     "claude",
     "openai"
@@ -30,6 +31,10 @@
     "./ai-sdk": {
       "types": "./dist/ai-sdk.d.ts",
       "import": "./dist/ai-sdk.js"
+    },
+    "./mastra": {
+      "types": "./dist/mastra.d.ts",
+      "import": "./dist/mastra.js"
     }
   },
   "files": [
@@ -47,15 +52,20 @@
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
+    "@mastra/core": ">=1.11.0 <2",
     "ai": ">=7.0.0 <8"
   },
   "peerDependenciesMeta": {
+    "@mastra/core": {
+      "optional": true
+    },
     "ai": {
       "optional": true
     }
   },
   "devDependencies": {
     "@ai-sdk/provider": "4.0.29",
+    "@mastra/core": "1.78.0",
     "@types/node": "22.20.5",
     "ai": "7.0.143",
     "typescript": "5.9.3",

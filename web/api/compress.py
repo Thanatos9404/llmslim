@@ -266,8 +266,7 @@ class handler(BaseHTTPRequestHandler):
     def _client_key(self) -> str:
         # Vercel forwards the client chain. The conservative fallback limits
         # anonymous traffic even when a platform does not provide this header.
-        forwarded = self.headers.get("x-forwarded-for", "")
-        return forwarded.split(",")[0].strip() or "anonymous"
+        return _shared.client_key(self.headers.get("x-forwarded-for", ""))
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(HTTPStatus.NO_CONTENT)

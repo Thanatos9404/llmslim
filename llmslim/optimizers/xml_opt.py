@@ -39,8 +39,14 @@ def optimize_xml(text: str, target_ratio: float = 0.5) -> Optional[str]:
         target_ratio: Target fraction of tokens to retain.
 
     Returns:
-        Optimised XML string, or ``None`` if parsing fails.
+        Optimised XML string, or ``None`` if parsing fails or the text declares an entity.
     """
+    # Entity declarations are what entity-expansion bombs ("billion laughs", quadratic blowup) are made of, and they
+    # can only be written in the text itself: ElementTree never loads an external DTD. Refusing them makes those
+    # bombs impossible on any expat. Recent expat (2.4.1+) also limits amplification itself; older ones that some
+    # Pythons are built with do not. Prompts have no use for them: such text is compressed as plain text instead.
+    if "<!ENTITY" in text:
+        return None
     try:
         root = ET.fromstring(text)
     except Exception:

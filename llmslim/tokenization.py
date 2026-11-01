@@ -105,21 +105,31 @@ def _protect_code_blocks(text: str) -> Tuple[str, List[str], List[str]]:
     return protected, blocks, inline
 
 
+_INLINE_PLACEHOLDER = re.compile("\x00INLINE([0-9]+)\x00")
+_BLOCK_PLACEHOLDER = re.compile("\x00BLOCK([0-9]+)\x00")
+
+
 def _restore_code_blocks(sentences: List[str], blocks: List[str], inline: List[str]) -> List[str]:
-    """Restore fenced-block and inline-span placeholders to their originals."""
+    """Restore fenced-block and inline-span placeholders to their originals.
+
+    One pass per namespace, inline spans first: an inline span can enclose a fenced-block placeholder
+    (a fence between backticks on one line), which the second pass then restores. Looking for every
+    placeholder in every sentence in turn took time quadratic in the number of code spans, so a text of
+    nothing but backticks could hold a CPU for minutes.
+    """
+    spans = {str(i): span for i, span in enumerate(inline)}
+    fenced = {str(i): block for i, block in enumerate(blocks)}
     restored = []
     for sentence in sentences:
-        # Restore inline spans first, then fenced blocks.  Order does not
-        # matter for correctness because the placeholder namespaces are
-        # disjoint, but doing inline first keeps short substitutions cheap.
-        for i, span in enumerate(inline):
-            placeholder = f"\x00INLINE{i}\x00"
-            if placeholder in sentence:
-                sentence = sentence.replace(placeholder, span)
-        for i, block in enumerate(blocks):
-            placeholder = f"\x00BLOCK{i}\x00"
-            if placeholder in sentence:
-                sentence = sentence.replace(placeholder, block)
+        if "\x00" in sentence:
+            if spans:
+                sentence = _INLINE_PLACEHOLDER.sub(
+                    lambda m: spans.get(m.group(1), m.group(0)), sentence
+                )
+            if fenced:
+                sentence = _BLOCK_PLACEHOLDER.sub(
+                    lambda m: fenced.get(m.group(1), m.group(0)), sentence
+                )
         restored.append(sentence)
     return restored
 

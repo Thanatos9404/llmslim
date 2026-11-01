@@ -197,3 +197,33 @@ def test_privacy_page_lists_every_analytics_event() -> None:
     assert events == set(described), "describe new analytics events on the privacy page"
     for event, phrase in described.items():
         assert phrase in privacy, event
+
+
+def test_client_key_counts_an_ipv6_client_by_its_64() -> None:
+    key = shared.client_key
+    assert key("198.51.100.23") == key("198.51.100.23, 10.0.0.1") == "198.51.100.23"
+    assert key("198.51.100.23") != key("198.51.100.24")
+    assert key("::ffff:198.51.100.23") == "198.51.100.23"
+    # Changing the interface identifier, which any IPv6 subscriber can do per request, is the same client.
+    assert key("2001:db8:1:2::1") == key("2001:db8:1:2:ffff:ffff:ffff:fffe") == "2001:db8:1:2::/64"
+    assert key("2001:db8:1:2::1") != key("2001:db8:1:3::1")
+    for junk in ("", "not an address", "unknown", "1.2.3.4.5"):
+        assert key(junk) == "anonymous"
+
+
+@pytest.mark.parametrize("name", ["studio", "compress", "plan", "context"])
+def test_rotating_ipv6_addresses_does_not_reset_the_rate_limit(
+    name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = MODULES[name]
+    monkeypatch.setattr(module, "_request_windows", module._request_windows.__class__(deque))
+    limit = module.RATE_LIMIT_MAX_REQUESTS
+    statuses = []
+    for host in range(limit + 1):
+        status, _ = post(module, b"{}", {"x-forwarded-for": f"2001:db8:aa:bb::{host + 1:x}"})
+        statuses.append(status)
+    assert 429 not in statuses[:limit]
+    assert statuses[limit] == 429
+    # Another /64 is another client.
+    status, _ = post(module, b"{}", {"x-forwarded-for": "2001:db8:aa:cc::1"})
+    assert status != 429

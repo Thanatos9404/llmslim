@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from llmslim.memory import InMemoryStore, Memory, PostgresStore, SQLiteStore, _turns
+from llmslim.memory import InMemoryStore, Memory, MongoStore, PostgresStore, SQLiteStore, _turns
 from llmslim.memory._core import _reply_lead, _request_terms
 from llmslim.memory._routing import ADVICE, LOOKUP, OTHER, OVERVIEW, PREFERENCE, route
 from llmslim.tokens import count_tokens
@@ -22,7 +22,12 @@ LABEL = re.compile(
     r"^\[(\d{4}-\d{2}-\d{2})(?: \(\w{3}\) \d{2}:\d{2})?\] (user|assistant|system|tool): ", re.M
 )
 POSTGRES_URL = os.environ.get("LLMSLIM_TEST_POSTGRES_URL")
-STORES = ["memory", "sqlite"] + (["postgres"] if POSTGRES_URL else [])
+MONGODB_URL = os.environ.get("LLMSLIM_TEST_MONGODB_URL")
+STORES = (
+    ["memory", "sqlite"]
+    + (["postgres"] if POSTGRES_URL else [])
+    + (["mongodb"] if MONGODB_URL else [])
+)
 
 
 def clock():
@@ -35,6 +40,20 @@ def memory(request, tmp_path):
         return Memory(InMemoryStore(), clock=clock)
     if request.param == "sqlite":
         return Memory(SQLiteStore(tmp_path / "memory.db"), clock=clock)
+    if request.param == "mongodb":
+        pymongo = pytest.importorskip("pymongo")
+        collection = f"llmslim_test_{uuid.uuid4().hex[:12]}"
+
+        def drop_collections():
+            with pymongo.MongoClient(MONGODB_URL) as client:
+                database = client.get_default_database("llmslim")
+                database.drop_collection(collection)
+                database.drop_collection(f"{collection}_meta")
+
+        mongo = MongoStore(MONGODB_URL, collection=collection)
+        request.addfinalizer(drop_collections)
+        request.addfinalizer(mongo.close)
+        return Memory(mongo, clock=clock)
     psycopg = pytest.importorskip("psycopg")
     table = f"llmslim_test_{uuid.uuid4().hex[:12]}"
 

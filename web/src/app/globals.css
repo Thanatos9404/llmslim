@@ -11,13 +11,15 @@
    The home hero's large type moves least with plain Arial, so it keeps that (see .p-hero). */
 @font-face { font-family: "Geist Fallback"; src: local("Arial"), local("ArialMT"); size-adjust: 104%; ascent-override: 96.63%; descent-override: 28.37%; line-gap-override: 0%; unicode-range: U+0020-007E,U+00A0-00AC,U+00AE-00FF,U+0102,U+0131,U+0152-0153,U+02BC,U+02C6,U+02DA,U+02DC,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2191,U+2193,U+2212; }
 :root {
-  --background:#fbfbfa; --foreground:#141413; --card:#fafafa; --card-foreground:#16181d; --popover:#fff; --popover-foreground:#16181d; --primary:#17191e; --primary-foreground:#fff; --secondary:#f0f1f3; --secondary-foreground:#262830; --muted:#f1f2f4; --muted-foreground:#72747e; --accent:#edf0f5; --accent-foreground:#17191e; --destructive:#c33242; --border:#e6e7ec; --input:#dedfe4; --ring:#c2410c; --radius:.75rem;
-  --surface:#fbfbfa; --soft:#f4f4f2; --ink:#141413; --subtle:#6b6a65; --line:#e7e6e2; --brand:#c2410c; --header:#fbfbfadf; --art-shadow:#fbfbfa; --spotlight:#c2410c1a; --field-ink:#14141326; --field-hot:#c2410c; --tile:#ffffffcc; --pixel:#ecebe7;
+  --background:#fbfbfa; --foreground:#141413; --card:#fafafa; --card-foreground:#16181d; --popover:#fff; --popover-foreground:#16181d; --primary:#17191e; --primary-foreground:#fff; --secondary:#f0f1f3; --secondary-foreground:#262830; --muted:#f1f2f4; --muted-foreground:#72747e; --accent:#edf0f5; --accent-foreground:#17191e; --destructive:#c33242; --border:#e6e7ec; --input:#dedfe4; --ring:#007a52; --radius:.75rem;
+  --surface:#fbfbfa; --soft:#f4f4f2; --ink:#141413; --subtle:#6b6a65; --line:#e7e6e2; --brand:#007a52; --brand-blue:#2f67ee; --brand-violet:#4a3df0; --header:#fbfbfadf; --art-shadow:#fbfbfa; --spotlight:#007a521a; --field-ink:#14141326; --field-hot:#007a52; --tile:#ffffffcc; --pixel:#ecebe7;
+  --mark-left-0:#4A3DF0; --mark-left-1:#2F67EE; --mark-left-2:#1083E6; --mark-left-3:#00A98A; --mark-left-4:#00B26C; --mark-right-0:#00A894; --mark-right-1:#00AE82; --mark-right-2:#00AE82; --mark-right-3:#00AE82; --mark-right-4:#00B46E; --mark-end-0:#00B08C; --mark-end-1:#00B57A; --mark-end-2:#00B57A; --mark-end-3:#00B57A; --mark-end-4:#00B86C;
   --serif:"Instrument Serif",Georgia,serif; --mono:"Geist Mono",ui-monospace,SFMono-Regular,var(--mono);
 }
 .dark {
-  --background:#0b0b0a; --foreground:#ededea; --card:#111216; --card-foreground:#f0f1f4; --popover:#141519; --popover-foreground:#f0f1f4; --primary:#f2f3f5; --primary-foreground:#101115; --secondary:#1b1c22; --secondary-foreground:#ebecf0; --muted:#16171c; --muted-foreground:#8c8e99; --accent:#202129; --accent-foreground:#f0f1f4; --destructive:#f07882; --border:#25262d; --input:#303139; --ring:#ff7a3d;
-  --surface:#0b0b0a; --soft:#121211; --ink:#ededea; --subtle:#8f8e89; --line:#252523; --brand:#ff7a3d; --header:#0b0b0ae0; --art-shadow:#0b0b0a; --spotlight:#ff7a3d22; --field-ink:#ededea1f; --field-hot:#ff7a3d; --tile:#121211cc; --pixel:#171716;
+  --background:#0b0b0a; --foreground:#ededea; --card:#111216; --card-foreground:#f0f1f4; --popover:#141519; --popover-foreground:#f0f1f4; --primary:#f2f3f5; --primary-foreground:#101115; --secondary:#1b1c22; --secondary-foreground:#ebecf0; --muted:#16171c; --muted-foreground:#8c8e99; --accent:#202129; --accent-foreground:#f0f1f4; --destructive:#f07882; --border:#25262d; --input:#303139; --ring:#00f59b;
+  --surface:#0b0b0a; --soft:#121211; --ink:#ededea; --subtle:#8f8e89; --line:#252523; --brand:#00f59b; --brand-blue:#4f8cff; --brand-violet:#7c5cff; --header:#0b0b0ae0; --art-shadow:#0b0b0a; --spotlight:#00f59b22; --field-ink:#ededea1f; --field-hot:#00f59b; --tile:#121211cc; --pixel:#171716;
+  --mark-left-0:#5C50FD; --mark-left-1:#477BFD; --mark-left-2:#2A98FA; --mark-left-3:#00D0A8; --mark-left-4:#00E686; --mark-right-0:#04CDAD; --mark-right-1:#01DB9B; --mark-right-2:#01DB9B; --mark-right-3:#01DB9B; --mark-right-4:#00EA88; --mark-end-0:#00D9A2; --mark-end-1:#02E18F; --mark-end-2:#02E18F; --mark-end-3:#02E18F; --mark-end-4:#00E789;
 }
 @theme inline {
   --font-sans:"Geist","Geist Fallback",Arial,sans-serif;
@@ -35,7 +37,7 @@
 }
 .site-width { width:min(1120px,calc(100% - 96px)); margin-inline:auto; }
 .brand { display:inline-flex; align-items:center; gap:10px; font-size:24px; letter-spacing:-1px; font-weight:550; }
-.brand-slim { font-weight:400; }
+.brand-slim { color:var(--brand); }
 .brand-period { display:none; }
 .brand-symbol { display:inline-block; flex-shrink:0; width:36px; height:36px; background:url('/llmslim_logo.png') center / contain no-repeat; border-radius:9px; }
 .button svg,.text-link svg { transition:transform .25s; }
@@ -383,8 +385,8 @@ html:not(.dark) .ph-veil { background:radial-gradient(ellipse 80% 70% at 28% 42%
 .island { pointer-events:auto; position:relative; display:flex; align-items:center; gap:4px; width:min(1120px,calc(100vw - 28px)); height:56px; padding:0 8px 0 14px;
   background:var(--island-bg); border:1px solid var(--island-line); box-shadow:var(--island-shadow); backdrop-filter:blur(18px) saturate(170%); -webkit-backdrop-filter:blur(18px) saturate(170%); color:var(--ink); }
 .site-header[data-compact] .island { width:auto; }
-.brand { display:inline-flex; align-items:center; gap:9px; font-size:18px; letter-spacing:-.5px; font-weight:600; color:var(--ink); }
-.brand-slim { font-weight:400; }
+.brand { display:inline-flex; align-items:center; gap:9px; font-size:18px; letter-spacing:-.4px; font-weight:550; color:var(--ink); }
+.brand-slim { color:var(--brand); }
 .mark { flex-shrink:0; transition:transform .5s cubic-bezier(.2,.8,.2,1); }
 .island-brand { display:flex; align-items:center; height:40px; padding-right:6px; }
 .island-brand:hover .mark { transform:translateX(2px); }

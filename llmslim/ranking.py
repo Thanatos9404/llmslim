@@ -114,7 +114,9 @@ _CRITICAL_PATTERNS = [
     r"\bdo not\b",
     r"\bdon't\b",
     r"\bcritical\b",
-    r"^\s*(\d+[.)]|[-*+])\s",
+    # A list item: [^\S\n] (whitespace but not a line break), so the indent can't run across lines. With \s, every
+    # line start in a run of blank lines rescanned the rest of the run: quadratic time.
+    r"^[^\S\n]*(\d+[.)]|[-*+])\s",
     r"^(?:WARNING|CAUTION|IMPORTANT)\s*:",
     r"\byou are\b",
 ]
@@ -155,7 +157,7 @@ _MEDIUM_PRIORITY_PATTERNS = [
     r"\bYAML\b",
     r"\bmarkdown\b",
     r"\buse the (?:tool|function|API)\b",
-    r"^\s*(\d+[.)]|[-*+])\s",
+    r"^[^\S\n]*(\d+[.)]|[-*+])\s",
 ]
 _MEDIUM_PRIORITY_RE = re.compile("|".join(_MEDIUM_PRIORITY_PATTERNS), re.IGNORECASE | re.MULTILINE)
 

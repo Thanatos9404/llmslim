@@ -8,10 +8,12 @@ module is shared code, not a route.
   ``NaN``/``Infinity`` and lone surrogates that would fail later when encoded are all refused with a
   clean 400 or 422.
 - :func:`bound_windows` keeps the per-instance rate-limit tables from growing without bound.
+- :func:`client_key` names the client those tables count: its IPv4 address, or its IPv6 /64.
 """
 
 from __future__ import annotations
 
+import ipaddress
 import json
 from collections import deque
 from collections.abc import MutableMapping
@@ -99,3 +101,23 @@ def bound_windows(
         del windows[key]
     while len(windows) > limit:
         del windows[next(iter(windows))]
+
+
+def client_key(forwarded_for: str) -> str:
+    """The client a per-instance rate limit counts, from the first ``x-forwarded-for`` address.
+
+    An IPv4 address counts as itself. An IPv6 address counts as its /64: one subscriber usually
+    controls a whole /64, so a limit per address could be dodged by changing address on every
+    request. Anything that is not an address shares one ``"anonymous"`` bucket.
+    """
+
+    raw = forwarded_for.split(",", 1)[0].strip()
+    try:
+        address = ipaddress.ip_address(raw)
+    except ValueError:
+        return "anonymous"
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            return str(address.ipv4_mapped)
+        return str(ipaddress.IPv6Network(f"{address}/64", strict=False).network_address) + "/64"
+    return str(address)

@@ -266,6 +266,16 @@ npm run test:e2e` (Playwright; needs a database at `E2E_DATABASE_URL`, default t
   than 180 days are deleted automatically.
 - **Account linking**: Google or GitHub attach to an existing account only when the provider says the
   email is verified and the existing account's email is verified too.
+- **Email that anyone can trigger is budgeted per inbox.** Verification links, reset links and "you
+  already have an account" notices count against one budget per mailbox: 5 an hour and 10 a day,
+  whichever form or sign-in attempt sent them. `name+tag@` and Gmail's dotted spellings count as the
+  same inbox. Over budget, the email is skipped, the form's answer does not change, and the audit
+  trail gets a `rate_limited` row with method `email:<kind>`. Notices only a signed-in user can
+  trigger (password changed, account deleted) are never skipped.
+- **Emails greet people by name only once their address is verified.** Before that, the name was
+  typed by whoever signed up, who may not own the address.
+- **Expired rows clean themselves up.** About 1 in 200 auth requests also deletes expired sessions and
+  expired verification values (email and reset tokens, OAuth state, passkey challenges).
 
 ## Operations
 
@@ -278,3 +288,9 @@ npm run test:e2e` (Playwright; needs a database at `E2E_DATABASE_URL`, default t
 - **Rate limits** are stored in the `rate_limit` table and need no maintenance. To unblock someone
   early, delete their rows (keys are hashed, so clear by time window:
   `delete from rate_limit where window_start > extract(epoch from now() - interval '1 hour') * 1000;`).
+  Email budgets are rows whose key starts with `mail|`; someone who asked for too many links in a day
+  can be unblocked with `delete from rate_limit where key like 'mail|%' and window_start > extract(epoch from now() - interval '1 day') * 1000;`
+  (this resets every inbox's budget, which is harmless).
+- **Reports of abuse or security issues** reach `support@llmslim.app` or GitHub's private advisory form,
+  both listed in `/.well-known/security.txt`. Renew its `Expires` date yearly; a unit test starts
+  failing two weeks before it lapses.

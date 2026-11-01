@@ -208,8 +208,7 @@ class handler(BaseHTTPRequestHandler):
         self._respond(status, {"error": {"code": code, "message": message}})
 
     def do_POST(self) -> None:  # noqa: N802
-        forwarded = self.headers.get("x-forwarded-for", "")
-        if not allow_request(forwarded.split(",")[0].strip() or "anonymous"):
+        if not allow_request(_shared.client_key(self.headers.get("x-forwarded-for", ""))):
             self._error(
                 HTTPStatus.TOO_MANY_REQUESTS,
                 "rate_limited",

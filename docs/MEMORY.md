@@ -93,7 +93,8 @@ messages.append({
   - `text`, ready for the prompt;
   - `turns`: each kept turn with its id, role, timestamp, metadata, a lexical overlap `score` and `partial` (true when only part of the turn was kept);
   - `requests`, `preferences` and `conflicts`: the user turns shown in those sections;
-  - token counts.
+  - token counts;
+  - with `explain=True`, `explanation`: why each turn was kept, cut or left out (see [below](#why-a-turn-was-kept-or-left-out)).
 
 ## Options
 
@@ -110,8 +111,108 @@ Each option is set on `Memory(...)` and can be overridden for one call on `searc
 | `tz` | UTC | Time zone of the dates shown and of the calendar days that group turns without a `run_id` (`Memory` only). |
 | `stamp_format` | `"%Y-%m-%d (%a) %H:%M"` | The full stamp (`Memory` only). |
 | `date_format` | `"%Y-%m-%d"` | The short date on a later turn of a session whose time was already shown (`Memory` only). |
+| `explain` | `False` | Add `context.explanation`: why each turn and section was kept, cut or left out (`search` only; see [below](#why-a-turn-was-kept-or-left-out)). |
 
-`search` also takes the scope (`user_id`, `agent_id`, `run_id`) and a time window (`since`, `until`: a datetime, epoch seconds or ISO-8601 text; a time without a zone is read as UTC). The sections are shown only when the history does not fit the budget.
+`search` also takes the scope (`user_id`, `agent_id`, `run_id`) and a time window (`since`, `until`: a datetime, epoch seconds or ISO-8601 text; a time without a zone is read as UTC). The sections are shown only when the history does not fit the budget. `explain=True` adds an explanation (next section).
+
+## Why a turn was kept or left out
+
+`search(..., explain=True)` returns the same context with `context.explanation`, a `SearchExplanation`. It says what the search did with every stored turn of the scope and every statement a section weighed.
+- **Nothing else changes.** The text, the turns and the token counts are the same as without it.
+- **It is off by default**, and then no extra work is done.
+
+```python
+context = memory.search("Where did I move to?", user_id="asha", budget=200, explain=True)
+for turn in context.explanation.turns:
+    print(turn.id, turn.status, turn.reason, turn.tokens, f"{turn.share:.1%}")
+
+data = context.explanation.to_dict()  # JSON-ready; SearchExplanation.from_dict reads it back
+```
+
+**What it holds**
+- **The call:**
+  - `mode`: `whole_history` (it fit, nothing was selected), `turns` (ranked by relevance) or `digest` (a summary from the opening of each turn);
+  - `route`: the kind of question;
+  - `budget` and `tokens`;
+  - `room`: what the sections left of the budget for turns;
+  - `user_room`: the part of it reserved for user turns;
+  - `user_turn_cap`: the most one user turn may take whole;
+  - `clipped`: whether the last resort cut the text to whole words.
+- **Every stored turn of the scope** (`turns`, oldest first, turns outside the time window included):
+  - its `session` and its `pool` (`user` or `reply`; system and tool turns are in the reply pool);
+  - `status`: `kept`, `clipped` (kept in part) or `dropped`, and the `reason`;
+  - `tokens`: what its block takes in the text, and `share`, that over the budget.
+- **Every candidate of a turn** (`turn.candidates`). A user turn is one candidate. A reply is cut into windows, each a candidate of its own. In a summary, a turn's opening is one. Each candidate has:
+  - its pool: `user`, `reply`, or `detail` (reply passages a summary keeps whole);
+  - `rank`: 1 is the first its pool tried;
+  - `score`: the relevance it was ranked by. Compare scores within a pool only;
+  - its own size in `tokens`, and its status and reason.
+- **The three sections** (`sections`: `requests`, `preferences` and `conflicts`):
+  - whether each is `shown`, and why not;
+  - its `cap`, the most of the budget its statements may take, and its tokens and share;
+  - every statement it weighed, best first. A statement the conflicts section weighed also has its `side`: `denies` or `affirms`.
+
+**The numbers add up.** Each block is counted on the returned text, with the line break after it. So the turns' and the sections' `tokens` add up to `tokens`, and their shares to `tokens / budget`. What is left over is `unattributed_tokens`:
+- with tiktoken it is 0;
+- with the 4-characters-per-token estimate, counting block by block can round a few tokens either way.
+
+**It names turns, not their text.** Turns are given by id, so an explanation can be logged or stored without the conversation in it.
+
+**Why a turn or a candidate was dropped.** When more than one reason applies, the explanation gives the one the search checked first: room before duplicates for turns, duplicates before room for section statements. A dropped reply gives the reason of its best-ranked window; each window has its own.
+
+| Reason | Meaning |
+|---|---|
+| `outside_window` | Stored before `since`, or at or after `until`. |
+| `over_budget` | It did not fit in the room left in the budget. |
+| `over_share` | It did not fit in the share of the budget its pool or section may take (`user_room`, a section's `cap`). |
+| `budget_full` | Never tried: fewer than 8 tokens of room were left when its turn came. |
+| `share_full` | Never tried: the share of a summary for whole reply passages was full. |
+| `duplicate` | Its words are almost all in text already kept. |
+| `dropped_at_fit` | Selected, then dropped because the exact count of the rendered text ran over the budget (the lowest-scored first). |
+| `detail_kept` | In a summary, a passage of the turn was kept whole, so its opening was not used. |
+| `no_candidate` | Nothing of the turn could be selected: in a summary, system and tool turns and replies with no prose. |
+| `clipped_at_end` | The last resort cut the text to whole words, and this block was after the cut. |
+
+**Why a turn was clipped:**
+
+| Reason | Meaning |
+|---|---|
+| `user_turn_cap` | A user turn longer than `user_turn_cap`: its most relevant sentences were kept. |
+| `windows` | Some of the reply's windows were kept and others were not. |
+| `opening` | In a summary, only the turn's opening (and a reply's outline) is shown. |
+| `last_resort` | Nothing fit whole, so the best candidate was cut to fit. |
+| `cut_at_fit` | The last candidate left was cut short to fit the exact count. |
+| `clipped_at_end` | The last-resort cut went through its block. |
+
+**Why a statement was left out of a section.** `duplicate`, `over_share` and `clipped_at_end` mean what they mean for turns. When the conflicts section is not shown, its reason (`no_match`, `no_disagreement`, `one_sided` or `nothing_fit`, below) is also given to the statements it was weighing. The others:
+
+| Reason | Meaning |
+|---|---|
+| `limit` | The section already had its most statements: 3 requests, 8 preferences. |
+| `per_side_limit` | Conflicts: there were already 2 statements on its side. |
+| `not_in_pool` | Conflicts: not among the 6 statements that bear on the question most, or under half the best one's score. |
+| `shown_as_request` | Preferences: its turn is already shown as a standing request. |
+
+**Why a section is not shown:**
+
+| Reason | Meaning |
+|---|---|
+| `history_fits` | The whole history fit, so there are no sections. |
+| `disabled` | Turned off with `standing_requests`, `preferences` or `conflicts`. |
+| `route` | This kind of question does not get the section (see [Concepts](#concepts)). |
+| `not_history_check` | Conflicts are weighed only for questions such as "Have I ever ...?". |
+| `no_candidates` | No user turn makes such a statement. |
+| `no_match` | Conflicts: nothing in the question to match the statements on. |
+| `no_disagreement` | Conflicts: the statements that bear on it most all deny it, or none does. |
+| `one_sided` | Conflicts: only statements of one side fit. |
+| `nothing_fit` | No statement fit. |
+| `clipped_at_end` | The last-resort cut removed it. |
+
+**Limits**
+- **Scores are the ranking's own numbers.** They compare within one pool, not across pools, calls or relevance settings.
+- **The last resort.** When the text is clipped (a budget smaller than one turn's label and a few words), `context.turns` lists a turn only when a whole sentence of it is left. The explanation counts every block the cut text reaches.
+- **A time window is read twice.** To name the turns it left out, the scope is read again without the window.
+- **Where it is available.** `llmslim serve` takes `"explain": true` on `POST /v1/memories/search`. The `recall` tool of `llmslim mcp` returns text for a model and does not explain.
 
 ## Network, models and first run
 
@@ -129,6 +230,7 @@ No LLM is called and no stored text is sent anywhere. What can touch the network
 | `InMemoryStore()` | tests and short-lived agents (the default for `Memory()`) |
 | `SQLiteStore(path)` | one file, Python's built-in `sqlite3`, safe across threads; `Memory("memory.db")` uses it |
 | `PostgresStore(url)` | Postgres 12+ (self-hosted, Supabase, Neon, RDS) through psycopg 3, for several processes or machines; `Memory("postgresql://...")` uses it. `pip install "llmslim[postgres]"` (0.11.0 or newer) |
+| `MongoStore(url)` | MongoDB 6.0+ (self-hosted standalone or replica set, or Atlas) through PyMongo, for several processes or machines; `Memory("mongodb://...")` and `Memory("mongodb+srv://...")` use it. `pip install "llmslim[mongodb]"` |
 
 A store only persists and lists turns. Any object with the `MemoryStore` methods (`add`, `list`, `get`, `update`, `delete`, `delete_scope`) works, so other databases can plug in without changing selection.
 
@@ -136,6 +238,48 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 - `PostgresStore` creates its table (`llmslim_memory`, or `table=...`) and a `<table>_meta` version table if they don't exist. It does this under an advisory lock, so several processes can start at once.
 - Pass a URL, and the store opens a small connection pool. You can pass your own `psycopg_pool.ConnectionPool`, or an autocommit `psycopg.Connection`, instead.
 - Times are stored as `TIMESTAMPTZ` and come back in UTC, whatever the session time zone.
+
+**MongoDB details:**
+- Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer). CI runs every memory test against MongoDB 6.0,
+  7.0 and 8.2, standalone and as a one-node replica set.
+- Pass a URL, and the store opens its own `MongoClient` and closes it in `close()`. You can pass your own
+  `pymongo.MongoClient` or `pymongo.database.Database` instead; `close()` leaves those open.
+  ```python
+  from llmslim.memory import Memory, MongoStore
+
+  memory = Memory("mongodb://llmslim:<password>@db.example.com:27017/llmslim?authSource=admin")
+  memory = Memory(MongoStore("mongodb://localhost:27017", database="myapp", collection="agent_memory"))
+  ```
+- **The database** is `database=...` when given, else the one named in the URL path, else `llmslim`. `admin`, `local`
+  and `config` are refused: to log in against `admin`, add `authSource=admin` to the URL and keep the memory in a
+  database of its own. One collection holds the turns (`llmslim_memory`, or `collection=...`); use one per application or tenant if
+  you like.
+- **Atlas:** use the `mongodb+srv://` URL from "Connect > Drivers", with the database in the path
+  (`mongodb+srv://user:<password>@cluster0.example.mongodb.net/llmslim?retryWrites=true&w=majority`). The database user
+  needs the `readWrite` role on that database, which includes creating indexes. Allow your server's IP address in
+  Atlas's network access list.
+- **What is stored:** one document per turn: `_id` (the turn's id), `seq`, `role`, `content`, `user_id`, `agent_id`,
+  `run_id`, `created_at` and `updated_at` as UTC dates, `created_at_us` and `updated_at_us` (the same times in
+  microseconds since 1970, which reads use, because a BSON date keeps only milliseconds), and `metadata`. Metadata is
+  a document when MongoDB can hold its keys as plain names. When a key starts with `$`, contains a `.`, is empty or
+  holds a NUL, or a number needs more than 64 bits, the metadata is stored as JSON text in `metadata_json` instead, so
+  MongoDB never reads it as an operator or a path. Either way it comes back as given. `<collection>_meta` holds the
+  schema version and the counter that orders turns.
+- **Indexes,** created when the store opens if they don't exist: one per scope field (`user_id`, `agent_id`,
+  `run_id`), each followed by `created_at_us` and `seq`, so a scope's turns come back in order from the index; and a
+  unique index on `seq`. Creating them again changes nothing, so several processes can start at once.
+- **Order and writes:** turns come back by time, then in the order they were added, as in every store. Each `add`
+  takes its order numbers from the counter in one atomic update, so writers in several processes never share one.
+  On a replica set or a sharded cluster (Atlas is always one), each `add` is one transaction: a batch is stored
+  whole or not at all, even if the connection drops partway, as on Postgres. A standalone server has no
+  transactions; there a batch that hits a duplicate id is undone, so it leaves nothing behind, but a connection lost
+  in the middle of a batch can leave part of it stored.
+- **Caller values are data:** ids and scope values must be strings and are matched with `$eq`, never built into a
+  query as text. Text that isn't valid Unicode (a lone surrogate) is refused with `UnicodeEncodeError` before anything
+  is stored, as in `SQLiteStore`. A turn over 16 MB (BSON's limit for one document) is refused with `ValueError`.
+- **Credentials:** the store never logs the URL, `repr(store)` shows only the database and collection, and an error
+  raised while opening the store has the URL's password and secret options (such as
+  `tlsCertificateKeyFilePassword`) removed.
 
 ## Coming from Mem0
 
@@ -155,6 +299,11 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
   - It takes a `budget` and maps `rerank=True` to the cross-encoder.
   - Filters other than `user_id`, `agent_id` and `run_id` raise instead of being ignored.
   - `expiration_date` and `reference_date` aren't supported and raise.
+
+**Bring your history.** `llmslim import mem0 export.json` stores each memory of a Mem0 export (what `get_all`
+returns) under its own `user_id`, `agent_id` and `run_id`, so the filters above find it where they did. The same
+command imports Claude Code transcripts, ChatGPT and Claude.ai data exports and JSONL chat logs, and running it again
+adds only what is new. See [IMPORT.md](IMPORT.md).
 
 ## Evidence
 

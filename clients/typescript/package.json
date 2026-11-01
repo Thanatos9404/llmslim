@@ -52,7 +52,7 @@
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
-    "@mastra/core": ">=1.11.0 <2",
+    "@mastra/core": ">=1.29.1 <2",
     "ai": ">=7.0.0 <8"
   },
   "peerDependenciesMeta": {

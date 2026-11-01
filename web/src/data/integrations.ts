@@ -1009,7 +1009,7 @@ const result = await generateText({
     slug: "mastra", name: "Mastra", iconKey: "mastra", category: "Framework", badgeText: "Memory tools",
     tagline: "Long-term memory for Mastra agents as tools and an output processor, with no LLM writing your memory and nothing injected into the prompt.",
     description: "The llmslim npm package is a client for an llmslim serve server. Its llmslim/mastra entry gives a Mastra agent recall_memory and remember tools, and an output processor that saves each user message and reply. Messages are stored word for word and selected at read time within a token budget, so nothing is summarized or extracted into a wrong fact. Recalled memory reaches the model as a tool result, which stays in the agent's history like any other message.",
-    installation: { packageManager: "npm", command: `npm install llmslim @mastra/core   # @mastra/core 1.11 or newer` },
+    installation: { packageManager: "npm", command: `npm install llmslim @mastra/core   # @mastra/core 1.29.1 or newer` },
     installNote: "The client talks to an llmslim serve server (Python, one process, one SQLite file or Postgres). Call it from your backend: an API key gives access to every user's memory.",
     setup: [
       { caption: "Start the memory server:", language: "bash", filename: "terminal", code: `pip install "llmslim[server]"
@@ -1056,7 +1056,7 @@ export const assistant = new Agent({
     benchmarks: [],
     limitations: [
       "Lexical recall matches words, not meanings: forms of a word match (move, moved), but a paraphrase such as allergy against allergic can miss. The server's semantic mode (llmslim[semantic]) covers paraphrases.",
-      "@mastra/core 1.11 or newer, which needs Node 22.13 or newer.",
+      "@mastra/core 1.29.1 or newer, which needs Node 22.13 or newer.",
       "The save is awaited, so a slow server delays the response up to the client's timeoutMs.",
     ],
     faqs: [

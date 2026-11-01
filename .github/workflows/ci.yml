@@ -152,7 +152,7 @@ jobs:
           "
       - name: The Mastra integration against the oldest supported @mastra/core
         run: |
-          npm install --no-save --ignore-scripts --no-audit --no-fund @mastra/core@1.11.0
+          npm install --no-save --ignore-scripts --no-audit --no-fund @mastra/core@1.29.1
           npx vitest run test/mastra.test.ts
         env:
           LLMSLIM_MASTRA_FLOOR: "1"

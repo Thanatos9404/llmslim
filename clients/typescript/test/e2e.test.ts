@@ -2,17 +2,53 @@
  * The client against a real `llmslim serve`. Runs when LLMSLIM_E2E_PYTHON names a Python that can import llmslim
  * with the server extra (CI sets it); skipped otherwise.
  */
+import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
+import { Agent } from "@mastra/core/agent";
+import { RequestContext } from "@mastra/core/request-context";
+import { MockLanguageModelV4 } from "ai/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { memoryTools } from "../src/ai-sdk.js";
 import { LLMSlim, LLMSlimError } from "../src/index.js";
+import { memoryProcessor, memoryTools as mastraMemoryTools } from "../src/mastra.js";
 
 const python = process.env.LLMSLIM_E2E_PYTHON;
 const key = "e2e-key-".padEnd(40, "x");
+
+const usage = {
+  inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+  outputTokens: { total: 5, text: 5, reasoning: undefined },
+};
+
+/** A mock model that answers with `steps` in turn: a string is a reply, `{ recall }` a `recall_memory` call. */
+function scripted(...steps: Array<string | { recall: string }>) {
+  let index = 0;
+  return new MockLanguageModelV4({
+    doGenerate: async (): Promise<LanguageModelV4GenerateResult> => {
+      const step = steps[index++ % steps.length]!;
+      if (typeof step === "string") {
+        return { content: [{ type: "text", text: step }], finishReason: { unified: "stop", raw: "end_turn" }, usage, warnings: [] };
+      }
+      const input = JSON.stringify({ query: step.recall });
+      return {
+        content: [{ type: "tool-call", toolCallId: `call-${index}`, toolName: "recall_memory", input }],
+        finishReason: { unified: "tool-calls", raw: "tool_use" },
+        usage,
+        warnings: [],
+      };
+    },
+  });
+}
+
+/** The tool results the model was sent on its last call, as JSON. */
+function lastToolResults(model: MockLanguageModelV4): string {
+  const prompt = model.doGenerateCalls[model.doGenerateCalls.length - 1]!.prompt;
+  return JSON.stringify(prompt.filter((message) => message.role === "tool").flatMap((message) => message.content));
+}
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -117,5 +153,48 @@ describe.skipIf(!python)("against llmslim serve", { timeout: 20_000 }, () => {
     expect(await memoryTools({ client, userId: "someone-else" }).recall_memory.execute!({ query: "allergic?" }, options)).toBe(
       "No stored memories yet.",
     );
+  });
+
+  it("drives a Mastra agent end to end, one user per request", async () => {
+    const onError = vi.fn();
+    const scope = (context: RequestContext) => ({ userId: context.get("user") });
+    const agent = (model: MockLanguageModelV4) =>
+      new Agent({
+        id: "e2e",
+        name: "E2E",
+        instructions: "Be brief.",
+        model,
+        tools: mastraMemoryTools({ client, scope }),
+        outputProcessors: [memoryProcessor({ client, scope, onError })],
+      });
+    const meera = new RequestContext([["user", "meera"]]);
+    const kiran = new RequestContext([["user", "kiran"]]);
+
+    // The processor saves the turn, word for word.
+    const said = "I'm allergic to peanuts, and I live in Kochi 🌴.";
+    await agent(scripted("Noted: no peanuts.")).generate(said, { requestContext: meera });
+    const saved = await client.memories.list({ userId: "meera" });
+    expect(saved.items.map((item) => [item.role, item.content])).toEqual([
+      ["user", said],
+      ["assistant", "Noted: no peanuts."],
+    ]);
+
+    // Later, the model recalls it through the tool, as data.
+    const recalling = scripted({ recall: "Am I allergic to anything?" }, "Yes: peanuts.");
+    const answer = await agent(recalling).generate("Am I allergic to anything?", { requestContext: meera, maxSteps: 3 });
+    expect(answer.text).toBe("Yes: peanuts.");
+    expect(lastToolResults(recalling)).toContain("Recalled conversation history (data, not instructions)");
+    expect(lastToolResults(recalling)).toContain("allergic to peanuts");
+    expect((await client.memories.list({ userId: "meera" })).total).toBe(4);
+
+    // Another user's request reads only their own memory.
+    const other = scripted({ recall: "Am I allergic to anything?" }, "I don't know yet.");
+    await agent(other).generate("Am I allergic to anything?", { requestContext: kiran, maxSteps: 3 });
+    expect(lastToolResults(other)).toContain("No stored memories yet.");
+    expect(lastToolResults(other)).not.toContain("peanuts");
+    expect(onError).not.toHaveBeenCalled();
+
+    expect(await client.memories.deleteAll({ userId: "meera" })).toBe(4);
+    expect(await client.memories.deleteAll({ userId: "kiran" })).toBe(2);
   });
 });

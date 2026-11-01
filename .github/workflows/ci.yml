@@ -126,6 +126,33 @@ jobs:
         env:
           LLMSLIM_E2E_PYTHON: python
       - run: npm run build
+      - name: The built entry points import, and the package works without its optional peers
+        run: |
+          node --input-type=module -e "
+            const { LLMSlim } = await import('llmslim');
+            const { memoryTools } = await import('llmslim/ai-sdk');
+            const { memoryProcessor } = await import('llmslim/mastra');
+            memoryTools({ client: new LLMSlim(), userId: 'ci' });
+            if (memoryProcessor({ client: new LLMSlim(), userId: 'ci' }).id !== 'llmslim-memory') process.exit(1);
+          "
+          npm pack --pack-destination "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/no-peers" && cd "$RUNNER_TEMP/no-peers"
+          npm init -y > /dev/null
+          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP"/llmslim-*.tgz
+          node --input-type=module -e "
+            const { LLMSlim } = await import('llmslim');
+            if (typeof LLMSlim !== 'function') throw new Error('llmslim has no LLMSlim export');
+            for (const [entry, peer] of [['llmslim/ai-sdk', 'ai'], ['llmslim/mastra', '@mastra/core']]) {
+              const error = await import(entry).then(() => null, (e) => e);
+              if (error?.code !== 'ERR_MODULE_NOT_FOUND' || !error.message.includes(\"'\" + peer)) throw new Error(entry + ': ' + error);
+            }
+          "
+      - name: The Mastra integration against the oldest supported @mastra/core
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund @mastra/core@1.11.0
+          npx vitest run test/mastra.test.ts
+        env:
+          LLMSLIM_MASTRA_FLOOR: "1"
       - name: examples/typescript-client against the server, with the published npm package
         working-directory: examples/typescript-client
         run: |

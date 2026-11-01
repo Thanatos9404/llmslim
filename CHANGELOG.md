@@ -154,6 +154,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   `SECURITY.md` shows how to verify each one with `gh attestation verify` and `pypi-attestations`.
 - The build and SBOM steps also run on pull requests that touch packaging, without attesting or publishing.
+- **Mastra memory in the TypeScript client** (`llmslim/mastra`, not on npm yet). With `@mastra/core` 1.11 or newer:
+  - `memoryTools()` gives an agent the same `recall_memory` and `remember` tools as `llmslim/ai-sdk`;
+  - `memoryProcessor()` is an output processor that saves the latest user message and the reply, word for word, once
+    per `generate()` or `stream()`. It saves nothing when a guardrail's tripwire stopped the run, when the run was
+    aborted or failed, or while it waits for a tool approval, and a failed save never fails the response.
+  - The scope is fixed ids or a function of Mastra's request context, so one agent serves many users. It never comes
+    from the model, and a request without a user reads and saves nothing.
+  - Neither changes the prompt, so prompt caches and Claude's preserved thinking stay valid. There is no input
+    processor that injects memory.
+  - CI runs the tests against a real `llmslim serve` and against the oldest supported `@mastra/core`, and imports the
+    packed package without its optional peers.
 
 ### Changed
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,

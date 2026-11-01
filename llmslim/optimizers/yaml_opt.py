@@ -15,8 +15,19 @@ from typing import Optional
 from ..tokens import count_tokens
 
 _YAML_COMMENT_RE = re.compile(r"^\s*#.*$", re.MULTILINE)
-_YAML_INLINE_COMMENT_RE = re.compile(r"\s+#.*$", re.MULTILINE)
+# A comment's "#" follows whitespace. The comment is cut from the start of that whitespace run (see
+# _strip_inline_comment): the expression \s+#.*$ did the same, but on a long run of whitespace with no "#" after it,
+# every start in the run rescanned the rest of it, which took time quadratic in the line's length.
+_COMMENT_MARK_RE = re.compile(r"\s#")
 _BLANK_LINES_RE = re.compile(r"\n\s*\n")
+
+
+def _strip_inline_comment(line: str) -> str:
+    """``line`` without its inline comment: from the whitespace before the first ``#`` that follows whitespace."""
+    mark = _COMMENT_MARK_RE.search(line)
+    if mark is None:
+        return line
+    return line[: mark.start() + 1].rstrip()
 
 
 def _regex_fallback_optimize(text: str) -> str:
@@ -27,7 +38,7 @@ def _regex_fallback_optimize(text: str) -> str:
         if _YAML_COMMENT_RE.match(line):
             continue
         # Strip inline comments unless inside quotes (basic heuristic)
-        cleaned = _YAML_INLINE_COMMENT_RE.sub("", line)
+        cleaned = _strip_inline_comment(line)
         if cleaned.strip():
             lines.append(cleaned)
     res = "\n".join(lines)

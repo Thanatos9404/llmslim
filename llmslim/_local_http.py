@@ -1,4 +1,5 @@
-"""Host and Origin checks, and JSON body reading, for LLMSlim's own HTTP servers (``llmslim serve``, ``llmslim proxy``).
+"""Host, Origin and API-key checks, and JSON body reading, for LLMSlim's own HTTP servers (``llmslim serve``,
+``llmslim mcp --transport http`` and ``llmslim proxy``).
 
 A server on the loopback interface is still reachable from any web page the user opens:
 
@@ -10,10 +11,14 @@ A server on the loopback interface is still reachable from any web page the user
 
 So a local server answers only requests whose ``Host`` names this machine (or a host its operator allowed), and
 refuses browser requests from any other origin. Non-browser clients send no ``Origin`` and are not affected.
+
+``serve`` and ``mcp`` share :class:`BearerKeys` and :func:`policy_for`, so their API keys and Host rules behave the
+same.
 """
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 import json
 from typing import Any, Awaitable, Callable, Dict, Iterable, NoReturn, Optional, Tuple
@@ -85,6 +90,38 @@ async def read_json_object(request: Any, max_bytes: int, *, strict: bool = False
         raise HTTPError(400, "invalid_request", "request body must be a JSON object")
     check_text(payload)
     return payload
+
+
+class BearerKeys:
+    """The API keys a server accepts as ``Authorization: Bearer <key>``. No keys means no authentication."""
+
+    def __init__(self, keys: Iterable[str] = ()) -> None:
+        self._keys = tuple(key.encode("utf-8") for key in keys)
+
+    def __bool__(self) -> bool:
+        return bool(self._keys)
+
+    def accepts(self, authorization: Optional[str]) -> bool:
+        """Whether an ``Authorization`` header value carries one of the keys; always true without keys."""
+        if not self._keys:
+            return True
+        scheme, _, token = (authorization or "").partition(" ")
+        presented = token.strip().encode("utf-8")
+        # Compare against every key, so the time taken doesn't reveal which one nearly matched.
+        matches = [hmac.compare_digest(presented, key) for key in self._keys]
+        return scheme.lower() == "bearer" and any(matches)
+
+
+def policy_for(allowed_hosts: Optional[Iterable[str]], *, keyed: bool) -> "HostPolicy":
+    """The Host and Origin rules of a server that does (``keyed``) or doesn't require an API key.
+
+    Without ``allowed_hosts``, a keyless server answers only loopback names and refuses other origins, and a server
+    with keys answers any name. With them, both answer only loopback names and those hosts, and a keyless server still
+    refuses other origins.
+    """
+    if allowed_hosts is None:
+        return HostPolicy([ANY_HOST] if keyed else ())
+    return HostPolicy(allowed_hosts, origins=not keyed)
 
 
 def host_name(value: str) -> str:

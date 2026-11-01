@@ -137,9 +137,9 @@ storing a credential from an old conversation; it does not remove it. Keep tool 
 |---|---|
 | `format` | `claude-code`, `chatgpt`, `claude-ai`, `mem0`, `jsonl`, or `auto` (decided from what the file holds, not its name; it says when it can't tell). |
 | `path` | The file or folder. Optional for `claude-code`, which defaults to `~/.claude/projects`. |
-| `--db` | SQLite file or `postgresql://` URL (default `~/.llmslim/memory.db`, or `LLMSLIM_MEMORY_DB`). |
+| `--db` | SQLite file, or a `postgresql://` or `mongodb://` URL (default `~/.llmslim/memory.db`, or `LLMSLIM_MEMORY_DB`). |
 | `--user-id`, `--agent-id` | Store every turn under this user or agent (see [Whose memory](#what-is-imported)). |
-| `--dry-run` | Read, count and report, store nothing. A SQLite file is opened read-only, and one that does not exist is not created. (A Postgres store creates its table if it is missing.) |
+| `--dry-run` | Read, count and report, store nothing. A SQLite file is opened read-only, and one that does not exist is not created. (A Postgres or MongoDB store creates its table or collection if it is missing.) |
 | `--since`, `--until` | Only turns at or after, or before, this time (ISO-8601, e.g. `2025-01-31`). |
 | `--limit N` | Stop after N new turns. |
 | `--include-tool-output` | Also import tool calls and results, as `tool` turns. |

@@ -109,8 +109,19 @@
     "llmslim mcp": {
       "arguments": {
         "--agent-id": {},
+        "--allowed-host": {},
+        "--api-key": {},
         "--budget": {},
         "--db": {},
+        "--host": {},
+        "--path": {},
+        "--port": {},
+        "--transport": {
+          "choices": [
+            "http",
+            "stdio"
+          ]
+        },
         "--user-id": {}
       },
       "status": "stable"
@@ -270,6 +281,9 @@
     "LLMSLIM_ALLOWED_HOSTS",
     "LLMSLIM_API_KEYS",
     "LLMSLIM_HOST",
+    "LLMSLIM_MCP_API_KEYS",
+    "LLMSLIM_MCP_HOST",
+    "LLMSLIM_MCP_PORT",
     "LLMSLIM_MEMORY_DB",
     "LLMSLIM_PORT",
     "LLMSLIM_PROXY_DB",
@@ -3402,6 +3416,23 @@
             "update": "method (item_id: str, *, content: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
           },
           "signature": "(*args, **kwargs)",
+          "status": "stable"
+        },
+        "MongoStore": {
+          "bases": [
+            "object"
+          ],
+          "kind": "class",
+          "members": {
+            "add": "method (items: Sequence[MemoryItem]) -> None",
+            "close": "method () -> None",
+            "delete": "method (item_id: str) -> bool",
+            "delete_scope": "method (scope: Scope) -> int",
+            "get": "method (item_id: str) -> Optional[MemoryItem]",
+            "list": "method (scope: Scope, *, since: Optional[datetime] = None, until: Optional[datetime] = None) -> List[MemoryItem]",
+            "update": "method (item_id: str, *, content: Optional[str] = None, metadata: Optional[Mapping[str, Any]] = None) -> Optional[MemoryItem]"
+          },
+          "signature": "(client: Any, *, database: Optional[str] = None, collection: str = 'llmslim_memory') -> None",
           "status": "stable"
         },
         "PostgresStore": {

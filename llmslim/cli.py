@@ -248,7 +248,7 @@ def build_import_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file or postgresql:// URL to import into (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file, postgresql:// or mongodb:// URL to import into (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--user-id",
@@ -341,6 +341,7 @@ def _emit(text: str, stream: Any) -> None:
 def _run_import_command(argv: Sequence[str]) -> int:
     from .memory import HistoryImportError, import_history
     from .memory._import_sources import default_claude_dir
+    from .memory.mongo import is_mongodb_url
     from .memory.postgres import is_postgres_url
 
     parser = build_import_parser()
@@ -349,8 +350,13 @@ def _run_import_command(argv: Sequence[str]) -> int:
         if args.format != "claude-code":
             parser.error(f"name the file or folder to import for {args.format}")
         args.path = str(default_claude_dir())
-    target = args.db if is_postgres_url(args.db) else str(Path(args.db).expanduser())
-    display = "a Postgres database" if is_postgres_url(args.db) else target
+    if is_postgres_url(args.db) or is_mongodb_url(args.db):
+        target = args.db
+        # The URL may hold a password, so it is never printed.
+        display = "a Postgres database" if is_postgres_url(args.db) else "a MongoDB database"
+    else:
+        target = str(Path(args.db).expanduser())
+        display = target
 
     def progress(session: Any) -> None:
         title = f" {session.title!r}" if session.title else ""

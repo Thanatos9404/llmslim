@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The extras lose their `python_version >= '3.10'` markers, and `mongodb` drops a dead pin for Python 3.8.
 
 ### Added
+- **`llmslim mcp --transport http` shares one memory across machines.** The MCP server also speaks MCP's Streamable
+  HTTP transport, so the clients on a laptop, a desktop and a CI runner can use one memory. It follows
+  `llmslim serve`:
+  - every request needs `Authorization: Bearer <key>` (`--api-key`, `LLMSLIM_MCP_API_KEYS`), compared in constant
+    time against every key. `llmslim serve`'s `LLMSLIM_API_KEYS` reach every user, so they are not read, and a key
+    in both gets a warning. A missing or wrong key is a 401 with `WWW-Authenticate: Bearer`, and the key is never
+    logged or echoed. Without a key, the server refuses any interface but loopback;
+  - without a key, it answers only requests addressed to this machine by name that no other web page sent, so DNS
+    rebinding and cross-site requests get a 403. `--allowed-host` and `LLMSLIM_ALLOWED_HOSTS` add names, or pin them
+    on a server with keys;
+  - one server holds one scope, the `--user-id` and `--agent-id` it was started with, and every key reaches that
+    scope and nothing else. No tool takes a user or agent id, as over stdio. For several people, run one server
+    each; they can share a database;
+  - it is stateless and answers in JSON, so it runs behind any reverse proxy or load balancer, and a restart doesn't
+    break connected clients. Bodies are capped at 1 MB (413), malformed JSON-RPC is a 400, `GET /healthz` answers
+    without a key, and requests still running at shutdown get 10 seconds to finish;
+  - `--host` (`LLMSLIM_MCP_HOST`, default 127.0.0.1), `--port` (`LLMSLIM_MCP_PORT`, default 8000) and `--path`
+    (default `/mcp`). The startup line prints the URL and the scope, never a key.
+
+  stdio stays the default and is unchanged; the HTTP options are refused with it. `docs/MCP.md` shows the setup
+  behind TLS, the client configuration for Claude Code, VS Code and Cursor, and who can read whose memory. The HTTP
+  transport is experimental in its first release (`docs/API_STABILITY.md`).
 - **An OpenAI-compatible chat endpoint in `llmslim serve` that adds memory to any client (experimental).** Start the
   server with `--upstream-url` (an OpenAI-compatible base URL) and the upstream's key in `LLMSLIM_UPSTREAM_API_KEY`,
   and `POST /v1/chat/completions` works with any client that takes an OpenAI base URL: the OpenAI SDKs, and voice
@@ -73,6 +95,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     in URLs and key-like `api_key = ...` values become `[REDACTED:<kind>]` before anything is stored.
   - New in `llmslim.memory`: `import_history`, `ImportReport`, `ImportedSession`, `ImportLimits` and
     `HistoryImportError`.
+- **`MongoStore` keeps memory in MongoDB** (`pip install "llmslim[mongodb]"`, PyMongo).
+  - `Memory("mongodb://...")` and `mongodb+srv://` URLs (Atlas) use it, and so do `llmslim serve --db`,
+    `llmslim mcp --db` and `llmslim import --db`. Several processes or machines can share one memory on MongoDB 6.0+,
+    standalone or as a replica set.
+  - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database is
+    `database=...`, else the URL's, else `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
+    (`llmslim_memory`, or `collection=...`).
+  - It creates an index per scope field and a unique index on the order number when it opens, and creating them
+    again changes nothing, so several processes can start at once. A collection written by a newer llmslim is
+    refused.
+  - Turns come back in the same order as in every other store, ties included: each batch takes its order numbers
+    in one atomic update. On a replica set or sharded cluster each batch is one transaction, so it is stored whole
+    or not at all, even if the connection drops partway. On a standalone server, which has no transactions, a batch
+    with a duplicate id is undone and leaves nothing behind.
+  - Times are stored as UTC dates and also in microseconds, so they come back exactly, although a BSON date keeps
+    only milliseconds.
+  - Caller values are data, never operators: ids and scope values must be strings and are matched with `$eq`, and
+    metadata whose keys MongoDB would read as operators or paths (`$where`, `a.b`) is stored as JSON text and comes
+    back as given. Lone surrogates are refused before anything is stored, as in `SQLiteStore`, and so is a turn over
+    16 MB.
+  - Errors raised while opening the store have the URL's password and secret options removed, and `repr` shows
+    only the database and collection.
+  - CI runs the whole memory suite against MongoDB 6.0, 7.0 and 8.2, standalone with authentication and as a
+    one-node replica set. Guide: `docs/MEMORY.md`.
 - **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
   docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its

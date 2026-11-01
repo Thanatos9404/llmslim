@@ -137,6 +137,7 @@ each time, and a deprecation period is given when it is practical.
 | In `llmslim.tools`: `rank_tools`, `select_tools`, `plan_tool_context`, `RankedTool`, `ToolSelection`, `ToolContextPlan` and `LazyToolRegistry` | Ranking and showing a model fewer tools is research-only. The contract utilities in the same module are stable. |
 | `PlanMode.SELECTIVE`, in `llmslim.mcp` and through `plan_mcp_context` | Research-only; it already needs `experimental=True`. The other modes are stable. |
 | `llmslim.TransformersKVSession` | It works with Transformers' internal KV cache classes, which change between Transformers releases. |
+| `llmslim mcp --transport http`: the `--transport`, `--host`, `--port`, `--path`, `--api-key` and `--allowed-host` flags of `llmslim mcp`, and `LLMSLIM_MCP_HOST` and `LLMSLIM_MCP_PORT` | New in 0.13. MCP's HTTP transport is changing with its 2026-07-28 revision, and the trust model (one scope per server, every key reaches it) may gain per-key scopes. `llmslim mcp` over stdio, its other flags and its tools stay stable. |
 
 Making experimental API stable is a CHANGELOG entry in a minor release.
 
@@ -151,9 +152,9 @@ Everything else is internal and may change in any release:
   `llmslim.context_policy`, `llmslim.core`, `llmslim.cost`, `llmslim.embeddings`, `llmslim.envelope`,
   `llmslim.focus`, `llmslim.modes`, `llmslim.optimizers`, `llmslim.pipelines`, `llmslim.quality`, `llmslim.ranking`,
   `llmslim.rerank`, `llmslim.rewrite`, `llmslim.runtime`, `llmslim.self_hosted`, `llmslim.tokenization`, the
-  modules inside `llmslim.planning`, `llmslim.memory.stores` and `llmslim.memory.postgres`. Import their names from
-  `llmslim`, `llmslim.planning` or `llmslim.memory`. A name may move between implementation modules in a minor
-  release;
+  modules inside `llmslim.planning`, `llmslim.memory.stores`, `llmslim.memory.postgres` and
+  `llmslim.memory.mongo`. Import their names from `llmslim`, `llmslim.planning` or `llmslim.memory`. A name may move
+  between implementation modules in a minor release;
 - `llmslim.cli` as a Python module (the command line itself is covered below, including `python -m llmslim.cli`);
 - `llmslim.hosted`, the controls of the hosted Sarvam demo;
 - `llmslim.integrations.gptme_plugin`, which gptme loads through its entry point;
@@ -162,12 +163,12 @@ Everything else is internal and may change in any release:
 ## Command line, HTTP, MCP and environment
 
 **Command line.** The commands `llmslim` (compress), `llmslim context`, `llmslim plan`, `llmslim tools`,
-`llmslim import`, `llmslim mcp` and `llmslim serve`, and their flags and arguments, are stable. `--json` output may
-gain fields but keeps the ones it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are
-experimental, and so are the chat endpoint's flags of `llmslim serve` (`--upstream-url`, `--memory-budget`,
-`--store-only`, `--upstream-timeout`). The formats `llmslim import` reads belong to other tools and are not published
-specifications: what it reads from each one, and how it counts what it skips, is output content, so a minor release
-may follow a change in a format.
+`llmslim import`, `llmslim mcp` and `llmslim serve`, and their flags and arguments, are stable, except the flags of
+`llmslim mcp --transport http` (see [Experimental](#experimental)). `--json` output may gain fields but keeps the ones
+it has. Human-readable output may change. `llmslim proxy` and `llmslim wrap` are experimental, and so are the chat
+endpoint's flags of `llmslim serve` (`--upstream-url`, `--memory-budget`, `--store-only`, `--upstream-timeout`). The
+formats `llmslim import` reads belong to other tools and are not published specifications: what it reads from each
+one, and how it counts what it skips, is output content, so a minor release may follow a change in a format.
 
 **HTTP (`llmslim serve`).** The routes and methods (`/healthz` and everything under `/v1` except the experimental
 chat endpoint, `/v1/chat/completions` and `/v1/models`), the request fields, the
@@ -177,18 +178,19 @@ the next major release.
 
 **MCP (`llmslim mcp`).** The tool names (`remember`, `recall`, `list_memories`, `forget`, `fit_context`), their input
 and output schemas (names, types and which inputs are required) and their read-only, destructive and idempotent hints
-are stable. A minor release may add tools and optional inputs. Tool descriptions and the server instructions are
-prompts for models: they may change in any minor release to make models use the tools better.
+are stable, over stdio and over HTTP. A minor release may add tools and optional inputs. Tool descriptions and the
+server instructions are prompts for models: they may change in any minor release to make models use the tools better.
 
-**Stored memory.** A SQLite file or Postgres table written by a 1.x release opens in every later 1.x release. If a
-release changes the schema, it upgrades the store when it opens it, and the CHANGELOG says so. An older release
-refuses a store with a newer schema rather than misreading it.
+**Stored memory.** A SQLite file, Postgres table or MongoDB collection written by a 1.x release opens in every later
+1.x release. If a release changes the schema, it upgrades the store when it opens it, and the CHANGELOG says so. An
+older release refuses a store with a newer schema rather than misreading it.
 
 **Environment variables.**
 
 | Variable | Read by | Status |
 |---|---|---|
-| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` | Stable |
+| `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` (the last also `llmslim mcp --transport http`) | Stable |
+| `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT`, `LLMSLIM_MCP_API_KEYS` | `llmslim mcp --transport http` | Experimental |
 | `LLMSLIM_MEMORY_DB` | `llmslim serve`, `llmslim mcp` | Stable |
 | `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |

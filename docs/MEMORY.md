@@ -230,6 +230,7 @@ No LLM is called and no stored text is sent anywhere. What can touch the network
 | `InMemoryStore()` | tests and short-lived agents (the default for `Memory()`) |
 | `SQLiteStore(path)` | one file, Python's built-in `sqlite3`, safe across threads; `Memory("memory.db")` uses it |
 | `PostgresStore(url)` | Postgres 12+ (self-hosted, Supabase, Neon, RDS) through psycopg 3, for several processes or machines; `Memory("postgresql://...")` uses it. `pip install "llmslim[postgres]"` (0.11.0 or newer) |
+| `MongoStore(url)` | MongoDB 6.0+ (self-hosted standalone or replica set, or Atlas) through PyMongo, for several processes or machines; `Memory("mongodb://...")` and `Memory("mongodb+srv://...")` use it. `pip install "llmslim[mongodb]"` |
 
 A store only persists and lists turns. Any object with the `MemoryStore` methods (`add`, `list`, `get`, `update`, `delete`, `delete_scope`) works, so other databases can plug in without changing selection.
 
@@ -237,6 +238,48 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 - `PostgresStore` creates its table (`llmslim_memory`, or `table=...`) and a `<table>_meta` version table if they don't exist. It does this under an advisory lock, so several processes can start at once.
 - Pass a URL, and the store opens a small connection pool. You can pass your own `psycopg_pool.ConnectionPool`, or an autocommit `psycopg.Connection`, instead.
 - Times are stored as `TIMESTAMPTZ` and come back in UTC, whatever the session time zone.
+
+**MongoDB details:**
+- Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer). CI runs every memory test against MongoDB 6.0,
+  7.0 and 8.2, standalone and as a one-node replica set.
+- Pass a URL, and the store opens its own `MongoClient` and closes it in `close()`. You can pass your own
+  `pymongo.MongoClient` or `pymongo.database.Database` instead; `close()` leaves those open.
+  ```python
+  from llmslim.memory import Memory, MongoStore
+
+  memory = Memory("mongodb://llmslim:<password>@db.example.com:27017/llmslim?authSource=admin")
+  memory = Memory(MongoStore("mongodb://localhost:27017", database="myapp", collection="agent_memory"))
+  ```
+- **The database** is `database=...` when given, else the one named in the URL path, else `llmslim`. `admin`, `local`
+  and `config` are refused: to log in against `admin`, add `authSource=admin` to the URL and keep the memory in a
+  database of its own. One collection holds the turns (`llmslim_memory`, or `collection=...`); use one per application or tenant if
+  you like.
+- **Atlas:** use the `mongodb+srv://` URL from "Connect > Drivers", with the database in the path
+  (`mongodb+srv://user:<password>@cluster0.example.mongodb.net/llmslim?retryWrites=true&w=majority`). The database user
+  needs the `readWrite` role on that database, which includes creating indexes. Allow your server's IP address in
+  Atlas's network access list.
+- **What is stored:** one document per turn: `_id` (the turn's id), `seq`, `role`, `content`, `user_id`, `agent_id`,
+  `run_id`, `created_at` and `updated_at` as UTC dates, `created_at_us` and `updated_at_us` (the same times in
+  microseconds since 1970, which reads use, because a BSON date keeps only milliseconds), and `metadata`. Metadata is
+  a document when MongoDB can hold its keys as plain names. When a key starts with `$`, contains a `.`, is empty or
+  holds a NUL, or a number needs more than 64 bits, the metadata is stored as JSON text in `metadata_json` instead, so
+  MongoDB never reads it as an operator or a path. Either way it comes back as given. `<collection>_meta` holds the
+  schema version and the counter that orders turns.
+- **Indexes,** created when the store opens if they don't exist: one per scope field (`user_id`, `agent_id`,
+  `run_id`), each followed by `created_at_us` and `seq`, so a scope's turns come back in order from the index; and a
+  unique index on `seq`. Creating them again changes nothing, so several processes can start at once.
+- **Order and writes:** turns come back by time, then in the order they were added, as in every store. Each `add`
+  takes its order numbers from the counter in one atomic update, so writers in several processes never share one.
+  On a replica set or a sharded cluster (Atlas is always one), each `add` is one transaction: a batch is stored
+  whole or not at all, even if the connection drops partway, as on Postgres. A standalone server has no
+  transactions; there a batch that hits a duplicate id is undone, so it leaves nothing behind, but a connection lost
+  in the middle of a batch can leave part of it stored.
+- **Caller values are data:** ids and scope values must be strings and are matched with `$eq`, never built into a
+  query as text. Text that isn't valid Unicode (a lone surrogate) is refused with `UnicodeEncodeError` before anything
+  is stored, as in `SQLiteStore`. A turn over 16 MB (BSON's limit for one document) is refused with `ValueError`.
+- **Credentials:** the store never logs the URL, `repr(store)` shows only the database and collection, and an error
+  raised while opening the store has the URL's password and secret options (such as
+  `tlsCertificateKeyFilePassword`) removed.
 
 ## Coming from Mem0
 

@@ -27,7 +27,6 @@ give full access to every scope, so call the server from your backend, never fro
 from __future__ import annotations
 
 import argparse
-import hmac
 import ipaddress
 import json
 import logging
@@ -49,7 +48,7 @@ from typing import (
 from urllib.parse import urlsplit
 
 from ._fit import fit_text
-from ._local_http import HostGuard, HostPolicy, read_json_object
+from ._local_http import BearerKeys, HostGuard, policy_for, read_json_object
 from ._local_http import HTTPError as _HTTPError
 from ._openai_chat import (
     DEFAULT_MEMORY_BUDGET,
@@ -117,22 +116,13 @@ def create_app(
 
     from . import __version__
 
-    keys = [key.encode("utf-8") for key in api_keys]
-    if allowed_hosts is None:
-        policy = HostPolicy(["*"] if keys else ())
-    else:
-        policy = HostPolicy(allowed_hosts, origins=not keys)
+    keys = BearerKeys(api_keys)
+    policy = policy_for(allowed_hosts, keyed=bool(keys))
 
     relay = ChatRelay(memory, chat, max_budget=max_budget) if chat is not None else None
 
     def authorized(request: Request) -> bool:
-        if not keys:
-            return True
-        scheme, _, token = request.headers.get("authorization", "").partition(" ")
-        presented = token.strip().encode("utf-8")
-        # Compare against every key, so the time taken doesn't reveal which one nearly matched.
-        matches = [hmac.compare_digest(presented, key) for key in keys]
-        return scheme.lower() == "bearer" and any(matches)
+        return keys.accepts(request.headers.get("authorization"))
 
     async def body(request: Request) -> Dict[str, Any]:
         return await read_json_object(request, max_body_bytes)
@@ -395,9 +385,14 @@ def is_loopback(host: str) -> bool:
         return False
 
 
-def api_keys_from(values: Sequence[str], environ: Mapping[str, str] = os.environ) -> List[str]:
-    """API keys from ``--api-key`` flags, else from ``LLMSLIM_API_KEYS`` (comma-separated)."""
-    raw = list(values) or environ.get("LLMSLIM_API_KEYS", "").split(",")
+def api_keys_from(
+    values: Sequence[str],
+    environ: Mapping[str, str] = os.environ,
+    *,
+    variable: str = "LLMSLIM_API_KEYS",
+) -> List[str]:
+    """API keys from ``--api-key`` flags, else from the ``variable`` environment variable (comma-separated)."""
+    raw = list(values) or environ.get(variable, "").split(",")
     keys = [key.strip() for key in raw if key.strip()]
     short = [key for key in keys if len(key) < MIN_KEY_LENGTH]
     if short:
@@ -425,7 +420,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=os.environ.get("LLMSLIM_MEMORY_DB") or str(DEFAULT_DB),
-        help=f"SQLite file or postgresql:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
+        help=f"SQLite file, postgresql:// or mongodb:// URL for the memory (env LLMSLIM_MEMORY_DB; default {DEFAULT_DB}).",
     )
     parser.add_argument(
         "--api-key",

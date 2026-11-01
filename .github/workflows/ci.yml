@@ -133,9 +133,9 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8081/healthz && break; sleep 1; done
           api -f -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8081/v1/memories > added.json
           ID=$(python3 -c 'import json; print(json.load(open("added.json"))["items"][0]["id"])')
-          api -f -d "$search" http://127.0.0.1:8081/v1/memories/search | grep -q Pune
-          api -f -d '{"user_id": "ci", "query": "Where?", "explain": true}' http://127.0.0.1:8081/v1/memories/search | grep -q explanation
-          api -f "http://127.0.0.1:8081/v1/memories?user_id=ci" | grep -q "$ID"
+          api -f -d "$search" http://127.0.0.1:8081/v1/memories/search | grep Pune > /dev/null
+          api -f -d '{"user_id": "ci", "query": "Where?", "explain": true}' http://127.0.0.1:8081/v1/memories/search | grep explanation > /dev/null
+          api -f "http://127.0.0.1:8081/v1/memories?user_id=ci" | grep "$ID" > /dev/null
           test "$(stored)" = 1
           echo "MongoDB restarts; the same server answers again"
           docker restart mongo
@@ -168,8 +168,8 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8082/healthz && break; sleep 1; done
           api -f -d '{"user_id": "ci", "messages": "I moved to Pune last month."}' http://127.0.0.1:8082/v1/memories > added.json
           ID=$(python3 -c 'import json; print(json.load(open("added.json"))["items"][0]["id"])')
-          api -f -d '{"user_id": "ci", "query": "Where did I move to?"}' http://127.0.0.1:8082/v1/memories/search | grep -q Pune
-          api -f -X DELETE "http://127.0.0.1:8082/v1/memories/$ID" | grep -q '"deleted":1'
+          api -f -d '{"user_id": "ci", "query": "Where did I move to?"}' http://127.0.0.1:8082/v1/memories/search | grep Pune > /dev/null
+          api -f -X DELETE "http://127.0.0.1:8082/v1/memories/$ID" | grep '"deleted":1' > /dev/null
           test "$(docker exec postgres psql -U llmslim -tAc 'SELECT count(*) FROM llmslim_memory')" = 0
       - name: Server log
         if: always()
@@ -357,7 +357,7 @@ jobs:
         run: |
           python -m venv "$VENV"
           "$VENV/bin/python" -m pip install "$(ls dist/llmslim-*.whl)[mongodb,server,mcp]" pytest
-          if "$VENV/bin/python" -m pip show llmslim | grep -qi "editable project location"; then exit 1; fi
+          if "$VENV/bin/python" -m pip show llmslim | grep -i "editable project location"; then exit 1; fi
       - name: Start MongoDB ${{ matrix.mongodb }} (standalone, with authentication)
         if: matrix.topology == 'standalone with auth'
         run: |

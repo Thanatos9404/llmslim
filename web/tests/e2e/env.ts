@@ -7,13 +7,17 @@ const baseURL = `http://localhost:${port}`
 export const E2E = {
   port,
   baseURL,
+  // The database owner: the global setup migrates, grants and empties the tables with it.
   databaseUrl: process.env.E2E_DATABASE_URL ?? "postgres://postgres:postgres@127.0.0.1:5433/postgres",
+  // Optional: the least-privilege login production runs as (scripts/db/app-role.sql). When it is set,
+  // the server connects with it, so a missing grant fails the tests instead of a deployment. CI sets it.
+  appDatabaseUrl: process.env.E2E_APP_DATABASE_URL,
   mailDir: path.resolve(process.env.E2E_MAIL_DIR ?? ".e2e-mail"),
   googleClientId: "e2e-google-client-id.apps.googleusercontent.com",
   githubClientId: "e2e-github-client-id",
   get serverEnv(): Record<string, string> {
     return {
-      DATABASE_URL: this.databaseUrl,
+      DATABASE_URL: this.appDatabaseUrl ?? this.databaseUrl,
       BETTER_AUTH_URL: baseURL,
       BETTER_AUTH_SECRET: "e2e-only-secret-0123456789abcdefghijklmnopqrstuvwxyz",
       AUTH_DEV_MAIL: "file",

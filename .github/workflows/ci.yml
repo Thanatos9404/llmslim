@@ -161,6 +161,64 @@ jobs:
           LLMSLIM_TEST_POSTGRES_URL: postgresql://llmslim:llmslim@127.0.0.1:5432/llmslim_test
         run: pytest tests/test_memory.py tests/test_memory_postgres.py -o addopts="" -q -rs
 
+  mongodb-store:
+    name: Memory on MongoDB ${{ matrix.mongodb }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # mongo:8.0 exits at start on the ubuntu-26.04 runners' Linux 6.19+ kernel (SERVER-121912).
+        mongodb: ["6.0", "7.0", "8.2"]
+    services:
+      mongodb:
+        image: mongo:${{ matrix.mongodb }}
+        env:
+          MONGO_INITDB_ROOT_USERNAME: llmslim
+          MONGO_INITDB_ROOT_PASSWORD: llmslim
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install llmslim with the mongodb and server extras
+        run: pip install -e ".[mongodb,server]" pytest httpx2
+      - name: Wait for the MongoDB service
+        run: |
+          python - <<'EOF'
+          import pymongo
+          url = "mongodb://llmslim:llmslim@127.0.0.1:27017/?authSource=admin"
+          pymongo.MongoClient(url, serverSelectionTimeoutMS=60000).admin.command("ping")
+          EOF
+      - name: Memory tests against a standalone server, with authentication
+        env:
+          LLMSLIM_TEST_MONGODB_URL: mongodb://llmslim:llmslim@127.0.0.1:27017/llmslim_test?authSource=admin
+        run: pytest tests/test_memory.py tests/test_memory_selection.py tests/test_memory_mongo.py -o addopts="" -q -rs
+      - name: Start a one-node replica set
+        run: |
+          docker run -d --name mongo-rs -p 27018:27018 mongo:${{ matrix.mongodb }} --replSet rs0 --port 27018 --bind_ip_all
+          python - <<'EOF'
+          import time
+          import pymongo
+          url = "mongodb://127.0.0.1:27018/?directConnection=true"
+          client = pymongo.MongoClient(url, serverSelectionTimeoutMS=60000)
+          client.admin.command("replSetInitiate", {"_id": "rs0", "members": [{"_id": 0, "host": "127.0.0.1:27018"}]})
+          for _ in range(120):
+              if client.admin.command("hello").get("isWritablePrimary"):
+                  break
+              time.sleep(0.5)
+          else:
+              raise SystemExit("the replica set did not elect a primary")
+          EOF
+      - name: Memory tests against the replica set
+        env:
+          LLMSLIM_TEST_MONGODB_URL: mongodb://127.0.0.1:27018/llmslim_test?replicaSet=rs0
+        run: pytest tests/test_memory.py tests/test_memory_mongo.py -o addopts="" -q -rs
+      - name: Replica set log
+        if: failure()
+        run: docker logs mongo-rs || true
+
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

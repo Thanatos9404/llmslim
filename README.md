@@ -50,7 +50,7 @@ The first start downloads LLMSlim and its dependencies. If a client gives up wai
 ```python
 from llmslim.memory import Memory
 
-mem = Memory("memory.db")  # a SQLite file; Memory("postgresql://...") with llmslim[postgres]
+mem = Memory("memory.db")  # a SQLite file; or "postgresql://..." (llmslim[postgres]), "mongodb://..." (llmslim[mongodb])
 mem.add([{"role": "user", "content": "I'm allergic to peanuts."}], user_id="asha")
 context = mem.search("Am I allergic to anything?", user_id="asha", budget=1500)
 print(context.text)  # put it in your prompt as data, not instructions
@@ -75,7 +75,7 @@ If LLMSlim is useful, a star helps others find it. Feedback is welcome in [issue
 ## What it does
 
 - **Five MCP tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
-- **Stores messages word for word** in SQLite or Postgres. Nothing is summarized or extracted on the way in.
+- **Stores messages word for word** in SQLite, Postgres or MongoDB. Nothing is summarized or extracted on the way in.
 - **Recalls within a token budget.** `recall` returns the stored messages that answer a question, under their dates
   and whole where they fit, within the budget you set. `fit_context` shrinks a long log or document to a budget.
 - **Fixes the scope at server start.** The user and agent ids are set when the server starts, not by the model, so a
@@ -212,7 +212,7 @@ isolated behind extras:
 ```bash
 pip install "llmslim[sarvam]"   # Sarvam provider (official sarvamai SDK)
 pip install "llmslim[zoho]"     # CRM and WorkDrive context sources
-pip install "llmslim[mongodb]"  # explicit memory and Atlas retrieval
+pip install "llmslim[mongodb]"  # MongoStore memory, explicit context memory and Atlas retrieval
 ```
 
 See the [architecture](docs/planning/ARCHITECTURE.md),
@@ -387,7 +387,7 @@ pip install "llmslim[neo4j]"
 # Read-only Zoho CRM and WorkDrive context sources
 pip install "llmslim[zoho]"
 
-# Explicit MongoDB context memory and Atlas retrieval
+# MongoDB: Memory("mongodb://...") keeps memory there, plus explicit context memory and Atlas retrieval
 pip install "llmslim[mongodb]"
 
 # LangChain, LlamaIndex and Haystack adapters

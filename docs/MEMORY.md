@@ -270,9 +270,10 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
   unique index on `seq`. Creating them again changes nothing, so several processes can start at once.
 - **Order and writes:** turns come back by time, then in the order they were added, as in every store. Each `add`
   takes its order numbers from the counter in one atomic update, so writers in several processes never share one.
-  No transactions are used, so a standalone server works too. A batch that hits a duplicate id is undone, so it
-  leaves nothing behind. A connection lost in the middle of a batch can leave part of it stored, which Postgres would
-  roll back.
+  On a replica set or a sharded cluster (Atlas is always one), each `add` is one transaction: a batch is stored
+  whole or not at all, even if the connection drops partway, as on Postgres. A standalone server has no
+  transactions; there a batch that hits a duplicate id is undone, so it leaves nothing behind, but a connection lost
+  in the middle of a batch can leave part of it stored.
 - **Caller values are data:** ids and scope values must be strings and are matched with `$eq`, never built into a
   query as text. Text that isn't valid Unicode (a lone surrogate) is refused with `UnicodeEncodeError` before anything
   is stored, as in `SQLiteStore`. A turn over 16 MB (BSON's limit for one document) is refused with `ValueError`.

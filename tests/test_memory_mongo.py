@@ -26,6 +26,7 @@ from llmslim.memory.mongo import (
     _metadata_fields,
     _micros,
     _scrubbed,
+    _supports_transactions,
     _url_secrets,
     is_mongodb_url,
 )
@@ -242,6 +243,17 @@ def test_driver_errors_that_echo_the_url_lose_its_secrets(monkeypatch):
     assert error.__cause__ is None and error.__context__ is None
 
 
+def test_transactions_are_used_on_replica_sets_and_sharded_clusters_only():
+    def server(reply):
+        return SimpleNamespace(command=lambda name: {"hello": reply}[name])
+
+    assert _supports_transactions(server({"isWritablePrimary": True, "setName": "rs0"}))
+    mongos = {"isWritablePrimary": True, "msg": "isdbgrid"}
+    assert _supports_transactions(server(mongos))
+    assert not _supports_transactions(server({"isWritablePrimary": True}))  # a standalone server
+    assert not _supports_transactions(server({"isWritablePrimary": True, "setName": ""}))
+
+
 def test_an_error_that_cannot_be_rebuilt_becomes_a_runtime_error():
     class Picky(Exception):
         def __init__(self, first, second):
@@ -433,6 +445,56 @@ def test_duplicate_ids_leave_nothing_behind_and_a_newer_schema_is_refused(store,
     )
     with pytest.raises(RuntimeError, match="schema 99"):
         MongoStore(URL, collection=collection)
+
+
+class _Turns:
+    """Stands in for the store's collection: passes everything through, except that a write can drop the connection
+    once it has reached the server, and the undo step can be refused."""
+
+    def __init__(self, inner, *, drop_after_insert=False, no_undo=False):
+        self.inner, self.drop_after_insert, self.no_undo = inner, drop_after_insert, no_undo
+
+    def insert_many(self, rows, **options):
+        from pymongo.errors import AutoReconnect
+
+        result = self.inner.insert_many(rows, **options)
+        if self.drop_after_insert:
+            raise AutoReconnect("connection closed")
+        return result
+
+    def delete_many(self, *args, **options):
+        assert not self.no_undo, "a transaction leaves nothing to undo"
+        return self.inner.delete_many(*args, **options)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
+@needs_db
+def test_a_replica_set_stores_each_batch_whole_or_not_at_all(store, raw):
+    from pymongo.errors import AutoReconnect
+
+    hello = raw.database.command("hello")
+    replica_set = bool(hello.get("setName")) or hello.get("msg") == "isdbgrid"
+    assert store._transactions is replica_set
+    if not replica_set:
+        pytest.skip("a standalone server has no transactions")
+    first = item("a")
+    store.add([first])
+    turns = store._turns
+    # A duplicate partway through: the transaction aborts, with no undo step.
+    store._turns = _Turns(turns, no_undo=True)
+    with pytest.raises(ValueError, match="already exists"):
+        store.add([item("b"), item("c"), first, item("d")])
+    # The connection drops after the server took the turns but before the commit: none of them are kept.
+    store._turns = _Turns(turns, drop_after_insert=True)
+    with pytest.raises(AutoReconnect):
+        store.add([item("e"), item("f")])
+    store._turns = turns
+    assert contents(store.list(Scope(user_id="u1"))) == ["a"]
+    assert raw.count_documents({}) == 1
+    store.add([item("g"), item("h")])
+    assert contents(store.list(Scope(user_id="u1"))) == ["a", "g", "h"]
 
 
 @needs_db

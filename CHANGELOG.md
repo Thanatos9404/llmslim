@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`MongoStore` keeps memory in MongoDB** (`pip install "llmslim[mongodb]"`, PyMongo).
   - `Memory("mongodb://...")` and `mongodb+srv://` URLs (Atlas) use it, and so do `llmslim serve --db`,
     `llmslim mcp --db` and `llmslim import --db`. Several processes or machines can share one memory on MongoDB 6.0+,
-    standalone or as a replica set. No transactions are needed.
+    standalone or as a replica set.
   - It takes a URL (it opens and closes its own client), a `MongoClient` or a `Database`. The database is
     `database=...`, else the URL's, else `llmslim`; `admin`, `local` and `config` are refused. One collection holds the turns
     (`llmslim_memory`, or `collection=...`).
@@ -64,7 +64,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     again changes nothing, so several processes can start at once. A collection written by a newer llmslim is
     refused.
   - Turns come back in the same order as in every other store, ties included: each batch takes its order numbers
-    in one atomic update. A batch with a duplicate id is undone and leaves nothing behind.
+    in one atomic update. On a replica set or sharded cluster each batch is one transaction, so it is stored whole
+    or not at all, even if the connection drops partway. On a standalone server, which has no transactions, a batch
+    with a duplicate id is undone and leaves nothing behind.
   - Times are stored as UTC dates and also in microseconds, so they come back exactly, although a BSON date keeps
     only milliseconds.
   - Caller values are data, never operators: ids and scope values must be strings and are matched with `$eq`, and

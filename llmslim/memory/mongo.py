@@ -54,8 +54,10 @@ class MongoStore:
     The collection (``llmslim_memory`` by default), its indexes and a ``<collection>_meta`` collection, which holds
     the schema version and the counter that orders turns, are created when the store opens if they don't exist.
     Creating them again changes nothing, so several processes can start at once. A collection written by a newer
-    llmslim is refused rather than misread. No transactions are needed, so a standalone server works as well as a
-    replica set. Reads go to the primary, so a turn is readable as soon as it is added.
+    llmslim is refused rather than misread. On a replica set or a sharded cluster each :meth:`add` is one transaction,
+    so a batch is stored whole or not at all, even if the connection drops partway. A standalone server has no
+    transactions; there a batch that fails partway is undone instead. Reads go to the primary, so a turn is readable as
+    soon as it is added.
 
     Every caller value is stored and matched as data: ids and scope values must be strings and are compared with
     ``$eq``, and metadata whose keys MongoDB would read as operators or paths (a leading ``$``, a ``.``) is kept as JSON
@@ -118,6 +120,7 @@ class MongoStore:
                 )
                 _check_database(db.name)
             self.database: str = db.name
+            self._client: Any = db.client
             options: Any = CodecOptions(tz_aware=True, tzinfo=timezone.utc)
             self._turns: Any = db.get_collection(
                 collection, codec_options=options, read_preference=ReadPreference.PRIMARY
@@ -126,6 +129,7 @@ class MongoStore:
                 f"{collection}_meta", codec_options=options, read_preference=ReadPreference.PRIMARY
             )
             self._create_schema()
+            self._transactions = _supports_transactions(db)
         except Exception as error:
             failure = _scrubbed(error, secrets)
             if failure is error:
@@ -225,12 +229,19 @@ class MongoStore:
         for offset, row in enumerate(rows):
             row["seq"] = Int64(start + offset)  # in the order the turns were given in
         try:
-            self._turns.insert_many(rows, ordered=True)
+            if self._transactions:
+                with self._client.start_session() as session:
+                    session.with_transaction(
+                        lambda s: self._turns.insert_many(rows, ordered=True, session=s)
+                    )
+            else:
+                self._turns.insert_many(rows, ordered=True)
         except BulkWriteError as error:
-            # Ordered inserts stop at the first failure; undo the ones before it so the batch leaves nothing behind.
-            inserted = int(error.details.get("nInserted", 0))
-            if inserted:
-                self._turns.delete_many({"_id": {"$in": ids[:inserted]}})
+            if not self._transactions:
+                # Ordered inserts stop at the first failure; undo the ones before it so the batch leaves nothing behind.
+                inserted = int(error.details.get("nInserted", 0))
+                if inserted:
+                    self._turns.delete_many({"_id": {"$in": ids[:inserted]}})
             if any(_id_conflict(failure) for failure in error.details.get("writeErrors", [])):
                 # Not chained: the driver's message repeats the whole turn.
                 raise ValueError("memory id already exists") from None
@@ -472,6 +483,12 @@ def _check_database(name: Any) -> None:
         raise ValueError(
             f"use a database of your own, not {name!r} (to log in against admin, add authSource=admin to the URL)"
         )
+
+
+def _supports_transactions(db: Any) -> bool:
+    """Whether the server is a replica set member or a mongos, the deployments that have multi-document transactions."""
+    reply = db.command("hello")
+    return bool(reply.get("setName")) or reply.get("msg") == "isdbgrid"
 
 
 def _upsert(collection: Any, key: str, update: Mapping[str, Any]) -> None:

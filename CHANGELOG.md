@@ -258,6 +258,19 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
   now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,
   through a restart and an outage) and against Postgres. `docs/SERVER.md` shows both.
+- **`Memory.search` keeps more of a conversation whose replies are short.** When a long history is selected from, a
+  user turn inherits part of its session's relevance, so a turn that shares no word with the question still comes in
+  when its session is about it. Reply windows inherit their whole reply's relevance instead, so a reply of one window
+  inherited only its own: a short reply scored 0 unless it shared a word with the question, and waited behind older
+  turns for the leftover budget. A short reply is a person's turn in a conversation between two people stored as
+  `user` and `assistant`, or an agent's one-line answer. A reply of one window now inherits its session's relevance, as
+  a user turn does; a window of a longer reply still inherits its reply's. Measured on development data, with no model
+  in the loop, as the share of questions whose labelled evidence is all in the context:
+  - LoCoMo (first speaker `user`, second `assistant`): 75.7% to 78.7% at 2,500 tokens (+3.0 points, 95% interval
+    +0.4 to +6.1) and 88.3% to 92.2% at 10,000 (+3.9, +1.3 to +7.0);
+  - LongMemEval: no loss, 89.6% to 89.9% and 94.8% to 95.1%.
+
+  This changes output content only; the API is unchanged.
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and
   starts a document job, to `doc_ai.parse`, with the same arguments. `SarvamDocumentSource` and
   `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now

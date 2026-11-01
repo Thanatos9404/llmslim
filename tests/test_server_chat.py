@@ -916,46 +916,158 @@ def test_each_chunk_reaches_the_client_before_the_next_one_is_read(memory, fake)
     assert stored(memory, user_id="asha")[-1] == ("assistant", "Once upon a time")
 
 
-@pytest.mark.parametrize("spec", ["2.4", "2.3"])
-def test_a_client_that_goes_away_mid_stream_closes_the_upstream(memory, fake, spec):
-    async def scenario() -> Chunks:
-        gone = asyncio.Event()
-        parts = sse("A", "B", "C")
-        # The upstream hangs after the first two chunks, as a slow model does.
-        stream = Chunks([parts[0], parts[1], asyncio.Event().wait, *parts[2:]])
-        fake.replies.append(
-            lambda request: httpx.Response(
-                200, headers={"content-type": "text/event-stream"}, stream=stream
-            )
+async def _cut_off(
+    app: Any, fake: FakeUpstream, body: bytes, spec: str = "2.4", headers: Any = ()
+) -> Chunks:
+    """Sends ``body`` to ``app`` and goes away once two events of the streamed answer have arrived."""
+    gone = asyncio.Event()
+    parts = sse("A", "B", "C")
+    # The upstream hangs after the first two chunks, as a slow model does.
+    stream = Chunks([parts[0], parts[1], asyncio.Event().wait, *parts[2:]])
+    fake.replies.append(
+        lambda request: httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=stream
         )
-        app = make_app(memory, fake)
-        request_read = False
-        bodies = 0
+    )
+    request_read = False
+    bodies = 0
 
-        async def receive() -> Dict[str, Any]:
-            nonlocal request_read
-            if not request_read:
-                request_read = True
-                return {"type": "http.request", "body": STREAM_BODY, "more_body": False}
-            await gone.wait()
-            return {"type": "http.disconnect"}
+    async def receive() -> Dict[str, Any]:
+        nonlocal request_read
+        if not request_read:
+            request_read = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        await gone.wait()
+        return {"type": "http.disconnect"}
 
-        async def send(message: Dict[str, Any]) -> None:
-            nonlocal bodies
-            if message["type"] != "http.response.body":
-                return
-            bodies += 1
-            if bodies == 2:
-                gone.set()  # ASGI before 2.4: the server reports the disconnect through receive()
-                if spec == "2.4":
-                    raise OSError("connection reset")  # ASGI 2.4: sending to a gone client fails
+    async def send(message: Dict[str, Any]) -> None:
+        nonlocal bodies
+        if message["type"] != "http.response.body":
+            return
+        bodies += 1
+        if bodies == 2:
+            gone.set()  # ASGI before 2.4: the server reports the disconnect through receive()
+            if spec == "2.4":
+                raise OSError("connection reset")  # ASGI 2.4: sending to a gone client fails
 
-        await app(_scope(STREAM_BODY, spec), receive, send)
-        return stream
+    scope = _scope(body, spec)
+    scope["headers"] += list(headers)
+    await app(scope, receive, send)
+    return stream
 
-    stream = asyncio.run(asyncio.wait_for(scenario(), 10))
+
+async def _ask(app: Any, body: bytes) -> bytes:
+    """Sends ``body`` to ``app`` and reads the whole answer."""
+    request_read = False
+    out: List[bytes] = []
+
+    async def receive() -> Dict[str, Any]:
+        nonlocal request_read
+        if not request_read:
+            request_read = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        await asyncio.Event().wait()
+        return {"type": "http.disconnect"}  # pragma: no cover
+
+    async def send(message: Dict[str, Any]) -> None:
+        if message["type"] == "http.response.body":
+            out.append(message.get("body", b""))
+
+    await app(_scope(body, "2.4"), receive, send)
+    return b"".join(out)
+
+
+def _stream_body(*messages: Dict[str, str]) -> bytes:
+    return json.dumps({"model": "m", "stream": True, "messages": list(messages)}).encode()
+
+
+@pytest.mark.parametrize("spec", ["2.4", "2.3"])
+def test_a_client_that_goes_away_mid_stream_closes_the_upstream_and_keeps_the_user_turn(
+    memory, fake, spec
+):
+    app = make_app(memory, fake)
+    stream = asyncio.run(asyncio.wait_for(_cut_off(app, fake, STREAM_BODY, spec), 10))
     assert stream.closed
+    # A voice caller who talks over the reply: what they said is kept, the reply they cut off ("AB") is not.
+    assert stored(memory, user_id="asha") == [("user", "Tell me a story")]
+
+
+def test_a_cut_off_turn_is_stored_once_however_often_the_request_is_retried(memory, fake):
+    app = make_app(memory, fake)
+    story = {"role": "user", "content": "Tell me a story"}
+
+    async def scenario() -> None:
+        await _cut_off(app, fake, STREAM_BODY)
+        await _cut_off(app, fake, STREAM_BODY)  # stopped again
+        fake.replies.append(lambda request: streamed(sse("Once upon a time")))
+        await _ask(app, STREAM_BODY)  # the retry that finishes stores only the reply
+        # The same words later in the conversation are a new turn.
+        fake.replies.append(lambda request: streamed(sse("Twice upon a time")))
+        await _ask(
+            app, _stream_body(story, {"role": "assistant", "content": "Once upon a time"}, story)
+        )
+        # So is the same request in another scope.
+        await _cut_off(app, fake, STREAM_BODY, headers=[(b"x-llmslim-agent-id", b"coach")])
+
+    asyncio.run(asyncio.wait_for(scenario(), 10))
+    turns = memory.get_all(user_id="asha")
+    assert [(i.role, i.content) for i in turns if i.agent_id is None] == [
+        ("user", "Tell me a story"),
+        ("assistant", "Once upon a time"),
+        ("user", "Tell me a story"),
+        ("assistant", "Twice upon a time"),
+    ]
+    assert stored(memory, user_id="asha", agent_id="coach") == [("user", "Tell me a story")]
+
+
+def test_a_cut_off_turn_that_could_not_be_stored_is_stored_by_the_retry(memory, fake, monkeypatch):
+    app = make_app(memory, fake)
+    add = memory.add
+    failures = [OSError("disk full")]
+
+    def flaky(*args: Any, **kwargs: Any) -> Any:
+        if failures:
+            raise failures.pop()
+        return add(*args, **kwargs)
+
+    monkeypatch.setattr(memory, "add", flaky)
+
+    async def scenario() -> None:
+        await _cut_off(app, fake, STREAM_BODY)
+        fake.replies.append(lambda request: streamed(sse("Once upon a time")))
+        await _ask(app, STREAM_BODY)
+
+    asyncio.run(asyncio.wait_for(scenario(), 10))
+    assert not failures
+    assert stored(memory, user_id="asha") == [
+        ("user", "Tell me a story"),
+        ("assistant", "Once upon a time"),
+    ]
+
+
+@pytest.mark.parametrize("mode", ["off", "recall-only"])
+def test_a_cut_off_turn_is_not_stored_when_storing_is_off(memory, fake, mode):
+    app = make_app(memory, fake)
+    header = [(b"x-llmslim-memory", mode.encode())]
+    asyncio.run(asyncio.wait_for(_cut_off(app, fake, STREAM_BODY, headers=header), 10))
     assert memory.get_all(user_id="asha") == []
+
+
+def test_cut_off_requests_are_remembered_for_a_while_and_a_bounded_number(fake, monkeypatch):
+    relay = chat_module.ChatRelay(
+        Memory(), ChatUpstream(UPSTREAM, transport=Transport(fake)), max_budget=4000
+    )
+    now = [1000.0]
+    monkeypatch.setattr(chat_module.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(chat_module, "MAX_CUT_OFF_REMEMBERED", 2)
+    for key in ("a", "b", "c"):
+        relay._remember_cut_off(key)
+    assert not relay._stored_when_cut_off("a")  # the oldest made room
+    assert relay._stored_when_cut_off("b")
+    assert not relay._stored_when_cut_off("b")  # a retry that finished used it up
+    now[0] += chat_module.CUT_OFF_RETRY_SECONDS
+    assert not relay._stored_when_cut_off("c")  # too long ago
+    asyncio.run(relay.aclose())
 
 
 # --------------------------------------------------------------------------- upstream errors

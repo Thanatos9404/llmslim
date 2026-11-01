@@ -28,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     reordered, but the recalled message isn't in the history the client re-sends, so each request misses the prompt
     cache on its last turn. `--store-only` (or `X-LLMSlim-Memory: store-only`) keeps every request byte-identical.
   - **Storage:** after a successful answer, the new user turn and the reply's text are stored word for word, once.
-    Nothing is stored when the upstream fails, a stream breaks off, or the client goes away mid-stream.
+    Nothing is stored when the upstream fails or a stream breaks off. When the client goes away mid-stream (a voice
+    caller talking over the reply), the user turn is stored without the reply, and a retry of that request within 10
+    minutes doesn't store it again.
   - **Streams** pass through chunk by chunk. The upstream connection is closed however a stream ends.
   - **Security:** the upstream is fixed by the server, so no request field or header can redirect it, and redirects
     are not followed. The client's key is never forwarded, and the upstream's key never reaches answers, errors or

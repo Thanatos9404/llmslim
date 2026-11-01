@@ -12,6 +12,8 @@ OpenAI-compatible upstream fixed in the server's configuration. For each request
    it came, a stream chunk by chunk.
 3. **Stores** the new turns after a successful answer: the latest user message (when it is the last message, a new
    user turn) and the text of the assistant's reply, verbatim. The history the client re-sends is never stored again.
+   When the client cuts a stream off (a voice caller talking over the reply), the user message is stored without the
+   part of the reply the caller may not have heard, and a retry of the same request doesn't store it twice.
 
 Scope comes from ``X-LLMSlim-User-Id`` (else the body's ``user``), ``X-LLMSlim-Agent-Id`` and
 ``X-LLMSlim-Session-Id``. Without a user or agent id, memory is not touched: the request is passed through as it is.
@@ -29,9 +31,12 @@ Security:
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import logging
 import re
+import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import urlsplit
@@ -58,6 +63,9 @@ MAX_ERROR_BYTES = 64_000  # an upstream error body
 MAX_EVENT_BYTES = 1_000_000  # one line of a streamed answer
 MAX_REPLY_CHARS = 1_000_000  # the assistant text kept for storage
 MAX_SCOPE_ID = 256
+#: How long a user turn stored from a cut-off stream is remembered, so a retry of that request doesn't store it again.
+CUT_OFF_RETRY_SECONDS = 600.0
+MAX_CUT_OFF_REMEMBERED = 1024
 MAX_ERROR_MESSAGE = 2_000
 
 USER_HEADER = "x-llmslim-user-id"
@@ -557,11 +565,34 @@ class ChatRelay:
         self._secret = config.api_key.encode("utf-8") if config.api_key else b""
         if config.api_key:
             self._headers["authorization"] = f"Bearer {config.api_key}"
+        # Requests whose user turn was stored when the client cut the stream off: request key -> monotonic time.
+        self._cut_off: "OrderedDict[str, float]" = OrderedDict()
 
     async def aclose(self) -> None:
         await self._client.aclose()
 
     # ------------------------------------------------------------------ helpers
+
+    @staticmethod
+    def _request_key(plan: _Plan, messages: Sequence[Any]) -> str:
+        """The scope and every message up to the latest user turn: the same for a retry, different for a new turn."""
+        assert plan.latest_user is not None
+        data = json.dumps(
+            [sorted(plan.scope.items()), list(messages[: plan.latest_user + 1])],
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+    def _remember_cut_off(self, key: str) -> None:
+        self._cut_off[key] = time.monotonic()
+        self._cut_off.move_to_end(key)
+        while len(self._cut_off) > MAX_CUT_OFF_REMEMBERED:
+            self._cut_off.popitem(last=False)
+
+    def _stored_when_cut_off(self, key: str) -> bool:
+        when = self._cut_off.pop(key, None)
+        return when is not None and time.monotonic() - when < CUT_OFF_RETRY_SECONDS
 
     def _error(self, status: int, kind: str, message: str, headers: Any = None) -> Any:
         from starlette.responses import JSONResponse
@@ -701,29 +732,41 @@ class ChatRelay:
 
         user_turn = plan.user_text if plan.store and plan.new_turn else ""
 
-        async def store(reply: str) -> None:
+        async def store(reply: str, *, cut_off: bool = False) -> None:
+            if not plan.store or plan.latest_user is None:
+                return
+            key = None
+            if user_turn.strip() and (cut_off or self._cut_off):
+                key = self._request_key(plan, messages)
             turns = []
-            if user_turn.strip():
+            if user_turn.strip() and not (key is not None and self._stored_when_cut_off(key)):
                 turns.append({"role": "user", "content": user_turn})
             if reply.strip():
                 turns.append({"role": "assistant", "content": reply})
-            if not plan.store or not turns or plan.latest_user is None:
-                return
-            try:
-                await run_in_threadpool(
-                    self.memory.add, turns, metadata=_STORED_METADATA, **plan.scope
-                )
-            except Exception as error:  # the answer already went out; never fail it now
-                logger.warning("chat: could not store the turn (%s)", type(error).__name__)
-                logger.debug("chat: storage failure", exc_info=True)
+            if turns:
+                try:
+                    await run_in_threadpool(
+                        self.memory.add, turns, metadata=_STORED_METADATA, **plan.scope
+                    )
+                except Exception as error:  # the answer already went out; never fail it now
+                    logger.warning("chat: could not store the turn (%s)", type(error).__name__)
+                    logger.debug("chat: storage failure", exc_info=True)
+                    return
+            if cut_off and key is not None:
+                self._remember_cut_off(key)
 
         media = response.headers.get("content-type", "")
         if response.is_success and media.split(";")[0].strip().lower() == "text/event-stream":
             reader = StreamReader()
 
-            async def finish() -> None:
+            async def finish(cut_off: bool) -> None:
                 if reader.complete:
                     await store(reader.text)
+                elif cut_off:
+                    # A voice caller who talks over the reply ends the stream; their next request carries this turn
+                    # only as history, which is never stored, so it is stored now. The reply they cut off is not.
+                    logger.info("chat: the client cut the stream off; storing the user turn only")
+                    await store("", cut_off=True)
                 else:
                     logger.info("chat: the stream did not finish; nothing stored")
 
@@ -764,14 +807,15 @@ def _relay_class() -> Any:
         """Passes an upstream event stream through chunk by chunk, then closes it and stores the turn.
 
         Whatever happens (the stream ends, the upstream breaks off, the client goes away, the server shuts down), the
-        upstream response is closed and ``finish`` runs once, shielded from cancellation.
+        upstream response is closed and ``finish`` runs once, shielded from cancellation. It is told whether the stream
+        was cut off on this side (the client went away, or the server stopped) rather than by the upstream.
         """
 
         def __init__(
             self,
             upstream: Any,
             reader: StreamReader,
-            finish: Callable[[], Any],
+            finish: Callable[[bool], Any],
             headers: Mapping[str, str],
             httpx: Any,
             secret: bytes,
@@ -779,6 +823,9 @@ def _relay_class() -> Any:
             self._upstream, self._reader, self._finish = upstream, reader, finish
             self._httpx, self._secret = httpx, secret
             self._ended = False  # every upstream chunk reached the client
+            self._upstream_failed = (
+                False  # the upstream broke off, or its stream was cut for echoing the key
+            )
             self._chunks = self._relay()
             super().__init__(
                 self._chunks,
@@ -791,6 +838,7 @@ def _relay_class() -> Any:
             try:
                 async for chunk in self._upstream.aiter_bytes():
                     if self._secret and self._secret in chunk:
+                        self._upstream_failed = True
                         logger.warning("chat: the upstream stream echoed its credentials; cut off")
                         yield _sse_error("the upstream's answer echoed its credentials")
                         return
@@ -799,6 +847,7 @@ def _relay_class() -> Any:
                 self._reader.close()
                 self._ended = True
             except self._httpx.HTTPError as error:
+                self._upstream_failed = True
                 logger.warning("chat: the upstream stream broke off (%s)", type(error).__name__)
                 yield _sse_error("the upstream stream broke off before it finished")
 
@@ -813,7 +862,7 @@ def _relay_class() -> Any:
                 with anyio.CancelScope(shield=True):
                     await self._chunks.aclose()
                     await self._upstream.aclose()
-                    await self._finish()
+                    await self._finish(not self._ended and not self._upstream_failed)
 
     _RELAY = Relay
     return Relay

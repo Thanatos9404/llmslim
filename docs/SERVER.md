@@ -193,8 +193,13 @@ changed, so the loop's prefix holds.
   included) with `metadata` `{"source": "chat"}`. Only text: images and audio in a list of content parts are skipped.
 - Not stored: the history the client re-sends, system and developer messages, tool calls and tool results, reasoning,
   and with `n` above 1, every choice but the first.
-- Nothing is stored when the upstream answers with an error, a stream breaks off or ends without saying it finished,
-  or the client goes away before a stream ends. A request the client retries after a success is stored again.
+- When the client goes away before a stream ends (a voice caller talking over the reply, a user pressing stop), the
+  user message is stored and the reply is not: the caller may not have heard it, and their next request carries the
+  message only as history, which is never stored. If the client retries that same request within 10 minutes, the
+  retry stores only its reply, so the message is not stored twice. The server remembers this in its own process, so
+  with several workers a retry that reaches another one stores the message again.
+- Nothing is stored when the upstream answers with an error, or a stream breaks off or ends without saying it
+  finished. A request the client retries after a success is stored again.
 - If memory fails (a locked database, say), the answer still goes out: without recalled memory, or unstored. The log
   says so, without what anyone said.
 

@@ -89,7 +89,7 @@ export default function PrivacyPage() {
     <h2>The llmslim package, MCP server and plugins</h2>
     <p>The open-source library, the <code>llmslim mcp</code> memory server and the plugins for Claude Code and other MCP clients run on your machine. They send nothing to us and include no telemetry.</p>
     <ul>
-      <li><strong>What is stored.</strong> The memory server stores the messages you or your agent ask it to remember, word for word, in a SQLite file on your machine (by default <code>~/.llmslim/memory.db</code>) or in a Postgres database you configure. The <code>forget</code> tool deletes one memory, and deleting the file removes all of them.</li>
+      <li><strong>What is stored.</strong> The memory server stores the messages you or your agent ask it to remember, word for word, in a SQLite file on your machine (by default <code>~/.llmslim/memory.db</code>) or in a Postgres or MongoDB database you configure. The <code>forget</code> tool deletes one memory, and deleting the file removes all of them.</li>
       <li><strong>No model calls.</strong> Storing, recalling and fitting context call no model provider.</li>
       <li><strong>What reaches the network.</strong> Running through <code>uvx</code> downloads the package from PyPI the first time. The tokenizer downloads one encoding file the first time and caches it. Only if you run <code>llmslim wrap claude</code> or <code>llmslim proxy</code>, a local proxy forwards Claude Code’s own requests to Anthropic’s API.</li>
     </ul>

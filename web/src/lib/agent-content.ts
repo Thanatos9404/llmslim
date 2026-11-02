@@ -76,7 +76,7 @@ const CORE_FACTS = [
 
 const ORBIT_FACTS = [
   "The hosted edition, run by AMEYOR: a hosted memory API, a remote MCP server with OAuth for Claude.ai, ChatGPT, Cursor and Claude Code, team memory, a context console with traces and replay, a truth timeline, webhooks, SSO and governance.",
-  "Not available yet: Orbit opens with LLMSlim 1.0. The pricing page's buttons join a founding list by email; nothing is charged before Orbit opens.",
+  "Not available yet: Orbit opens with LLMSlim 1.0. The pricing page's buttons join a founding list (one click when signed in, otherwise confirmed by email); nothing is charged before Orbit opens.",
   `Plans at launch and launch offers: ${md("/pricing")}`,
 ]
 
@@ -344,7 +344,7 @@ export function pricingMarkdown(): string {
   const cellText = (cell: Cell) => (cell === true ? "Yes" : cell === false ? "No" : cell)
   return join(
     "# LLMSlim pricing",
-    "> LLMSlim Core is free and open source (MIT), forever. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0, and these are its plans at launch. Until Orbit opens, the plan buttons join a founding list by email, and nothing is charged.",
+    "> LLMSlim Core is free and open source (MIT), forever. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0, and these are its plans at launch. Until Orbit opens, the plan buttons join a founding list (one click when signed in, otherwise confirmed by email), and nothing is charged.",
     `## LLMSlim Core\n\nFree forever, MIT licence. Self-host it with no account and no limits on projects, turns or searches: \`pip install llmslim\`. Documentation: ${md("/docs")}`,
     "## LLMSlim Orbit plans at launch\n\n" +
       table(["Plan", "INR monthly", "INR annual", "USD monthly", "USD annual"], PLANS.map((plan) => [

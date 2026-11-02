@@ -5,12 +5,15 @@ import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { PageBackdrop } from "@/components/site/PageBackdrop"
 import { BACKDROP_CODE } from "@/components/site/backdrop-code"
+import { FoundingListButton } from "@/components/site/FoundingListButton"
 import { TrackedLink } from "@/components/site/TrackedLink"
 import { siteConfig } from "@/config/site"
 import {
-  BILLINGS, CURRENCIES, CURRENCY_LABEL, FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice,
+  BILLINGS, CURRENCIES, CURRENCY_LABEL, FEATURE_MATRIX, FOUNDING_LIST_COUNTER, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice,
   type Billing, type Cell, type Currency, type Plan,
 } from "@/data/pricing"
+import { getAuthConfig } from "@/lib/auth/config"
+import { foundingListFeatures } from "@/lib/founding-list/features"
 import { constructMetadata, faqJsonLd, jsonLdScript, orbitPricingJsonLd } from "@/lib/seo"
 
 export const metadata = constructMetadata({
@@ -26,7 +29,10 @@ function pick<T extends string>(value: string | string[] | undefined, options: r
   return typeof value === "string" && (options as readonly string[]).includes(value) ? (value as T) : undefined
 }
 
-/** Until checkout exists, every plan button opens an email to the founder, as the Vault beta form does. */
+/**
+ * Until checkout exists, every plan button is an email to the founder. "Join the founding list" turns into a one-click
+ * join or a small form once the page is interactive (FoundingListButton); the email stays the no-JavaScript fallback.
+ */
 function mailto(subject: string, lines: string[]): string {
   return `mailto:${siteConfig.founderEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`
 }
@@ -72,12 +78,16 @@ function CellValue({ value }: { value: Cell }) {
 
 export default async function PricingPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams
+  const requestHeaders = await headers()
   // Vercel sets the visitor's country on every request; rupees for India, dollars elsewhere, unless the visitor chose.
-  const country = (await headers()).get("x-vercel-ip-country")
+  const country = requestHeaders.get("x-vercel-ip-country")
   const currency: Currency = pick(params.currency, CURRENCIES) ?? (country?.toUpperCase() === "IN" ? "inr" : "usd")
   const billing: Billing = pick(params.billing, BILLINGS) ?? "monthly"
   const href = (next: { currency?: Currency; billing?: Billing }) => `/pricing?currency=${next.currency ?? currency}&billing=${next.billing ?? billing}`
   const faqs = PRICING_FAQS.map((faq) => [faq.question, faq.answer] as const)
+  const founding = foundingListFeatures(getAuthConfig(), requestHeaders)
+  // Off by default: the founder decides when a public count is worth showing (src/data/pricing.ts).
+  const members = FOUNDING_LIST_COUNTER.show ? await (await import("@/lib/founding-list/server")).publicFoundingCount(FOUNDING_LIST_COUNTER.minimum) : null
 
   return <div className="slim-site"><SiteHeader /><main id="main-content" className="pricing-page has-backdrop">
     <PageBackdrop code={BACKDROP_CODE.memory} />
@@ -126,9 +136,9 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
           <p className="pr-summary">{plan.summary}</p>
           <PriceLine plan={plan} currency={currency} billing={billing} />
           <p className="pr-note">{priceNote(plan, currency, billing)}</p>
-          <TrackedLink className={plan.id === "team" ? "button" : "button button-outline"} href={planMail(plan, currency, billing)} event="pricing_cta_clicked" properties={{ plan: plan.id, currency, billing }}>
-            {plan.id === "enterprise" ? "Talk to us" : "Join the founding list"}
-          </TrackedLink>
+          {plan.id === "enterprise"
+            ? <TrackedLink className="button button-outline" href={planMail(plan, currency, billing)} event="pricing_cta_clicked" properties={{ plan: plan.id, currency, billing }}>Talk to us</TrackedLink>
+            : <FoundingListButton className={plan.id === "team" ? "button" : "button button-outline"} href={planMail(plan, currency, billing)} choice={{ plan: plan.id, currency, billing }} planName={plan.name} features={founding}>Join the founding list</FoundingListButton>}
           <ul className="pr-limits">
             {plan.seats && <li><Check size={14} aria-hidden="true" />{plan.seats[currency]}</li>}
             {plan.limits.map((limit) => <li key={limit}><Check size={14} aria-hidden="true" />{limit}</li>)}
@@ -136,7 +146,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
           {plan.id === "business" && currency === "inr" && billing === "monthly" && <p className="pr-mandate">Monthly debits above ₹15,000 need your approval each time (RBI e-mandate rules). Annual billing avoids this.</p>}
         </li>)}
       </ul>
-      <p className="pr-fine">Nothing is charged before Orbit opens. Payments will be processed by Razorpay: UPI, cards and net banking in India, and international cards.</p>
+      <p className="pr-fine">{members !== null && <>{members.toLocaleString("en-US")} people are on the founding list. </>}Nothing is charged before Orbit opens. Payments will be processed by Razorpay: UPI, cards and net banking in India, and international cards.</p>
     </section>
 
     <section className="site-width pr-offers" aria-labelledby="offers-title">

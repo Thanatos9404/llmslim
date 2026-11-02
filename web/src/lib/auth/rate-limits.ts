@@ -51,6 +51,22 @@ export const EMAIL_RULES = {
 
 export type EmailLimitedPath = keyof typeof EMAIL_RULES
 
+/**
+ * The founding list (src/app/api/founding-list), outside Better Auth, so it applies these itself with
+ * the same store and keys: per network, per address for the requests that email a link, and per
+ * account for one-click joins.
+ */
+export const FOUNDING_LIST_RULES = {
+  /** Join requests per IP (IPv6: per /64), signed in or not. */
+  join: { window: 15 * MINUTE, max: 10 },
+  /** Requests that email a confirmation link, per address. */
+  email: { window: HOUR, max: 3 },
+  /** One-click joins and leaves, per account. */
+  account: { window: 15 * MINUTE, max: 20 },
+  /** Confirm and unsubscribe links followed, per IP. */
+  link: { window: 15 * MINUTE, max: 20 },
+} as const satisfies Record<string, Rule>
+
 export function isEmailLimitedPath(path: string | undefined): path is EmailLimitedPath {
   return typeof path === "string" && Object.prototype.hasOwnProperty.call(EMAIL_RULES, path)
 }

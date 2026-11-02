@@ -8,6 +8,13 @@
       "when": 1793307126369,
       "tag": "0000_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793637845068,
+      "tag": "0001_founding_list",
+      "breakpoints": true
     }
   ]
 }

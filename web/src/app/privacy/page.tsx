@@ -4,7 +4,7 @@ import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
   title: "Privacy Policy",
-  description: "What llmslim.app measures and never collects, what an llmslim.app account stores, how Studio handles your text, how payments through Razorpay work, how LLMSlim Orbit will treat your content, and the service providers we use.",
+  description: "What llmslim.app measures and never collects, what an llmslim.app account and the Orbit founding list store, how Studio handles your text, how payments through Razorpay work, how LLMSlim Orbit will treat your content, and the service providers we use.",
   path: "/privacy",
 })
 
@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <ul>
           <li>page views of the homepage, the Vault page and the Results page;</li>
           <li>clicks on links to the Core documentation, the Studio, the Vault beta and a startup program;</li>
-          <li>clicks on a plan button on the Pricing page, with the plan, the currency and the billing period shown (the button opens your email app, and nothing you write is sent to Mixpanel);</li>
+          <li>clicks on a plan button on the Pricing page, with the plan, the currency and the billing period shown (nothing you type after the click is sent to Mixpanel);</li>
           <li>that the Vault beta request form was submitted (the form itself opens your email app, and none of its fields are sent to Mixpanel or to us);</li>
           <li>that the Studio’s Answer with Sarvam step was used, with whether an answer came back and two token counts.</li>
         </ul>
@@ -50,11 +50,19 @@ export default function PrivacyPage() {
       <li><strong>Deleting your account.</strong> The account page deletes your account, sign-in methods, passkeys and sessions at once. What remains: the security log entries, until they are 180 days old, and the hashed abuse counters, until their window ends.</li>
     </ul>
 
+    <h2 id="founding-list">The LLMSlim Orbit founding list</h2>
+    <ul>
+      <li><strong>What we keep.</strong> Your email address; the plan, currency and billing period you chose; what you will use Orbit for, if you tell us; that you joined from the Pricing page; whether you have confirmed, and when you joined and confirmed. If you join while signed in, we use your account’s verified address and link the entry to your account.</li>
+      <li><strong>Why.</strong> To see which plans people want, and to email you about Orbit, such as when it opens. Nothing else, and we do not sell or share your address.</li>
+      <li><strong>Confirming.</strong> If you join without signing in, we email you a link to confirm, and keep only a keyed one-way hash of it. You are on the list only once you follow it; a request not confirmed within 7 days is deleted.</li>
+      <li><strong>Leaving.</strong> Use the unsubscribe link in any founding-list email, Leave the list on the Pricing page while signed in, or email <Email to={siteConfig.founderEmail} />. We then stop emailing you and delete what you said you would use Orbit for, but keep your address marked as unsubscribed so it stays that way. Deleting your account deletes an entry made while signed in.</li>
+    </ul>
+
     <h2>In your browser</h2>
     <p>We store your light or dark theme preference, and whether you have finished the Studio tour, in local storage. If you use Answer with Sarvam, the server also sets one HttpOnly cookie holding a random session ID for 24 hours, used only for that step’s rate limits. If you sign in, the site sets HttpOnly cookies for your session, for as long as it lasts, and, while a sign-in is in progress, short-lived ones that protect the Google, GitHub or passkey step. Nothing else.</p>
 
     <h2>Emails you send us</h2>
-    <p>The founding-list, beta and contact buttons on this site open your own email app; the site itself sends and stores nothing. When you email us, we keep your message and address to reply and to follow up on what you asked, and, if you joined the founding list, to tell you when LLMSlim Orbit opens. We do not sell or share them.</p>
+    <p>The beta and contact buttons on this site, and the founding-list buttons when JavaScript is off, open your own email app; the site itself sends and stores nothing for them. When you email us, we keep your message and address to reply and to follow up on what you asked, and, if you joined the founding list, to tell you when LLMSlim Orbit opens. We do not sell or share them.</p>
 
     <h2>Payments</h2>
     <ul>
@@ -75,8 +83,8 @@ export default function PrivacyPage() {
     <p>These companies process data for us today:</p>
     <ul>
       <li><strong>Vercel</strong> hosts the website and the Studio functions, and provides Web Analytics and Speed Insights.</li>
-      <li><strong>Neon</strong> hosts the accounts database, on Amazon Web Services in the United States.</li>
-      <li><strong>Resend</strong> sends account emails.</li>
+      <li><strong>Neon</strong> hosts the accounts and founding-list database, on Amazon Web Services in the United States.</li>
+      <li><strong>Resend</strong> sends account and founding-list emails.</li>
       <li><strong>Google</strong> and <strong>GitHub</strong> confirm who you are, only when you choose to sign in with them.</li>
       <li><strong>Have I Been Pwned</strong> answers the breached-password check described above.</li>
       <li><strong>Sentry</strong> receives error reports, when enabled.</li>

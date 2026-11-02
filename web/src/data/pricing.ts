@@ -2,8 +2,10 @@
  * Plans at the LLMSlim 1.0 launch (founder's decision, 29 October 2026). Rendered by /pricing, /pricing.md and the
  * pricing structured data, so every view shows the same numbers.
  *
- * LLMSlim Orbit, the hosted edition, does not exist yet: it opens with LLMSlim 1.0. Until checkout exists, every
- * paid-plan button is a mailto to the founder. INR prices include 18% GST; USD prices are for customers outside India.
+ * LLMSlim Orbit, the hosted edition, does not exist yet: it opens with LLMSlim 1.0. Until checkout exists, the plan
+ * buttons join the founding list (the founding_list table: one click when signed in, an emailed confirmation link
+ * otherwise), with a mailto to the founder as the no-JavaScript fallback; Enterprise's button is that mailto. INR
+ * prices include 18% GST; USD prices are for customers outside India.
  */
 
 export const CURRENCIES = ["inr", "usd"] as const
@@ -64,6 +66,12 @@ export function formatPrice(amount: number, currency: Currency): string {
 }
 
 export const CURRENCY_LABEL: Record<Currency, string> = { inr: "INR", usd: "USD" }
+
+/**
+ * A public "N people are on the founding list" line under the plans, counting confirmed members. Off: the founder
+ * decides when the number is worth showing. When on, it shows only once the count reaches `minimum`.
+ */
+export const FOUNDING_LIST_COUNTER: { show: boolean; minimum: number } = { show: false, minimum: 25 }
 
 /** A cell of the feature matrix: text, or included / not included. */
 export type Cell = string | boolean

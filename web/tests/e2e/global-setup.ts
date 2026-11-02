@@ -16,7 +16,7 @@ export default async function globalSetup() {
   try {
     await migrate(drizzle({ client: pool }), { migrationsFolder: path.join(WEB, "drizzle") })
     if (E2E.appDatabaseUrl) await grantAppRole(pool, E2E.appDatabaseUrl)
-    await pool.query(`truncate table "user", session, account, verification, passkey, rate_limit, auth_event cascade`)
+    await pool.query(`truncate table "user", session, account, verification, passkey, rate_limit, auth_event, founding_list cascade`)
   } finally {
     await pool.end()
   }

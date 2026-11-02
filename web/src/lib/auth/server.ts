@@ -18,7 +18,7 @@ import { sql } from "drizzle-orm"
 import { authSchema } from "@/db/schema"
 import { createDatabase } from "@/db/client"
 import { recordAuthEvent, hashIdentifier, type AuthEventType } from "./audit"
-import { getAuthConfig, type AuthConfig } from "./config"
+import { COOKIE_PREFIX, getAuthConfig, type AuthConfig } from "./config"
 import { accountDeletedMail, existingAccountMail, greetingName, passwordChangedMail, resetPasswordMail, sendMail, verificationMail, type Mail } from "./email"
 import { housekeepingDue, pruneExpired } from "./housekeeping"
 import { withinMailBudget } from "./mail-budget"
@@ -275,7 +275,7 @@ export function buildAuth(config: AuthConfig, db: AnyPgDatabase, options: BuildO
       // Explicit, so origin and CSRF checks also run when NODE_ENV=test (Better Auth skips them there by default).
       disableOriginCheck: false,
       disableCSRFCheck: false,
-      cookiePrefix: "llmslim",
+      cookiePrefix: COOKIE_PREFIX,
       defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure: config.secureCookies, path: "/" },
       ipAddress: { ipAddressHeaders: ["x-real-ip", "x-forwarded-for"], ipv6Subnet: 64 },
       backgroundTasks: { handler: background },

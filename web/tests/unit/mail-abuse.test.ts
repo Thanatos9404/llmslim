@@ -42,7 +42,7 @@ describe("mailbox", () => {
 describe("the per-mailbox email budget", () => {
   it("counts only the emails a stranger can trigger", async () => {
     const { db, client } = await testDatabase()
-    expect([...BUDGETED_MAIL].sort()).toEqual(["existing-account", "reset-password", "verify-email"])
+    expect([...BUDGETED_MAIL].sort()).toEqual(["existing-account", "founding-list-confirm", "founding-list-member", "reset-password", "verify-email"])
     for (let i = 0; i < 50; i++) expect(await withinMailBudget(db, SECRET, { to: "ada@example.com", kind: "password-changed" })).toBe(true)
     for (let i = 0; i < 50; i++) expect(await withinMailBudget(db, SECRET, { to: "ada@example.com", kind: "account-deleted" })).toBe(true)
     const rows = await client.query<{ count: number }>("select count(*)::int as count from rate_limit")

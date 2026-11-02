@@ -24,6 +24,7 @@ follows. The context is in date order, so the later statement reads after the ea
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import Dict, FrozenSet, Iterable, List, Sequence, Set, Tuple
 
 from ..focus import _cached_terms
@@ -107,3 +108,11 @@ class Subjects:
         return sorted(k for linked, _ in found for k in linked), set().union(
             *(shared for _, shared in found)
         )
+
+
+# Keyed by the whole history, so each entry keeps one history alive. A search reads its history's subjects up to three
+# times (selection, the requests section, the preferences section), and searches of an unchanged history repeat them.
+@lru_cache(maxsize=4)
+def subjects_of(texts: Tuple[str, ...], roles: Tuple[str, ...]) -> Subjects:
+    """``Subjects`` of a history (its turns' texts and roles, in date order), kept between calls."""
+    return Subjects(texts, roles)

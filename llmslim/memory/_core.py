@@ -1047,7 +1047,9 @@ class Memory:
         about ``_PREFERENCE_TOKENS``. None when ``_FOLLOW_UPS`` is off."""
         if not _FOLLOW_UPS:
             return None
-        subjects = _later.Subjects([item.content for item in items], [item.role for item in items])
+        subjects = _later.subjects_of(
+            tuple(item.content for item in items), tuple(item.role for item in items)
+        )
         index = {item.id: k for k, item in enumerate(items)}
 
         def follow_up(item: MemoryItem, said: str) -> Optional[Tuple[MemoryItem, str]]:

@@ -919,7 +919,9 @@ def link_later(turns: Sequence[Turn], user: Sequence[Piece], other: Sequence[Pie
     best = [max((p.score for p in pool), default=0.0) for pool in pools]
     if not any(best):
         return
-    subjects = _later.Subjects([t.item.content for t in turns], [t.item.role for t in turns])
+    subjects = _later.subjects_of(
+        tuple(t.item.content for t in turns), tuple(t.item.role for t in turns)
+    )
     by_turn = {piece.turn: piece for piece in user}
     raised: Dict[int, Tuple[float, Piece, Set[str]]] = {}
     for k, pool in enumerate(pools):

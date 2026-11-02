@@ -330,6 +330,11 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   - **The old constants:** `llmslim.planning.planner.PLANNER_VERSION` and
     `llmslim.planning.progressive.PLANNER_VERSION` still import and give the same release. They are no longer in
     those modules' `__all__`.
+- **`llmslim --help` lists the commands.** It described only the default command, which compresses text, so `serve`,
+  `mcp`, `import`, `proxy`, `wrap`, `plan`, `context` and `tools` were nowhere in it. It now ends with each command
+  and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
+  and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
+  command can't be added without its line, and tests check the list and every command's `--help`.
 
 ## [0.12.0] - 2026-10-27
 

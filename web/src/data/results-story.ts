@@ -1,6 +1,7 @@
 /**
- * Numbers behind /results. Every value comes from a run in the public repository, with Claude Haiku 5.5 reading
- * every context: round 3 (benchmarks/live/round3, Core 0.9, held-out test questions, cost first) for chat memory and
+ * Numbers behind /results. Every value comes from a report in the public repository, with Claude Haiku 5.5 reading
+ * every context: round 6 (benchmarks/live/round6, Core 0.12, BEAM-1M agent memory against Mem0 and Zep, held out,
+ * results only), round 3 (benchmarks/live/round3, Core 0.9, held-out test questions, cost first) for chat memory and
  * retrieval, and round 2 (benchmarks/live, Core 0.8) for long documents and agents.
  */
 
@@ -27,6 +28,19 @@ export type Benchmark = {
 }
 
 export const BENCHMARKS: Benchmark[] = [
+  {
+    id: "beam-1m", name: "BEAM-1M", short: "Agent memory",
+    question: "700 held-out questions about 35 chats of about 946,000 tokens each", metric: "rubric score out of 100", max: 100, unit: "",
+    arms: [
+      { name: "LLMSlim 0.12 + reranker", score: 44.6, kind: "llmslim" },
+      { name: "Mem0, top 50 memories", score: 43.4, kind: "competitor" },
+      { name: "Zep, on 30 of the 35 chats", score: 38.4, kind: "competitor" },
+      { name: "LLMSlim 0.11.1 + reranker", score: 38.0, kind: "lite" },
+    ],
+    info: [["Budget", "2,500 tokens · at 10,000: 47.3 vs Mem0 46.7"], ["Cost per 1k", "$1.22 · Mem0 $73.12 · Zep $330.07"], ["Trails Mem0 on", "summarization, −8.9 and −4.0"]],
+    verdict: "On par with Mem0, 60x cheaper at 2,500 tokens",
+    pixels: { total: 100, lit: 0, label: "2,436 of about 946,000 tokens kept" },
+  },
   {
     id: "locomo", name: "LoCoMo", short: "Chat memory",
     question: "Questions about long conversations between two people", metric: "accuracy", max: 100, unit: "%",
@@ -146,8 +160,8 @@ export type RaceSet = {
   /** What was measured, for the chart's caption. */
   n: string
   metric: string
-  /** The reference line: the whole context, and what it costs. */
-  full: { score: number; cost: number; label: string }
+  /** The reference line: the whole context, and what it costs. Absent when no history fits the reader's window. */
+  full?: { score: number; cost: number; label: string }
   /** The system the cost ratio is drawn against. */
   rival: string
   y: [number, number]
@@ -155,8 +169,20 @@ export type RaceSet = {
   note: string
 }
 
-/** Accuracy against what 1,000 questions cost end to end (round 3): one set per benchmark sample. */
+/** Accuracy against what 1,000 questions cost end to end (rounds 6 and 3): one set per benchmark sample. */
 export const RACE: RaceSet[] = [
+  {
+    key: "beam", label: "BEAM-1M", n: "BEAM-1M, 700 held-out questions on 35 conversations", metric: "rubric score out of 100", rival: "Mem0",
+    y: [35, 50],
+    rows: [
+      { name: "LLMSlim + reranker", model: "0.12, 2,500 tokens", score: 44.6, cost: 1.22, kind: "llmslim" },
+      { name: "LLMSlim, 10,000 tokens", model: "0.12 + reranker", score: 47.3, cost: 2.61, kind: "lite" },
+      { name: "Mem0", model: "Top 50 memories", score: 43.4, cost: 73.12, kind: "competitor" },
+      { name: "Mem0, top 200", model: "Top 200 memories", score: 46.7, cost: 74.53, kind: "competitor" },
+      { name: "LLMSlim 0.11.1", model: "+ reranker, 2,500 tokens", score: 38.0, cost: 0.91, kind: "baseline" },
+    ],
+    note: "On par with Mem0 at both budgets (+1.2 points at 2,500 tokens, 95% CI −0.7 to +3.2; +0.6 at 10,000, −1.6 to +2.7), and 60x and 28.6x cheaper per 1,000 questions at list prices. Mem0's cost is mostly the extraction calls that build its memory, paid once per stored exchange, so with more than BEAM's 20 questions per conversation the gap narrows. No history fits the reader's 1M-token window, so there is no whole-history line. Zep ran on 30 of the 35 conversations: 38.4 for $330.07 per 1,000 questions, where LLMSlim scored 45.9 for $1.20.",
+  },
   {
     key: "locomo", label: "LoCoMo", n: "1,307 questions, about 2,500 tokens", metric: "accuracy", rival: "Mem0",
     full: { score: 95.1, cost: 0.83, label: "Whole history, cached" }, y: [70, 100],
@@ -219,4 +245,4 @@ export const RACE: RaceSet[] = [
 ]
 
 /** The short version of where LLMSlim still trails; the benchmarks page has the rest. */
-export const STILL_AHEAD = "Full context still leads on NaturalQuestions and HotpotQA by about 5 points, and dense retrieval over turns leads on LongMemEval at both budgets, within noise."
+export const STILL_AHEAD = "On BEAM-1M, Mem0 still leads on summarization at both budgets and on multi-session reasoning at 10,000 tokens. Full context still leads on NaturalQuestions and HotpotQA by about 5 points, and dense retrieval over turns leads on LongMemEval at both budgets, within noise."

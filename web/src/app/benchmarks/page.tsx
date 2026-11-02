@@ -4,13 +4,13 @@ import { ResultBars } from "@/components/benchmarks/ResultBars"
 import { Reveal } from "@/components/landing/Premium"
 import { StatsBand, type Stat } from "@/components/landing/Visuals"
 import { BENCHMARK_SUITES } from "@/data/benchmarks"
-import { AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type LiveSuite } from "@/data/live-benchmarks"
+import { AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_MEMORY, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, ROUND6_DATE, ROUND6_REPORT, ROUND6_SUITE, ROUND6_WEAK_SPOTS, WEAK_SPOTS, type LiveSuite } from "@/data/live-benchmarks"
 import { siteConfig } from "@/config/site"
 import { constructMetadata } from "@/lib/seo"
 
 export const metadata = constructMetadata({
   title: "Benchmarks | LLMSlim",
-  description: "LLMSlim Core 0.9 against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions, cost first: accuracy and the cost of 1,000 questions, confidence intervals, weak spots and raw results.",
+  description: "LLMSlim Core 0.12 against Mem0 and Zep on BEAM-1M agent memory, and Core 0.9 against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG, on held-out test questions, cost first: accuracy and the cost of 1,000 questions, confidence intervals, weak spots and raw results.",
   path: "/benchmarks",
   markdownPath: "/benchmarks.md",
   // The share images are benchmarks/opengraph-image.tsx and twitter-image.tsx.
@@ -35,7 +35,7 @@ function Suite({ suite }: { suite: LiveSuite }) {
       <h2>{suite.name}</h2>
       <p className="bm-what">{suite.what}</p>
       <p className="bm-takeaway">{suite.takeaway}</p>
-      {suite.caveat && <p className="bm-caveat"><span>Note</span>{suite.caveat}</p>}
+      {suite.caveat && <p className="bm-caveat"><span>{suite.caveatLabel ?? "Note"}</span>{suite.caveat}</p>}
     </Reveal>
     <div className="bm-results">
       <ResultBars arms={suite.arms} metric={suite.metric} />
@@ -54,10 +54,20 @@ export default function BenchmarksPage() {
       <h1>Measured on public benchmarks. <span>Every number published.</span></h1>
       <p className="bm-lede">LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions. Every system is read by the same model with the same prompt, and every table shows what 1,000 questions cost end to end.</p>
       <p className="bm-story-link"><Link className="text-link" href="/results">Prefer the guided version? See the results as a story <ArrowUpRight size={14} /></Link></p>
-      <p className="bm-versions">LLMSlim Core {CORE_VERSION_TESTED} · long documents and agents on Core {CORE_VERSION_LONG_DOCS} · LLMSlim Vault {VAULT_VERSION_TESTED} · report, harness and raw results in the <a href={ROUND3_REPORT} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
+      <p className="bm-versions">Agent memory on Core {CORE_VERSION_MEMORY} · LLMSlim Core {CORE_VERSION_TESTED} · long documents and agents on Core {CORE_VERSION_LONG_DOCS} · LLMSlim Vault {VAULT_VERSION_TESTED} · round-3 report, harness and raw results in the <a href={ROUND3_REPORT} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
     </header>
 
     <section className="bm-band" aria-label="Headline results"><StatsBand stats={stats} /></section>
+
+    <section className="bm-section" aria-labelledby="round6-title">
+      <Reveal className="p-head"><p className="p-kicker">Round 6 · BEAM-1M · Core {CORE_VERSION_MEMORY} · {ROUND6_DATE}</p><h2 id="round6-title">Million-token agent memory. <span>Held out, run once.</span></h2>
+        <p className="p-body">LLMSlim against Mem0 and Zep on BEAM&apos;s 1M tier. Every system is read by Claude Haiku 5.5 with BEAM&apos;s answer prompt, three times per question, and scored by BEAM&apos;s rubric judge. Costs are per 1,000 questions at list prices with BEAM&apos;s 20 questions per conversation, including Mem0&apos;s and Zep&apos;s memory building and every system&apos;s compute.</p></Reveal>
+    </section>
+    <section className="bm-suites" aria-label="Round 6 results">
+      <Suite suite={ROUND6_SUITE} />
+    </section>
+    <p className="bm-note">This round is published as results only: the report has the setup, every table, the paired differences, cost, latency and limitations, but the protocol, harness and per-question answers stay private. &ldquo;LLMSlim 0.12&rdquo; is commit 16a2708, which became 0.12.0 after hardening and returns the same bytes on English parity checks; the round-6 contexts were not rebuilt with 0.12.0.</p>
+    <p className="bm-story-link"><a className="text-link" href={ROUND6_REPORT} target="_blank" rel="noreferrer">Round 6 report: every table, the weak spots and the limitations <ArrowUpRight size={14} /></a></p>
 
     <section className="bm-section" aria-labelledby="round3-title">
       <Reveal className="p-head"><p className="p-kicker">Round 3 · Core {CORE_VERSION_TESTED} · 15 Oct 2026</p><h2 id="round3-title">Memory systems and compressors. <span>Cost first.</span></h2>
@@ -85,7 +95,7 @@ export default function BenchmarksPage() {
 
     <section className="bm-section" aria-labelledby="loses-title">
       <Reveal className="p-head"><p className="p-kicker">Weak spots</p><h2 id="loses-title">Where LLMSlim loses. <span>Published with the rest.</span></h2></Reveal>
-      <ol className="p-notes">{WEAK_SPOTS.map((spot, index) => <li key={spot.title}><span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><p><strong>{spot.title}.</strong> {spot.body}</p></li>)}</ol>
+      <ol className="p-notes">{[...ROUND6_WEAK_SPOTS, ...WEAK_SPOTS].map((spot, index) => <li key={spot.title}><span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><p><strong>{spot.title}.</strong> {spot.body}</p></li>)}</ol>
     </section>
 
     <section className="bm-section" aria-labelledby="docs-title">

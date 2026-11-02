@@ -57,15 +57,15 @@ export function Race() {
 
       <div className="rs-race-grid">
         <figure className="rs-race-chart">
-          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${set.label}, ${set.n}: ${set.metric} against cost per 1,000 questions. ${ranked.map((row) => `${row.name} ${fmt(row.score, 1)} for $${fmt(row.cost, 2)}`).join(", ")}. ${set.full.label} ${fmt(set.full.score, 1)} for $${fmt(set.full.cost, 2)}.`}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${set.label}, ${set.n}: ${set.metric} against cost per 1,000 questions. ${ranked.map((row) => `${row.name} ${fmt(row.score, 1)} for $${fmt(row.cost, 2)}`).join(", ")}.${set.full ? ` ${set.full.label} ${fmt(set.full.score, 1)} for $${fmt(set.full.cost, 2)}.` : ""}`}>
             {ticks(set.y).map((tick) => <g key={`${key}-${tick}`}><line className="rs-grid" x1={M.left} x2={W - M.right} y1={sy(tick)} y2={sy(tick)} /><text className="rs-tick" x={M.left - 12} y={sy(tick) + 4} textAnchor="end">{tick}</text></g>)}
             {X_TICKS.map(([cost, label]) => <g key={cost}><line className="rs-grid" x1={sx(cost)} x2={sx(cost)} y1={M.top} y2={H - M.bottom} /><text className="rs-tick" x={sx(cost)} y={H - M.bottom + 22} textAnchor="middle">{label}</text></g>)}
             <text className="rs-axis" x={W - M.right} y={H - 8} textAnchor="end">Cost per 1,000 questions, log scale</text>
 
-            <m.g initial={false} animate={{ y: sy(set.full.score) }} transition={spring}>
+            {set.full && <m.g initial={false} animate={{ y: sy(set.full.score) }} transition={spring}>
               <line className="rs-ref" x1={M.left} x2={W - M.right} y1={0} y2={0} />
               <text className="rs-ref-label" x={W - M.right} y={-8} textAnchor="end">{set.full.label} {fmt(set.full.score, 1)} · ${fmt(set.full.cost, 2)}</text>
-            </m.g>
+            </m.g>}
 
             <m.g initial={false} animate={{ y: spanY }} transition={spring}>
               <line className="rs-span" x1={sx(ours.cost)} x2={sx(rival.cost)} y1={0} y2={0} />

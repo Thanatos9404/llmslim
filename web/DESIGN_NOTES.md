@@ -44,6 +44,8 @@ elements render as they were written: Geist Mono at 9 to 13px. This is the large
 `--serif` also gains a metric fallback, Georgia sized to Instrument Serif's widths (76.2% upright, 78.6% italic,
 measured on the headings' phrases), so a serif line wraps the same before and after the font loads. Without it the
 96px serif line wrapped differently on the fallback and shifted the hero (CLS 0.04 to 0.06 on the first build).
+`--mono` gets the same treatment (Courier New at Geist Mono's 0.6em advance), so the right-anchored ASCII backdrop and
+mono labels keep their width when Geist Mono arrives.
 
 ### Type scale
 
@@ -64,7 +66,9 @@ body 16, lede 17 to 20, h3 24, h2 36 to 60, h1 40 to 72, display 48 to 96. Headi
   and tilt their logo tile; cards and chips lift 1 to 2px. These are CSS transitions on `--ease-spring`, not Framer
   Motion components: on /integrations, Framer hover components on the stage and the rows, flowing strands and animated
   group glyphs cost 8 mobile points (hydration, style and paint work; SVG transforms and stroke animations are not
-  composited), so that page now hydrates one delegated hover handler and animates nothing on its own.
+  composited), so that page now hydrates one delegated hover handler and animates nothing on its own. It is still
+  7 points below the old page on a phone (median of five, 66 against 73); the gap left is hydration and first-render
+  work that this pilot did not pin down.
 - Parallax: the compare plates' photos drift 6% against the scroll (`ParallaxPhoto`, `useScroll`/`useTransform`); the
   integrations stage photo is still.
 - The glyph plays once on load (CSS keyframes), again on pointer enter, and on phones when the plate scrolls into view.

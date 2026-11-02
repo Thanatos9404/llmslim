@@ -17,6 +17,7 @@ import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_BY_VERSION, DOCS_REGISTRY, docsInOrder, versionNoticeText, type DocPage } from "@/data/docs"
 import { DEFAULT_DOCS_VERSION, DOCS_VERSIONS, docHref, docsHome, isDocsVersion, resolveDocLink, versionStatus, type DocsVersion } from "@/data/docs-versions"
 import { homeFaqs } from "@/data/home"
+import { LLMSLIM_PRICES_TITLE, MEMORY_COMPARISONS, PRICES_CHECKED, llmslimPriceRows, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
 import { FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice, type Billing, type Cell, type Currency, type Plan } from "@/data/pricing"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
 import { absoluteUrl } from "@/lib/seo"
@@ -133,6 +134,7 @@ function docsIndexMarkdown(version: DocsVersion): string {
     }),
     "## Framework integrations\n\n" + Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
       .map((item) => `- [LLMSlim + ${item.name}](${md(`/integrations/${item.slug}`)}): ${item.tagline}`).join("\n"),
+    "## Comparisons\n\n" + allComparisons().map((page) => `- [${page.title}](${md(`/compare/${page.slug}`)}): ${page.description}`).join("\n"),
     "## Other versions\n\n" + others.map(({ id }) => `- [LLMSlim ${id} docs](${md(docsHome(id))})${versionStatus(id) === "preview" ? `: upcoming, not on PyPI yet (\`pip install llmslim\` installs ${siteConfig.coreVersion})` : ""}`).join("\n"),
     source(docsHome(version)),
   )
@@ -241,6 +243,65 @@ export function comparisonMarkdown(page: Comparison): string {
     source(path),
   )
 }
+
+/** /compare/mem0.md and /compare/zep.md: the same sections as the page, every benchmark round included. */
+export function memoryComparisonMarkdown(page: MemoryComparison): string {
+  const path = `/compare/${page.slug}`
+  const text = (value: string) => docText(value, DEFAULT_DOCS_VERSION, path)
+  const prices = (rows: PriceRow[]) => table(["Plan", "Price", "What it includes"], rows.map((row) => [row.plan, row.price, row.includes]))
+  return join(
+    `# ${page.title}`,
+    `> ${page.lede}`,
+    `${page.meta.join(" · ")}. ${page.disclosure}`,
+    "## The short answer\n\n" + page.shortAnswer.map((line) => `- ${line}`).join("\n"),
+    "## At a glance\n\n" + table(["Aspect", "LLMSlim", page.rival], page.glance.map((row) => [row.aspect, row.llmslim, row.rival])),
+    `## What ${page.rival} is\n\n` + page.about.map((item) => `### ${item.name}\n\n[${item.cite}](${item.url}). ${item.body}`).join("\n\n") + `\n\n${page.aboutNote}`,
+    "## How LLMSlim differs\n\n" + page.differences.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    ...page.benchmarks.map((block) => join(
+      `## Head to head: ${block.kicker}`,
+      block.intro,
+      ...block.tables.map((result) => join(
+        `### ${result.title}`,
+        result.rows.some((row) => row.budget)
+          ? table(["Budget", "System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.budget ?? "", row.system, row.tokens, row.score, row.cost]))
+          : table(["System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.system, row.tokens, row.score, row.cost])),
+        result.note,
+      ).trimEnd()),
+      "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Benchmark (questions)", "Difference (95% CI)", "Reading"], block.pairedDiffs.map((row) => [row.comparison, row.benchmark, row.difference, row.reading])),
+      block.pairedNote,
+      "### What this does not show\n\n" + block.caveats.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+      "Sources and reruns:\n\n" + block.links.map((link) => `- [${link.label}](${link.url})`).join("\n"),
+    ).trimEnd()),
+    `## When to choose ${page.rival}\n\n` + page.chooseThem.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    "## When LLMSlim fits\n\n" + page.chooseUs.map((line) => `- ${line}`).join("\n"),
+    join(
+      `## Pricing (checked ${PRICES_CHECKED})`,
+      page.pricing.intro,
+      `### ${page.rival}\n\n` + prices(page.pricing.rival.rows) + `\n\nSource: ${page.pricing.rival.url}, checked ${PRICES_CHECKED}.`,
+      `### ${LLMSLIM_PRICES_TITLE}\n\n` + prices(llmslimPriceRows()) + `\n\nSource: ${md("/pricing")}, which also lists the plans in rupees.`,
+      page.pricing.notes.map((note) => `- ${note}`).join("\n"),
+    ).trimEnd(),
+    join(
+      "## Migrate",
+      text(page.migration.intro),
+      ...page.migration.steps.map((step) => join(
+        `### ${step.title}`,
+        text(step.body),
+        ...step.samples.map((sample) => `${sample.filename}:\n\n${fence(sample.language, sample.code)}`),
+        step.after && text(step.after),
+      ).trimEnd()),
+      page.migration.notes.map((note) => `- ${text(note)}`).join("\n"),
+      `${page.migration.guide.label}: ${md(page.migration.guide.href)}`,
+    ).trimEnd(),
+    "## FAQ\n\n" + page.faqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),
+    "## Sources\n\n" + page.sources.map((item) => `- [${item.label}](${item.url})`).join("\n") +
+      `\n- [Every benchmark](${md("/benchmarks")})`,
+    source(path),
+  )
+}
+
+/** Every comparison page, LLMLingua's and the memory systems', for the indexes. */
+const allComparisons = (): Array<{ title: string; slug: string; description: string }> => [...Object.values(COMPARISONS), ...Object.values(MEMORY_COMPARISONS)]
 
 export function changelogMarkdown(): string {
   return join(
@@ -383,6 +444,7 @@ export function markdownFor(path: readonly string[]): string | null {
   if (head === "integrations" && INTEGRATIONS_REGISTRY[slug]) return integrationMarkdown(INTEGRATIONS_REGISTRY[slug])
   if (head === "benchmarks" && BENCHMARK_SUITES[slug]) return benchmarkMarkdown(BENCHMARK_SUITES[slug])
   if (head === "compare" && COMPARISONS[slug]) return comparisonMarkdown(COMPARISONS[slug])
+  if (head === "compare" && MEMORY_COMPARISONS[slug]) return memoryComparisonMarkdown(MEMORY_COMPARISONS[slug])
   return null
 }
 
@@ -395,7 +457,7 @@ export function markdownPaths(): string[][] {
     ...Object.keys(ARTICLES_REGISTRY).map((slug) => ["articles", slug]),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ["integrations", slug]),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => ["benchmarks", slug]),
-    ...Object.keys(COMPARISONS).map((slug) => ["compare", slug]),
+    ...allComparisons().map((page) => ["compare", page.slug]),
   ]
 }
 
@@ -414,7 +476,7 @@ export function llmsTxt(): string {
       ["Benchmarks", "/benchmarks", `Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
       ...Object.values(BENCHMARK_SUITES).map((suite): [string, string, string] => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle]),
     ]),
-    "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),
+    "## Comparisons\n\n" + list(allComparisons().map((page) => [page.title, `/compare/${page.slug}`, page.description])),
     "## Project\n\n" + list([
       ["Overview", "/", "What LLMSlim Core, Orbit and Vault are, with a quick start and FAQ"],
       ["Pricing", "/pricing", "LLMSlim Orbit plans at launch in INR (GST included) and USD, the feature matrix, launch offers and billing questions"],
@@ -435,6 +497,7 @@ export function llmsFullTxt(): string {
     ...docsInOrder(DEFAULT_DOCS_VERSION).map((doc) => docMarkdown(doc)),
     ...Object.values(INTEGRATIONS_REGISTRY).map(integrationMarkdown),
     ...Object.values(COMPARISONS).map(comparisonMarkdown),
+    ...Object.values(MEMORY_COMPARISONS).map(memoryComparisonMarkdown),
     ...Object.values(BENCHMARK_SUITES).map(benchmarkMarkdown),
     changelogMarkdown(),
     ...Object.values(ARTICLES_REGISTRY).map(articleMarkdown),

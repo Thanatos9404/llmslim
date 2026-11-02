@@ -224,10 +224,10 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 ## Startup programs
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 15 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j and Cartesia" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 21 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j, Cartesia, Nebius, Notion, Snyk, Gitar, Composio and Future AGI" width="100%">
 </a>
 
-LLMSlim is part of 15 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 21 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -247,6 +247,12 @@ none of them is an investor, and membership does not imply endorsement.
 | [Exa Startup Grants](https://exa.ai/pricing) | Exa |
 | [Neo4j Startup Program](https://neo4j.com/startup-program/) | Neo4j |
 | [Cartesia Startups Grant Program](https://cartesia.ai/startups) | Cartesia |
+| [Nebius AI Builder Program](https://dev.nebius.com/builders) | Nebius |
+| [Notion for Startups](https://www.notion.com/startups) | Notion |
+| [Snyk Secure Developer Program](https://snyk.io/news/snyk-launches-secure-developer-program-deepening-investment-in-open-source/) | Snyk |
+| [Gitar Open Source Program](https://www.sonarsource.com/plans-and-pricing/gitar/) | Sonar (Gitar) |
+| [Composio Startup Program](https://composio.dev/startups) | Composio |
+| [Future AGI for Startups](https://futureagi.com/startups/) | Future AGI |
 
 Logos are trademarks of their owners and identify each program.
 

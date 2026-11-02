@@ -10,7 +10,9 @@ import type { CSSProperties } from "react"
  * that PNG beside the full-colour SVG from neo4j.com. Cartesia asks grant recipients to show the Cartesia Startups logo
  * and publishes no file for it, so its lockup is Cartesia's own wordmark SVG beside "Startups" set in outlines, as on
  * its grant card. Sources are in web/DESIGN_NOTES.md. Two treatments predate this list: "mask" tints a supplied single-colour
- * mark to the text colour, and "symbol" pairs an official symbol with the product name.
+ * mark to the text colour, and "symbol" pairs an official symbol with the product name. A symbol with `logoDark` is drawn
+ * as the vendor's own light and dark artwork instead of being tinted: Notion's block paints its "N" in black on white, so
+ * a mask would turn it into a solid square.
  */
 export type StartupProgram = {
   id: string
@@ -46,8 +48,13 @@ export const startupPrograms: readonly StartupProgram[] = [
   { id: "exa", name: "Exa Startup Grants", href: "https://exa.ai/pricing", logo: "/startups/exa-blue.svg", logoDark: "/startups/exa-white.svg", alt: "Exa logo", width: 413, height: 129, display: 32 },
   { id: "neo4j", name: "Neo4j Startup Program", href: "https://neo4j.com/startup-program/", logo: "/startups/neo4j-full-color.svg", logoDark: "/startups/neo4j-white.png", alt: "Neo4j logo", width: 678, height: 242, display: 34 },
   { id: "cartesia", name: "Cartesia Startups Grant Program", href: "https://cartesia.ai/startups", logo: "/startups/cartesia-startups-light.svg", logoDark: "/startups/cartesia-startups-dark.svg", alt: "Cartesia Startups logo", width: 901, height: 96, display: 22 },
-  // Programs join this list only once acceptance is confirmed. Nebius AI Builder
-  // (/startups/nebius.svg) is applied for and pending.
+  { id: "nebius", name: "Nebius AI Builder Program", href: "https://dev.nebius.com/builders", logo: "/startups/nebius.svg", alt: "Nebius logo", width: 1134, height: 312, display: 32 },
+  { id: "notion", name: "Notion for Startups", href: "https://www.notion.com/startups", logo: "/startups/notion-block.svg", logoDark: "/startups/notion-block-sticker-white.svg", label: "Notion", alt: "Notion logo", width: 1, height: 1, treatment: "symbol" },
+  { id: "snyk", name: "Snyk Secure Developer Program", href: "https://snyk.io/news/snyk-launches-secure-developer-program-deepening-investment-in-open-source/", logo: "/startups/snyk-dark-text.svg", logoDark: "/startups/snyk-white-text.svg", alt: "Snyk logo", width: 77, height: 52, display: 56 },
+  { id: "gitar", name: "Gitar Open Source Program", href: "https://www.sonarsource.com/plans-and-pricing/gitar/", logo: "/startups/gitar-wordmark.svg", alt: "Gitar logo", width: 1, height: 1, treatment: "mask" },
+  { id: "composio", name: "Composio Startup Program", href: "https://composio.dev/startups", logo: "/startups/composio-black.svg", logoDark: "/startups/composio-white.svg", alt: "Composio logo", width: 483, height: 93, display: 28 },
+  { id: "futureagi", name: "Future AGI for Startups", href: "https://futureagi.com/startups/", logo: "/startups/futureagi-symbol.svg", wordmark: "/startups/futureagi-wordmark.svg", alt: "Future AGI logo", width: 1, height: 1, treatment: "symbol" },
+  // Programs join this list only once acceptance is confirmed.
 ]
 
 export const startupProgramCount = startupPrograms.length
@@ -61,7 +68,12 @@ export function ProgramLogo({ program }: { program: StartupProgram }) {
   const { id, logo, logoDark, alt, width, height, display, treatment = "image" } = program
   if (treatment === "mask") return <span className={`startup-supplied-logo ${id}-brand`} style={{ "--startup-mark": `url('${logo}')` } as Mark} />
   if (treatment === "symbol") return <span className={`startup-ai-brand ${id}-brand`}>
-    <span className={`startup-ai-symbol ${id}-symbol`} style={{ "--startup-mark": `url('${logo}')` } as Mark} />
+    {logoDark
+      ? <span className={`startup-ai-symbol startup-symbol-art ${id}-symbol`}>
+        <Image src={logo} alt="" width={width} height={height} sizes="40px" className="art-light" />
+        <Image src={logoDark} alt="" width={width} height={height} sizes="40px" className="art-dark" />
+      </span>
+      : <span className={`startup-ai-symbol ${id}-symbol`} style={{ "--startup-mark": `url('${logo}')` } as Mark} />}
     {program.wordmark ? <span className="startup-wordmark" style={{ "--startup-mark": `url('${program.wordmark}')` } as Mark} /> : program.label}
   </span>
   const style = display ? { height: display, width: "auto" } : undefined

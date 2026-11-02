@@ -11,7 +11,7 @@ export const API_REFERENCE_DOCS: DocPage[] = [
     "category": "API Reference",
     "searchIntent": "LLMSlim Python API reference for llmslim: signatures, parameters and return types.",
     "lastUpdated": "October 2026",
-    "readingTime": "36 min read",
+    "readingTime": "37 min read",
     "sections": [
       {
         "id": "about",
@@ -551,11 +551,11 @@ export const API_REFERENCE_DOCS: DocPage[] = [
       {
         "id": "contexttrace",
         "title": "ContextTrace",
-        "content": "Local diagnostics. Item IDs are hashed; prompt bodies are absent.",
+        "content": "Local diagnostics. Item IDs are hashed; prompt bodies are absent. planner_version is the LLMSlim release that made the plan (llmslim.__version__), and trace_id is derived from the envelope and that release.",
         "codeSnippet": {
           "language": "python",
           "filename": "from llmslim import ContextTrace",
-          "code": "class ContextTrace:\n    \"\"\"Local diagnostics. Item IDs are hashed; prompt bodies are absent.\"\"\"\n\n    trace_id: str\n    session_hash: Optional[str]\n    planner_version: str\n    model: str\n    original_tokens: int\n    planned_tokens: int\n    budget_tokens: int\n    decisions: Tuple[Mapping[str, Any], ...]\n    quality: QualityReport\n    dependency_edges: int\n    planning_latency_ms: float\n    transformation_latency_ms: float\n    validation_latency_ms: float\n    estimated_cost_before: Optional[float]\n    estimated_cost_after: Optional[float]\n    cost_currency: Optional[str]\n    warnings: Tuple[str, ...] = ()\n    cache: Optional[CachePlan] = None\n    provider_cache_telemetry: Optional[CacheTelemetry] = None\n\n    @classmethod\n    def from_plan(\n        cls,\n        envelope: ContextEnvelope,\n        plan: ContextPlan,\n        quality: QualityReport,\n        graph: ContextGraph,\n        exclusions: Sequence[str],\n    ) -> 'ContextTrace':\n        ...\n\n    def to_dict(self) -> Dict[str, Any]:\n        ...\n\n    def explain(self) -> str:\n        ..."
+          "code": "class ContextTrace:\n    \"\"\"Local diagnostics. Item IDs are hashed; prompt bodies are absent. ``planner_version`` is the LLMSlim release\n    that made the plan (``llmslim.__version__``), and ``trace_id`` is derived from the envelope and that release.\n    \"\"\"\n\n    trace_id: str\n    session_hash: Optional[str]\n    planner_version: str\n    model: str\n    original_tokens: int\n    planned_tokens: int\n    budget_tokens: int\n    decisions: Tuple[Mapping[str, Any], ...]\n    quality: QualityReport\n    dependency_edges: int\n    planning_latency_ms: float\n    transformation_latency_ms: float\n    validation_latency_ms: float\n    estimated_cost_before: Optional[float]\n    estimated_cost_after: Optional[float]\n    cost_currency: Optional[str]\n    warnings: Tuple[str, ...] = ()\n    cache: Optional[CachePlan] = None\n    provider_cache_telemetry: Optional[CacheTelemetry] = None\n\n    @classmethod\n    def from_plan(\n        cls,\n        envelope: ContextEnvelope,\n        plan: ContextPlan,\n        quality: QualityReport,\n        graph: ContextGraph,\n        exclusions: Sequence[str],\n    ) -> 'ContextTrace':\n        ...\n\n    def to_dict(self) -> Dict[str, Any]:\n        ...\n\n    def explain(self) -> str:\n        ..."
         }
       },
       {

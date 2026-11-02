@@ -292,8 +292,24 @@ class PlanValidationResult:
         }
 
 
+def planner_version() -> str:
+    """The ``planner_version`` a plan reports: the LLMSlim release that made it (``llmslim.__version__``).
+
+    A release is the unit in which planner output may change (``docs/API_STABILITY.md``), and that output also depends
+    on code outside the planner (candidate compression, sentence splitting, token counting). A separate planner number
+    had to be raised by hand for every such change; it stayed at 0.7.0 (0.6.0 for ``plan_context``) through 0.12.0.
+    """
+    # Read when a plan is made: the package sets it after importing the planner.
+    from .. import __version__
+
+    return __version__
+
+
 @dataclass(frozen=True)
 class PlanMetrics:
+    """A plan's counts, timings and estimated costs. ``planner_version`` is the LLMSlim release that made the plan
+    (``llmslim.__version__``); within one release, the same input and options give the same plan."""
+
     planner_version: str
     policy: str
     model: str

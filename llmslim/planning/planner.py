@@ -27,13 +27,12 @@ from .models import (
     ModelProfile,
     PlanMetrics,
     PlanStatus,
+    planner_version,
 )
 from .policy import PlannerPolicy, PolicyPreset, resolve_policy
 from .profiles import ModelProfileRegistry
 from .scoring import method_safety_order
 from .validation import validate_selection
-
-PLANNER_VERSION = "0.6.0"
 
 _MESSAGE_KIND = {
     "system": ContextKind.SYSTEM,
@@ -483,7 +482,7 @@ class AdaptiveContextPlanner:
         before_cost = profile.estimate_input_cost(original_tokens)
         after_cost = profile.estimate_input_cost(final_tokens)
         metrics = PlanMetrics(
-            planner_version=PLANNER_VERSION,
+            planner_version=planner_version(),
             policy=resolved_policy.name,
             model=profile.model_id,
             total_candidates=sum(len(group.candidates) for group in groups),
@@ -633,4 +632,11 @@ def plan_context(
     )
 
 
-__all__ = ["AdaptiveContextPlanner", "PLANNER_VERSION", "plan_context"]
+def __getattr__(name: str) -> str:
+    # PLANNER_VERSION was a fixed "0.6.0"; it is now the release that plans (see models.planner_version).
+    if name == "PLANNER_VERSION":
+        return planner_version()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+__all__ = ["AdaptiveContextPlanner", "plan_context"]

@@ -296,6 +296,17 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   `AsyncSarvamDocumentSource` failed with `Sarvam request failed (AttributeError)` before sending anything; they now
   call `parse` when the SDK has it and `digitise` otherwise, so the whole supported range (0.1.34 up to 0.2) works.
   The job is still created once, with the SDK's retries off.
+- **`planner_version` names the release that made the plan.** `PlanMetrics.planner_version` and
+  `ContextTrace.planner_version` (in `llmslim context trace`, the Studio inspector and a plan's `to_dict()`) were
+  fixed at `"0.7.0"` (`"0.6.0"` for `plan_context`) since 0.7.0, though planner output changed in later releases.
+  - **What it is now:** they are `llmslim.__version__`, read when the plan is made. A release is the unit in which
+    output may change (`docs/API_STABILITY.md`), and a plan also depends on code outside the planner, so a number
+    raised by hand fell behind.
+  - **Trace ids:** `ContextTrace.trace_id` is derived from the envelope and this version, so the same envelope gets a
+    new trace id in each release.
+  - **The old constants:** `llmslim.planning.planner.PLANNER_VERSION` and
+    `llmslim.planning.progressive.PLANNER_VERSION` still import and give the same release. They are no longer in
+    those modules' `__all__`.
 
 ## [0.12.0] - 2026-10-27
 

@@ -1,4 +1,5 @@
 import React from "react";
+import { PointerGlow } from "@/components/site/PointerGlow";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import "./compare.css";
@@ -11,6 +12,7 @@ export default function CompareLayout({ children }: { children: React.ReactNode 
           {children}
       </main>
       <SiteFooter />
+      <PointerGlow />
     </div>
   );
 }

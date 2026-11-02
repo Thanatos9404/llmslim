@@ -14,20 +14,9 @@ const EASE = [0.16, 1, 0.3, 1] as const
 
 /* ------------------------------------------------------------------ Reveal */
 
-/**
- * Rises into place when scrolled into view. With `fade={false}` it only moves (a short transform, no opacity),
- * so the content is visible from the first paint: use that above the fold, where hidden text delays LCP.
- */
-export function Reveal({ children, className = "", delay = 0, as = "div", fade = true }: { children: ReactNode; className?: string; delay?: number; as?: "div" | "section" | "li"; fade?: boolean }) {
-  const reduced = useReducedMotion()
-  const Component = as === "section" ? m.section : as === "li" ? m.li : m.div
-  const from = fade ? { opacity: 0, y: 28 } : { y: 14 }
-  const to = fade ? { opacity: 1, y: 0 } : { y: 0 }
-  // The server cannot know the motion preference, so the HTML arrives in the hidden `from` state and hydration
-  // does not patch styles. Setting `to` on mount (no animation) shows the content for reduced-motion users.
-  if (reduced) return <Component className={className} initial={false} animate={to}>{children}</Component>
-  return <Component className={className} initial={from} whileInView={to} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.9, ease: EASE, delay }}>{children}</Component>
-}
+// Reveal lives in its own module (components/motion/Reveal.tsx) so pages that only need a reveal don't load this one;
+// it is re-exported here for the pages that import it from the landing components.
+export { Reveal } from "@/components/motion/Reveal"
 
 /* ------------------------------------------------------------------ Hero */
 

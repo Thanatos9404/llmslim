@@ -60,6 +60,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLdGraph) }}
         />
         <Script id="theme-controller" strategy="beforeInteractive">{themeController}</Script>
+        {/* Without scripts nothing marks a scroll reveal as shown, so show every one (globals.css, .reveal). */}
+        <noscript><style>{".reveal{opacity:1!important;transform:none!important}.reveal .mg *{animation:none!important}"}</style></noscript>
 
         {/* Accessibility Skip Link */}
         <a

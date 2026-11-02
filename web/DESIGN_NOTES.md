@@ -2,6 +2,105 @@
 
 The landing page follows the user's Raycast reference: a cinematic composition, custom dimensional artwork, concise product copy, and open layouts rather than a grid of promotional cards. Light and dark modes use separate artwork and shared semantic theme tokens. The existing theme persistence script and SEO infrastructure remain in place.
 
+## Design pilot, phase 1 (3 November 2026)
+
+Pages: `/compare/mem0`, `/compare/zep`, `/compare/llmlingua`, `/integrations`. Everything else changes only through
+the shared tokens in `globals.css`. The glass and aurora direction of #114 and #116 (closed on 30 October) is not
+revisited: no frosted panels, no aurora light, no navy sky.
+
+### Direction
+
+1. Keep the site's character and raise the volume: ivory and near-black surfaces, the brand green, Geist with an
+   Instrument Serif italic second line, hairline tables, the pixel and ASCII backdrop; display type up to 96px.
+2. One memorable thing per page: a dark plate, a free photo under a veil, with the new memory glyph playing on it and
+   the two products' real logos beneath (on /integrations, the stack drawing).
+3. The data is the hero of a comparison: a logo on every result row, accuracy bars on an honest 0 to 100 scale with
+   the 95% interval outlined, numbers that count up, paired differences on an axis centred on zero.
+4. Motion is weighted and quiet: one decelerating curve, transform and opacity only, reveals once, springs only
+   under the pointer; reduced motion gets the final state from the first paint.
+5. One palette from the brand: green, blue and violet from the mark; neutrals pulled a little toward the brand navy.
+
+### Palette
+
+| Token | Light | Dark | Note |
+|---|---|---|---|
+| `--surface` | `#fbfbfa` ivory (unchanged) | `#090a10` (was `#0b0b0a`) | near-black with a trace of navy `#060816` |
+| `--soft` | `#f4f4f2` (unchanged) | `#10121a` (was `#121211`) | cards, chips, tiles |
+| `--ink` | `#11131c` (was `#141413`) | `#eceef2` (was `#ededea`) | navy ink on ivory |
+| `--subtle` | `#5f6270` (was `#6b6a65`) | `#8e92a0` (was `#8f8e89`) | 5.8:1 and 6.4:1 on the surfaces (AA) |
+| `--line` | `#e5e6ea` (was `#e7e6e2`) | `#22252e` (was `#252523`) | hairlines |
+| `--brand` | `#007a52` | `#00f59b` | unchanged; 5.2:1 on ivory |
+| `--brand-blue`, `--brand-violet` | `#2f67ee`, `#4a3df0` | `#4f8cff`, `#7c5cff` | unchanged; the glyph and strands |
+| `--spectrum` | violet to blue to green | same | new; glyph, strands and data accents only |
+
+The island, window, plate and button tokens follow the same shift. Plates are always dark, in both themes.
+
+**One fix with visible effects on every page.** `--mono` listed itself (`…,var(--mono)`), a cycle that made every
+`font: … var(--mono)` declaration invalid, so code blocks, table headings, eyebrows and the install line all fell back
+to Geist at the inherited size (code blocks were 16px Geist). The token now ends in real monospace fallbacks, so those
+elements render as they were written: Geist Mono at 9 to 13px. This is the largest change outside the pilot pages
+(home hero release line, footer eyebrows, docs code); revert that one line if it is not wanted.
+
+`--serif` also gains a metric fallback, Georgia sized to Instrument Serif's widths (76.2% upright, 78.6% italic,
+measured on the headings' phrases), so a serif line wraps the same before and after the font loads. Without it the
+96px serif line wrapped differently on the fallback and shifted the hero (CLS 0.04 to 0.06 on the first build).
+
+### Type scale
+
+Tailwind steps, fluid between two of them only at display sizes (`--fs-*` in `globals.css`): label 12, small 14,
+body 16, lede 17 to 20, h3 24, h2 36 to 60, h1 40 to 72, display 48 to 96. Headings keep the site's two-tone form: Geist
+600 to 620 at about -0.05em, then the Instrument Serif italic line at 56% ink.
+
+### Motion
+
+- Curve `--ease-out: cubic-bezier(.22,1,.36,1)`; `--ease-spring` for hover overshoot; 300ms colour, 500ms movement,
+  800ms reveals.
+- Scroll reveals: `Reveal` is fixed, not forked. The hidden state is now CSS, under `prefers-reduced-motion:
+  no-preference` only, cancelled by a `<noscript>` rule; before, it was server-rendered inline opacity 0, so
+  reduced-motion visitors saw nothing until hydration and visitors without scripts never saw it.
+- Results tables (`MotionTable`): one client wrapper per table; bars grow with Framer Motion's WAAPI `animate`, numbers
+  count up to the printed value. Only a table that starts below the fold is armed. The final text is always in the DOM.
+- Hover: the stage's logos lift on the spring curve and set context flowing along their strand; integration rows lift
+  and tilt their logo tile; cards and chips lift 1 to 2px. These are CSS transitions on `--ease-spring`, not Framer
+  Motion components: on /integrations, Framer hover components on the stage and the rows, flowing strands and animated
+  group glyphs cost 8 mobile points (hydration, style and paint work; SVG transforms and stroke animations are not
+  composited), so that page now hydrates one delegated hover handler and animates nothing on its own.
+- Parallax: the compare plates' photos drift 6% against the scroll (`ParallaxPhoto`, `useScroll`/`useTransform`); the
+  integrations stage photo is still.
+- The glyph plays once on load (CSS keyframes), again on pointer enter, and on phones when the plate scrolls into view.
+
+### The glyph
+
+`MemoryGlyph` takes the LogoMark's idea (five strands, three kept) as a memory: five stored turns with the mark's
+rounded ends slide in, the three that fit the token budget light up in the mark's gradient (`--mark-*`) and get a
+square pixel on a budget rail, and the other two dim. Hero size on the plates; 14px in place of the kicker's pixel.
+
+### Skill guidance
+
+References: the project skill `.claude/skills/landing-page-design` (MIT) and `frontend-design` from Anthropic's
+open-source skills repository (https://github.com/anthropics/skills, Apache-2.0), read as documents; nothing new
+was installed and no downloaded script was run.
+
+Followed: the base curve and transform/opacity-only motion, reveals once via IntersectionObserver, reduced motion as
+a still state, visible focus rings and hover/active states, headings and display sizes on Tailwind steps, no
+single-sided card borders (landing-page-design); one bold element per page, structure that encodes information (the
+interval outlines, the zero axis), a token plan checked against the brief before building, screenshots as critique
+(frontend-design).
+
+Overridden, because the brief or the site's identity says otherwise: Instrument Serif italic in headings (both skills
+discourage italics and accents in headlines; it is the site's signature); photo veils are gradients (no gradient
+backgrounds), only behind photos; no tagline reveal section or new marketing copy (the pilot keeps every word); mono
+uppercase table headings stay (frontend-design lists them as a tell; they are existing identity and now render as
+designed); scroll reveals and hover lifts are used although frontend-design calls them generic, because the founder
+asked for them, kept to one curve and one distance; the near-black surface with a green accent is the brand, not a
+default; lucide icons stay rather than Phosphor or Solar; body sizes of 15 and 17px stay where the existing pages use
+them, rather than snapping every one to a step.
+
+### Logos and photos
+
+Logos: `public/logos/SOURCES.md` (Simple Icons 16.36.0, CC0 data, and the companies' own files). Photos:
+`public/media/stock/CREDITS.md` (four Pexels photos, no people). Both self-hosted; the CSP is unchanged.
+
 ## Assets
 
 The 3D compression ribbon that floated behind the home hero was removed on 30 October 2026, with both of its images.

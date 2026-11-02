@@ -1,15 +1,17 @@
 /**
  * Deletes rows past their use or their retention period: expired verification values (email and
  * reset tokens, OAuth state, passkey challenges and the markers of used links), expired sessions,
- * rate-limit counters whose window has ended, and security log entries older than 180 days. Better
- * Auth removes some of these when they are next looked up; this catches the ones nobody looks up
- * again, such as OAuth sign-ins that were started and abandoned.
+ * rate-limit counters whose window has ended, security log entries older than 180 days, and
+ * founding-list requests never confirmed before their link expired. Better Auth removes some of
+ * these when they are next looked up; this catches the ones nobody looks up again, such as OAuth
+ * sign-ins that were started and abandoned.
  *
- * Each server instance runs it on its first auth request and then at most every 10 minutes (see
- * server.ts), so the retention periods in the privacy policy hold whenever the site is in use,
- * without a scheduled job.
+ * Each server instance runs it on its first auth or founding-list request and then at most every 10
+ * minutes (see server.ts and the founding-list handlers), so the retention periods in the privacy
+ * policy hold whenever the site is in use, without a scheduled job.
  */
 import { sql } from "drizzle-orm"
+import { pruneFoundingList } from "@/lib/founding-list/store"
 import { AUDIT_RETENTION_DAYS } from "./audit"
 import { prune as pruneRateLimits, type AnyPgDatabase } from "./rate-limit-store"
 
@@ -30,4 +32,5 @@ export async function pruneExpired(db: AnyPgDatabase, now: number = Date.now()):
   await db.execute(sql`delete from session where expires_at < ${cutoff}::timestamptz`)
   await pruneRateLimits(db, now)
   await db.execute(sql`delete from auth_event where created_at < ${cutoff}::timestamptz - make_interval(days => ${AUDIT_RETENTION_DAYS})`)
+  await pruneFoundingList(db, now)
 }

@@ -42,6 +42,8 @@ export interface AuthConfig {
 /** Canonical production origins. Both work: www is canonical, the apex redirects or serves the same app. */
 export const PRODUCTION_ORIGINS = ["https://www.llmslim.app", "https://llmslim.app"] as const
 export const PRODUCTION_RP_ID = "llmslim.app"
+/** Prefix of every accounts cookie: "llmslim.session_token", or "__Secure-llmslim.session_token" over HTTPS. */
+export const COOKIE_PREFIX = "llmslim"
 export const MIN_SECRET_LENGTH = 32
 /** Development and test only. Never used when NODE_ENV=production. */
 export const DEV_SECRET = "llmslim-development-secret-never-use-in-production"

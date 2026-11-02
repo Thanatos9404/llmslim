@@ -4,6 +4,8 @@
  *
  * LLMSlim Orbit, the hosted edition, does not exist yet: it opens with LLMSlim 1.0. Until checkout exists, every
  * paid-plan button is a mailto to the founder. INR prices include 18% GST; USD prices are for customers outside India.
+ * Once the page is interactive, "Join the founding list" records the lead in the founding_list table instead (one
+ * click when signed in, an emailed confirmation link otherwise); the mailto stays the no-JavaScript fallback.
  */
 
 export const CURRENCIES = ["inr", "usd"] as const
@@ -64,6 +66,12 @@ export function formatPrice(amount: number, currency: Currency): string {
 }
 
 export const CURRENCY_LABEL: Record<Currency, string> = { inr: "INR", usd: "USD" }
+
+/**
+ * A public "N people are on the founding list" line under the plans, counting confirmed members. Off: the founder
+ * decides when the number is worth showing. When on, it shows only once the count reaches `minimum`.
+ */
+export const FOUNDING_LIST_COUNTER: { show: boolean; minimum: number } = { show: false, minimum: 25 }
 
 /** A cell of the feature matrix: text, or included / not included. */
 export type Cell = string | boolean

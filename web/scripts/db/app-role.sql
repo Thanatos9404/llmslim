@@ -12,6 +12,8 @@ BEGIN
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO llmslim_app', current_database());
   GRANT USAGE ON SCHEMA public TO llmslim_app;
   GRANT SELECT, INSERT, UPDATE, DELETE ON "user", session, account, verification, passkey, rate_limit TO llmslim_app;
+  -- The founding list: joins, confirmations, unsubscribes, and the clean-up of requests never confirmed.
+  GRANT SELECT, INSERT, UPDATE, DELETE ON founding_list TO llmslim_app;
   -- The audit trail can be written and pruned, never edited.
   GRANT SELECT, INSERT, DELETE ON auth_event TO llmslim_app;
 END

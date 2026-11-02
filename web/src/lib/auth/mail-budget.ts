@@ -1,6 +1,7 @@
 /**
  * A per-mailbox budget for the emails anyone can make us send without signing in: verification
- * links, reset links and "you already have an account" notices.
+ * links, reset links, "you already have an account" notices, and the founding list's confirmation
+ * links and "you are already on the list" notices.
  *
  * The per-path limits in rate-limits.ts stop one form from being repeated, but a stranger can still
  * point several forms (and sign-in attempts on an unverified account, which resend the
@@ -23,7 +24,7 @@ export const MAIL_BUDGET = {
   day: { window: 24 * 60 * 60, max: 10 },
 } as const satisfies Record<string, Rule>
 
-export const BUDGETED_MAIL: ReadonlySet<MailKind> = new Set<MailKind>(["verify-email", "reset-password", "existing-account"])
+export const BUDGETED_MAIL: ReadonlySet<MailKind> = new Set<MailKind>(["verify-email", "reset-password", "existing-account", "founding-list-confirm", "founding-list-member"])
 
 /** Providers that ignore dots in the local part and treat googlemail.com as gmail.com. */
 const DOTLESS_DOMAINS = new Set(["gmail.com", "googlemail.com"])

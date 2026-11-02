@@ -297,6 +297,17 @@ then applies `scripts/db/app-role.sql` and fails if any table lacks a grant.
   Email budgets are rows whose key starts with `mail|`; someone who asked for too many links in a day
   can be unblocked with `delete from rate_limit where key like 'mail|%' and window_start > extract(epoch from now() - interval '1 day') * 1000;`
   (this resets every inbox's budget, which is harmless).
+- **The Orbit founding list** (the pricing page's "Join the founding list" buttons) lives in the
+  `founding_list` table of the same database, from migration `0001_founding_list`. Signed-in visitors
+  join in one click with their verified address; everyone else gets a confirmation link by email (7
+  days), which counts against the same per-mailbox budget as the account emails. Without
+  `DATABASE_URL` the buttons stay the email links they were; without an email transport, signed-out
+  visitors get the email link. Keep Resend's open and click tracking switched off for `llmslim.app`:
+  the emails promise no tracking. To see who joined, from `web/`:
+  `DATABASE_URL="postgresql://..." node scripts/founding-list-export.mjs > founding-list.csv` prints
+  counts per plan to the terminal and writes a CSV of confirmed members (read only; `--counts` skips
+  the CSV). A public "N people are on the founding list" line is built but off:
+  `FOUNDING_LIST_COUNTER` in `src/data/pricing.ts`.
 - **Reports of abuse or security issues** reach `support@llmslim.app` or GitHub's private advisory form,
   both listed in `/.well-known/security.txt`. Renew its `Expires` date yearly; a unit test starts
   failing two weeks before it lapses.

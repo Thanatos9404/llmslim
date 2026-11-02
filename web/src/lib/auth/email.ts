@@ -1,5 +1,6 @@
 /**
- * Transactional email for accounts: verification links, password reset links and notices.
+ * Transactional email for accounts and the founding list: verification links, password reset links,
+ * founding-list confirmations and notices.
  *
  * Production sends through Resend's HTTPS API (no SDK needed). Development writes the message,
  * including the link, to the server log; end-to-end tests use the file sink. Neither development
@@ -8,24 +9,27 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
+import { describeChoice, type Choice } from "@/lib/founding-list/validation"
 import type { EmailTransport } from "./config"
 
-export type MailKind = "verify-email" | "reset-password" | "existing-account" | "password-changed" | "account-deleted"
+export type MailKind = "verify-email" | "reset-password" | "existing-account" | "password-changed" | "account-deleted" | "founding-list-confirm" | "founding-list-member"
 
-export type Mail = { to: string; subject: string; text: string; html: string; kind: MailKind; url?: string }
+export type Mail = { to: string; subject: string; text: string; html: string; kind: MailKind; url?: string; unsubscribeUrl?: string }
 
 const BRAND = "LLMSlim"
+const UNSUBSCRIBE_LINE = "Not you, or changed your mind?"
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] as string)
 }
 
-function layout(heading: string, paragraphs: string[], action?: { label: string; url: string }): string {
+function layout(heading: string, paragraphs: string[], action?: { label: string; url: string }, unsubscribeUrl?: string): string {
   const body = paragraphs.map((text) => `<p style="margin:0 0 16px;line-height:1.5">${escapeHtml(text)}</p>`).join("")
   const button = action
     ? `<p style="margin:24px 0"><a href="${escapeHtml(action.url)}" style="background:#141413;color:#fbfbfa;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block">${escapeHtml(action.label)}</a></p><p style="margin:0 0 16px;line-height:1.5;color:#6b6a65;font-size:13px">Or paste this link into your browser:<br><span style="word-break:break-all">${escapeHtml(action.url)}</span></p>`
     : ""
-  return `<!doctype html><html><body style="margin:0;padding:24px;background:#fbfbfa;color:#141413;font-family:Arial,Helvetica,sans-serif"><div style="max-width:520px;margin:0 auto"><h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(heading)}</h1>${body}${button}<p style="margin:32px 0 0;color:#6b6a65;font-size:12px">${BRAND} · https://www.llmslim.app</p></div></body></html>`
+  const unsubscribe = unsubscribeUrl ? `<p style="margin:32px 0 0;color:#6b6a65;font-size:12px">${UNSUBSCRIBE_LINE} <a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b6a65">Unsubscribe</a></p>` : ""
+  return `<!doctype html><html><body style="margin:0;padding:24px;background:#fbfbfa;color:#141413;font-family:Arial,Helvetica,sans-serif"><div style="max-width:520px;margin:0 auto"><h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(heading)}</h1>${body}${button}${unsubscribe}<p style="margin:${unsubscribe ? 8 : 32}px 0 0;color:#6b6a65;font-size:12px">${BRAND} · https://www.llmslim.app</p></div></body></html>`
 }
 
 /**
@@ -71,6 +75,44 @@ export function passwordChangedMail(to: string, name: string | null | undefined,
 export function accountDeletedMail(to: string, name: string | null | undefined): Mail {
   const lines = [greeting(name), `Your ${BRAND} account and its sign-in methods, passkeys and sessions have been deleted.`, "If this was not you, reply to this email straight away."]
   return { to, kind: "account-deleted", subject: `Your ${BRAND} account was deleted`, text: `${lines.join("\n\n")}\n`, html: layout("Your account was deleted", lines) }
+}
+
+/**
+ * The founding-list confirmation (double opt-in). Whoever typed the address may not own it, so the
+ * email carries only fixed words and the plan chosen, never the free-text use case.
+ */
+export function foundingListConfirmMail(to: string, choice: Choice, url: string, unsubscribeUrl: string, ttlDays: number): Mail {
+  const lines = [
+    "Hi,",
+    `Confirm that you want to join the founding list for ${BRAND} Orbit, the hosted edition that opens with ${BRAND} 1.0. We will email you when it opens. You chose ${describeChoice(choice)}; nothing is charged.`,
+    `The link works for ${ttlDays} days. If you did not ask for this, ignore this email and you will not hear from us.`,
+  ]
+  return {
+    to,
+    kind: "founding-list-confirm",
+    url,
+    unsubscribeUrl,
+    subject: `Confirm your place on the ${BRAND} founding list`,
+    text: `${lines.join("\n\n")}\n\n${url}\n\n${UNSUBSCRIBE_LINE} Unsubscribe: ${unsubscribeUrl}\n`,
+    html: layout("Confirm your place on the founding list", lines, { label: "Confirm and join", url }, unsubscribeUrl),
+  }
+}
+
+/** Sent instead of a new link when the address is already confirmed: nothing was changed. */
+export function foundingListMemberMail(to: string, choice: Choice, pricingUrl: string, unsubscribeUrl: string, contact: string): Mail {
+  const lines = [
+    "Hi,",
+    `Someone asked to join the ${BRAND} Orbit founding list with this email address, which is already on it, for ${describeChoice(choice)}. Nothing was changed.`,
+    `To change your plan, sign in with this address and choose it at ${pricingUrl}, or email ${contact}. If this was not you, you can ignore this email.`,
+  ]
+  return {
+    to,
+    kind: "founding-list-member",
+    unsubscribeUrl,
+    subject: `You are already on the ${BRAND} founding list`,
+    text: `${lines.join("\n\n")}\n\n${UNSUBSCRIBE_LINE} Unsubscribe: ${unsubscribeUrl}\n`,
+    html: layout("You are already on the founding list", lines, undefined, unsubscribeUrl),
+  }
 }
 
 export class EmailNotConfiguredError extends Error {

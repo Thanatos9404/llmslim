@@ -66,7 +66,7 @@ export function securityHeaders(env: HeaderEnv): Header[] {
 }
 
 /** Pages whose URL can carry a one-time token: no Referer at all, and never cached. */
-export const TOKEN_PAGES = ["/verify-email", "/reset-password"] as const
+export const TOKEN_PAGES = ["/verify-email", "/reset-password", "/founding-list/confirm", "/founding-list/unsubscribe"] as const
 
 export function tokenPageHeaders(): Header[] {
   return [

@@ -10,7 +10,7 @@ export const metadata = constructMetadata({
 
 export default function PrivacyPage() {
   const { company } = siteConfig
-  return <PolicyPage title="Privacy Policy" lede={<>This policy covers the llmslim.app website, llmslim.app accounts, Studio, payments, and LLMSlim Orbit once it opens. LLMSlim is a product of {company.name}, {company.kind}, based in {company.location}. The open-source <code>llmslim</code> package sends nothing to us.</>}>
+  return <PolicyPage title="Privacy Policy" updated="3 November 2026" lede={<>This policy covers the llmslim.app website, llmslim.app accounts, Studio, payments, and LLMSlim Orbit once it opens. LLMSlim is a product of {company.name}, {company.kind}, based in {company.location}. The open-source <code>llmslim</code> package sends nothing to us.</>}>
     <h2>What the website measures</h2>
     <ul>
       <li><strong>Vercel Web Analytics and Speed Insights.</strong> Aggregate page views and performance metrics, without cookies.</li>

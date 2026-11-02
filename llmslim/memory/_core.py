@@ -12,11 +12,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
-from ..focus import Unit, _query_terms, _stem
+from ..focus import Unit, _cached_terms, _query_terms, _stem
 from ..planning.scoring import lexical_relevance
 from ..rerank import resolve_relevance
 from ..tokens import count_tokens
-from . import _explain, _turns
+from . import _explain, _later, _turns
 from ._routing import (
     ADVICE,
     LOOKUP,
@@ -113,6 +113,13 @@ _SECTION_FIRST_ROOM = 4  # a section's best match may take up to this fraction (
 _SECTION_DEDUP = (
     True  # a statement shown once in a section is not shown again (the same sentence said twice)
 )
+# A statement in the requests or preferences section is shown with the user's later statement closest to it in
+# subject (see ``_later``), on a line of its own under it: "Never push to main" with "pushing docs fixes straight to
+# main is fine now". The two take room together: when they do not fit, neither is shown, so a statement is never shown
+# without what the user said about it later. The later statement is part of the statement's line: it is not listed
+# in ``MemoryContext.requests`` or ``preferences`` on its own.
+_FOLLOW_UPS = True
+_FOLLOW_UP_LABEL = "later"
 # Statements that may conflict: for a yes-or-no question about the user's past ("Have I ever ...?"), the user's
 # statements that bear on it most, when some say it happened and some deny it ("I have never ..."), shown together
 # in date order in their own section, so the disagreement is in plain view and not lost among other turns.
@@ -535,15 +542,19 @@ class Memory:
             a past fact, show the user's earlier explicit standing requests ("Always ...", "From now on ...", "I'd
             like you to never ...", "... when I ask about X") that best match it (at most three) in their own section
             at the top, even when they share no word with the question, and fetch what the best one asks the answer
-            to include. Only user turns qualify. Detection is a fixed pattern, with no model call.
+            to include. A request is shown with what the user said later on its subject ("pushing docs fixes
+            straight to main is fine now"), on a line under it. Only user turns qualify. Detection is a fixed
+            pattern, with no model call.
         coverage: ``"auto"`` (default) answers overview questions ("summarize what we discussed", "in what order did I
             bring up ...", "how did my plan develop?") from the opening of each turn, without code: what the user
             asked and what the reply set out to do. Many more exchanges fit than as whole turns. ``"always"`` does so
             for every question, ``"never"`` never.
         preferences: When the history does not fit and the question asks for advice, a recommendation or help, show
             the user's earlier statements of preference ("I prefer ...", "I'd rather ...", "I usually ...", "I don't
-            like ...") that best match it in their own section at the top. Only user turns qualify. A preference word
-            that is only asked about ("should I prioritize ...?") is not a stated preference.
+            like ...") or of a change in one ("I no longer ...", "no meat anymore", "I switched to ...") that best
+            match it in their own section at the top, each with what the user said later on its subject. Only user
+            turns qualify. A preference word that is only asked about ("should I prioritize ...?") is not a stated
+            preference.
         conflicts: When the history does not fit and the question asks whether something happened ("Have I ever
             ...?", "Did I ... before?"), and among the user's statements that bear on it most some deny it ("I have
             never ...") and some do not, show both kinds together in date order in their own section at the top, so
@@ -934,12 +945,15 @@ class Memory:
         limit: int,
         room: Optional[int] = None,
         trace: Optional[_explain.SectionTrace] = None,
+        follow_up: Optional[Callable[[MemoryItem, str], Optional[Tuple[MemoryItem, str]]]] = None,
     ) -> Tuple[str, Tuple[RecalledTurn, ...], List[Tuple[MemoryItem, str]]]:
         """A section of user statements (requests or preferences): the ones that best match ``query`` (LLMSlim's
         lexical ranking, then the reranker over the strongest candidates when one is set), at most ``limit`` and
         within ``share`` of the budget (and of ``room``, what the sections above left of it), shown in date order
-        (the latest last, so an update reads after what it replaces). Returns (text, recalled turns, chosen in rank
-        order). ``trace`` records what was decided about each statement (for ``search(..., explain=True)``)."""
+        (the latest last, so an update reads after what it replaces). ``follow_up`` gives the later statement shown
+        under a statement, if any (see ``_FOLLOW_UPS``; it is not one of the recalled turns). A later statement
+        that is one of the section's own candidates is weighed right after the statement instead, on its own line. Returns (text, recalled turns, chosen in rank order).
+        ``trace`` records what was decided about each statement (for ``search(..., explain=True)``)."""
         if not candidates:
             if trace is not None:
                 trace.reason = "no_candidates"
@@ -959,10 +973,22 @@ class Memory:
         used = count_tokens(header)
         chosen: List[Tuple[MemoryItem, str, str]] = []
         shown = set()
-        for k in order:
+        followed: Dict[str, Tuple[MemoryItem, str]] = {}  # the later statements shown, by turn id
+        position = {item.id: k for k, (item, _) in enumerate(candidates)}
+        queue, tried, at = list(order), set(), 0
+        while at < len(queue):
+            k = queue[at]
+            at += 1
+            if k in tried:
+                continue
+            tried.add(k)
             if len(chosen) >= limit:
                 break
             item, said = candidates[k]
+            if item.id in followed:  # already shown under an earlier statement
+                if trace is not None:
+                    trace.outcome[k] = "duplicate"
+                continue
             if _SECTION_DEDUP:
                 key = _squash(said).casefold()
                 if key in shown:
@@ -971,6 +997,14 @@ class Memory:
                     continue
                 shown.add(key)
             line = f"- [{self._stamp(item)}] {said}"
+            later = follow_up(item, said) if follow_up is not None else None
+            after = None  # a later statement that is one of this section's own: weighed next, on its own line
+            if later is not None and later[0].id in position:
+                after, later = position[later[0].id], None
+            if later is not None and later[0].id in followed:
+                later = None  # shown already, under another statement
+            if later is not None:
+                line += f"\n  - [{self._stamp(later[0])}] {_FOLLOW_UP_LABEL}: {later[1]}"
             cost = count_tokens(line)
             # The best match always gets in if it takes at most a quarter of the room, so a small budget does not
             # lose it to the share; the others must fit within the share. (A quarter, not half: at a budget of a
@@ -980,6 +1014,10 @@ class Memory:
                     trace.outcome[k] = "over_share"
                 continue
             chosen.append((item, line, said))
+            if later is not None:
+                followed[later[0].id] = later
+            if after is not None and after not in tried:
+                queue.insert(at, after)
             if trace is not None:
                 trace.picked.append((k, line))
             used += cost
@@ -999,6 +1037,41 @@ class Memory:
             for item, _, said in chosen
         )
         return text, recalled, ranked
+
+    def _follow_ups(
+        self, items: Sequence[MemoryItem]
+    ) -> Optional[Callable[[MemoryItem, str], Optional[Tuple[MemoryItem, str]]]]:
+        """For the requests and preferences sections: a statement's follow-up, the user's later statement closest to
+        it in subject (``_later.Subjects.closest``: the first linked exchange with a user turn among its linked turns
+        that does not just say the statement again), as the sentences of that turn that share the subject, cut to
+        about ``_PREFERENCE_TOKENS``. None when ``_FOLLOW_UPS`` is off."""
+        if not _FOLLOW_UPS:
+            return None
+        subjects = _later.Subjects([item.content for item in items], [item.role for item in items])
+        index = {item.id: k for k, item in enumerate(items)}
+
+        def follow_up(item: MemoryItem, said: str) -> Optional[Tuple[MemoryItem, str]]:
+            k = index.get(item.id)
+            if k is None:
+                return None
+            statement = _squash(said).casefold()
+            for linked, shared in subjects.closest(k, subjects.subject(k, said)):
+                for j in linked:
+                    if items[j].role != "user":
+                        continue
+                    sentences = [
+                        s
+                        for s in _sentences(items[j].content)
+                        if shared.intersection(_cached_terms(s))
+                    ]
+                    text = " ".join(sentences) or _squash(items[j].content)
+                    if statement in text.casefold() or text.casefold() in statement:
+                        continue  # the statement said again
+                    focus = _focus_offset(text, " ".join(shared))
+                    return items[j], _around(text, focus, _PREFERENCE_TOKENS)
+            return None
+
+        return follow_up
 
     def _standing_requests(
         self,
@@ -1028,6 +1101,7 @@ class Memory:
             _STANDING_SHARE,
             _REQUEST_LIMIT,
             trace=trace,
+            follow_up=self._follow_ups(items),
         )
         expansion = _request_terms(ranked[0][1]) if ranked else ""
         return text, recalled, expansion
@@ -1071,6 +1145,7 @@ class Memory:
             _PREFERENCE_LIMIT,
             room,
             trace,
+            self._follow_ups(items),
         )
         return text, recalled
 

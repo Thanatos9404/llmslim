@@ -1239,3 +1239,142 @@ def test_random_histories_with_sections_never_exceed_the_budget(seed):
         for budget in list(range(1, 120, 7)) + [150, 300, 700]:
             context = memory.search(question, user_id="u1", budget=budget)
             assert count_tokens(str(context)) == context.tokens <= budget, (question, budget)
+
+
+# ---------------------------------------------------------------- later statements on the same subject
+
+
+def test_subjects_are_rare_terms_and_the_closest_later_exchange_comes_first():
+    from llmslim.memory._later import Subjects, exchanges
+
+    assert exchanges(["assistant", "user", "assistant", "assistant", "user"]) == [0, 1, 1, 1, 2]
+    texts, roles = [], []
+    for day in range(40):
+        texts += [
+            f"Day {day}: what should I cook for dinner?",
+            "Lentils and rice make a good dinner.",
+        ]
+        roles += ["user", "assistant"]
+    texts[4:6] = ["The build server's cache lives in /var/cache/forge.", "Noted."]
+    texts[30:32] = ["Forge keeps its files on the NVMe disk now: /mnt/nvme/forge.", "Got it."]
+    texts[50:52] = ["The NVMe disk on my laptop is full.", "Time to clean up."]
+    subjects = Subjects(texts, roles)
+    # Words every exchange uses ("dinner") and words of time and talk ("now") name no subject.
+    assert {"build", "cach", "var", "forg"} <= subjects.subject(4)
+    assert "dinner" not in subjects.subject(0) and "now" not in subjects.subject(30)
+    found = subjects.closest(4, subjects.subject(4))
+    assert [linked for linked, _ in found] == [[30]] and found[0][1] == {"forg"}
+    # A reply's subject includes the user turn it answers.
+    assert "forg" in subjects.subject(5)
+    # A short history has no subject terms yet: every word is shared by too large a share of it.
+    assert Subjects(texts[:12], roles[:12]).subject(4) == set()
+
+
+def test_a_later_statement_on_the_subject_ranks_just_below_the_turn_it_follows():
+    turns = [_turn(f"Day {k}: what should I cook for dinner?", minutes=k) for k in range(40)]
+    turns[4] = _turn("The build server's cache lives in /var/cache/forge.", minutes=4)
+    turns[5] = _turn("Noted, that path is on the big disk.", role="assistant", minutes=5)
+    turns[30] = _turn("Forge keeps its files on the NVMe disk now: /mnt/nvme/forge.", minutes=30)
+    user, other = _turns.pools(turns, 1000)
+    for piece in user + other:
+        piece.score = 0.0
+    by_turn = {p.turn: p for p in user + other}
+    by_turn[4].score, by_turn[10].score = 2.0, 1.0
+    _turns.link_later(turns, user, other)
+    # The statement on the same subject ranks at LINK_WEIGHT of the turn it follows, excerpted on what they share.
+    assert by_turn[30].score == pytest.approx(_turns.LINK_WEIGHT * 2.0)
+    assert "forg" in by_turn[30].focus.split()
+    # The reply that shares no subject term, and the turns on no shared subject, keep their scores.
+    assert by_turn[5].score == 0.0 and by_turn[10].score == 1.0
+    assert all(p.score == 0.0 for k, p in by_turn.items() if k not in (4, 10, 30))
+
+
+def test_a_correction_that_shares_no_word_with_the_question_is_kept_with_what_it_corrects(memory):
+    filler(memory, days=30)
+    say(memory, 4, "The build server's cache lives in /var/cache/forge.", "Noted.", minutes=5)
+    say(
+        memory,
+        20,
+        "Forge keeps its files on the NVMe disk now: /mnt/nvme/forge.",
+        "Got it.",
+        minutes=5,
+    )
+    context = memory.search(
+        "Which folder do I clear to empty the build server's cache?", user_id="u1", budget=300
+    )
+    assert "/var/cache/forge" in context.text and "/mnt/nvme/forge" in context.text
+    assert context.text.index("/var/cache/forge") < context.text.index("/mnt/nvme/forge")
+
+
+def test_a_request_is_shown_with_what_the_user_said_about_it_later(memory, monkeypatch):
+    filler(memory, days=30)
+    say(memory, 2, "Never deploy the billing service on Fridays.", "Understood.", minutes=5)
+    later = "Billing deploys on a Friday are fine now that rollbacks are automatic."
+    say(memory, 9, later, "Great.", minutes=5)
+    question = "Can you help me plan this week's release of the invoice export?"
+    context = memory.search(question, user_id="u1", budget=900)
+    section = context.text.split("\n\n")[0].split("\n")
+    assert section[0] == "Requests the user made earlier:"
+    assert section[1].startswith("- [") and section[1].endswith(
+        "Never deploy the billing service on Fridays."
+    )
+    assert section[2] == f"  - [2026-03-11 (Wed) 09:35] later: {later}"
+    # The later statement is part of the request's line: it is not listed as a request of its own.
+    assert [t.item.content for t in context.requests] == [
+        "Never deploy the billing service on Fridays."
+    ]
+    explained = memory.search(question, user_id="u1", budget=900, explain=True)
+    assert explained.text == context.text
+    assert explained.explanation.tokens == count_tokens(explained.text)
+    monkeypatch.setattr("llmslim.memory._core._FOLLOW_UPS", False)
+    alone = memory.search(question, user_id="u1", budget=900)
+    assert "later:" not in alone.text.split("\n\n")[0]
+
+
+def test_a_request_and_what_was_said_about_it_later_take_room_together(memory):
+    filler(memory, days=30)
+    say(memory, 2, "Never deploy the billing service on Fridays.", "Understood.", minutes=5)
+    later = "Billing deploys on a Friday are fine now that rollbacks are automatic. " + " ".join(
+        f"Rollback drill {k} for billing went fine." for k in range(6)
+    )
+    say(memory, 9, later, "Great.", minutes=5)
+    question = "Can you help me plan this week's release of the invoice export?"
+    for budget in (60, 120, 200, 400, 900):
+        context = memory.search(question, user_id="u1", budget=budget)
+        top = context.text.split("\n\n")[0]
+        if "Never deploy the billing service" in top:
+            assert "later: Billing deploys on a Friday" in top, budget
+        assert context.tokens <= budget
+
+
+def test_a_change_the_user_made_is_a_stated_preference():
+    from llmslim.memory._routing import states_preference
+
+    for stated in (
+        "I no longer eat red meat.",
+        "Quick update: I went vegan, so no dairy anymore.",
+        "I don't drive anymore since I moved downtown.",
+        "I've given up coffee for good.",
+        "I switched to oat milk last month.",
+        "I've changed my mind about the long explanations.",
+    ):
+        assert states_preference(stated), stated
+    for other in (
+        "Have I switched to the new plan yet?",
+        "Can I no longer use the old key?",
+        "We moved the office to Berlin.",
+        "The bus no longer stops here.",
+    ):
+        assert states_preference(other) is None, other
+
+
+def test_a_preference_change_that_shares_no_word_with_the_question_is_shown(memory):
+    filler(memory, days=30)
+    say(memory, 3, "My favourite meal out is a big cheeseburger.", "A classic.", minutes=5)
+    say(memory, 14, "Quick update: I went vegan, so no meat or dairy anymore.", "Noted.", minutes=5)
+    context = memory.search(
+        "Can you suggest where I should eat out tonight?", user_id="u1", budget=900
+    )
+    section = [p for p in context.text.split("\n\n") if p.startswith("Preferences the user stated")]
+    assert section and "cheeseburger" in section[0] and "no meat or dairy anymore" in section[0]
+    assert section[0].index("cheeseburger") < section[0].index("no meat or dairy anymore")

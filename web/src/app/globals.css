@@ -246,6 +246,10 @@
 .sarvam-brand .startup-ai-symbol { width:40px; height:40px; }
 .startup-wordmark { display:block; width:112px; height:28px; background:var(--ink); mask:var(--startup-mark) center / contain no-repeat; }
 .startup-supplied-logo { display:block; width:145px; height:70px; background:var(--ink); mask:var(--startup-mark) center / contain no-repeat; }
+/* A symbol drawn from the vendor's own light and dark artwork rather than tinted (Notion). */
+.startup-symbol-art { background:none; mask:none; }
+.startup-symbol-art img { width:100%; height:100%; object-fit:contain; }
+.startup-supplied-logo.gitar-brand { width:92px; height:48px; }
 /* Zero-specificity defaults so per-brand rules (zoho, mongodb) keep precedence. */
 :where(.startup-artwork) { display:flex; align-items:center; justify-content:center; max-width:160px; }
 :where(.startup-artwork) img { max-width:160px; object-fit:contain; }

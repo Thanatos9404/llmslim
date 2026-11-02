@@ -14,7 +14,8 @@ import {
 } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { COMPARISONS, type Comparison } from "@/data/comparisons"
-import { DOC_CATEGORIES, DOCS_REGISTRY, type DocPage } from "@/data/docs"
+import { DOC_CATEGORIES, DOCS_BY_VERSION, DOCS_REGISTRY, docsInOrder, versionNoticeText, type DocPage } from "@/data/docs"
+import { DEFAULT_DOCS_VERSION, DOCS_VERSIONS, docHref, docsHome, isDocsVersion, resolveDocLink, versionStatus, type DocsVersion } from "@/data/docs-versions"
 import { homeFaqs } from "@/data/home"
 import { FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice, type Billing, type Cell, type Currency, type Plan } from "@/data/pricing"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
@@ -86,22 +87,54 @@ const VAULT_FACTS = [
   `Details and beta access: ${absoluteUrl("/vault")}`,
 ]
 
-export function docMarkdown(doc: DocPage): string {
-  const path = `/docs/${doc.slug}`
+/** Docs text with its links made absolute: guides of the version being read, site paths and anchors on `page`. */
+function docText(text: string, version: DocsVersion, page: string): string {
+  return text.replace(/\]\(([^)\s]+)\)/g, (_, href: string) => {
+    const target = resolveDocLink(href, version)
+    return `](${target.startsWith("#") ? absoluteUrl(page) + target : target.startsWith("/") ? absoluteUrl(target) : target})`
+  })
+}
+
+export function docMarkdown(doc: DocPage, version: DocsVersion = DEFAULT_DOCS_VERSION): string {
+  const path = docHref(version, doc.slug)
+  const text = (value: string) => docText(value, version, path)
+  const notice = versionNoticeText(version)
   return join(
     `# ${doc.title}`,
+    notice !== null && `> **${notice}** Docs for what pip installs: ${md(docsHome(DEFAULT_DOCS_VERSION))}`,
     `> ${doc.subtitle}`,
     doc.description,
-    `Category: ${doc.category} · Updated: ${doc.lastUpdated} · ${doc.readingTime}`,
+    `Category: ${doc.category} · Version: ${version} · Updated: ${doc.lastUpdated} · ${doc.readingTime}` + (doc.experimental ? " · Experimental: a minor release may change this API." : ""),
     ...doc.sections.map((section) => join(
       `## ${section.title}`,
-      section.content,
-      section.codeSnippet && fence(section.codeSnippet.language, section.codeSnippet.code),
-      section.callout && `> **${section.callout.title || section.callout.type}:** ${section.callout.content}`,
+      text(section.content),
+      section.items && section.items.map((item) => `- ${text(item)}`).join("\n"),
+      section.table && table(section.table.headers, section.table.rows.map((row) => row.map(text))),
+      ...[...(section.codeSnippet ? [section.codeSnippet] : []), ...(section.snippets ?? [])].map((snippet) => (snippet.filename ? `${snippet.filename}:\n\n` : "") + fence(snippet.language, snippet.code)),
+      section.after && text(section.after),
+      section.callout && `> **${section.callout.title || section.callout.type}:** ${text(section.callout.content)}`,
     ).trimEnd()),
-    doc.faqs.length > 0 && "## FAQ\n\n" + doc.faqs.map((faq) => `### ${faq.question}\n\n${faq.answer}`).join("\n\n"),
-    doc.relatedPages.length > 0 && "## Related\n\n" + doc.relatedPages.map((page) => `- [${page.title}](${md(`/docs/${page.slug}`)})`).join("\n"),
+    doc.faqs.length > 0 && "## FAQ\n\n" + doc.faqs.map((faq) => `### ${faq.question}\n\n${text(faq.answer)}`).join("\n\n"),
+    doc.relatedPages.length > 0 && "## Related\n\n" + doc.relatedPages.map((page) => `- [${page.title}](${md(docHref(version, page.slug))})`).join("\n"),
     source(path),
+  )
+}
+
+/** The docs home of one version as Markdown: every guide by category. */
+function docsIndexMarkdown(version: DocsVersion): string {
+  const notice = versionNoticeText(version)
+  const others = DOCS_VERSIONS.filter(({ id }) => id !== version)
+  return join(
+    `# LLMSlim documentation${version === DEFAULT_DOCS_VERSION ? "" : ` ${version}`}`,
+    notice ? `> **${notice}**` : `> Developer documentation for LLMSlim Core ${version}, the open-source Python library: what \`pip install llmslim\` installs today.`,
+    ...DOC_CATEGORIES.map((category) => {
+      const pages = docsInOrder(version).filter((doc) => doc.category === category)
+      return pages.length > 0 && `## ${category}\n\n` + pages.map((doc) => `- [${doc.title}](${md(docHref(version, doc.slug))}): ${doc.description}`).join("\n")
+    }),
+    "## Framework integrations\n\n" + Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
+      .map((item) => `- [LLMSlim + ${item.name}](${md(`/integrations/${item.slug}`)}): ${item.tagline}`).join("\n"),
+    "## Other versions\n\n" + others.map(({ id }) => `- [LLMSlim ${id} docs](${md(docsHome(id))})${versionStatus(id) === "preview" ? `: upcoming, not on PyPI yet (\`pip install llmslim\` installs ${siteConfig.coreVersion})` : ""}`).join("\n"),
+    source(docsHome(version)),
   )
 }
 
@@ -224,17 +257,7 @@ export function changelogMarkdown(): string {
 }
 
 function sectionIndex(section: Section): string {
-  if (section === "docs") return join(
-    "# LLMSlim documentation",
-    "> Developer documentation for LLMSlim Core, the open-source Python library.",
-    ...DOC_CATEGORIES.map((category) => {
-      const pages = Object.values(DOCS_REGISTRY).filter((doc) => doc.category === category)
-      return pages.length > 0 && `## ${category}\n\n` + pages.map((doc) => `- [${doc.title}](${md(`/docs/${doc.slug}`)}): ${doc.description}`).join("\n")
-    }),
-    "## Framework integrations\n\n" + Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
-      .map((item) => `- [LLMSlim + ${item.name}](${md(`/integrations/${item.slug}`)}): ${item.tagline}`).join("\n"),
-    source("/docs"),
-  )
+  if (section === "docs") return docsIndexMarkdown(DEFAULT_DOCS_VERSION)
   if (section === "integrations") return join(
     "# LLMSlim integrations",
     "> Use LLMSlim output with model providers and frameworks. LLMSlim prepares context; your application makes the model call.",
@@ -342,6 +365,12 @@ export function pricingMarkdown(): string {
 /** Markdown for a site path without the ".md" suffix ("index", "docs", "docs/getting-started"), or null. */
 export function markdownFor(path: readonly string[]): string | null {
   const [head, slug, ...rest] = path
+  // Docs of a version other than the default: ["docs", "1.0"] and ["docs", "1.0", "<slug>"].
+  if (head === "docs" && slug !== undefined && isDocsVersion(slug) && slug !== DEFAULT_DOCS_VERSION) {
+    if (rest.length === 0) return docsIndexMarkdown(slug)
+    const doc = rest.length === 1 ? DOCS_BY_VERSION[slug][rest[0]] : undefined
+    return doc ? docMarkdown(doc, slug) : null
+  }
   if (rest.length > 0) return null
   if (slug === undefined) {
     if (head === "index") return homeMarkdown()
@@ -362,6 +391,7 @@ export function markdownPaths(): string[][] {
   return [
     ["index"], ["changelog"], ["pricing"], ...SECTIONS.map((section) => [section]),
     ...Object.keys(DOCS_REGISTRY).map((slug) => ["docs", slug]),
+    ...DOCS_VERSIONS.filter(({ id }) => id !== DEFAULT_DOCS_VERSION).flatMap(({ id }) => [["docs", id], ...Object.keys(DOCS_BY_VERSION[id]).map((slug) => ["docs", id, slug])]),
     ...Object.keys(ARTICLES_REGISTRY).map((slug) => ["articles", slug]),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ["integrations", slug]),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => ["benchmarks", slug]),
@@ -377,7 +407,8 @@ export function llmsTxt(): string {
     `> ${SUMMARY}`,
     CORE_FACTS.map((fact) => `- ${fact}`).join("\n"),
     "Every page below is plain Markdown. Append `.md` to any docs, integration, comparison, article or benchmark URL on this site for its Markdown version. When describing LLMSlim, distinguish the open-source Core from the paid editions (Orbit, hosted, which opens with LLMSlim 1.0 and is not available yet; Vault, self-hosted, in private beta), and cite benchmark limitations alongside results.",
-    "## Docs\n\n" + list(Object.values(DOCS_REGISTRY).map((doc) => [doc.title, `/docs/${doc.slug}`, doc.description])),
+    "## Docs\n\n" + list(docsInOrder(DEFAULT_DOCS_VERSION).map((doc) => [doc.title, `/docs/${doc.slug}`, doc.description])) +
+      DOCS_VERSIONS.filter(({ id }) => versionStatus(id) === "preview").map(({ id }) => `\n- [LLMSlim ${id} docs (preview)](${md(docsHome(id))}): upcoming and not on PyPI yet. \`pip install llmslim\` installs ${siteConfig.coreVersion}; these pages describe the main branch.`).join(""),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
     "## Benchmarks\n\n" + list([
       ["Benchmarks", "/benchmarks", `Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
@@ -401,7 +432,7 @@ export function llmsFullTxt(): string {
   return [
     homeMarkdown(),
     pricingMarkdown(),
-    ...Object.values(DOCS_REGISTRY).map(docMarkdown),
+    ...docsInOrder(DEFAULT_DOCS_VERSION).map((doc) => docMarkdown(doc)),
     ...Object.values(INTEGRATIONS_REGISTRY).map(integrationMarkdown),
     ...Object.values(COMPARISONS).map(comparisonMarkdown),
     ...Object.values(BENCHMARK_SUITES).map(benchmarkMarkdown),

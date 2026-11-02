@@ -9,6 +9,13 @@ to be installed and nothing is imported.
 docstring, or the version::
 
     python scripts/api_reference.py --write
+
+While ``CHANGELOG.md`` lists changes under ``[Unreleased]``, the pages say they describe the main branch, not the
+release in ``__version__``. The site shows them as the 1.0 docs, next to a frozen reference of the release PyPI
+installs, which was generated once from a checkout of its tag (``git worktree add <dir> v0.12.0``)::
+
+    python scripts/api_reference.py --write --source <dir> \\
+        --output web/src/data/api-reference-0.12.ts --name API_REFERENCE_DOCS_0_12
 """
 
 from __future__ import annotations
@@ -48,16 +55,17 @@ _ROLE = re.compile(r":(?:py:)?[a-z]+:`~?([^`]+)`")
 _TICKS = re.compile(r"`+([^`]+)`+")
 
 
-def load() -> Any:
-    """The ``llmslim`` package as griffe reads it from this checkout."""
+def load(root: Path = ROOT) -> Any:
+    """The ``llmslim`` package as griffe reads it from this checkout, or from the checkout at ``root``."""
 
     import griffe
 
     logging.getLogger("griffe").setLevel(logging.ERROR)  # it notes every unannotated **kwargs
     loader = griffe.GriffeLoader(
-        search_paths=[str(ROOT)], docstring_parser="google", allow_inspection=False
+        search_paths=[str(root)], docstring_parser="google", allow_inspection=False
     )
-    package = loader.load("llmslim")
+    # By name on the search path only: an ``llmslim`` folder in the working directory must not win over ``root``.
+    package = loader.load("llmslim", try_relative_path=False)
     loader.resolve_aliases(external=False, implicit=False)
     return package
 
@@ -255,8 +263,8 @@ def unannotated(package: Any, modules: Iterable[str] = PAGES) -> List[str]:
     return missing
 
 
-def _release_month(version: str) -> str:
-    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+def _release_month(version: str, root: Path = ROOT) -> str:
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     match = re.search(
         rf"^## \[{re.escape(version)}\] - (\d{{4}})-(\d{{2}})-(\d{{2}})", changelog, re.M
     )
@@ -265,12 +273,29 @@ def _release_month(version: str) -> str:
     return date(*map(int, match.groups())).strftime("%B %Y")
 
 
-def page(package: Any, module_path: str) -> Dict[str, Any]:
+def unreleased(root: Path = ROOT) -> bool:
+    """Whether ``CHANGELOG.md`` lists changes under ``[Unreleased]``: the source is past its last release."""
+
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    match = re.search(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", changelog, re.M | re.S)
+    return bool(match and re.search(r"^\s*- ", match.group(1), re.M))
+
+
+def _source(version: str, root: Path) -> str:
+    """What the pages were generated from, as the site says it."""
+
+    if unreleased(root):
+        return f"the main branch (llmslim {version} and the changes since, not released yet)"
+    return f"the source of llmslim {version}"
+
+
+def page(package: Any, module_path: str, root: Path = ROOT) -> Dict[str, Any]:
     """The ``DocPage`` for one module."""
 
     meta = PAGES[module_path]
     module = package[module_path.split(".", 1)[1]] if "." in module_path else package
     version = str(package["__version__"].value).strip("'\"")
+    source = _source(version, root)
     names = [name for name in (module.exports or []) if not name.startswith("_")]
     taken: set = {"about"}
     sections = [
@@ -278,8 +303,8 @@ def page(package: Any, module_path: str) -> Dict[str, Any]:
             "id": "about",
             "title": "About this reference",
             "content": f"Each entry is a name you import from {module_path}: {meta['what']}. It shows the full "
-            f"signature with its type annotations, and the docstring. The page is generated from the source of "
-            f"llmslim {version} by scripts/api_reference.py, so it changes only when the code does.",
+            f"signature with its type annotations, and the docstring. The page is generated from {source} by "
+            "scripts/api_reference.py, so it changes only when the code does.",
         }
     ]
     for name in names:
@@ -313,47 +338,76 @@ def page(package: Any, module_path: str) -> Dict[str, Any]:
         "title": meta["title"],
         "subtitle": meta["subtitle"],
         "description": f"Signatures, type annotations and docstrings of the {len(names)} public names in "
-        f"{module_path}, generated from the source of llmslim {version}.",
+        f"{module_path}, generated from {source}.",
         "category": "API Reference",
         "searchIntent": f"LLMSlim Python API reference for {module_path}: signatures, parameters and return types.",
-        "lastUpdated": _release_month(version),
+        "lastUpdated": _release_month(version, root),
         "readingTime": f"{max(1, round(words / 220))} min read",
         "sections": sections,
         "faqs": [],
-        "relatedPages": [*others, {"title": "Getting Started", "slug": "getting-started"}],
+        "relatedPages": [*others, {"title": "Python quickstart", "slug": "quickstart-python"}],
     }
 
 
-def render(package: Any) -> str:
+def render(package: Any, root: Path = ROOT, name: str = "API_REFERENCE_DOCS") -> str:
     """The TypeScript module the site imports."""
 
-    pages = [page(package, module_path) for module_path in PAGES]
+    pages = [page(package, module_path, root) for module_path in PAGES]
     body = json.dumps(pages, indent=2, ensure_ascii=False)
+    if root == ROOT:
+        header = (
+            "// Generated by scripts/api_reference.py from the llmslim source; do not edit by hand.\n"
+            "// After changing a public signature or docstring: python scripts/api_reference.py --write\n"
+        )
+    else:
+        version = str(package["__version__"].value).strip("'\"")
+        header = (
+            f"// Generated by scripts/api_reference.py from the source of llmslim {version}; do not edit by hand.\n"
+            f"// A released version does not change. To regenerate it, from a checkout of v{version} in <dir>:\n"
+            f"// python scripts/api_reference.py --write --source <dir> --output <this file> --name {name}\n"
+        )
     return (
-        "// Generated by scripts/api_reference.py from the llmslim source; do not edit by hand.\n"
-        "// After changing a public signature or docstring: python scripts/api_reference.py --write\n"
-        'import type { DocPage } from "./docs"\n\n'
-        f"export const API_REFERENCE_DOCS: DocPage[] = {body}\n"
+        header
+        + f'import type {{ DocPage }} from "./docs"\n\nexport const {name}: DocPage[] = {body}\n'
     )
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true", help=f"Rewrite {OUTPUT.relative_to(ROOT)}.")
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=ROOT,
+        help="Read the llmslim source from this checkout instead (for the reference of a release).",
+    )
+    parser.add_argument("--output", type=Path, help="The file to write or check (needs --source).")
+    parser.add_argument(
+        "--name",
+        default="API_REFERENCE_DOCS",
+        help="The exported constant's name (needs --source).",
+    )
     args = parser.parse_args(argv)
-    text = render(load())
-    if args.write:
-        with OUTPUT.open("w", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
-        print(f"wrote {OUTPUT.relative_to(ROOT)}")
-        return 0
-    current = OUTPUT.read_text(encoding="utf-8").replace("\r\n", "\n") if OUTPUT.exists() else ""
-    if current != text:
-        print(
-            f"{OUTPUT.relative_to(ROOT)} is out of date: run python scripts/api_reference.py --write"
+    source = args.source.resolve()
+    if source != ROOT and args.output is None:
+        parser.error(
+            "--source needs --output: the reference of this checkout stays in its own file"
         )
+    if source == ROOT and (args.output is not None or args.name != "API_REFERENCE_DOCS"):
+        parser.error("--output and --name go with --source")
+    output = (args.output or OUTPUT).resolve()
+    shown = output.relative_to(ROOT) if output.is_relative_to(ROOT) else output
+    text = render(load(source), source, args.name)
+    if args.write:
+        with output.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+        print(f"wrote {shown}")
+        return 0
+    current = output.read_text(encoding="utf-8").replace("\r\n", "\n") if output.exists() else ""
+    if current != text:
+        print(f"{shown} is out of date: run python scripts/api_reference.py --write")
         return 1
-    print(f"{OUTPUT.relative_to(ROOT)} is up to date.")
+    print(f"{shown} is up to date.")
     return 0
 
 

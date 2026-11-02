@@ -5,16 +5,18 @@ import { Check, Copy } from "lucide-react"
 import { PixelField } from "@/components/results/PixelField"
 
 const INSTALL = "pip install llmslim"
-const QUICK = `from llmslim import compress
+const QUICK = `from llmslim.memory import Memory
 
-result = compress(chat_history, target_ratio=0.25,
-                  query="Where should the card be shipped?")
+memory = Memory("memory.db")
+memory.add("I moved to Pune last month.",
+           user_id="asha")
 
-print(result.compressed_text)   # what the model needs
-print(result.tokens_saved)      # what you no longer pay for`
+context = memory.search("Where did I move to?",
+                        user_id="asha")
+print(context.text)   # what answers it`
 
-/** The docs front door: a short promise, the install line, and a first call you can copy. */
-export function DocsHero() {
+/** The docs front door: a short promise, the install line, and a first call you can copy. `kicker` names the version when it isn't the current one. */
+export function DocsHero({ kicker = "Documentation" }: { kicker?: string }) {
   const ref = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState<"" | "install" | "quick">("")
   const reduced = useReducedMotion()
@@ -33,9 +35,9 @@ export function DocsHero() {
   return <section ref={ref} className="docs-hero" aria-labelledby="docs-title">
     <m.div className="docs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField gap={9} /></m.div>
     <div className="docs-hero-copy">
-      <p className="docs-kicker rise" {...rise(0)}>Documentation</p>
+      <p className="docs-kicker rise" {...rise(0)}>{kicker}</p>
       <h1 id="docs-title" className="rise" {...rise(0.06)}>Start in one line. <em>Go as deep as you need.</em></h1>
-      <p className="docs-lede rise" {...rise(0.12)}>Short guides for compressing context, keeping provenance, and fitting chat, retrieval and tool output into a real token budget.</p>
+      <p className="docs-lede rise" {...rise(0.12)}>Short guides for agent memory with no LLM in the loop, from Python, MCP, HTTP and TypeScript, and for fitting chat, retrieval and tool output into a real token budget.</p>
       <button type="button" className="docs-install rise" onClick={() => copy("install")} {...rise(0.18)} aria-label="Copy the install command">
         <span className="docs-install-prompt" aria-hidden="true">$</span><code>{INSTALL}</code>
         <span className="docs-install-copy">{copied === "install" ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</span>

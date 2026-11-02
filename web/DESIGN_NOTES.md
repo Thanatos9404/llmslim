@@ -79,24 +79,18 @@ body 16, lede 17 to 20, h3 24, h2 36 to 60, h1 40 to 72, display 48 to 96. Headi
 rounded ends slide in, the three that fit the token budget light up in the mark's gradient (`--mark-*`) and get a
 square pixel on a budget rail, and the other two dim. Hero size on the plates; 14px in place of the kicker's pixel.
 
-### Skill guidance
+### Design rules
 
-References: the project skill `.claude/skills/landing-page-design` (MIT) and `frontend-design` from Anthropic's
-open-source skills repository (https://github.com/anthropics/skills, Apache-2.0), read as documents; nothing new
-was installed and no downloaded script was run.
-
-Followed: the base curve and transform/opacity-only motion, reveals once via IntersectionObserver, reduced motion as
+Followed: one base curve and transform/opacity-only motion, reveals once via IntersectionObserver, reduced motion as
 a still state, visible focus rings and hover/active states, headings and display sizes on Tailwind steps, no
-single-sided card borders (landing-page-design); one bold element per page, structure that encodes information (the
-interval outlines, the zero axis), a token plan checked against the brief before building, screenshots as critique
-(frontend-design).
+single-sided card borders; one bold element per page, structure that encodes information (the interval outlines,
+the zero axis), a token plan checked against the brief before building, screenshots as critique.
 
-Overridden, because the brief or the site's identity says otherwise: Instrument Serif italic in headings (both skills
-discourage italics and accents in headlines; it is the site's signature); photo veils are gradients (no gradient
+Kept on purpose, because the brief or the site's identity says so: Instrument Serif italic in headings (common
+guidance discourages italics in headlines; it is the site's signature); photo veils are gradients (no gradient
 backgrounds), only behind photos; no tagline reveal section or new marketing copy (the pilot keeps every word); mono
-uppercase table headings stay (frontend-design lists them as a tell; they are existing identity and now render as
-designed); scroll reveals and hover lifts are used although frontend-design calls them generic, because the founder
-asked for them, kept to one curve and one distance; the near-black surface with a green accent is the brand, not a
+uppercase table headings stay (existing identity, now rendering as designed); scroll reveals and hover lifts are
+used although they are common, because the founder asked for them, kept to one curve and one distance; the near-black surface with a green accent is the brand, not a
 default; lucide icons stay rather than Phosphor or Solar; body sizes of 15 and 17px stay where the existing pages use
 them, rather than snapping every one to a step.
 

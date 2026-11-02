@@ -5,7 +5,7 @@ import { m, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useRef, type CSSProperties } from "react"
 import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react"
 import { READER, STILL_AHEAD } from "@/data/results-story"
-import { ROUND3_REPORT, WEAK_SPOTS } from "@/data/live-benchmarks"
+import { ROUND3_REPORT, ROUND6_REPORT, ROUND6_WEAK_SPOTS, WEAK_SPOTS } from "@/data/live-benchmarks"
 import { PixelField } from "./PixelField"
 import { Plates } from "./Plates"
 import { Race } from "./Race"
@@ -31,7 +31,7 @@ function Hero() {
     <m.div className="rs-hero-copy" style={reduced ? undefined : { y: copyY, opacity: fade }}>
       <p className="rs-kicker rise" {...rise(0)}>Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></p>
       <h1 id="results-title" className="rise" {...rise(0.1)}>Cut the context.<br /><em>Keep the answers.</em></h1>
-      <p className="rs-hero-lede rise" {...rise(0.2)}>LLMSlim Core 0.9 against Mem0, Zep, LLMLingua-2, LongLLMLingua and dense retrieval, on held-out test questions read by the same model. Only the context changed between runs, and every cost is end to end.</p>
+      <p className="rs-hero-lede rise" {...rise(0.2)}>LLMSlim Core 0.12 and 0.9 against Mem0, Zep, LLMLingua-2, LongLLMLingua and dense retrieval, on held-out test questions read by the same model. Only the context changed between runs, and every cost is end to end.</p>
       <dl className="rs-figures rise" {...rise(0.32)}>
         {FIGURES.map((figure) => <div key={figure.text}><dt><span>{figure.value}</span><em>{figure.unit}</em></dt><dd>{figure.text}</dd></div>)}
       </dl>
@@ -40,7 +40,7 @@ function Hero() {
   </section>
 }
 
-/** Where LLMSlim still trails, from the round-3 report. */
+/** Where LLMSlim still trails, from the round-6 and round-3 reports. */
 function Loses() {
   return <section className="rs-held" aria-labelledby="loses-title">
     <header className="rs-head">
@@ -49,7 +49,7 @@ function Loses() {
       <p className="rs-lede">LLMSlim was tuned on separate development questions, and the test questions were read once. These are the places it trails.</p>
     </header>
     <div className="rs-held-row">
-      {WEAK_SPOTS.map((spot) => <article key={spot.title} className="rs-held-cell rs-loses-cell"><h3>{spot.title}</h3><p>{spot.body}</p></article>)}
+      {[...ROUND6_WEAK_SPOTS, ...WEAK_SPOTS].map((spot) => <article key={spot.title} className="rs-held-cell rs-loses-cell"><h3>{spot.title}</h3><p>{spot.body}</p></article>)}
     </div>
   </section>
 }
@@ -64,7 +64,7 @@ function Close() {
       <a className="button button-outline" href={ROUND3_REPORT} target="_blank" rel="noreferrer">Full report <ArrowUpRight size={16} /></a>
     </div>
     <div id="fine-print" className="rs-fine">
-      <p>* Every context was read by {READER} with the same prompt; only the context changed. Costs are per 1,000 questions at list prices, end to end: the answer call, Mem0&apos;s and Zep&apos;s memory-building calls, and each system&apos;s compute. Confidence intervals are paired bootstrap 95% over the same questions. Long documents and agents were measured on Core 0.8. The reranker is optional: <code>pip install &quot;llmslim[semantic]&quot;</code>, then <code>relevance=&quot;semantic&quot;</code>.</p>
+      <p>* Every context was read by {READER} with the same prompt; only the context changed. Costs are per 1,000 questions at list prices, end to end: the answer call, Mem0&apos;s and Zep&apos;s memory-building calls, and each system&apos;s compute. Confidence intervals are paired bootstrap 95% over the same questions. BEAM-1M (Core 0.12, round 6) is scored by BEAM&apos;s own rubric judge out of 100, with three reads per question and paired t intervals over conversations; its <a href={ROUND6_REPORT} target="_blank" rel="noreferrer">report</a> is published as results only. Long documents and agents were measured on Core 0.8. The reranker is optional: <code>pip install &quot;llmslim[semantic]&quot;</code>, then <code>relevance=&quot;semantic&quot;</code>.</p>
       <p>{STILL_AHEAD} <Link href="/benchmarks">Every table and method</Link>.</p>
     </div>
   </section>

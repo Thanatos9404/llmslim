@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import { securityHeaders, TOKEN_PAGES, tokenPageHeaders } from "./security-headers";
+import { DEFAULT_DOCS_VERSION } from "./src/data/docs-versions";
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -25,14 +26,25 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     // LLMSlim Platform was renamed LLMSlim Vault on 29 October 2026; old links (including /platform#beta) keep working.
-    return [{ source: "/platform", destination: "/vault", permanent: true }];
+    // The default docs version is served at /docs, so its own prefix points there. Not permanent: when the default
+    // changes (src/data/docs-versions.ts), /docs/<old default>/... serves that version's pages again.
+    const docsDefault = `/docs/${DEFAULT_DOCS_VERSION.replace(".", "\\.")}`;
+    return [
+      { source: "/platform", destination: "/vault", permanent: true },
+      { source: docsDefault, destination: "/docs", permanent: false },
+      { source: `${docsDefault}/:slug([a-z0-9-]+)`, destination: "/docs/:slug", permanent: false },
+      { source: `${docsDefault}/:slug([a-z0-9-]+)\\.md`, destination: "/docs/:slug.md", permanent: false },
+    ];
   },
   async rewrites() {
     // Markdown twins for agents: "/index.md", "/docs.md", "/docs/<slug>.md", "/compare/<slug>.md" and so on (src/app/md).
-    // afterFiles rewrites run before dynamic routes, so "/docs/<slug>.md" never reaches docs/[slug].
+    // afterFiles rewrites run before dynamic routes, so "/docs/<slug>.md" never reaches docs/[...path].
     const markdown = [
       { source: "/:page(index|changelog|pricing|docs|articles|integrations|benchmarks)\\.md", destination: "/md/:page" },
       { source: "/:section(docs|articles|integrations|benchmarks|compare)/:slug([a-z0-9-]+)\\.md", destination: "/md/:section/:slug" },
+      // Docs of a version other than the default: "/docs/1.0.md" and "/docs/1.0/<slug>.md".
+      { source: "/docs/:version(\\d+\\.\\d+)\\.md", destination: "/md/docs/:version" },
+      { source: "/docs/:version(\\d+\\.\\d+)/:slug([a-z0-9-]+)\\.md", destination: "/md/docs/:version/:slug" },
     ];
     // Local development only: forward the Studio's Python functions to a local server.
     const studio = localStudioApiOrigin ? ["studio", "compress", "plan", "context", "sarvam_answer"].map((name) => ({ source: `/api/${name}`, destination: `${localStudioApiOrigin}/api/${name}` })) : [];

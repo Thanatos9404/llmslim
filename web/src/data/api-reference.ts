@@ -7,7 +7,7 @@ export const API_REFERENCE_DOCS: DocPage[] = [
     "slug": "api-llmslim",
     "title": "API reference: llmslim",
     "subtitle": "Every public name in the llmslim package, with its signature and docstring.",
-    "description": "Signatures, type annotations and docstrings of the 80 public names in llmslim, generated from the source of llmslim 0.12.0.",
+    "description": "Signatures, type annotations and docstrings of the 80 public names in llmslim, generated from the main branch (llmslim 0.12.0 and the changes since, not released yet).",
     "category": "API Reference",
     "searchIntent": "LLMSlim Python API reference for llmslim: signatures, parameters and return types.",
     "lastUpdated": "October 2026",
@@ -16,7 +16,7 @@ export const API_REFERENCE_DOCS: DocPage[] = [
       {
         "id": "about",
         "title": "About this reference",
-        "content": "Each entry is a name you import from llmslim: compression, context planning, the agent context runtime, cache planning, token counting and the rewrite engine. It shows the full signature with its type annotations, and the docstring. The page is generated from the source of llmslim 0.12.0 by scripts/api_reference.py, so it changes only when the code does."
+        "content": "Each entry is a name you import from llmslim: compression, context planning, the agent context runtime, cache planning, token counting and the rewrite engine. It shows the full signature with its type annotations, and the docstring. The page is generated from the main branch (llmslim 0.12.0 and the changes since, not released yet) by scripts/api_reference.py, so it changes only when the code does."
       },
       {
         "id": "compress",
@@ -826,8 +826,8 @@ export const API_REFERENCE_DOCS: DocPage[] = [
         "slug": "api-llmslim-memory"
       },
       {
-        "title": "Getting Started",
-        "slug": "getting-started"
+        "title": "Python quickstart",
+        "slug": "quickstart-python"
       }
     ]
   },
@@ -835,7 +835,7 @@ export const API_REFERENCE_DOCS: DocPage[] = [
     "slug": "api-llmslim-memory",
     "title": "API reference: llmslim.memory",
     "subtitle": "Memory, its stores and its result types, with their signatures and docstrings.",
-    "description": "Signatures, type annotations and docstrings of the 19 public names in llmslim.memory, generated from the source of llmslim 0.12.0.",
+    "description": "Signatures, type annotations and docstrings of the 19 public names in llmslim.memory, generated from the main branch (llmslim 0.12.0 and the changes since, not released yet).",
     "category": "API Reference",
     "searchIntent": "LLMSlim Python API reference for llmslim.memory: signatures, parameters and return types.",
     "lastUpdated": "October 2026",
@@ -844,7 +844,7 @@ export const API_REFERENCE_DOCS: DocPage[] = [
       {
         "id": "about",
         "title": "About this reference",
-        "content": "Each entry is a name you import from llmslim.memory: agent memory with no LLM in the loop: Memory, its stores and its result types. It shows the full signature with its type annotations, and the docstring. The page is generated from the source of llmslim 0.12.0 by scripts/api_reference.py, so it changes only when the code does."
+        "content": "Each entry is a name you import from llmslim.memory: agent memory with no LLM in the loop: Memory, its stores and its result types. It shows the full signature with its type annotations, and the docstring. The page is generated from the main branch (llmslim 0.12.0 and the changes since, not released yet) by scripts/api_reference.py, so it changes only when the code does."
       },
       {
         "id": "explainedcandidate",
@@ -1044,8 +1044,8 @@ export const API_REFERENCE_DOCS: DocPage[] = [
         "slug": "api-llmslim"
       },
       {
-        "title": "Getting Started",
-        "slug": "getting-started"
+        "title": "Python quickstart",
+        "slug": "quickstart-python"
       }
     ]
   }

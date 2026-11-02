@@ -132,6 +132,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its
   docstring. `tests/test_api_reference.py` fails when the pages are out of date with the source, when a public name
   has no docstring, or when a public function or method has an unannotated parameter or return type.
+- **Site: docs for 1.0 next to 0.12, with a version switch.** `/docs` keeps describing 0.12, what `pip install llmslim`
+  installs, and the docs for the main branch are at `/docs/1.0`. Every 1.0 page opens with a notice that it is
+  upcoming and that pip installs 0.12.0 today, is kept out of search indexes, and is listed in `llms.txt` as a preview.
+  A switch in the sidebar (and above the page on small screens) moves between the two, on the same guide when the other
+  version has it. `DEFAULT_DOCS_VERSION` in `web/src/data/docs-versions.ts` decides which version `/docs` shows, so
+  release day is a one-line change; `/docs/0.12/...` then keeps the 0.12 pages.
+  - **Getting started** with Python, MCP (the command and the Claude Code plugin, Claude Desktop, Cursor), HTTP
+    (`llmslim serve`) and TypeScript (the npm client with `llmslim/ai-sdk` and `llmslim/mastra`), for both versions.
+  - **Guides:** importing history, `explain=True`, coding agents (`llmslim wrap claude`, marked experimental), the
+    OpenAI-compatible endpoint and remote MCP (both experimental), and storage backends. An API stability page, and
+    migration guides from 0.x and from Mem0 (the compat layer and `llmslim import mem0`).
+  - **The generated reference** says it describes the main branch while `CHANGELOG.md` lists unreleased changes. The
+    0.12 docs get their own, generated once from the v0.12.0 tag: `scripts/api_reference.py --source <checkout>
+    --output ... --name ...` reads another checkout.
+  - Every code sample was run against the release its version describes. Two that failed are fixed: the planner
+    guide read `plan.infeasibility_reason`, which `ContextPlan` doesn't have (it now joins `plan.warnings`), and the
+    MCP catalog guide pinned `llmslim[mcp]==0.6.0`.
 - CI checks that the wheel ships `py.typed`.
 - **A public API contract for 1.0** in `docs/API_STABILITY.md`:
   - what is stable, experimental and internal, and the semantic-versioning promise from 1.0.0;

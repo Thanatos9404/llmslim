@@ -178,3 +178,56 @@ def test_unannotated_reports_missing_types(sample):
         "sample.untyped: parameter 'a'",
         "sample.untyped: return type",
     ]
+
+
+# --------------------------------------------------------------------------- releases
+
+
+def _checkout(folder, unreleased: bool):
+    """A stand-in checkout: a two-module llmslim at 9.9.9 and its CHANGELOG."""
+
+    (folder / "llmslim" / "memory").mkdir(parents=True)
+    (folder / "llmslim" / "__init__.py").write_text(
+        '__version__ = "9.9.9"\n__all__ = ["ping"]\n\n\ndef ping() -> None:\n    """Answer."""\n',
+        encoding="utf-8",
+    )
+    (folder / "llmslim" / "memory" / "__init__.py").write_text(
+        '__all__ = ["recall"]\n\n\ndef recall(query: str) -> str:\n    """Recall."""\n',
+        encoding="utf-8",
+    )
+    pending = "\n### Added\n- Something new.\n" if unreleased else "\n"
+    (folder / "CHANGELOG.md").write_text(
+        f"# Changelog\n\n## [Unreleased]\n{pending}\n## [9.9.9] - 2026-01-02\n\n- Released.\n",
+        encoding="utf-8",
+    )
+    return folder
+
+
+def test_the_reference_of_a_release_comes_from_its_own_checkout(tmp_path):
+    # The tests run from the repository root, which has its own llmslim folder: the checkout must still win.
+    root = _checkout(tmp_path, unreleased=False)
+    text = reference.render(reference.load(root), root, "API_REFERENCE_DOCS_9_9")
+    pages = _pages(text)
+    assert "export const API_REFERENCE_DOCS_9_9: DocPage[] = " in text
+    assert "from the source of llmslim 9.9.9" in text.splitlines()[0]
+    assert [s["title"] for s in pages[0]["sections"][1:]] == ["ping()"]
+    assert [s["title"] for s in pages[1]["sections"][1:]] == ["recall()"]
+    assert pages[0]["description"].endswith("generated from the source of llmslim 9.9.9.")
+    assert pages[0]["lastUpdated"] == "January 2026"
+
+
+def test_unreleased_changes_are_named_as_the_main_branch(tmp_path):
+    root = _checkout(tmp_path, unreleased=True)
+    assert reference.unreleased(root)
+    pages = _pages(reference.render(reference.load(root), root, "X"))
+    assert pages[0]["description"].endswith(
+        "generated from the main branch (llmslim 9.9.9 and the changes since, not released yet)."
+    )
+    assert "main branch" in pages[1]["sections"][0]["content"]
+
+
+def test_the_command_keeps_this_checkout_in_its_own_file(tmp_path):
+    with pytest.raises(SystemExit):
+        reference.main(["--source", str(tmp_path)])
+    with pytest.raises(SystemExit):
+        reference.main(["--output", str(tmp_path / "x.ts")])

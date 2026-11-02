@@ -1,8 +1,10 @@
 /**
  * Real-model benchmark results: Claude Haiku 5.5 (`claude-haiku-5-5`, effort low) through the Claude API, official
- * datasets, prompts and scoring. Every number comes from a run in the public repository: round 3
- * (benchmarks/live/round3, LLMSlim Core 0.9.0 against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG, cost first) and,
- * for long documents and agents, round 2 (benchmarks/live, Core 0.8.0). Nothing is estimated. Weak results stay in.
+ * datasets, prompts and scoring. Every number comes from a report in the public repository: round 6
+ * (benchmarks/live/round6, LLMSlim Core 0.12 against Mem0 and Zep on BEAM-1M agent memory; published as results only),
+ * round 3 (benchmarks/live/round3, LLMSlim Core 0.9.0 against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG, cost
+ * first) and, for long documents and agents, round 2 (benchmarks/live, Core 0.8.0). Nothing is estimated. Weak results
+ * stay in.
  */
 
 export type ArmKind = "full" | "llmslim" | "previous" | "baseline" | "competitor"
@@ -26,6 +28,8 @@ export type LiveSuite = {
   arms: Arm[]
   takeaway: string
   caveat?: string
+  /** The caveat's label; "Note" when absent. */
+  caveatLabel?: string
   /** A second view of the same suite: another budget, the sample a competitor ran on, or a fresh held-out sample. */
   extra?: { label: string; n: string; arms: Arm[] }
 }
@@ -42,13 +46,52 @@ export type HeadToHead = {
 export const LIVE_MODEL = "Claude Haiku 5.5"
 export const LIVE_DATE = "October 2026"
 /** When the /benchmarks and /results content last changed: their sitemap lastmod. Update it with the content. */
-export const RESULTS_LAST_UPDATED = "15 Oct 2026"
+export const RESULTS_LAST_UPDATED = "2 Nov 2026"
 /** Round 3, the current results: the release they were measured on. */
 export const CORE_VERSION_TESTED = "0.9.0"
 /** Round 2 (long documents and agents): Core 0.8.0, 12 Oct 2026. */
 export const CORE_VERSION_LONG_DOCS = "0.8.0"
 export const VAULT_VERSION_TESTED = "0.9.1"
 export const ROUND3_REPORT = "https://github.com/Thanatos9404/llmslim/blob/main/benchmarks/live/round3/RESULTS.md"
+/** Round 6, agent memory on BEAM-1M: the release line it measured (commit 16a2708, hardened into 0.12.0). */
+export const CORE_VERSION_MEMORY = "0.12"
+export const ROUND6_DATE = "27 Oct 2026"
+export const ROUND6_REPORT = "https://github.com/Thanatos9404/llmslim/blob/main/benchmarks/live/round6/RESULTS.md"
+
+/**
+ * Round 6 (24-27 Oct 2026): BEAM-1M, held out, read and judged once. BEAM's answer prompt and rubric judge on Haiku 5.5,
+ * three reads per question; the score is the mean rubric score out of 100. Cost per 1,000 questions at list prices with
+ * BEAM's 20 questions per conversation. Zep ran on a seeded 30 of the 35 conversations. Every number is in
+ * benchmarks/live/round6/RESULTS.md. The claim is "on par with Mem0", never "beats Mem0".
+ */
+export const ROUND6_SUITE: LiveSuite = {
+  id: "beam-1m",
+  name: "BEAM-1M, against Mem0 and Zep",
+  what: "35 conversations of about 946,000 tokens each between a user and an assistant, and 700 questions of 10 types about them. Held out: none of it was opened while 0.12 was tuned, and every system was read and judged once. No history fits in the reader's 1M-token window, so there is no full-context line.",
+  metric: "BEAM's rubric score out of 100",
+  n: "700 held-out questions, 2,500-token budget",
+  arms: [
+    { name: "LLMSlim 0.12 + reranker", kind: "llmslim", score: 44.6, tokens: 2436, cost: 1.22 },
+    { name: "Mem0, top 50 memories", kind: "competitor", score: 43.4, tokens: 3020, cost: 73.12 },
+    { name: "Zep, on 30 of the 35 conversations", kind: "competitor", score: 38.4, tokens: 3397, cost: 330.07 },
+    { name: "LLMSlim 0.11.1 + reranker", kind: "previous", score: 38.0, tokens: 2493, cost: 0.91 },
+  ],
+  takeaway: "On par with Mem0, and 60x and 28.6x cheaper per 1,000 questions at list prices: +1.2 points at 2,500 tokens (95% CI −0.7 to +3.2) and +0.6 at 10,000 (−1.6 to +2.7). Neither difference is significant, so we do not claim to beat Mem0. Mem0 makes an LLM call for every exchange it stores; LLMSlim makes none. Ahead of Zep by 7.5 to 9.9 points, on Zep's 30 conversations, where LLMSlim scored 45.9 and 48.3.",
+  caveatLabel: "Where it loses",
+  caveat: "Against Mem0, summarization trails by 8.9 points at 2,500 tokens (95% CI −13.1 to −4.7) and 4.0 at 10,000 (−7.8 to −0.2), and multi-session reasoning by 6.0 at 10,000 (−10.1 to −1.8). Information extraction is 4.6 and 4.9 points behind, within noise. With the reranker on a laptop CPU, a search took 3.6 s at the median at 2,500 tokens and 4.9 s at 10,000. The ship rule was loosened before any LLMSlim result on this data was read; the original, stricter per-type bar would have failed on summarization (both budgets) and instruction following (10,000 tokens).",
+  extra: { label: "10,000-token budget", n: "LLMSlim $2.61 · Mem0 $74.53 per 1k questions", arms: [
+    { name: "LLMSlim 0.12 + reranker", kind: "llmslim", score: 47.3, cost: 2.61 },
+    { name: "Mem0, top 200 memories", kind: "competitor", score: 46.7, cost: 74.53 },
+    { name: "LLMSlim 0.11.1 + reranker", kind: "previous", score: 41.6, cost: 2.21 },
+  ] },
+}
+
+/** Where LLMSlim loses in round 6, from the report's own section of the same name. */
+export const ROUND6_WEAK_SPOTS: { title: string; body: string }[] = [
+  { title: "Summarization and multi-session reasoning on BEAM-1M", body: "Against Mem0, LLMSlim 0.12 trails on summarization by 8.9 points at 2,500 tokens (95% CI −13.1 to −4.7) and 4.0 at 10,000 (−7.8 to −0.2), and on multi-session reasoning at 10,000 tokens by 6.0 (−10.1 to −1.8). Information extraction is also behind (4.6 and 4.9 points), within noise." },
+  { title: "Search time with the reranker on BEAM-1M", body: "With the reranker on a laptop CPU, a search over a 946,000-token history took 3.6 s at the median at 2,500 tokens and 4.9 s at 10,000. The default lexical mode takes about 45 ms on a 100,000-token history, but it was not scored in that round." },
+  { title: "A relaxed ship rule on BEAM-1M", body: "The ship rule was loosened before any LLMSlim result on this data was read. The original, stricter per-type bar, which also required the lower bounds for instruction following and summarization to stay within 5 points of Mem0, would have failed on summarization (both budgets) and instruction following (10,000 tokens). The report gives both verdicts." },
+]
 
 /** Round 3: held-out test questions, read once, costs per 1,000 questions as run (see METHOD_NOTES). */
 export const LIVE_SUITES: LiveSuite[] = [
@@ -270,6 +313,7 @@ export const METHOD_NOTES = [
   "Confidence intervals are paired bootstrap 95% over the same questions.",
   "The optional reranker is cross-encoder/ms-marco-MiniLM-L-6-v2 (22M parameters). Install it with pip install \"llmslim[semantic]\" and pass relevance=\"semantic\". Without it, LLMSlim runs no model at all.",
   "LongBench v1 and v2 and the agent results were measured on Core 0.8.0 (12 Oct 2026). 0.9.0 changes only how plain-text chat transcripts are selected.",
+  "Round 6 (BEAM-1M, agent memory) is scored differently: BEAM's own answer prompt and rubric judge, both on Haiku 5.5, three reads per question, the mean rubric score out of 100, and paired t intervals over conversations. Its costs count Mem0's and Zep's embedding compute too, priced on the device each store was built on. It measured commit 16a2708, which became 0.12.0 after hardening; the round-6 contexts were not rebuilt with 0.12.0. It is published as results only: the protocol, harness and per-question answers stay private.",
 ]
 
 export const HEAD_TO_HEAD: HeadToHead = {

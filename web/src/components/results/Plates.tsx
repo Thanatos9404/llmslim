@@ -11,10 +11,12 @@ const digits = (value: number) => (Number.isInteger(value) ? 0 : 1)
 /** One line per configuration: a hairline track and a filled rule up to the score. */
 function Ruler({ arms, max }: { arms: Arm[]; max: number }) {
   const reduced = useReducedMotion()
+  // One decimal for every row when any score has one, so 38.0 does not print as 38 beside 44.6.
+  const places = Math.max(...arms.map((arm) => digits(arm.score)))
   return <ul className="rs-ruler">
     {arms.map((arm, i) => <li key={arm.name} className={`rs-ruler-row is-${arm.kind}`}>
       <span className="rs-ruler-name">{arm.name}</span>
-      <span className="rs-ruler-value">{fmt(arm.score, digits(arm.score))}</span>
+      <span className="rs-ruler-value">{fmt(arm.score, places)}</span>
       <span className="rs-ruler-track"><m.span className="rs-ruler-fill" style={{ width: `${Math.max(0.6, (arm.score / max) * 100)}%` }}
         initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.6 }} transition={{ duration: 1.1, ease: EASE, delay: 0.15 + i * 0.08 }} /></span>
     </li>)}
@@ -63,7 +65,7 @@ function Plate({ bench, index }: { bench: Benchmark; index: number }) {
   </article>
 }
 
-/** Seven benchmarks as plates on a horizontal track. On wide screens the track is pinned and vertical scroll
+/** The benchmarks as plates on a horizontal track. On wide screens the track is pinned and vertical scroll
  *  moves it sideways; on narrow screens and with reduced motion the plates simply stack. */
 export function Plates() {
   const section = useRef<HTMLElement>(null)
@@ -112,7 +114,7 @@ export function Plates() {
     <div className="rs-plates-pin">
       <m.div ref={track} className="rs-plates-track" style={pinned ? { x } : undefined}>
         <div className="rs-plates-intro">
-          <p className="rs-kicker">Seven benchmarks</p>
+          <p className="rs-kicker">Eight benchmarks</p>
           <h2 id="plates-title">Memory, retrieval, documents, <em>and agents.</em></h2>
           <p className="rs-lede">Each one public, each one scored by its own official metric. Same reader and prompt for every run.</p>
           {pinned && <p className="rs-plates-hint" aria-hidden="true">Scroll to move through them</p>}

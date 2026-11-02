@@ -658,8 +658,10 @@ context = memory.search("Am I allergic to anything?", user_id="asha", budget=150
 print(context.text)  # put it in the prompt as untrusted data
 ```
 
-It runs the pipeline behind the round-3 benchmarks. On Mem0's own LongMemEval questions, that pipeline (with its
-reranker) answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0. Coming from Mem0?
+On BEAM's 1M-token conversations (held-out, run once), `Memory.search` with its reranker scored on par with Mem0 at
+2,500 and 10,000 tokens (+1.2 and +0.6 points, neither significant), 60x and 28.6x cheaper per 1,000 questions at
+list prices, and 7.5 to 9.9 points ahead of Zep (on 30 conversations). Its weak spots are published alongside the results
+([Round 6](#round-6-agent-memory-on-beam-1m-core-012-against-mem0-and-zep)). Coming from Mem0?
 `from llmslim.memory.compat import Mem0Memory as Memory` keeps Mem0's method names, and `llmslim import mem0
 export.json` brings your memories along. `llmslim import` also reads Claude Code transcripts and ChatGPT and
 Claude.ai exports ([docs/IMPORT.md](docs/IMPORT.md)). See
@@ -870,6 +872,58 @@ asyncio.run(main())
 ## 📊 Benchmarks & Radical Transparency
 
 Many libraries make unsubstantiated claims about 90% prompt compression. At LLMSlim, we practice **Radical Benchmark Transparency**:
+
+### Round 6: agent memory on BEAM-1M, Core 0.12 against Mem0 and Zep
+
+Measured 24-27 October 2026 on held-out data: BEAM's 1M tier, 35 conversations of about 946,000 tokens each and
+700 questions across 10 types. None of it was opened while 0.12 was tuned. The protocol was fixed before the first
+paid call, its one change to the ship rule and the claim wording was made before any system had answered a question,
+and every system was read and judged once.
+
+Every system is read by Claude Haiku 5.5 with BEAM's answer prompt, three times per question, and scored by BEAM's
+rubric judge (also Haiku 5.5). The score is the mean rubric score out of 100. Mem0 (OSS 2.2.1, extraction on) and
+Zep (Graphiti 0.30.2) stored every exchange through their own pipelines, with Haiku 5.5 as their LLM and
+Qwen3-Embedding-0.6B as their embedder. LLMSlim ran with its reranker (`relevance="semantic"`). Cost is per 1,000
+questions at list prices, with BEAM's 20 questions per conversation. It counts the answer call, Mem0's and Zep's
+memory-building calls, and each system's compute.
+
+| System | Context tokens (mean) | Score out of 100 (95% CI) | Cost per 1,000 questions |
+| :--- | :---: | :---: | :---: |
+| **LLMSlim 0.12 + reranker, 2,500 budget** | 2,436 | **44.6** (41.9 to 47.3) | **$1.22** |
+| Mem0, top 50 memories | 3,020 | 43.4 (40.9 to 45.8) | $73.12 |
+| **LLMSlim 0.12 + reranker, 10,000 budget** | 9,766 | **47.3** (44.3 to 50.3) | **$2.61** |
+| Mem0, top 200 memories | 12,095 | 46.7 (44.1 to 49.3) | $74.53 |
+| LLMSlim 0.11.1 + reranker, 2,500 / 10,000 | 2,493 / 9,985 | 38.0 / 41.6 | $0.91 / $2.21 |
+| Zep, on 30 of the 35 conversations* | 3,397 | 38.4 (35.6 to 41.2) | $330.07 |
+
+\* Zep ran on a seeded draw of 30 conversations to cap its cost. On those 30, LLMSlim 0.12 scored 45.9 and 48.3.
+
+**What it shows:**
+- **On par with Mem0, at a fraction of the cost.** LLMSlim is +1.2 points at 2,500 tokens (95% CI -0.7 to +3.2) and
+  +0.6 at 10,000 (-1.6 to +2.7). Neither difference is significant, so we do not claim to beat Mem0. It is 60x and
+  28.6x cheaper per 1,000 questions at list prices (2,500 and 10,000 tokens), because Mem0 makes an LLM call for
+  every exchange it stores and LLMSlim makes none.
+- **Ahead of Zep** by 7.5 to 9.9 points, on Zep's 30 conversations: +7.5 at 2,500 tokens (+4.5 to +10.4) and +9.9 at
+  10,000 (+6.8 to +12.9).
+- **Ahead of 0.11.1.** On the same questions 0.12 scored 44.6 and 47.3 where 0.11.1 scored 38.0 and 41.6, with no
+  question type more than 1.3 points lower.
+
+**Where LLMSlim loses** (against Mem0, per question type, 70 questions each):
+- **Summarization:** -8.9 points at 2,500 tokens (-13.1 to -4.7) and -4.0 at 10,000 (-7.8 to -0.2).
+- **Multi-session reasoning at 10,000 tokens:** -6.0 (-10.1 to -1.8).
+- **Information extraction:** -4.6 and -4.9. Neither is significant.
+- **Search latency with the reranker.** With the reranker running on a laptop CPU, a search over a 946,000-token
+  history took 3.6 s at the median at 2,500 tokens and 4.9 s at 10,000. The default lexical search, which
+  `llmslim mcp` uses, takes about 45 ms on a 100,000-token history, but it was not scored in this round.
+- **The ship rule was relaxed.** It was loosened before any LLMSlim result on this data was read. The original,
+  stricter per-type bar, which also required the lower bounds for instruction following and summarization to stay
+  within 5 points of Mem0, would have failed on summarization (both budgets) and instruction following (10,000
+  tokens). The report gives both verdicts.
+
+"LLMSlim 0.12" is commit 16a2708, which became 0.12.0 after hardening and returns the same bytes on the English parity
+checks; the round-6 contexts were not rebuilt with 0.12.0. Setup, every table, paired differences, cost, latency and
+limitations: [benchmarks/live/round6](benchmarks/live/round6/RESULTS.md). The protocol, harness and per-question
+answers are not published with this round.
 
 ### Round 3: Core 0.9.0 against memory systems and compressors, cost first
 

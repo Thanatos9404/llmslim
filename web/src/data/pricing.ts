@@ -2,10 +2,10 @@
  * Plans at the LLMSlim 1.0 launch (founder's decision, 29 October 2026). Rendered by /pricing, /pricing.md and the
  * pricing structured data, so every view shows the same numbers.
  *
- * LLMSlim Orbit, the hosted edition, does not exist yet: it opens with LLMSlim 1.0. Until checkout exists, the plan
- * buttons join the founding list (the founding_list table: one click when signed in, an emailed confirmation link
- * otherwise), with a mailto to the founder as the no-JavaScript fallback; Enterprise's button is that mailto. INR
- * prices include 18% GST; USD prices are for customers outside India.
+ * LLMSlim Orbit, the hosted edition, does not exist yet: it opens with LLMSlim 1.0. Until checkout exists, every
+ * paid-plan button is a mailto to the founder. INR prices include 18% GST; USD prices are for customers outside India.
+ * Once the page is interactive, "Join the founding list" records the lead in the founding_list table instead (one
+ * click when signed in, an emailed confirmation link otherwise); the mailto stays the no-JavaScript fallback.
  */
 
 export const CURRENCIES = ["inr", "usd"] as const

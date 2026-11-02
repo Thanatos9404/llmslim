@@ -162,7 +162,7 @@ export const CORE_DOCS: DocPage[] = [
       { id: "routes", title: "Routes", versions: ONE, content: "Bodies and responses are JSON. Errors look like `{\"error\": {\"type\": \"invalid_request\", \"message\": \"...\"}}`. When Postgres or MongoDB can't be reached, the answer is a 503 with `\"type\": \"store_unavailable\"` and `Retry-After: 5`: retry it.", table: { headers: ["Method and path", "Body or query", "Returns"], rows: [
         ...ROUTES_012,
         ["`POST /v1/memories/search`", "`query`, the scope, optional `budget`, `relevance` (`\"lexical\"` or `\"semantic\"`), `since`, `until`, `explain`", "`{\"text\", \"tokens\", \"budget\", \"history_tokens\", \"sessions_total\", \"sessions_kept\", \"turns\": [...]}`, and `\"explanation\"` with `\"explain\": true` ([guide](doc:explain))"],
-        ["`POST /v1/context/fit`", "`text`, `budget` (default 2000), optional `query`", "`{\"text\", \"tokens\", \"original_tokens\"}`, within the budget for any text"],
+        ["`POST /v1/context/fit`", "`text`, `budget` (default 2000), optional `query`", "`{\"text\", \"tokens\", \"original_tokens\"}`, within about 2% of the budget for any text"],
         ["`GET /v1/info`", "", "Name, version and budgets"],
         ["`POST /v1/chat/completions`, `GET /v1/models`", "An OpenAI chat-completions request", "The upstream's answer, with memory; 404 unless started with `--upstream-url` ([experimental](doc:openai-compatible-endpoint))"],
         ["`GET /healthz`", "", "`{\"status\": \"ok\"}`, without a key"],
@@ -491,7 +491,7 @@ export const CORE_DOCS: DocPage[] = [
       { id: "errors", title: "Cleaner errors from servers", content: "When Postgres or MongoDB can't be reached, `llmslim serve` answers a 503 with `\"type\": \"store_unavailable\"` and `Retry-After: 5` (0.12 answered a plain-text 500), and recovers by itself when the database is back. Any other failure in a route is a JSON 500, `\"type\": \"server_error\"`. `llmslim serve` and `llmslim mcp` exit at start with one line when the store can't be opened. Hostile JSON (too deep, wrong types, out-of-range times, a lone surrogate) is a 400, and `Memory.add` refuses a timestamp with no UTC time with a `ValueError`." },
       { id: "output", title: "Output that changes", content: "Which turns `search` keeps is output content, which a minor release may improve (see [API stability](doc:api-stability#semver)). Between 0.12 and 1.0:", items: [
         "a reply short enough to be one window inherits its session's relevance, as a user turn does, so conversations between two people stored as `user` and `assistant` keep more of the second speaker's turns;",
-        "`fit` (`/v1/context/fit`, `fit_context`) holds its budget for any text: when compression can't get under it, the result is cut to the longest head that fits;",
+        "`fit` (`/v1/context/fit`, `fit_context`) stays within about 2% of its budget for any text: when compression can't get there (one long code block, say), the result is cut to the longest head that fits the budget;",
         "the Docker image installs the Postgres and MongoDB drivers.",
       ] },
       { id: "new", title: "What's new", content: "Each has its own guide:", items: [

@@ -1,0 +1,658 @@
+{
+  "round": 6,
+  "benchmark": "BEAM-1M (Mohammadta/BEAM, 1M tier)",
+  "measured": "2026-10-24 to 2026-10-27",
+  "scope": "aggregate results only; the protocol, harness and per-question answers are not published with this round",
+  "reader": {"model": "claude-haiku-5-5", "effort": "low", "prompt": "BEAM answer_generation_for_rag", "reads_per_question": 3},
+  "judge": {
+    "model": "claude-haiku-5-5",
+    "judge": "BEAM rubric judge, one call per rubric item",
+    "check": {"wrong_answers": 40, "mean_points": 4.8, "bar_points": 15.0, "pass": true}
+  },
+  "score": "mean BEAM rubric score out of 100; a question's score is the mean of its three judged reads; intervals are paired t intervals over conversations (34 df on 35, 29 on 30) and paired cluster bootstraps (2,000 resamples)",
+  "cost_method": "USD per 1,000 questions at Claude Haiku 5.5 list prices: one read per question, memory-building calls of each conversation's final successful build spread over its 20 questions, and device-busy compute at $0.526/h (T4) for GPU work and $0.0892/h (2 vCPU) for CPU work; judge calls not counted",
+  "subsets": {
+    "all": {
+      "conversations": 35,
+      "conversation_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+      "arms": {
+        "llmslim_rr_2500": {
+          "system": "LLMSlim",
+          "version": "0.11.1 (PyPI)",
+          "relevance": "semantic",
+          "budget_tokens": 2500,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 38.03, "lo": 35.3, "hi": 40.76, "bootstrap_lo": 35.47, "bootstrap_hi": 40.49},
+          "vs_mem0_same_budget": {"mean": -5.33, "lo": -7.82, "hi": -2.85, "bootstrap_lo": -7.68, "bootstrap_hi": -2.9},
+          "pass_rate": {"mean": 36.43, "lo": 33.16, "hi": 39.7},
+          "beam_composite": {"mean": 38.06, "lo": 35.42, "hi": 40.71},
+          "read_to_read_sd": 8.3,
+          "context_tokens_cl100k": 2492.7,
+          "cost_per_1000_questions_usd": {"reader": 0.608, "memory_building_llm": 0.0, "compute": 0.304, "total": 0.911},
+          "cost_per_conversation_usd": {"5_questions": 0.005, "20_questions": 0.018, "100_questions": 0.091},
+          "stop_reasons": {"end_turn": 2100},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 74.05, "half_width_95": 7.86},
+            "contradiction_resolution": {"mean": 20.18, "half_width_95": 5.24},
+            "event_ordering": {"mean": 18.23, "half_width_95": 3.49},
+            "information_extraction": {"mean": 47.02, "half_width_95": 8.91},
+            "instruction_following": {"mean": 38.95, "half_width_95": 7.23},
+            "knowledge_update": {"mean": 46.9, "half_width_95": 11.37},
+            "multi_session_reasoning": {"mean": 29.89, "half_width_95": 6.71},
+            "preference_following": {"mean": 58.43, "half_width_95": 8.81},
+            "summarization": {"mean": 24.74, "half_width_95": 4.56},
+            "temporal_reasoning": {"mean": 21.9, "half_width_95": 6.24}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 18.55, "lo": 17.5, "hi": 19.61},
+            "f1": {"mean": 5.31, "lo": 3.3, "hi": 7.33},
+            "final": {"mean": 1.38, "lo": 0.75, "hi": 2.02},
+            "rubric": {"mean": 18.23, "lo": 14.74, "hi": 21.73}
+          }
+        },
+        "llmslim_rr_10000": {
+          "system": "LLMSlim",
+          "version": "0.11.1 (PyPI)",
+          "relevance": "semantic",
+          "budget_tokens": 10000,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 41.59, "lo": 38.62, "hi": 44.56, "bootstrap_lo": 38.95, "bootstrap_hi": 44.46},
+          "vs_mem0_same_budget": {"mean": -5.14, "lo": -7.1, "hi": -3.17, "bootstrap_lo": -6.9, "bootstrap_hi": -3.27},
+          "pass_rate": {"mean": 40.14, "lo": 36.01, "hi": 44.28},
+          "beam_composite": {"mean": 41.56, "lo": 38.68, "hi": 44.44},
+          "read_to_read_sd": 9.35,
+          "context_tokens_cl100k": 9985.2,
+          "cost_per_1000_questions_usd": {"reader": 1.877, "memory_building_llm": 0.0, "compute": 0.337, "total": 2.214},
+          "cost_per_conversation_usd": {"5_questions": 0.011, "20_questions": 0.044, "100_questions": 0.221},
+          "stop_reasons": {"end_turn": 2100},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 74.88, "half_width_95": 9.02},
+            "contradiction_resolution": {"mean": 22.2, "half_width_95": 4.67},
+            "event_ordering": {"mean": 20.02, "half_width_95": 4.44},
+            "information_extraction": {"mean": 52.07, "half_width_95": 10.11},
+            "instruction_following": {"mean": 46.79, "half_width_95": 8.57},
+            "knowledge_update": {"mean": 51.19, "half_width_95": 11.54},
+            "multi_session_reasoning": {"mean": 32.91, "half_width_95": 8.13},
+            "preference_following": {"mean": 63.39, "half_width_95": 7.75},
+            "summarization": {"mean": 33.66, "half_width_95": 5.09},
+            "temporal_reasoning": {"mean": 18.77, "half_width_95": 5.87}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 19.74, "lo": 18.24, "hi": 21.24},
+            "f1": {"mean": 7.81, "lo": 5.25, "hi": 10.38},
+            "final": {"mean": 2.25, "lo": 1.26, "hi": 3.24},
+            "rubric": {"mean": 20.02, "lo": 15.58, "hi": 24.47}
+          }
+        },
+        "llmslim_fix_2500": {
+          "system": "LLMSlim",
+          "version": "0.12 (benchmarked commit 16a2708)",
+          "relevance": "semantic",
+          "budget_tokens": 2500,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 44.59, "lo": 41.87, "hi": 47.3, "bootstrap_lo": 41.98, "bootstrap_hi": 47.23},
+          "vs_mem0_same_budget": {"mean": 1.23, "lo": -0.7, "hi": 3.15, "bootstrap_lo": -0.59, "bootstrap_hi": 3.04},
+          "pass_rate": {"mean": 44.43, "lo": 40.97, "hi": 47.88},
+          "beam_composite": {"mean": 44.25, "lo": 41.6, "hi": 46.9},
+          "read_to_read_sd": 9.36,
+          "context_tokens_cl100k": 2435.7,
+          "cost_per_1000_questions_usd": {"reader": 0.632, "memory_building_llm": 0.0, "compute": 0.587, "total": 1.219},
+          "cost_per_conversation_usd": {"5_questions": 0.006, "20_questions": 0.024, "100_questions": 0.122},
+          "stop_reasons": {"end_turn": 2100},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 79.76, "half_width_95": 7.4},
+            "contradiction_resolution": {"mean": 29.94, "half_width_95": 6.04},
+            "event_ordering": {"mean": 23.39, "half_width_95": 4.79},
+            "information_extraction": {"mean": 53.84, "half_width_95": 9.19},
+            "instruction_following": {"mean": 62.14, "half_width_95": 8.95},
+            "knowledge_update": {"mean": 51.9, "half_width_95": 11.45},
+            "multi_session_reasoning": {"mean": 31.08, "half_width_95": 7.17},
+            "preference_following": {"mean": 66.73, "half_width_95": 7.26},
+            "summarization": {"mean": 26.5, "half_width_95": 4.3},
+            "temporal_reasoning": {"mean": 20.6, "half_width_95": 5.65}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 20.01, "lo": 18.49, "hi": 21.53},
+            "f1": {"mean": 8.52, "lo": 6.11, "hi": 10.93},
+            "final": {"mean": 2.35, "lo": 1.47, "hi": 3.22},
+            "rubric": {"mean": 23.39, "lo": 18.6, "hi": 28.19}
+          }
+        },
+        "llmslim_fix_10000": {
+          "system": "LLMSlim",
+          "version": "0.12 (benchmarked commit 16a2708)",
+          "relevance": "semantic",
+          "budget_tokens": 10000,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 47.28, "lo": 44.29, "hi": 50.26, "bootstrap_lo": 44.48, "bootstrap_hi": 50.12},
+          "vs_mem0_same_budget": {"mean": 0.55, "lo": -1.56, "hi": 2.66, "bootstrap_lo": -1.49, "bootstrap_hi": 2.5},
+          "pass_rate": {"mean": 47.86, "lo": 44.17, "hi": 51.54},
+          "beam_composite": {"mean": 46.48, "lo": 43.58, "hi": 49.39},
+          "read_to_read_sd": 9.47,
+          "context_tokens_cl100k": 9765.6,
+          "cost_per_1000_questions_usd": {"reader": 1.804, "memory_building_llm": 0.0, "compute": 0.805, "total": 2.609},
+          "cost_per_conversation_usd": {"5_questions": 0.013, "20_questions": 0.052, "100_questions": 0.261},
+          "stop_reasons": {"end_turn": 2100},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 74.88, "half_width_95": 9.3},
+            "contradiction_resolution": {"mean": 28.27, "half_width_95": 5.1},
+            "event_ordering": {"mean": 29.03, "half_width_95": 5.41},
+            "information_extraction": {"mean": 58.79, "half_width_95": 8.64},
+            "instruction_following": {"mean": 65.2, "half_width_95": 7.86},
+            "knowledge_update": {"mean": 50.48, "half_width_95": 12.74},
+            "multi_session_reasoning": {"mean": 33.93, "half_width_95": 8.21},
+            "preference_following": {"mean": 71.25, "half_width_95": 5.88},
+            "summarization": {"mean": 37.64, "half_width_95": 5.97},
+            "temporal_reasoning": {"mean": 23.29, "half_width_95": 5.57}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 21.1, "lo": 19.38, "hi": 22.82},
+            "f1": {"mean": 10.25, "lo": 7.72, "hi": 12.78},
+            "final": {"mean": 2.91, "lo": 2.01, "hi": 3.8},
+            "rubric": {"mean": 29.03, "lo": 23.62, "hi": 34.44}
+          }
+        },
+        "mem0_top50": {
+          "system": "Mem0",
+          "version": "OSS 2.2.1, extraction (infer=True)",
+          "memories": 50,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 43.36, "lo": 40.93, "hi": 45.79, "bootstrap_lo": 41.09, "bootstrap_hi": 45.75},
+          "vs_mem0_same_budget": null,
+          "pass_rate": {"mean": 42.14, "lo": 38.91, "hi": 45.38},
+          "beam_composite": {"mean": 42.92, "lo": 40.53, "hi": 45.32},
+          "read_to_read_sd": 8.25,
+          "context_tokens_cl100k": 3020.2,
+          "cost_per_1000_questions_usd": {"reader": 0.709, "memory_building_llm": 56.28, "compute": 16.135, "total": 73.124},
+          "cost_per_conversation_usd": {"5_questions": 1.451, "20_questions": 1.462, "100_questions": 1.521},
+          "stop_reasons": {"end_turn": 2100},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 69.64, "half_width_95": 8.93},
+            "contradiction_resolution": {"mean": 23.63, "half_width_95": 3.99},
+            "event_ordering": {"mean": 23.69, "half_width_95": 4.96},
+            "information_extraction": {"mean": 58.4, "half_width_95": 9.55},
+            "instruction_following": {"mean": 57.18, "half_width_95": 9.81},
+            "knowledge_update": {"mean": 45.48, "half_width_95": 11.97},
+            "multi_session_reasoning": {"mean": 33.6, "half_width_95": 7.5},
+            "preference_following": {"mean": 68.63, "half_width_95": 7.98},
+            "summarization": {"mean": 35.4, "half_width_95": 5.52},
+            "temporal_reasoning": {"mean": 17.98, "half_width_95": 6.14}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 19.28, "lo": 17.98, "hi": 20.58},
+            "f1": {"mean": 7.04, "lo": 4.86, "hi": 9.22},
+            "final": {"mean": 1.89, "lo": 1.21, "hi": 2.57},
+            "rubric": {"mean": 23.69, "lo": 18.73, "hi": 28.65}
+          }
+        },
+        "mem0_top200": {
+          "system": "Mem0",
+          "version": "OSS 2.2.1, extraction (infer=True)",
+          "memories": 200,
+          "questions": 700,
+          "judged_reads": 2100,
+          "score": {"mean": 46.72, "lo": 44.11, "hi": 49.34, "bootstrap_lo": 44.24, "bootstrap_hi": 49.16},
+          "vs_mem0_same_budget": null,
+          "pass_rate": {"mean": 46.71, "lo": 42.7, "hi": 50.73},
+          "beam_composite": {"mean": 46.17, "lo": 43.58, "hi": 48.76},
+          "read_to_read_sd": 9.86,
+          "context_tokens_cl100k": 12095.4,
+          "cost_per_1000_questions_usd": {"reader": 2.111, "memory_building_llm": 56.28, "compute": 16.135, "total": 74.526},
+          "cost_per_conversation_usd": {"5_questions": 1.458, "20_questions": 1.491, "100_questions": 1.662},
+          "stop_reasons": {"end_turn": 2094, "max_tokens": 6},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 69.52, "half_width_95": 8.79},
+            "contradiction_resolution": {"mean": 22.5, "half_width_95": 4.8},
+            "event_ordering": {"mean": 25.07, "half_width_95": 4.66},
+            "information_extraction": {"mean": 63.65, "half_width_95": 8.9},
+            "instruction_following": {"mean": 62.74, "half_width_95": 8.4},
+            "knowledge_update": {"mean": 50.83, "half_width_95": 11.44},
+            "multi_session_reasoning": {"mean": 39.88, "half_width_95": 8.65},
+            "preference_following": {"mean": 68.87, "half_width_95": 7.67},
+            "summarization": {"mean": 41.6, "half_width_95": 5.39},
+            "temporal_reasoning": {"mean": 22.58, "half_width_95": 6.39}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 19.49, "lo": 17.86, "hi": 21.12},
+            "f1": {"mean": 7.36, "lo": 5.11, "hi": 9.61},
+            "final": {"mean": 2.05, "lo": 1.2, "hi": 2.89},
+            "rubric": {"mean": 25.07, "lo": 20.41, "hi": 29.72}
+          }
+        }
+      }
+    },
+    "zep": {
+      "conversations": 30,
+      "conversation_ids": [1, 2, 3, 4, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+      "arms": {
+        "llmslim_rr_2500": {
+          "system": "LLMSlim",
+          "version": "0.11.1 (PyPI)",
+          "relevance": "semantic",
+          "budget_tokens": 2500,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 39.26, "lo": 36.68, "hi": 41.84, "bootstrap_lo": 36.95, "bootstrap_hi": 41.73},
+          "vs_mem0_same_budget": {"mean": -5.48, "lo": -8.22, "hi": -2.74, "bootstrap_lo": -8.12, "bootstrap_hi": -2.97},
+          "pass_rate": {"mean": 37.67, "lo": 34.42, "hi": 40.91},
+          "beam_composite": {"mean": 39.2, "lo": 36.68, "hi": 41.72},
+          "read_to_read_sd": 7.97,
+          "context_tokens_cl100k": 2492.3,
+          "cost_per_1000_questions_usd": {"reader": 0.61, "memory_building_llm": 0.0, "compute": 0.305, "total": 0.915},
+          "cost_per_conversation_usd": {"5_questions": 0.005, "20_questions": 0.018, "100_questions": 0.091},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 76.67, "half_width_95": 8.56},
+            "contradiction_resolution": {"mean": 20.0, "half_width_95": 5.28},
+            "event_ordering": {"mean": 19.09, "half_width_95": 3.97},
+            "information_extraction": {"mean": 48.15, "half_width_95": 9.8},
+            "instruction_following": {"mean": 39.65, "half_width_95": 7.98},
+            "knowledge_update": {"mean": 49.72, "half_width_95": 12.72},
+            "multi_session_reasoning": {"mean": 31.6, "half_width_95": 7.42},
+            "preference_following": {"mean": 58.96, "half_width_95": 9.35},
+            "summarization": {"mean": 24.61, "half_width_95": 5.07},
+            "temporal_reasoning": {"mean": 24.17, "half_width_95": 6.49}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 18.48, "lo": 17.26, "hi": 19.69},
+            "f1": {"mean": 5.57, "lo": 3.23, "hi": 7.91},
+            "final": {"mean": 1.44, "lo": 0.71, "hi": 2.18},
+            "rubric": {"mean": 19.09, "lo": 15.12, "hi": 23.07}
+          }
+        },
+        "llmslim_rr_10000": {
+          "system": "LLMSlim",
+          "version": "0.11.1 (PyPI)",
+          "relevance": "semantic",
+          "budget_tokens": 10000,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 42.98, "lo": 40.0, "hi": 45.96, "bootstrap_lo": 40.23, "bootstrap_hi": 45.87},
+          "vs_mem0_same_budget": {"mean": -5.38, "lo": -7.59, "hi": -3.18, "bootstrap_lo": -7.33, "bootstrap_hi": -3.21},
+          "pass_rate": {"mean": 41.5, "lo": 37.11, "hi": 45.89},
+          "beam_composite": {"mean": 42.9, "lo": 40.01, "hi": 45.8},
+          "read_to_read_sd": 9.67,
+          "context_tokens_cl100k": 9984.0,
+          "cost_per_1000_questions_usd": {"reader": 1.891, "memory_building_llm": 0.0, "compute": 0.336, "total": 2.228},
+          "cost_per_conversation_usd": {"5_questions": 0.011, "20_questions": 0.045, "100_questions": 0.223},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 76.53, "half_width_95": 9.96},
+            "contradiction_resolution": {"mean": 22.85, "half_width_95": 5.19},
+            "event_ordering": {"mean": 19.98, "half_width_95": 5.0},
+            "information_extraction": {"mean": 55.15, "half_width_95": 10.59},
+            "instruction_following": {"mean": 48.56, "half_width_95": 8.59},
+            "knowledge_update": {"mean": 53.06, "half_width_95": 12.67},
+            "multi_session_reasoning": {"mean": 35.32, "half_width_95": 8.95},
+            "preference_following": {"mean": 64.65, "half_width_95": 7.98},
+            "summarization": {"mean": 31.96, "half_width_95": 5.12},
+            "temporal_reasoning": {"mean": 21.76, "half_width_95": 6.22}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 19.17, "lo": 17.57, "hi": 20.76},
+            "f1": {"mean": 7.11, "lo": 4.23, "hi": 10.0},
+            "final": {"mean": 2.02, "lo": 0.9, "hi": 3.14},
+            "rubric": {"mean": 19.98, "lo": 14.98, "hi": 24.98}
+          }
+        },
+        "llmslim_fix_2500": {
+          "system": "LLMSlim",
+          "version": "0.12 (benchmarked commit 16a2708)",
+          "relevance": "semantic",
+          "budget_tokens": 2500,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 45.9, "lo": 43.3, "hi": 48.5, "bootstrap_lo": 43.56, "bootstrap_hi": 48.43},
+          "vs_mem0_same_budget": {"mean": 1.16, "lo": -0.98, "hi": 3.3, "bootstrap_lo": -0.84, "bootstrap_hi": 3.13},
+          "pass_rate": {"mean": 45.67, "lo": 42.42, "hi": 48.91},
+          "beam_composite": {"mean": 45.5, "lo": 42.98, "hi": 48.03},
+          "read_to_read_sd": 9.48,
+          "context_tokens_cl100k": 2433.5,
+          "cost_per_1000_questions_usd": {"reader": 0.632, "memory_building_llm": 0.0, "compute": 0.57, "total": 1.202},
+          "cost_per_conversation_usd": {"5_questions": 0.006, "20_questions": 0.024, "100_questions": 0.12},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 80.97, "half_width_95": 8.07},
+            "contradiction_resolution": {"mean": 30.83, "half_width_95": 6.76},
+            "event_ordering": {"mean": 23.3, "half_width_95": 5.53},
+            "information_extraction": {"mean": 54.16, "half_width_95": 10.51},
+            "instruction_following": {"mean": 65.05, "half_width_95": 8.93},
+            "knowledge_update": {"mean": 54.72, "half_width_95": 12.33},
+            "multi_session_reasoning": {"mean": 34.17, "half_width_95": 7.6},
+            "preference_following": {"mean": 67.66, "half_width_95": 7.28},
+            "summarization": {"mean": 25.59, "half_width_95": 4.71},
+            "temporal_reasoning": {"mean": 22.5, "half_width_95": 6.04}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 19.36, "lo": 17.94, "hi": 20.79},
+            "f1": {"mean": 7.98, "lo": 5.45, "hi": 10.52},
+            "final": {"mean": 2.04, "lo": 1.22, "hi": 2.85},
+            "rubric": {"mean": 23.3, "lo": 17.77, "hi": 28.82}
+          }
+        },
+        "llmslim_fix_10000": {
+          "system": "LLMSlim",
+          "version": "0.12 (benchmarked commit 16a2708)",
+          "relevance": "semantic",
+          "budget_tokens": 10000,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 48.29, "lo": 45.13, "hi": 51.44, "bootstrap_lo": 45.43, "bootstrap_hi": 51.31},
+          "vs_mem0_same_budget": {"mean": -0.08, "lo": -2.33, "hi": 2.17, "bootstrap_lo": -2.21, "bootstrap_hi": 1.9},
+          "pass_rate": {"mean": 48.67, "lo": 44.9, "hi": 52.43},
+          "beam_composite": {"mean": 47.37, "lo": 44.3, "hi": 50.45},
+          "read_to_read_sd": 9.61,
+          "context_tokens_cl100k": 9755.4,
+          "cost_per_1000_questions_usd": {"reader": 1.811, "memory_building_llm": 0.0, "compute": 0.788, "total": 2.598},
+          "cost_per_conversation_usd": {"5_questions": 0.013, "20_questions": 0.052, "100_questions": 0.26},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 76.53, "half_width_95": 10.37},
+            "contradiction_resolution": {"mean": 28.06, "half_width_95": 5.85},
+            "event_ordering": {"mean": 29.48, "half_width_95": 6.2},
+            "information_extraction": {"mean": 58.43, "half_width_95": 9.84},
+            "instruction_following": {"mean": 68.8, "half_width_95": 7.8},
+            "knowledge_update": {"mean": 51.94, "half_width_95": 14.0},
+            "multi_session_reasoning": {"mean": 36.41, "half_width_95": 9.13},
+            "preference_following": {"mean": 71.64, "half_width_95": 6.21},
+            "summarization": {"mean": 35.91, "half_width_95": 6.43},
+            "temporal_reasoning": {"mean": 25.65, "half_width_95": 5.57}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 20.34, "lo": 18.64, "hi": 22.03},
+            "f1": {"mean": 9.5, "lo": 6.81, "hi": 12.18},
+            "final": {"mean": 2.57, "lo": 1.68, "hi": 3.47},
+            "rubric": {"mean": 29.48, "lo": 23.28, "hi": 35.68}
+          }
+        },
+        "mem0_top50": {
+          "system": "Mem0",
+          "version": "OSS 2.2.1, extraction (infer=True)",
+          "memories": 50,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 44.74, "lo": 42.34, "hi": 47.14, "bootstrap_lo": 42.46, "bootstrap_hi": 47.02},
+          "vs_mem0_same_budget": null,
+          "pass_rate": {"mean": 43.5, "lo": 40.21, "hi": 46.79},
+          "beam_composite": {"mean": 44.26, "lo": 41.91, "hi": 46.61},
+          "read_to_read_sd": 8.11,
+          "context_tokens_cl100k": 2984.3,
+          "cost_per_1000_questions_usd": {"reader": 0.708, "memory_building_llm": 57.192, "compute": 13.286, "total": 71.186},
+          "cost_per_conversation_usd": {"5_questions": 1.413, "20_questions": 1.424, "100_questions": 1.483},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 69.86, "half_width_95": 10.11},
+            "contradiction_resolution": {"mean": 23.61, "half_width_95": 4.18},
+            "event_ordering": {"mean": 23.5, "half_width_95": 5.56},
+            "information_extraction": {"mean": 61.1, "half_width_95": 9.56},
+            "instruction_following": {"mean": 58.84, "half_width_95": 10.84},
+            "knowledge_update": {"mean": 49.44, "half_width_95": 13.12},
+            "multi_session_reasoning": {"mean": 35.98, "half_width_95": 8.36},
+            "preference_following": {"mean": 71.32, "half_width_95": 7.69},
+            "summarization": {"mean": 34.68, "half_width_95": 6.1},
+            "temporal_reasoning": {"mean": 19.03, "half_width_95": 6.68}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 18.73, "lo": 17.53, "hi": 19.94},
+            "f1": {"mean": 6.17, "lo": 4.11, "hi": 8.23},
+            "final": {"mean": 1.53, "lo": 0.99, "hi": 2.07},
+            "rubric": {"mean": 23.5, "lo": 17.94, "hi": 29.05}
+          }
+        },
+        "mem0_top200": {
+          "system": "Mem0",
+          "version": "OSS 2.2.1, extraction (infer=True)",
+          "memories": 200,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 48.37, "lo": 46.11, "hi": 50.62, "bootstrap_lo": 46.28, "bootstrap_hi": 50.59},
+          "vs_mem0_same_budget": null,
+          "pass_rate": {"mean": 48.83, "lo": 44.98, "hi": 52.68},
+          "beam_composite": {"mean": 47.72, "lo": 45.38, "hi": 50.05},
+          "read_to_read_sd": 9.55,
+          "context_tokens_cl100k": 11911.9,
+          "cost_per_1000_questions_usd": {"reader": 2.101, "memory_building_llm": 57.192, "compute": 13.286, "total": 72.579},
+          "cost_per_conversation_usd": {"5_questions": 1.42, "20_questions": 1.452, "100_questions": 1.622},
+          "stop_reasons": {"end_turn": 1794, "max_tokens": 6},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 70.14, "half_width_95": 9.88},
+            "contradiction_resolution": {"mean": 23.68, "half_width_95": 5.09},
+            "event_ordering": {"mean": 25.23, "half_width_95": 5.36},
+            "information_extraction": {"mean": 66.16, "half_width_95": 9.24},
+            "instruction_following": {"mean": 66.25, "half_width_95": 8.77},
+            "knowledge_update": {"mean": 53.06, "half_width_95": 12.83},
+            "multi_session_reasoning": {"mean": 42.79, "half_width_95": 9.53},
+            "preference_following": {"mean": 71.18, "half_width_95": 7.46},
+            "summarization": {"mean": 41.2, "half_width_95": 6.2},
+            "temporal_reasoning": {"mean": 23.98, "half_width_95": 6.8}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 18.73, "lo": 17.38, "hi": 20.07},
+            "f1": {"mean": 6.65, "lo": 4.6, "hi": 8.69},
+            "final": {"mean": 1.67, "lo": 1.08, "hi": 2.26},
+            "rubric": {"mean": 25.23, "lo": 19.87, "hi": 30.58}
+          }
+        },
+        "zep": {
+          "system": "Zep",
+          "version": "Graphiti 0.30.2 on Neo4j",
+          "facts": 20,
+          "entities": 20,
+          "questions": 600,
+          "judged_reads": 1800,
+          "score": {"mean": 38.43, "lo": 35.62, "hi": 41.23, "bootstrap_lo": 35.82, "bootstrap_hi": 41.11},
+          "vs_mem0_same_budget": null,
+          "pass_rate": {"mean": 35.83, "lo": 32.36, "hi": 39.3},
+          "beam_composite": {"mean": 38.36, "lo": 35.62, "hi": 41.11},
+          "read_to_read_sd": 7.67,
+          "context_tokens_cl100k": 3396.8,
+          "cost_per_1000_questions_usd": {"reader": 0.746, "memory_building_llm": 320.214, "compute": 9.107, "total": 330.067},
+          "cost_per_conversation_usd": {"5_questions": 6.589, "20_questions": 6.601, "100_questions": 6.667},
+          "stop_reasons": {"end_turn": 1800},
+          "judge_parse_failures": 0,
+          "per_type": {
+            "abstention": {"mean": 75.28, "half_width_95": 10.83},
+            "contradiction_resolution": {"mean": 19.17, "half_width_95": 4.35},
+            "event_ordering": {"mean": 18.64, "half_width_95": 5.0},
+            "information_extraction": {"mean": 46.05, "half_width_95": 9.75},
+            "instruction_following": {"mean": 48.01, "half_width_95": 9.11},
+            "knowledge_update": {"mean": 32.5, "half_width_95": 10.41},
+            "multi_session_reasoning": {"mean": 31.82, "half_width_95": 9.45},
+            "preference_following": {"mean": 62.43, "half_width_95": 8.03},
+            "summarization": {"mean": 25.47, "half_width_95": 3.88},
+            "temporal_reasoning": {"mean": 24.91, "half_width_95": 7.93}
+          },
+          "event_ordering": {
+            "tau_norm": {"mean": 18.02, "lo": 16.91, "hi": 19.14},
+            "f1": {"mean": 5.42, "lo": 3.58, "hi": 7.25},
+            "final": {"mean": 1.32, "lo": 0.83, "hi": 1.82},
+            "rubric": {"mean": 18.64, "lo": 13.63, "hi": 23.64}
+          }
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "M2500": {
+      "a": "llmslim_fix_2500",
+      "b": "mem0_top50",
+      "subset": "all",
+      "conversations": 35,
+      "difference": {"mean": 1.23, "lo": -0.7, "hi": 3.15},
+      "bootstrap_lo": -0.59,
+      "bootstrap_hi": 3.04,
+      "sign_flip_p": 0.2032,
+      "holm_adjusted_one_sided_p": 0.2048,
+      "lower_bound_above_0": false,
+      "lower_bound_above_minus_5": true,
+      "per_type": {
+        "abstention": {"mean": 10.12, "lo": 3.25, "hi": 16.99},
+        "contradiction_resolution": {"mean": 6.31, "lo": 0.01, "hi": 12.61},
+        "event_ordering": {"mean": -0.3, "lo": -3.27, "hi": 2.68},
+        "information_extraction": {"mean": -4.55, "lo": -12.32, "hi": 3.21},
+        "instruction_following": {"mean": 4.96, "lo": -2.59, "hi": 12.51},
+        "knowledge_update": {"mean": 6.43, "lo": -4.83, "hi": 17.69},
+        "multi_session_reasoning": {"mean": -2.52, "lo": -7.57, "hi": 2.53},
+        "preference_following": {"mean": -1.9, "lo": -9.46, "hi": 5.65},
+        "summarization": {"mean": -8.9, "lo": -13.1, "hi": -4.69},
+        "temporal_reasoning": {"mean": 2.62, "lo": -0.68, "hi": 5.91}
+      }
+    },
+    "M10000": {
+      "a": "llmslim_fix_10000",
+      "b": "mem0_top200",
+      "subset": "all",
+      "conversations": 35,
+      "difference": {"mean": 0.55, "lo": -1.56, "hi": 2.66},
+      "bootstrap_lo": -1.49,
+      "bootstrap_hi": 2.5,
+      "sign_flip_p": 0.597,
+      "holm_adjusted_one_sided_p": 0.299,
+      "lower_bound_above_0": false,
+      "lower_bound_above_minus_5": true,
+      "per_type": {
+        "abstention": {"mean": 5.36, "lo": -0.13, "hi": 10.84},
+        "contradiction_resolution": {"mean": 5.77, "lo": 0.26, "hi": 11.28},
+        "event_ordering": {"mean": 3.96, "lo": 1.14, "hi": 6.78},
+        "information_extraction": {"mean": -4.86, "lo": -12.3, "hi": 2.59},
+        "instruction_following": {"mean": 2.46, "lo": -5.16, "hi": 10.08},
+        "knowledge_update": {"mean": -0.36, "lo": -10.42, "hi": 9.71},
+        "multi_session_reasoning": {"mean": -5.95, "lo": -10.08, "hi": -1.83},
+        "preference_following": {"mean": 2.38, "lo": -2.46, "hi": 7.22},
+        "summarization": {"mean": -3.96, "lo": -7.75, "hi": -0.16},
+        "temporal_reasoning": {"mean": 0.71, "lo": -3.25, "hi": 4.68}
+      }
+    },
+    "Z2500": {
+      "a": "llmslim_fix_2500",
+      "b": "zep",
+      "subset": "zep",
+      "conversations": 30,
+      "difference": {"mean": 7.47, "lo": 4.49, "hi": 10.45},
+      "bootstrap_lo": 4.77,
+      "bootstrap_hi": 10.08,
+      "sign_flip_p": 2.265e-05,
+      "holm_adjusted_one_sided_p": 2.657e-05,
+      "lower_bound_above_0": true,
+      "lower_bound_above_minus_5": true,
+      "per_type": {
+        "abstention": {"mean": 5.69, "lo": -6.24, "hi": 17.63},
+        "contradiction_resolution": {"mean": 11.67, "lo": 4.28, "hi": 19.05},
+        "event_ordering": {"mean": 4.66, "lo": 1.13, "hi": 8.19},
+        "information_extraction": {"mean": 8.12, "lo": -1.05, "hi": 17.28},
+        "instruction_following": {"mean": 17.04, "lo": 7.35, "hi": 26.72},
+        "knowledge_update": {"mean": 22.22, "lo": 6.33, "hi": 38.12},
+        "multi_session_reasoning": {"mean": 2.35, "lo": -7.71, "hi": 12.41},
+        "preference_following": {"mean": 5.23, "lo": -2.42, "hi": 12.88},
+        "summarization": {"mean": 0.13, "lo": -4.19, "hi": 4.45},
+        "temporal_reasoning": {"mean": -2.41, "lo": -8.45, "hi": 3.64}
+      }
+    },
+    "Z10000": {
+      "a": "llmslim_fix_10000",
+      "b": "zep",
+      "subset": "zep",
+      "conversations": 30,
+      "difference": {"mean": 9.86, "lo": 6.8, "hi": 12.91},
+      "bootstrap_lo": 7.13,
+      "bootstrap_hi": 12.58,
+      "sign_flip_p": 3.036e-07,
+      "holm_adjusted_one_sided_p": 6.224e-07,
+      "lower_bound_above_0": true,
+      "lower_bound_above_minus_5": true,
+      "per_type": {
+        "abstention": {"mean": 1.25, "lo": -9.97, "hi": 12.47},
+        "contradiction_resolution": {"mean": 8.89, "lo": 1.72, "hi": 16.06},
+        "event_ordering": {"mean": 10.84, "lo": 7.06, "hi": 14.63},
+        "information_extraction": {"mean": 12.39, "lo": 3.44, "hi": 21.34},
+        "instruction_following": {"mean": 20.79, "lo": 11.63, "hi": 29.94},
+        "knowledge_update": {"mean": 19.44, "lo": 1.78, "hi": 37.11},
+        "multi_session_reasoning": {"mean": 4.59, "lo": -5.58, "hi": 14.76},
+        "preference_following": {"mean": 9.21, "lo": 1.95, "hi": 16.47},
+        "summarization": {"mean": 10.44, "lo": 4.98, "hi": 15.91},
+        "temporal_reasoning": {"mean": 0.74, "lo": -5.35, "hi": 6.83}
+      }
+    }
+  },
+  "llmslim_0_12_minus_0_11_1_per_type": {
+    "P2500": {
+      "abstention": {"mean": 5.71, "lo": -1.27, "hi": 12.7},
+      "contradiction_resolution": {"mean": 9.76, "lo": 3.06, "hi": 16.46},
+      "event_ordering": {"mean": 5.16, "lo": 1.51, "hi": 8.81},
+      "information_extraction": {"mean": 6.83, "lo": -0.14, "hi": 13.79},
+      "instruction_following": {"mean": 23.19, "lo": 13.69, "hi": 32.7},
+      "knowledge_update": {"mean": 5.0, "lo": -3.01, "hi": 13.01},
+      "multi_session_reasoning": {"mean": 1.19, "lo": -4.19, "hi": 6.57},
+      "preference_following": {"mean": 8.29, "lo": 0.79, "hi": 15.8},
+      "summarization": {"mean": 1.76, "lo": -1.25, "hi": 4.77},
+      "temporal_reasoning": {"mean": -1.31, "lo": -6.41, "hi": 3.79}
+    },
+    "P10000": {
+      "abstention": {"mean": -0.0, "lo": -7.59, "hi": 7.59},
+      "contradiction_resolution": {"mean": 6.07, "lo": 0.81, "hi": 11.33},
+      "event_ordering": {"mean": 9.0, "lo": 4.64, "hi": 13.37},
+      "information_extraction": {"mean": 6.72, "lo": -0.58, "hi": 14.02},
+      "instruction_following": {"mean": 18.41, "lo": 10.26, "hi": 26.56},
+      "knowledge_update": {"mean": -0.71, "lo": -9.03, "hi": 7.6},
+      "multi_session_reasoning": {"mean": 1.02, "lo": -4.27, "hi": 6.3},
+      "preference_following": {"mean": 7.86, "lo": 1.72, "hi": 13.99},
+      "summarization": {"mean": 3.98, "lo": 0.66, "hi": 7.31},
+      "temporal_reasoning": {"mean": 4.52, "lo": 0.89, "hi": 8.15}
+    }
+  },
+  "ship_rule": {"verdict": "SHIP", "rule": "at both budgets: overall LLMSlim minus Mem0 at least -1 point; its one-sided 97.5% lower bound (t and bootstrap) above -5; every question type above -3 points against 0.11.1"},
+  "original_stricter_bar": {
+    "verdict": "NO SHIP",
+    "failed_on": ["summarization at 2,500 tokens", "summarization at 10,000 tokens", "instruction following at 10,000 tokens"]
+  },
+  "weak_spots_vs_mem0": [
+    {"type": "information_extraction", "budget_tokens": 2500, "mean": -4.55, "lo": -12.32, "hi": 3.21},
+    {"type": "summarization", "budget_tokens": 2500, "mean": -8.9, "lo": -13.1, "hi": -4.69},
+    {"type": "information_extraction", "budget_tokens": 10000, "mean": -4.86, "lo": -12.3, "hi": 2.59},
+    {"type": "multi_session_reasoning", "budget_tokens": 10000, "mean": -5.95, "lo": -10.08, "hi": -1.83},
+    {"type": "summarization", "budget_tokens": 10000, "mean": -3.96, "lo": -7.75, "hi": -0.16}
+  ],
+  "latency_benchmark_laptop_cpu_reranker": {
+    "llmslim_0.12": {
+      "store_conversation_s": {"median": 1.66, "max": 2.02, "conversations": 35},
+      "search_2500": {"p50_s": 3.56, "p95_s": 6.07, "mean_s": 3.75, "max_s": 9.17, "mean_cpu_s_all_cores": 23.6, "searches": 700},
+      "search_10000": {"p50_s": 4.88, "p95_s": 6.68, "mean_s": 4.82, "max_s": 7.51, "mean_cpu_s_all_cores": 32.4, "searches": 700}
+    },
+    "llmslim_0.11.1": {
+      "store_conversation_s": {"median": 1.3, "max": 2.16, "conversations": 35},
+      "search_2500": {"p50_s": 3.7, "p95_s": 4.59, "mean_s": 3.69, "max_s": 5.9, "mean_cpu_s_all_cores": 12.2, "searches": 700},
+      "search_10000": {"p50_s": 3.89, "p95_s": 4.84, "mean_s": 3.92, "max_s": 9.78, "mean_cpu_s_all_cores": 13.5, "searches": 700}
+    }
+  },
+  "api_spend_billed_usd": {
+    "total": 251.32,
+    "mem0_memory_building": 42.21,
+    "zep_memory_building": 192.13,
+    "readers_and_judges_by_arm": {
+      "llmslim_fix_10000": {"readers": 1.894, "judges": 1.186},
+      "llmslim_fix_2500": {"readers": 0.664, "judges": 1.156},
+      "llmslim_rr_10000": {"readers": 1.971, "judges": 1.151},
+      "llmslim_rr_2500": {"readers": 0.638, "judges": 1.114},
+      "mem0_top200": {"readers": 2.217, "judges": 1.256},
+      "mem0_top50": {"readers": 0.745, "judges": 1.248},
+      "zep": {"readers": 0.671, "judges": 1.048}
+    }
+  }
+}

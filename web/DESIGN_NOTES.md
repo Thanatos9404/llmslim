@@ -86,3 +86,40 @@ The local production preview is started with `node node_modules/next/dist/bin/ne
 - Type: Geist for text, Instrument Serif italic for emphasis in headings, Geist Mono for code and numbers. All three are self-hosted under `public/fonts` (OFL).
 - Mark: the converging-lines logo drawn as one-colour SVG in the header (`Mark` in `SiteHeader.tsx`); the PNG stays for app icons.
 - Photos from Pexels (free to use, Pexels license): the light-theme hero, programme and closing bands (Pexels 11705368, 10975806, 614115) and the Platform hero (1654138 by night, 32231937 by day).
+
+### Startup program logos added on 2 November 2026
+
+Downloaded with curl from each company's own site, CDN or media kit, checked as untrusted SVG (no scripts, event
+handlers, `foreignObject`, external references or CSS imports) and copied byte for byte into `public/startups/`.
+
+- Composio: `composio-black.svg` and `composio-white.svg` are https://composio.dev/logos/composio-full-black.svg and
+  `.../composio-full-white.svg` (viewBox `0 0 483 93`).
+- Snyk: Snyk has no public press kit (https://snyk.io/press-kit/ redirects to the contact page). The snyk.io header
+  draws its wordmark as a CSS background from Snyk's own Cloudinary brand folder, and `snyk-dark-text.svg` and
+  `snyk-white-text.svg` are that folder's `wordmark-light.svg` (text `#030328`, for light backgrounds) and
+  `wordmark-dark.svg` (white text, for dark backgrounds):
+  https://res.cloudinary.com/snyk/image/upload/snyk-mktg-brandui/brand-logos/wordmark-light.svg and `.../wordmark-dark.svg`.
+  Both have the viewBox `0 0 77 52` with built-in padding: the letters fill about 60% of the height.
+- Gitar: `gitar-wordmark.svg` is the sub-brand wordmark on https://www.sonarsource.com/products/gitar/ (gitar.ai now
+  redirects there), served from Sonar's CDN at
+  https://assets-eu-01.kc-usercontent.com/ef593040-b591-0198-9506-ed88b30bc023/22779193-4b6d-4bdf-a860-37007a6d2315/gitar-wordmark.svg.
+  It is one colour, purple `#6D2A78`, and no white or dark variant is published. In its own dark mode Sonar shows this
+  file through `brightness(0) invert`, so it is used here as a single-colour mark tinted to the text colour ("mask").
+- Future AGI: no logo file or brand kit is published (futureagi.com/brand, /press, /media-kit and /brand-kit return
+  404). `futureagi-symbol.svg` is https://futureagi.com/favicon.svg; its four paths are identical to the symbol in the
+  site header (viewBox `0 0 47 47`). `futureagi-wordmark.svg` is the second inline `<svg>` of the futureagi.com header
+  (`aria-label="FutureAGI"`, viewBox `54 12 139 23`, white letters), cut out of the served HTML byte for byte from
+  `<svg` to `</svg>` with nothing added. Both are white or light grey, made for Future AGI's dark site, so they are
+  used as masks tinted to the text colour.
+- Notion: `notion-lockup.svg`, `notion-block.svg` and `notion-block-sticker-white.svg` are
+  `notion-logo-lockup-main.svg`, `notion-logo-block-main.svg` and `notion-logo-block-sticker-white.svg` from
+  `NotionLogoFiles.zip` in Notion's Media Kit (https://notion.notion.site/Media-Kit-205535b1d9c4440497a3d7a2ac096286,
+  published by the "Notion Official" workspace). The kit has no reverse lockup: the lockup's "Notion" letters are
+  black, so it only works on light backgrounds. The block's "N" is drawn in black on a white page, not cut out, so
+  the block cannot be used as a mask either (it would become a solid square). The sticker variant adds a white
+  outline for dark backgrounds.
+- Nebius: `nebius.svg` is now `SVGs/NEBIUS-color.svg` from the logo pack on https://nebius.com/media-kit
+  (https://assets.nebius.com/assets/2dd2ad13-45c1-4429-a47c-156bedd4d71d/NEBIUS-logos%2807.25%29%20%281%29.zip).
+  The file it replaces had the same artwork with Illustrator's XML prolog, comment and `id` removed and the
+  indentation changed; its source had not been recorded. The lime badge with deep-blue letters is the same in both
+  themes, so it needs no dark variant.

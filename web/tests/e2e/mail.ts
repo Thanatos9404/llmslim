@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { E2E } from "./env"
 
-type SinkMail = { to: string; kind: string; subject: string; url?: string; sentAt: string }
+type SinkMail = { to: string; kind: string; subject: string; text: string; url?: string; unsubscribeUrl?: string; sentAt: string }
 
 function read(): SinkMail[] {
   if (!existsSync(E2E.mailDir)) return []

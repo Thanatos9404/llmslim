@@ -17,6 +17,7 @@ import { RACE } from "@/data/results-story"
 export const benchmarkCardSize = { width: 1200, height: 630 }
 
 const locomo = RACE.find((set) => set.key === "locomo")!
+const locomoFull = locomo.full!
 const row = (name: string) => locomo.rows.find((item) => item.name === name)!
 const slim = row("LLMSlim + reranker")
 const mem0 = row("Mem0")
@@ -30,7 +31,7 @@ export const benchmarkCardAlt =
   `LoCoMo, 1,307 held-out questions at about 2,500 tokens, read by Claude Haiku 5.5: ` +
   `LLMSlim 0.9 with its 22M reranker ${percent(slim.score)} for ${dollars(slim.cost)} per 1,000 questions, ` +
   `Mem0 ${percent(mem0.score)} for ${dollars(mem0.cost)}, Zep ${percent(zep.score)} for ${dollars(zep.cost)}, ` +
-  `LongLLMLingua ${percent(longLingua.score)} on its 300-question sample; the whole history ${percent(locomo.full.score)}.`
+  `LongLLMLingua ${percent(longLingua.score)} on its 300-question sample; the whole history ${percent(locomoFull.score)}.`
 
 // The site's dark theme tokens (src/app/globals.css, .dark).
 const C = {
@@ -64,7 +65,7 @@ const bars: Bar[] = [
   { name: "Mem0", model: `${dollars(mem0.cost)} per 1k`, score: mem0.score, fill: C.rival, value: C.ink },
   { name: "Zep", model: `${dollars(zep.cost)} per 1k`, score: zep.score, fill: C.rival, value: C.ink },
   { name: "LongLLMLingua", model: `${dollars(longLingua.cost)} per 1k`, score: longLingua.score, fill: C.rival, value: C.ink },
-  { name: "Whole history", model: "every token, for reference", score: locomo.full.score, fill: "rgba(237,237,234,0.10)", value: C.inkDim, reference: true },
+  { name: "Whole history", model: "every token, for reference", score: locomoFull.score, fill: "rgba(237,237,234,0.10)", value: C.inkDim, reference: true },
 ]
 
 /** The LLMSlim mark in the dark palette. Plain SVG with fixed gradient ids: the image renderer has no React hooks. */

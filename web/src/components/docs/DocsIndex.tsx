@@ -4,11 +4,18 @@ import { DocsHero } from "@/components/docs/DocsHero"
 import { DocsVersionNotice } from "@/components/docs/DocsVersionNotice"
 import { DOC_CATEGORIES, DOCS_BY_VERSION, docsInOrder, isNewIn } from "@/data/docs"
 import { docHref, versionStatus, type DocsVersion } from "@/data/docs-versions"
+import { COMPARISONS } from "@/data/comparisons"
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations"
+import { MEMORY_COMPARISONS } from "@/data/memory-comparisons"
 import { constructMetadata } from "@/lib/seo"
 
 /** LangChain, LlamaIndex and Haystack adapters and the gptme, Hermes Agent and Pydantic AI history adapters, listed with the guides because most readers arrive from a framework. */
 const FRAMEWORKS = Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
+
+/** The comparison pages (/compare/<slug>), for readers coming from Mem0, Zep or LLMLingua. */
+const COMPARISON_PAGES = [...Object.values(MEMORY_COMPARISONS), ...Object.values(COMPARISONS)].map((page) => ({
+  slug: page.slug, name: page.heading[0].replace(/\.$/, ""), description: page.description,
+}))
 
 /** The four ways in, one per interface. */
 const PATHS = [
@@ -65,6 +72,15 @@ export function DocsIndex({ version }: { version: DocsVersion }) {
         <span className="docs-row-title">{item.name}</span>
         <span className="docs-row-body">{item.tagline}</span>
         <span className="docs-row-time">{item.installation.command.match(/llmslim\[[a-z-]+\]/)?.[0] ?? "Guide"}</span>
+        <ArrowRight size={15} className="docs-row-arrow" aria-hidden="true" />
+      </Link></li>)}</ul>
+    </section>
+    <section className="docs-group" aria-labelledby="group-comparisons">
+      <h2 id="group-comparisons">Comparisons</h2>
+      <ul>{COMPARISON_PAGES.map((page) => <li key={page.slug}><Link href={`/compare/${page.slug}`}>
+        <span className="docs-row-title">{page.name}</span>
+        <span className="docs-row-body">{page.description}</span>
+        <span className="docs-row-time">Comparison</span>
         <ArrowRight size={15} className="docs-row-arrow" aria-hidden="true" />
       </Link></li>)}</ul>
     </section>

@@ -6,6 +6,7 @@ import { COMPARISONS } from "@/data/comparisons";
 import { DOCS_REGISTRY } from "@/data/docs";
 import { INTEGRATIONS_REGISTRY } from "@/data/integrations";
 import { RESULTS_LAST_UPDATED } from "@/data/live-benchmarks";
+import { MEMORY_COMPARISONS } from "@/data/memory-comparisons";
 import { siteConfig } from "@/config/site";
 import { absoluteUrl, contentDate } from "@/lib/seo";
 
@@ -48,7 +49,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...docs.map((doc) => entry(`/docs/${doc.slug}`, 0.8, "monthly", contentDate(doc.lastUpdated))),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => entry(`/integrations/${slug}`, 0.8, "monthly")),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => entry(`/benchmarks/${slug}`, 0.75, "monthly")),
-    ...Object.values(COMPARISONS).map((page) => entry(`/compare/${page.slug}`, 0.8, "monthly", contentDate(page.lastUpdated))),
+    ...[...Object.values(COMPARISONS), ...Object.values(MEMORY_COMPARISONS)].map((page) => entry(`/compare/${page.slug}`, 0.8, "monthly", contentDate(page.lastUpdated))),
     ...articles.map((article) => entry(`/articles/${article.slug}`, 0.7, "yearly", contentDate(article.lastUpdated))),
   ];
 }

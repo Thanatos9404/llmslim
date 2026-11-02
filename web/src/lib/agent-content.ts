@@ -9,14 +9,16 @@ import { siteConfig } from "@/config/site"
 import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
 import {
-  AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES,
-  VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type Arm, type LiveSuite,
+  AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_MEMORY, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES,
+  METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, ROUND6_DATE, ROUND6_REPORT, ROUND6_SUITE, ROUND6_WEAK_SPOTS, WEAK_SPOTS,
+  type Arm, type LiveSuite,
 } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_BY_VERSION, DOCS_REGISTRY, docsInOrder, versionNoticeText, type DocPage } from "@/data/docs"
 import { DEFAULT_DOCS_VERSION, DOCS_VERSIONS, docHref, docsHome, isDocsVersion, resolveDocLink, versionStatus, type DocsVersion } from "@/data/docs-versions"
 import { homeFaqs } from "@/data/home"
+import { LLMSLIM_PRICES_TITLE, MEMORY_COMPARISONS, PRICES_CHECKED, llmslimPriceRows, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
 import { FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice, type Billing, type Cell, type Currency, type Plan } from "@/data/pricing"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
 import { absoluteUrl } from "@/lib/seo"
@@ -45,7 +47,7 @@ function liveSuiteMarkdown(suite: LiveSuite): string {
     `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
     table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], armRows(suite.arms, true)),
     suite.takeaway,
-    suite.caveat && `Note: ${suite.caveat}`,
+    suite.caveat && `${suite.caveatLabel ?? "Note"}: ${suite.caveat}`,
     suite.extra && `**${suite.extra.label}** (${suite.extra.n}):\n\n` + table(
       extraHasCost ? ["Configuration", "Score", "Cost per 1k questions"] : ["Configuration", "Score"],
       armRows(suite.extra.arms, false).map((row) => (extraHasCost ? row : row.slice(0, 2))),
@@ -76,7 +78,7 @@ const CORE_FACTS = [
 
 const ORBIT_FACTS = [
   "The hosted edition, run by AMEYOR: a hosted memory API, a remote MCP server with OAuth for Claude.ai, ChatGPT, Cursor and Claude Code, team memory, a context console with traces and replay, a truth timeline, webhooks, SSO and governance.",
-  "Not available yet: Orbit opens with LLMSlim 1.0. The pricing page's buttons join a founding list by email; nothing is charged before Orbit opens.",
+  "Not available yet: Orbit opens with LLMSlim 1.0. The pricing page's buttons join a founding list (one click when signed in, otherwise confirmed by email); nothing is charged before Orbit opens.",
   `Plans at launch and launch offers: ${md("/pricing")}`,
 ]
 
@@ -133,6 +135,7 @@ function docsIndexMarkdown(version: DocsVersion): string {
     }),
     "## Framework integrations\n\n" + Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.category === "Framework")
       .map((item) => `- [LLMSlim + ${item.name}](${md(`/integrations/${item.slug}`)}): ${item.tagline}`).join("\n"),
+    "## Comparisons\n\n" + allComparisons().map((page) => `- [${page.title}](${md(`/compare/${page.slug}`)}): ${page.description}`).join("\n"),
     "## Other versions\n\n" + others.map(({ id }) => `- [LLMSlim ${id} docs](${md(docsHome(id))})${versionStatus(id) === "preview" ? `: upcoming, not on PyPI yet (\`pip install llmslim\` installs ${siteConfig.coreVersion})` : ""}`).join("\n"),
     source(docsHome(version)),
   )
@@ -242,6 +245,65 @@ export function comparisonMarkdown(page: Comparison): string {
   )
 }
 
+/** /compare/mem0.md and /compare/zep.md: the same sections as the page, every benchmark round included. */
+export function memoryComparisonMarkdown(page: MemoryComparison): string {
+  const path = `/compare/${page.slug}`
+  const text = (value: string) => docText(value, DEFAULT_DOCS_VERSION, path)
+  const prices = (rows: PriceRow[]) => table(["Plan", "Price", "What it includes"], rows.map((row) => [row.plan, row.price, row.includes]))
+  return join(
+    `# ${page.title}`,
+    `> ${page.lede}`,
+    `${page.meta.join(" · ")}. ${page.disclosure}`,
+    "## The short answer\n\n" + page.shortAnswer.map((line) => `- ${line}`).join("\n"),
+    "## At a glance\n\n" + table(["Aspect", "LLMSlim", page.rival], page.glance.map((row) => [row.aspect, row.llmslim, row.rival])),
+    `## What ${page.rival} is\n\n` + page.about.map((item) => `### ${item.name}\n\n[${item.cite}](${item.url}). ${item.body}`).join("\n\n") + `\n\n${page.aboutNote}`,
+    "## How LLMSlim differs\n\n" + page.differences.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    ...page.benchmarks.map((block) => join(
+      `## Head to head: ${block.kicker}`,
+      block.intro,
+      ...block.tables.map((result) => join(
+        `### ${result.title}`,
+        result.rows.some((row) => row.budget)
+          ? table(["Budget", "System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.budget ?? "", row.system, row.tokens, row.score, row.cost]))
+          : table(["System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.system, row.tokens, row.score, row.cost])),
+        result.note,
+      ).trimEnd()),
+      "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Benchmark (questions)", "Difference (95% CI)", "Reading"], block.pairedDiffs.map((row) => [row.comparison, row.benchmark, row.difference, row.reading])),
+      block.pairedNote,
+      "### What this does not show\n\n" + block.caveats.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+      "Sources and reruns:\n\n" + block.links.map((link) => `- [${link.label}](${link.url})`).join("\n"),
+    ).trimEnd()),
+    `## When to choose ${page.rival}\n\n` + page.chooseThem.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
+    "## When LLMSlim fits\n\n" + page.chooseUs.map((line) => `- ${line}`).join("\n"),
+    join(
+      `## Pricing (checked ${PRICES_CHECKED})`,
+      page.pricing.intro,
+      `### ${page.rival}\n\n` + prices(page.pricing.rival.rows) + `\n\nSource: ${page.pricing.rival.url}, checked ${PRICES_CHECKED}.`,
+      `### ${LLMSLIM_PRICES_TITLE}\n\n` + prices(llmslimPriceRows()) + `\n\nSource: ${md("/pricing")}, which also lists the plans in rupees.`,
+      page.pricing.notes.map((note) => `- ${note}`).join("\n"),
+    ).trimEnd(),
+    join(
+      "## Migrate",
+      text(page.migration.intro),
+      ...page.migration.steps.map((step) => join(
+        `### ${step.title}`,
+        text(step.body),
+        ...step.samples.map((sample) => `${sample.filename}:\n\n${fence(sample.language, sample.code)}`),
+        step.after && text(step.after),
+      ).trimEnd()),
+      page.migration.notes.map((note) => `- ${text(note)}`).join("\n"),
+      `${page.migration.guide.label}: ${md(page.migration.guide.href)}`,
+    ).trimEnd(),
+    "## FAQ\n\n" + page.faqs.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n"),
+    "## Sources\n\n" + page.sources.map((item) => `- [${item.label}](${item.url})`).join("\n") +
+      `\n- [Every benchmark](${md("/benchmarks")})`,
+    source(path),
+  )
+}
+
+/** Every comparison page, LLMLingua's and the memory systems', for the indexes. */
+const allComparisons = (): Array<{ title: string; slug: string; description: string }> => [...Object.values(COMPARISONS), ...Object.values(MEMORY_COMPARISONS)]
+
 export function changelogMarkdown(): string {
   return join(
     "# LLMSlim Core changelog",
@@ -275,8 +337,13 @@ function sectionIndex(section: Section): string {
   )
   return join(
     "# LLMSlim benchmarks",
-    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Vault ${VAULT_VERSION_TESTED}. Weak spots are published with the rest.`,
-    `Report, harness and raw results: ${ROUND3_REPORT}`,
+    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. Agent memory (BEAM-1M) on LLMSlim Core ${CORE_VERSION_MEMORY}; LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Vault ${VAULT_VERSION_TESTED}. Weak spots are published with the rest.`,
+    `Round 6 report (results only; the protocol, harness and per-question answers are not published): ${ROUND6_REPORT}\n\nRound 3 report, harness and raw results: ${ROUND3_REPORT}`,
+    join(
+      `## Round 6, Core ${CORE_VERSION_MEMORY} (${ROUND6_DATE}): agent memory on BEAM-1M against Mem0 and Zep`,
+      "Million-token conversations, held out and run once. Every system is read by Claude Haiku 5.5 with BEAM's answer prompt, three times per question, and scored by BEAM's rubric judge (the mean rubric score out of 100). Costs are per 1,000 questions at list prices with BEAM's 20 questions per conversation, including Mem0's and Zep's memory building and every system's compute. \"LLMSlim 0.12\" is commit 16a2708, which became 0.12.0 after hardening and returns the same bytes on English parity checks; the round-6 contexts were not rebuilt with 0.12.0.",
+      liveSuiteMarkdown(ROUND6_SUITE),
+    ).trimEnd(),
     join(
       `## Round 3, Core ${CORE_VERSION_TESTED} (15 Oct 2026): memory systems and compressors, cost first`,
       "The question is not only how many answers a context gets right, but what each right answer costs. Costs are per 1,000 questions at list prices, including building Mem0's and Zep's memory and every system's compute.",
@@ -290,7 +357,7 @@ function sectionIndex(section: Section): string {
       "Sources and reruns:\n\n" + HEAD_TO_HEAD.sources.map((item) => `- [${item.label}](${item.url})`).join("\n"),
       ...Object.values(COMPARISONS).map((page) => `Choosing between them: [${page.title}](${md(`/compare/${page.slug}`)}), with migration code.`),
     ).trimEnd(),
-    "## Where LLMSlim loses\n\n" + WEAK_SPOTS.map((spot) => `- **${spot.title}.** ${spot.body}`).join("\n"),
+    "## Where LLMSlim loses\n\n" + [...ROUND6_WEAK_SPOTS, ...WEAK_SPOTS].map((spot) => `- **${spot.title}.** ${spot.body}`).join("\n"),
     join(
       `## Long documents, Core ${CORE_VERSION_LONG_DOCS} (12 Oct 2026): against full context and truncation`,
       "From the previous round, with fresh questions run once after the code was frozen. 0.9.0 changes only how chat transcripts are selected. Costs here are the answer call alone.",
@@ -344,7 +411,7 @@ export function pricingMarkdown(): string {
   const cellText = (cell: Cell) => (cell === true ? "Yes" : cell === false ? "No" : cell)
   return join(
     "# LLMSlim pricing",
-    "> LLMSlim Core is free and open source (MIT), forever. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0, and these are its plans at launch. Until Orbit opens, the plan buttons join a founding list by email, and nothing is charged.",
+    "> LLMSlim Core is free and open source (MIT), forever. LLMSlim Orbit, the hosted edition, opens with LLMSlim 1.0, and these are its plans at launch. Until Orbit opens, the plan buttons join a founding list (one click when signed in, otherwise confirmed by email), and nothing is charged.",
     `## LLMSlim Core\n\nFree forever, MIT licence. Self-host it with no account and no limits on projects, turns or searches: \`pip install llmslim\`. Documentation: ${md("/docs")}`,
     "## LLMSlim Orbit plans at launch\n\n" +
       table(["Plan", "INR monthly", "INR annual", "USD monthly", "USD annual"], PLANS.map((plan) => [
@@ -383,6 +450,7 @@ export function markdownFor(path: readonly string[]): string | null {
   if (head === "integrations" && INTEGRATIONS_REGISTRY[slug]) return integrationMarkdown(INTEGRATIONS_REGISTRY[slug])
   if (head === "benchmarks" && BENCHMARK_SUITES[slug]) return benchmarkMarkdown(BENCHMARK_SUITES[slug])
   if (head === "compare" && COMPARISONS[slug]) return comparisonMarkdown(COMPARISONS[slug])
+  if (head === "compare" && MEMORY_COMPARISONS[slug]) return memoryComparisonMarkdown(MEMORY_COMPARISONS[slug])
   return null
 }
 
@@ -395,7 +463,7 @@ export function markdownPaths(): string[][] {
     ...Object.keys(ARTICLES_REGISTRY).map((slug) => ["articles", slug]),
     ...Object.keys(INTEGRATIONS_REGISTRY).map((slug) => ["integrations", slug]),
     ...Object.keys(BENCHMARK_SUITES).map((slug) => ["benchmarks", slug]),
-    ...Object.keys(COMPARISONS).map((slug) => ["compare", slug]),
+    ...allComparisons().map((page) => ["compare", page.slug]),
   ]
 }
 
@@ -411,10 +479,10 @@ export function llmsTxt(): string {
       DOCS_VERSIONS.filter(({ id }) => versionStatus(id) === "preview").map(({ id }) => `\n- [LLMSlim ${id} docs (preview)](${md(docsHome(id))}): upcoming and not on PyPI yet. \`pip install llmslim\` installs ${siteConfig.coreVersion}; these pages describe the main branch.`).join(""),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
     "## Benchmarks\n\n" + list([
-      ["Benchmarks", "/benchmarks", `Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
+      ["Benchmarks", "/benchmarks", `Round 6, LLMSlim Core ${CORE_VERSION_MEMORY} against Mem0 and Zep on BEAM-1M agent memory (held out, run once): on par with Mem0 and 60x and 28.6x cheaper per 1,000 questions at list prices, ahead of Zep by 7.5 to 9.9 points (on 30 conversations), and where it loses. Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
       ...Object.values(BENCHMARK_SUITES).map((suite): [string, string, string] => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle]),
     ]),
-    "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),
+    "## Comparisons\n\n" + list(allComparisons().map((page) => [page.title, `/compare/${page.slug}`, page.description])),
     "## Project\n\n" + list([
       ["Overview", "/", "What LLMSlim Core, Orbit and Vault are, with a quick start and FAQ"],
       ["Pricing", "/pricing", "LLMSlim Orbit plans at launch in INR (GST included) and USD, the feature matrix, launch offers and billing questions"],
@@ -435,6 +503,7 @@ export function llmsFullTxt(): string {
     ...docsInOrder(DEFAULT_DOCS_VERSION).map((doc) => docMarkdown(doc)),
     ...Object.values(INTEGRATIONS_REGISTRY).map(integrationMarkdown),
     ...Object.values(COMPARISONS).map(comparisonMarkdown),
+    ...Object.values(MEMORY_COMPARISONS).map(memoryComparisonMarkdown),
     ...Object.values(BENCHMARK_SUITES).map(benchmarkMarkdown),
     changelogMarkdown(),
     ...Object.values(ARTICLES_REGISTRY).map(articleMarkdown),

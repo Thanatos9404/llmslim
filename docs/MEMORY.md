@@ -326,7 +326,8 @@ Method names, arguments and return shapes follow Mem0 2.x, with these difference
 **Bring your history.** `llmslim import mem0 export.json` stores each memory of a Mem0 export (what `get_all`
 returns) under its own `user_id`, `agent_id` and `run_id`, so the filters above find it where they did. The same
 command imports Claude Code transcripts, ChatGPT and Claude.ai data exports and JSONL chat logs, and running it again
-adds only what is new. See [IMPORT.md](IMPORT.md).
+adds only what is new. See [IMPORT.md](IMPORT.md), and [MIGRATE_FROM_MEM0.md](MIGRATE_FROM_MEM0.md) for the steps from a
+Mem0 account to a search, with real output.
 
 ## Evidence
 

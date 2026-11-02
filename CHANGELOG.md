@@ -336,6 +336,18 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
 
+### Documentation
+- **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,
+  `requests`, `preferences` and `conflicts`, which `POST /v1/memories/search` has always returned. A new section says
+  what each field holds. The fields documented there are stable (`docs/API_STABILITY.md`). The site's HTTP quickstart
+  has the same table, for 0.12 and 1.0.
+- **`fit`'s budget, as the code keeps it.** `docs/SERVER.md` and `docs/MCP.md` said `POST /v1/context/fit` and
+  `fit_context` keep within the budget for any text. They accept a compressed result up to 2% over
+  (`tokens <= budget * 1.02`), as `fit_text`'s docstring and the tests always had it, and cut to the budget itself
+  only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
+  so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
+- `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
+
 ## [0.12.0] - 2026-10-27
 
 ### Merged from 0.11.2

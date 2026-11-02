@@ -9,8 +9,9 @@ import { siteConfig } from "@/config/site"
 import { ARTICLES_REGISTRY, type DeepArticle } from "@/data/articles"
 import { BENCHMARK_SUITES, type BenchmarkSuite } from "@/data/benchmarks"
 import {
-  AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES,
-  VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, WEAK_SPOTS, type Arm, type LiveSuite,
+  AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_MEMORY, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_MODEL, LIVE_SUITES, LONG_DOC_SUITES,
+  METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, ROUND6_DATE, ROUND6_REPORT, ROUND6_SUITE, ROUND6_WEAK_SPOTS, WEAK_SPOTS,
+  type Arm, type LiveSuite,
 } from "@/data/live-benchmarks"
 import { releases } from "@/data/changelog"
 import { COMPARISONS, type Comparison } from "@/data/comparisons"
@@ -45,7 +46,7 @@ function liveSuiteMarkdown(suite: LiveSuite): string {
     `${suite.what} ${suite.n}; metric: ${suite.metric}.`,
     table(["Configuration", "Score", "Tokens", "Cost per 1k questions"], armRows(suite.arms, true)),
     suite.takeaway,
-    suite.caveat && `Note: ${suite.caveat}`,
+    suite.caveat && `${suite.caveatLabel ?? "Note"}: ${suite.caveat}`,
     suite.extra && `**${suite.extra.label}** (${suite.extra.n}):\n\n` + table(
       extraHasCost ? ["Configuration", "Score", "Cost per 1k questions"] : ["Configuration", "Score"],
       armRows(suite.extra.arms, false).map((row) => (extraHasCost ? row : row.slice(0, 2))),
@@ -275,8 +276,13 @@ function sectionIndex(section: Section): string {
   )
   return join(
     "# LLMSlim benchmarks",
-    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Vault ${VAULT_VERSION_TESTED}. Weak spots are published with the rest.`,
-    `Report, harness and raw results: ${ROUND3_REPORT}`,
+    `> LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions (${LIVE_DATE}). Every system is read by the same model, ${LIVE_MODEL}, with the same prompt, and every table shows what 1,000 questions cost end to end. Agent memory (BEAM-1M) on LLMSlim Core ${CORE_VERSION_MEMORY}; LLMSlim Core ${CORE_VERSION_TESTED}; long documents and agents on Core ${CORE_VERSION_LONG_DOCS}; LLMSlim Vault ${VAULT_VERSION_TESTED}. Weak spots are published with the rest.`,
+    `Round 6 report (results only; the protocol, harness and per-question answers are not published): ${ROUND6_REPORT}\n\nRound 3 report, harness and raw results: ${ROUND3_REPORT}`,
+    join(
+      `## Round 6, Core ${CORE_VERSION_MEMORY} (${ROUND6_DATE}): agent memory on BEAM-1M against Mem0 and Zep`,
+      "Million-token conversations, held out and run once. Every system is read by Claude Haiku 5.5 with BEAM's answer prompt, three times per question, and scored by BEAM's rubric judge (the mean rubric score out of 100). Costs are per 1,000 questions at list prices with BEAM's 20 questions per conversation, including Mem0's and Zep's memory building and every system's compute. \"LLMSlim 0.12\" is commit 16a2708, which became 0.12.0 after hardening and returns the same bytes on English parity checks; the round-6 contexts were not rebuilt with 0.12.0.",
+      liveSuiteMarkdown(ROUND6_SUITE),
+    ).trimEnd(),
     join(
       `## Round 3, Core ${CORE_VERSION_TESTED} (15 Oct 2026): memory systems and compressors, cost first`,
       "The question is not only how many answers a context gets right, but what each right answer costs. Costs are per 1,000 questions at list prices, including building Mem0's and Zep's memory and every system's compute.",
@@ -290,7 +296,7 @@ function sectionIndex(section: Section): string {
       "Sources and reruns:\n\n" + HEAD_TO_HEAD.sources.map((item) => `- [${item.label}](${item.url})`).join("\n"),
       ...Object.values(COMPARISONS).map((page) => `Choosing between them: [${page.title}](${md(`/compare/${page.slug}`)}), with migration code.`),
     ).trimEnd(),
-    "## Where LLMSlim loses\n\n" + WEAK_SPOTS.map((spot) => `- **${spot.title}.** ${spot.body}`).join("\n"),
+    "## Where LLMSlim loses\n\n" + [...ROUND6_WEAK_SPOTS, ...WEAK_SPOTS].map((spot) => `- **${spot.title}.** ${spot.body}`).join("\n"),
     join(
       `## Long documents, Core ${CORE_VERSION_LONG_DOCS} (12 Oct 2026): against full context and truncation`,
       "From the previous round, with fresh questions run once after the code was frozen. 0.9.0 changes only how chat transcripts are selected. Costs here are the answer call alone.",
@@ -411,7 +417,7 @@ export function llmsTxt(): string {
       DOCS_VERSIONS.filter(({ id }) => versionStatus(id) === "preview").map(({ id }) => `\n- [LLMSlim ${id} docs (preview)](${md(docsHome(id))}): upcoming and not on PyPI yet. \`pip install llmslim\` installs ${siteConfig.coreVersion}; these pages describe the main branch.`).join(""),
     "## Integrations\n\n" + list(Object.values(INTEGRATIONS_REGISTRY).map((item) => [`LLMSlim + ${item.name}`, `/integrations/${item.slug}`, item.tagline])),
     "## Benchmarks\n\n" + list([
-      ["Benchmarks", "/benchmarks", `Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
+      ["Benchmarks", "/benchmarks", `Round 6, LLMSlim Core ${CORE_VERSION_MEMORY} against Mem0 and Zep on BEAM-1M agent memory (held out, run once): on par with Mem0 and 60x and 28.6x cheaper per 1,000 questions at list prices, ahead of Zep by 7.5 to 9.9 points (on 30 conversations), and where it loses. Round 3, LLMSlim Core ${CORE_VERSION_TESTED} against Mem0, Zep, LLMLingua-2, LongLLMLingua and RAG on held-out test questions (LoCoMo, LongMemEval-S, NaturalQuestions, HotpotQA): accuracy and cost per 1,000 questions, the head-to-head with the LLMLingua family, and where LLMSlim loses; plus long-document and agent results on Core ${CORE_VERSION_LONG_DOCS}`],
       ...Object.values(BENCHMARK_SUITES).map((suite): [string, string, string] => [suite.title, `/benchmarks/${suite.slug}`, suite.subtitle]),
     ]),
     "## Comparisons\n\n" + list(Object.values(COMPARISONS).map((page) => [page.title, `/compare/${page.slug}`, page.description])),

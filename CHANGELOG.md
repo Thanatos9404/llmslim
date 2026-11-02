@@ -191,6 +191,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     processor that injects memory.
   - CI runs the tests against a real `llmslim serve` and against the oldest supported `@mastra/core` (1.29.1), with a
     test that saves the same reply 50 times, and imports the packed package without its optional peers.
+- **`explain` in the TypeScript client.** `memories.search({ ...scope, query, explain: true })` sends
+  `"explain": true` to `llmslim serve` and returns its answer as `context.explanation`: a `SearchExplanation`, with
+  `ExplainedTurn`, `ExplainedSection` and `ExplainedCandidate` for its parts, holding every field the server sends, in
+  camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
+  checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
+  have it, and the package's version is unchanged.
 
 ### Changed
 - **`Memory.search` shows a session's date once: `date_format` now defaults to `None`.** When a long history is

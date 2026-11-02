@@ -77,10 +77,100 @@ describe("LLMSlim client", () => {
     expect(context.historyTokens).toBe(14);
     expect(context.sessionsKept).toBe(1);
     expect(context.turns[0]).toMatchObject({ id: "abc", userId: "asha", score: 0.5, partial: false });
+    expect(context).not.toHaveProperty("explanation");
     expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
       query: "Where did I move to?",
       budget: 1500,
       user_id: "asha",
+    });
+  });
+
+  it("asks for an explanation and maps every field of it to camelCase", async () => {
+    const kept = { turn_id: "abc", pool: "user", kind: "turn", part: 0, rank: 1, score: 0.42, tokens: 9, status: "kept", reason: null, side: null };
+    const weighed = { ...kept, pool: "conflicts", kind: "statement", rank: null, score: null, status: "dropped", reason: "no_disagreement", side: "denies" };
+    const turn = { id: "abc", role: "user", created_at: "2026-10-20T09:00:00+00:00", session: 0, pool: "user", status: "kept", reason: null, tokens: 30, share: 0.5 };
+    const outside = { ...turn, id: "old", created_at: "2026-10-01T09:00:00+00:00", session: null, pool: null, status: "dropped", reason: "outside_window", tokens: 0, share: 0.0 };
+    const { fetch, calls } = fakeFetch([
+      {
+        body: {
+          query: "Where did I move to?",
+          text: "[2026-10-20 (Tue) 09:00] user: I moved to Pune.",
+          tokens: 47,
+          budget: 60,
+          history_tokens: 88,
+          sessions_total: 1,
+          sessions_kept: 1,
+          elapsed_ms: 2.5,
+          turns: [{ ...item, score: 0.5, partial: false }],
+          requests: [],
+          preferences: [],
+          conflicts: [],
+          explanation: {
+            mode: "turns",
+            route: "lookup",
+            budget: 60,
+            tokens: 47,
+            history_tokens: 88,
+            room: 60,
+            user_room: 33,
+            user_turn_cap: 30,
+            clipped: false,
+            unattributed_tokens: 0,
+            turns: [
+              { ...outside, candidates: [] },
+              { ...turn, candidates: [kept] },
+            ],
+            sections: [
+              { name: "requests", shown: false, reason: "route", cap: 0, tokens: 0, share: 0.0, candidates: [] },
+              { name: "conflicts", shown: false, reason: "no_disagreement", cap: 12, tokens: 0, share: 0.0, candidates: [weighed] },
+            ],
+          },
+        },
+      },
+    ]);
+    const context = await new LLMSlim({ fetch }).memories.search({
+      userId: "asha",
+      query: "Where did I move to?",
+      budget: 60,
+      since: "2026-10-10",
+      explain: true,
+    });
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      query: "Where did I move to?",
+      budget: 60,
+      since: "2026-10-10",
+      explain: true,
+      user_id: "asha",
+    });
+    const keptCandidate = { turnId: "abc", pool: "user", kind: "turn", part: 0, rank: 1, score: 0.42, tokens: 9, status: "kept", reason: null, side: null };
+    const keptTurn = { id: "abc", role: "user", createdAt: "2026-10-20T09:00:00+00:00", session: 0, pool: "user", status: "kept", reason: null, tokens: 30, share: 0.5 };
+    expect(context.explanation).toEqual({
+      mode: "turns",
+      route: "lookup",
+      budget: 60,
+      tokens: 47,
+      historyTokens: 88,
+      room: 60,
+      userRoom: 33,
+      userTurnCap: 30,
+      clipped: false,
+      unattributedTokens: 0,
+      turns: [
+        { ...keptTurn, id: "old", createdAt: "2026-10-01T09:00:00+00:00", session: null, pool: null, status: "dropped", reason: "outside_window", tokens: 0, share: 0, candidates: [] },
+        { ...keptTurn, candidates: [keptCandidate] },
+      ],
+      sections: [
+        { name: "requests", shown: false, reason: "route", cap: 0, tokens: 0, share: 0, candidates: [] },
+        {
+          name: "conflicts",
+          shown: false,
+          reason: "no_disagreement",
+          cap: 12,
+          tokens: 0,
+          share: 0,
+          candidates: [{ ...keptCandidate, pool: "conflicts", kind: "statement", rank: null, score: null, status: "dropped", reason: "no_disagreement", side: "denies" }],
+        },
+      ],
     });
   });
 

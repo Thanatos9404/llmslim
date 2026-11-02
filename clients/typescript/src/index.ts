@@ -56,6 +56,107 @@ export interface MemoryContext {
   sessionsKept: number;
   elapsedMs: number;
   turns: RecalledTurn[];
+  /** Why each turn and section was kept, cut or left out: only when the search was made with `explain: true`. */
+  explanation?: SearchExplanation;
+}
+
+/** What a search did with a turn, a part of one, or a statement: kept whole, kept in part, or left out. */
+export type ExplainedStatus = "kept" | "clipped" | "dropped";
+
+/** One of the sections shown above the turns: standing requests, preferences, or statements that may conflict. */
+export type ExplainedSectionName = "requests" | "preferences" | "conflicts";
+
+/**
+ * One candidate a search ranked: a stored turn, a part of one, or a statement for a section.
+ *
+ * `pool` is what it competed in: `user` (user turns), `reply` (replies, and system and tool turns), `detail` (reply
+ * passages kept whole in a summary), or a section. `kind` is `turn` (a whole user turn), `window` (a few sentences of
+ * a reply, or a code block or table), `opening` (a turn's opening in a summary) or `statement` (a sentence for a
+ * section).
+ */
+export interface ExplainedCandidate {
+  turnId: string;
+  pool: "user" | "reply" | "detail" | ExplainedSectionName;
+  kind: "turn" | "window" | "opening" | "statement";
+  /** The window's position in its turn, or the statement's among the turn's statements; 0 otherwise. */
+  part: number;
+  /** Its place in its pool, 1 first; `null` when nothing was ranked. */
+  rank: number | null;
+  /** The relevance it was ranked by, comparable within its pool only; `null` when nothing was ranked. */
+  score: number | null;
+  /** Its own size, without its label or bullet. */
+  tokens: number;
+  status: ExplainedStatus;
+  /** Why it was clipped or dropped, such as `over_budget` or `duplicate`; `null` when it was kept whole. */
+  reason: string | null;
+  /** `denies` or `affirms` for a statement the conflicts section weighed; `null` otherwise. */
+  side: "denies" | "affirms" | null;
+}
+
+/** What a search did with one stored turn of its scope. */
+export interface ExplainedTurn {
+  id: string;
+  role: Role;
+  createdAt: string;
+  /** The index of the turn's session among the sessions read, oldest first; `null` outside the time window. */
+  session: number | null;
+  /** `null` when the whole history fit, or the turn was outside the time window. */
+  pool: "user" | "reply" | null;
+  status: ExplainedStatus;
+  /** Why it was clipped or dropped, such as `outside_window` or `over_budget`; `null` when it was kept whole. */
+  reason: string | null;
+  /** What its block takes in the context's `text`, with the line break after it. */
+  tokens: number;
+  /** `tokens` over the budget; 0 for a dropped turn. */
+  share: number;
+  /** For a user turn, the turn; for a reply, each of its windows. */
+  candidates: ExplainedCandidate[];
+}
+
+/** What a search did with one of the sections shown above the turns. */
+export interface ExplainedSection {
+  name: ExplainedSectionName;
+  /** Whether it is in the context's `text`. */
+  shown: boolean;
+  /** Why it is not shown, such as `route` or `history_fits`; `null` when it is. */
+  reason: string | null;
+  /** The most of the budget its statements may take; 0 when it was not built. */
+  cap: number;
+  /** What it takes in the context's `text`, with its header and the blank line after it. */
+  tokens: number;
+  /** `tokens` over the budget. */
+  share: number;
+  /** The statements it weighed, best first. */
+  candidates: ExplainedCandidate[];
+}
+
+/**
+ * Why a search returned what it did: `explanation` on a search made with `explain: true`, as the server's
+ * `SearchExplanation.to_dict()` gives it, with camelCase names. It names turns by id and never repeats their text.
+ */
+export interface SearchExplanation {
+  /** `whole_history` (it fit, so nothing was selected), `turns` (ranked by relevance) or `digest` (a summary). */
+  mode: "whole_history" | "turns" | "digest";
+  /** The kind of question; `null` when the whole history fit. */
+  route: "lookup" | "advice" | "overview" | "other" | null;
+  budget: number;
+  /** What the context's `text` takes. */
+  tokens: number;
+  historyTokens: number;
+  /** What the sections left of the budget for turns. */
+  room: number;
+  /** The part of `room` reserved for user turns; `null` when it did not apply. */
+  userRoom: number | null;
+  /** The most one user turn may take whole; `null` when it did not apply. */
+  userTurnCap: number | null;
+  /** True when the context was cut to whole words as a last resort. */
+  clipped: boolean;
+  /** `tokens` less what the turns and sections take: 0 with tiktoken, a few either way with the estimate. */
+  unattributedTokens: number;
+  /** Every stored turn of the scope, oldest first, turns outside the time window included. */
+  turns: ExplainedTurn[];
+  /** The `requests`, `preferences` and `conflicts` sections. */
+  sections: ExplainedSection[];
 }
 
 export interface MemoryPage {
@@ -127,6 +228,57 @@ function itemFromWire(item: Wire): MemoryItem {
     agentId: (item.agent_id as string | null) ?? null,
     runId: (item.run_id as string | null) ?? null,
     metadata: (item.metadata as Record<string, unknown>) ?? {},
+  };
+}
+
+function candidateFromWire(candidate: Wire): ExplainedCandidate {
+  return {
+    turnId: candidate.turn_id as string,
+    pool: candidate.pool as ExplainedCandidate["pool"],
+    kind: candidate.kind as ExplainedCandidate["kind"],
+    part: candidate.part as number,
+    rank: (candidate.rank as number | null) ?? null,
+    score: (candidate.score as number | null) ?? null,
+    tokens: candidate.tokens as number,
+    status: candidate.status as ExplainedStatus,
+    reason: (candidate.reason as string | null) ?? null,
+    side: (candidate.side as ExplainedCandidate["side"]) ?? null,
+  };
+}
+
+function explanationFromWire(explanation: Wire): SearchExplanation {
+  return {
+    mode: explanation.mode as SearchExplanation["mode"],
+    route: (explanation.route as SearchExplanation["route"]) ?? null,
+    budget: explanation.budget as number,
+    tokens: explanation.tokens as number,
+    historyTokens: explanation.history_tokens as number,
+    room: explanation.room as number,
+    userRoom: (explanation.user_room as number | null) ?? null,
+    userTurnCap: (explanation.user_turn_cap as number | null) ?? null,
+    clipped: explanation.clipped as boolean,
+    unattributedTokens: explanation.unattributed_tokens as number,
+    turns: (explanation.turns as Wire[]).map((turn) => ({
+      id: turn.id as string,
+      role: turn.role as Role,
+      createdAt: turn.created_at as string,
+      session: (turn.session as number | null) ?? null,
+      pool: (turn.pool as ExplainedTurn["pool"]) ?? null,
+      status: turn.status as ExplainedStatus,
+      reason: (turn.reason as string | null) ?? null,
+      tokens: turn.tokens as number,
+      share: turn.share as number,
+      candidates: (turn.candidates as Wire[]).map(candidateFromWire),
+    })),
+    sections: (explanation.sections as Wire[]).map((section) => ({
+      name: section.name as ExplainedSectionName,
+      shown: section.shown as boolean,
+      reason: (section.reason as string | null) ?? null,
+      cap: section.cap as number,
+      tokens: section.tokens as number,
+      share: section.share as number,
+      candidates: (section.candidates as Wire[]).map(candidateFromWire),
+    })),
   };
 }
 
@@ -238,7 +390,10 @@ export class LLMSlim {
       return body.deleted as number;
     },
 
-    /** The stored turns that answer `query`, under their dates and whole where they fit, within `budget` tokens. */
+    /**
+     * The stored turns that answer `query`, under their dates and whole where they fit, within `budget` tokens.
+     * With `explain: true` the context also has `explanation`: why each turn and section was kept, cut or left out.
+     */
     search: async (
       request: Scope & {
         query: string;
@@ -246,6 +401,7 @@ export class LLMSlim {
         relevance?: "lexical" | "semantic";
         since?: string;
         until?: string;
+        explain?: boolean;
       },
     ): Promise<MemoryContext> => {
       const body = await this.request("POST", "/v1/memories/search", {
@@ -255,10 +411,11 @@ export class LLMSlim {
           relevance: request.relevance,
           since: request.since,
           until: request.until,
+          explain: request.explain,
           ...scopeToWire(request),
         },
       });
-      return {
+      const context: MemoryContext = {
         query: body.query as string,
         text: body.text as string,
         tokens: body.tokens as number,
@@ -273,6 +430,8 @@ export class LLMSlim {
           partial: turn.partial as boolean,
         })),
       };
+      if (body.explanation) context.explanation = explanationFromWire(body.explanation as Wire);
+      return context;
     },
   };
 

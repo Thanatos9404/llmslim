@@ -202,7 +202,7 @@ export const CORE_DOCS: DocPage[] = [
         ["`context.fit({ text, budget?, query? })`", "Shrinks long text to the budget, keeping what answers `query`."],
         ["`info()`", "The server's version and budgets."],
       ] } },
-      { id: "explain", title: "Explanations", versions: ONE, content: "The client's `memories.search` doesn't pass `explain` yet. To see [why each turn was kept](doc:explain) from TypeScript, post `\"explain\": true` to `/v1/memories/search` yourself and read `explanation` from the response." },
+      { id: "explain", title: "Explanations", versions: ONE, content: "`memories.search({ ...scope, query, explain: true })` adds `explanation` to the context: [why each turn was kept, cut or left out](doc:explain), as a `SearchExplanation` with the server's fields in camelCase (`historyTokens`, `userRoom`, `turnId` and so on). This is in the client on main, for its next npm release. With `llmslim` 0.2.0 from npm, post `\"explain\": true` to `/v1/memories/search` yourself and read `explanation` from the response." },
     ],
   },
 

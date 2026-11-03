@@ -1,6 +1,12 @@
 import Link from "next/link"
+import { getImageProps } from "next/image"
 import { headers } from "next/headers"
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
+import { GlyphStage } from "@/components/brand/GlyphStage"
+import { LogoMark } from "@/components/brand/LogoMark"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import { Reveal } from "@/components/motion/Reveal"
 import { SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
 import { PageBackdrop } from "@/components/site/PageBackdrop"
@@ -15,6 +21,7 @@ import {
 import { getAuthConfig } from "@/lib/auth/config"
 import { foundingListFeatures } from "@/lib/founding-list/features"
 import { constructMetadata, faqJsonLd, jsonLdScript, orbitPricingJsonLd } from "@/lib/seo"
+import "./pricing.css"
 
 export const metadata = constructMetadata({
   title: "Pricing",
@@ -70,6 +77,38 @@ function priceNote(plan: Plan, currency: Currency, billing: Billing): string {
   return billing === "annual" ? `${tax} · 2 months free` : tax
 }
 
+/** Five squares, one more lit per plan, Free to Enterprise: where a plan sits in the ladder. Decoration only. */
+function TierMeter({ tier }: { tier: number }) {
+  return <span className="pr-tier" aria-hidden="true">{PLANS.map((plan, index) => <i key={plan.id} className={index <= tier ? "is-on" : undefined} />)}</span>
+}
+
+/** A blank pixel for the plate's photo under 980px, where the plate is hidden, so phones never download it. */
+const BLANK_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
+/**
+ * The hero's dark plate: a server-room photo under a veil, the memory glyph playing on it, and the hosted edition's
+ * name under the glyph (both already on the page; the plate is decoration, hidden from assistive technology). Plates
+ * are dark in both themes. Shown from 980px; narrower screens go straight from the heading to the plans.
+ */
+function OrbitPlate() {
+  const { props: photo } = getImageProps({ src: "/media/stock/server-aisle.webp", alt: "", fill: true, loading: "eager", sizes: "460px", style: { objectPosition: "50% 45%" } })
+  return <div className="pr-plate on-dark" aria-hidden="true">
+    <div className="px-photo"><div className="px-photo-media">
+      <picture>
+        <source media="(max-width: 980px)" srcSet={BLANK_PIXEL} />
+        {/* A plain img: next/image cannot sit inside <picture>; getImageProps gives it the same optimized srcset. */}
+        <img {...photo} alt="" />
+      </picture>
+    </div></div>
+    <div className="pr-plate-veil" />
+    <GlyphStage size={132} />
+    <div className="pr-plate-foot">
+      <span className="pr-plate-brand"><LogoMark size={16} />LLMSlim Orbit</span>
+      <span className="pr-plate-status"><i />Opening with LLMSlim 1.0</span>
+    </div>
+  </div>
+}
+
 function CellValue({ value }: { value: Cell }) {
   if (value === true) return <><Check size={16} aria-hidden="true" className="pr-yes" /><span className="sr-only">Included</span></>
   if (value === false) return <><span aria-hidden="true" className="pr-no">–</span><span className="sr-only">Not included</span></>
@@ -95,7 +134,8 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(orbitPricingJsonLd()) }} />
 
     <header className="site-width pr-head">
-      <p className="p-kicker">Pricing</p>
+      <div className="pr-head-copy">
+      <p className="p-kicker g-kicker"><MemoryGlyph size={14} />Pricing</p>
       <h1>Start free. <span>Pay when your agents grow.</span></h1>
       <p className="pr-lede">LLMSlim Core is free and open source, forever. LLMSlim Orbit, the hosted edition we run for you, opens with LLMSlim 1.0. These are its plans at launch: join the founding list, and we will email you when it opens.</p>
       <div className="pr-toggles">
@@ -110,13 +150,19 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
           </Link>)}
         </div>
       </div>
+      </div>
+      <OrbitPlate />
     </header>
 
     <section className="site-width pr-core glow-card" aria-labelledby="core-title">
       <div>
         <p className="pr-eyebrow">Open source · MIT licence</p>
-        <h2 id="core-title">LLMSlim Core <span>Free forever</span></h2>
+        <h2 id="core-title"><LogoMark size={20} className="pr-mark" />LLMSlim Core <span>Free forever</span></h2>
         <p>The Python library, MCP server and HTTP server. Self-host it with no account and no limits on projects, turns or searches.</p>
+        <ul className="pr-chips" aria-label="Products named here">
+          <li><ProductLogo logo="python" size={14} />Python</li>
+          <li><ProductLogo logo="mcp" size={14} />MCP</li>
+        </ul>
       </div>
       <div className="pr-core-actions">
         <code>pip install llmslim</code>
@@ -126,12 +172,13 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
 
     <section className="site-width pr-orbit" aria-labelledby="orbit-title">
       <div className="pr-orbit-head">
-        <h2 id="orbit-title">LLMSlim Orbit</h2>
+        <h2 id="orbit-title"><LogoMark size={24} className="pr-mark" />LLMSlim Orbit</h2>
         <p className="pr-status"><span aria-hidden="true" />Opening with LLMSlim 1.0</p>
       </div>
       <p className="pr-orbit-sub">Hosted memory and remote MCP for your agents, run by us. Prices in {currency === "inr" ? "rupees, including 18% GST" : "US dollars, for customers outside India"}.</p>
       <ul className="pr-plans">
-        {PLANS.map((plan) => <li key={plan.id} className="pr-plan glow-card">
+        {PLANS.map((plan, index) => <li key={plan.id} className={`pr-plan glow-card${plan.featured ? " is-featured" : ""}`}>
+          <TierMeter tier={index} />
           <h3>{plan.name}</h3>
           <p className="pr-summary">{plan.summary}</p>
           <PriceLine plan={plan} currency={currency} billing={billing} />
@@ -146,7 +193,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
           {plan.id === "business" && currency === "inr" && billing === "monthly" && <p className="pr-mandate">Monthly debits above ₹15,000 need your approval each time (RBI e-mandate rules). Annual billing avoids this.</p>}
         </li>)}
       </ul>
-      <p className="pr-fine">{members !== null && <>{members.toLocaleString("en-US")} people are on the founding list. </>}Nothing is charged before Orbit opens. Payments will be processed by Razorpay: UPI, cards and net banking in India, and international cards.</p>
+      <p className="pr-fine">{members !== null && <>{members.toLocaleString("en-US")} people are on the founding list. </>}Nothing is charged before Orbit opens. Payments will be processed by <ProductLogo logo="razorpay" size={13} className="pr-inline-logo" />Razorpay: UPI, cards and net banking in India, and international cards.</p>
     </section>
 
     <section className="site-width pr-offers" aria-labelledby="offers-title">
@@ -158,22 +205,22 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
     </section>
 
     <section className="site-width pr-compare" aria-labelledby="matrix-title">
-      <div className="p-head">
-        <p className="p-kicker">Compare the plans</p>
+      <Reveal className="p-head">
+        <p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Compare the plans</p>
         <h2 id="matrix-title">The plans at launch. <span>Orbit opens with LLMSlim 1.0.</span></h2>
-      </div>
+      </Reveal>
       <div className="pr-matrix-wrap" role="region" aria-labelledby="matrix-title" tabIndex={0}>
         <table className="pr-matrix">
           <thead>
             <tr>
               <th scope="col"><span className="sr-only">Feature</span></th>
-              {PLANS.map((plan) => <th scope="col" key={plan.id}>{plan.name}<span>{plan.prices ? `${formatPrice(plan.prices[currency][billing], currency)} ${plan.prices[currency][billing] > 0 && billing === "annual" ? "a year" : "a month"}` : "Custom"}</span></th>)}
+              {PLANS.map((plan, index) => <th scope="col" key={plan.id} className={plan.featured ? "is-featured" : undefined}><TierMeter tier={index} />{plan.name}<span>{plan.prices ? `${formatPrice(plan.prices[currency][billing], currency)} ${plan.prices[currency][billing] > 0 && billing === "annual" ? "a year" : "a month"}` : "Custom"}</span></th>)}
             </tr>
           </thead>
           <tbody>
             {FEATURE_MATRIX.map((row) => <tr key={row.feature}>
               <th scope="row">{row.feature}{row.note && <span>{row.note}</span>}</th>
-              {row.cells.map((cell, index) => <td key={PLANS[index].id}><CellValue value={cell} /></td>)}
+              {row.cells.map((cell, index) => <td key={PLANS[index].id} className={PLANS[index].featured ? "is-featured" : undefined}><CellValue value={cell} /></td>)}
             </tr>)}
           </tbody>
         </table>
@@ -182,7 +229,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Sear
     </section>
 
     <section className="site-width pr-faq questions-section" aria-labelledby="faq-title">
-      <div><p className="p-kicker">Questions</p><h2 id="faq-title">Before you <span>choose a plan.</span></h2></div>
+      <Reveal><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Questions</p><h2 id="faq-title">Before you <span>choose a plan.</span></h2></Reveal>
       <div className="faq-list">{PRICING_FAQS.map((faq) => <details key={faq.question}>
         <summary>{faq.question}<span className="faq-plus" aria-hidden="true">+</span></summary>
         <p>{faq.answer}{faq.link && <> <Link className="pr-faq-link" href={faq.link.href}>{faq.link.label}</Link></>}</p>

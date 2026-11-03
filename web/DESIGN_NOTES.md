@@ -206,6 +206,29 @@ raster card:
 - Both files are self-contained: no fonts, scripts or external references. They come from a scratch script,
   `cartesia_lockup.py`, which is not committed, and are about 10 KB each.
 
+## Design rollout, phase 2: results and benchmarks (November 2026)
+
+(Placed here, not with the other phase 2 sections at the top, so that the four phase 2 pull requests do not edit the
+same lines of this file.) The pilot's system on `/results` and `/benchmarks`. Every number, caption, axis and note is
+unchanged, including the round 6 BEAM-1M results; the additions are logos beside names already on the page.
+
+- **Logos on every row that names a system.** `SystemMark` (`src/components/results/SystemMark.tsx`) takes the logo
+  from the name (`logoForSystem`): LLMSlim's mark, Mem0's, Zep's, LLMLingua's (for LLMLingua-2 and LongLLMLingua), Qwen's
+  for the Qwen-embedding baseline, and a neutral pixel for baselines such as the full context. It sits on the plates'
+  rulers and the head-to-head board on /results, and on the bars (`ResultBars`) and both tables on /benchmarks. The
+  systems each hero's lede names (Mem0, Zep, LLMLingua-2, LongLLMLingua) also appear as logo chips under it.
+- **Glyph.** The memory glyph replaces the pixel in the kickers: still on /results (its sections are client
+  components that render on load, and SVG animation is main-thread work), playing when revealed on /benchmarks. The
+  close of /results carries it at hero size on a small dark plate, playing when revealed.
+- **Type.** /benchmarks' headline and section headings move to `--fs-h1` and `--fs-h2`, with the Instrument Serif half
+  on its own line (the headline's second half was plain grey before).
+- **Hover and motion.** Board rows, weak-spot cells and table rows tint under the pointer on `--ease-out`; the weak spots
+  and method notes on /benchmarks hang from a spectrum hairline. /benchmarks now imports `Reveal` from its own module
+  rather than through the home page's components.
+- **Where styles live.** /results in its route stylesheet (`story.css`); /benchmarks with the other `bm-*` rules in
+  `globals.css`, scoped to `.bm-page` (it has no route stylesheet, and a new one would be a second render-blocking
+  request).
+
 ## Behavior and scope
 
 - Scroll-linked artwork and pointer response use animation frames and direct CSS transforms without rendering React on every scroll event.

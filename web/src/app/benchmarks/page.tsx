@@ -1,7 +1,11 @@
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import type { ProductLogoKey } from "@/components/brand/product-logos"
 import { ResultBars } from "@/components/benchmarks/ResultBars"
-import { Reveal } from "@/components/landing/Premium"
+import { Reveal } from "@/components/motion/Reveal"
+import { SystemMark } from "@/components/results/SystemMark"
 import { StatsBand, type Stat } from "@/components/landing/Visuals"
 import { BENCHMARK_SUITES } from "@/data/benchmarks"
 import { AGENT_FINDINGS, CORE_VERSION_LONG_DOCS, CORE_VERSION_MEMORY, CORE_VERSION_TESTED, HEAD_TO_HEAD, LIVE_DATE, LIVE_SUITES, LONG_DOC_SUITES, METHOD_NOTES, VAULT_VERSION_TESTED, PUBLISHED, ROUND3_REPORT, ROUND6_DATE, ROUND6_REPORT, ROUND6_SUITE, ROUND6_WEAK_SPOTS, WEAK_SPOTS, type LiveSuite } from "@/data/live-benchmarks"
@@ -28,6 +32,9 @@ const stats: Stat[] = [
     meter: { before: { name: "LongLLMLingua", value: 1.32, display: "$1.32" }, after: { name: "LLMSlim", value: 0.33, display: "$0.33" }, max: 1.32 } },
 ]
 
+/** The other systems the lede names, in its order, with their logos (nominative: they identify the product). */
+const RIVALS: [string, ProductLogoKey][] = [["Mem0", "mem0"], ["Zep", "zep"], ["LLMLingua-2", "llmlingua"], ["LongLLMLingua", "llmlingua"]]
+
 function Suite({ suite }: { suite: LiveSuite }) {
   return <article id={suite.id} className="bm-suite">
     <Reveal className="bm-suite-copy">
@@ -50,9 +57,12 @@ function Suite({ suite }: { suite: LiveSuite }) {
 export default function BenchmarksPage() {
   return <div className="bm-page">
     <header className="bm-hero">
-      <p className="p-kicker">Benchmarks · {LIVE_DATE}</p>
+      <p className="p-kicker g-kicker"><MemoryGlyph size={14} />Benchmarks · {LIVE_DATE}</p>
       <h1>Measured on public benchmarks. <span>Every number published.</span></h1>
       <p className="bm-lede">LLMSlim against Mem0, Zep, LLMLingua-2, LongLLMLingua, RAG and the full context, on held-out test questions. Every system is read by the same model with the same prompt, and every table shows what 1,000 questions cost end to end.</p>
+      <ul className="bm-chips" aria-label="Systems named here">
+        {RIVALS.map(([name, logo]) => <li key={name}><ProductLogo logo={logo} size={14} />{name}</li>)}
+      </ul>
       <p className="bm-story-link"><Link className="text-link" href="/results">Prefer the guided version? See the results as a story <ArrowUpRight size={14} /></Link></p>
       <p className="bm-versions">Agent memory on Core {CORE_VERSION_MEMORY} · LLMSlim Core {CORE_VERSION_TESTED} · long documents and agents on Core {CORE_VERSION_LONG_DOCS} · LLMSlim Vault {VAULT_VERSION_TESTED} · round-3 report, harness and raw results in the <a href={ROUND3_REPORT} target="_blank" rel="noreferrer">public repository <ArrowUpRight size={13} /></a></p>
     </header>
@@ -60,7 +70,7 @@ export default function BenchmarksPage() {
     <section className="bm-band" aria-label="Headline results"><StatsBand stats={stats} /></section>
 
     <section className="bm-section" aria-labelledby="round6-title">
-      <Reveal className="p-head"><p className="p-kicker">Round 6 · BEAM-1M · Core {CORE_VERSION_MEMORY} · {ROUND6_DATE}</p><h2 id="round6-title">Million-token agent memory. <span>Held out, run once.</span></h2>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Round 6 · BEAM-1M · Core {CORE_VERSION_MEMORY} · {ROUND6_DATE}</p><h2 id="round6-title">Million-token agent memory. <span>Held out, run once.</span></h2>
         <p className="p-body">LLMSlim against Mem0 and Zep on BEAM&apos;s 1M tier. Every system is read by Claude Haiku 5.5 with BEAM&apos;s answer prompt, three times per question, and scored by BEAM&apos;s rubric judge. Costs are per 1,000 questions at list prices with BEAM&apos;s 20 questions per conversation, including Mem0&apos;s and Zep&apos;s memory building and every system&apos;s compute.</p></Reveal>
     </section>
     <section className="bm-suites" aria-label="Round 6 results">
@@ -70,7 +80,7 @@ export default function BenchmarksPage() {
     <p className="bm-story-link"><a className="text-link" href={ROUND6_REPORT} target="_blank" rel="noreferrer">Round 6 report: every table, the weak spots and the limitations <ArrowUpRight size={14} /></a></p>
 
     <section className="bm-section" aria-labelledby="round3-title">
-      <Reveal className="p-head"><p className="p-kicker">Round 3 · Core {CORE_VERSION_TESTED} · 15 Oct 2026</p><h2 id="round3-title">Memory systems and compressors. <span>Cost first.</span></h2>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Round 3 · Core {CORE_VERSION_TESTED} · 15 Oct 2026</p><h2 id="round3-title">Memory systems and compressors. <span>Cost first.</span></h2>
         <p className="p-body">The question is not only how many answers a context gets right, but what each right answer costs. Costs are per 1,000 questions at list prices, including building Mem0&apos;s and Zep&apos;s memory and every system&apos;s compute.</p></Reveal>
     </section>
     <section className="bm-suites" aria-label="Round 3 results by benchmark">
@@ -78,12 +88,12 @@ export default function BenchmarksPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="h2h-title">
-      <Reveal className="p-head"><p className="p-kicker">Head to head</p><h2 id="h2h-title">The LLMLingua family, same reader. <span>Same questions, same budget.</span></h2>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Head to head</p><h2 id="h2h-title">The LLMLingua family, same reader. <span>Same questions, same budget.</span></h2>
         <p className="p-body">We ran the best-known open-source prompt compressors ourselves, with their published settings, on the questions they were pre-registered for.</p></Reveal>
       <div className="bm-table-wrap"><table className="bm-table bm-h2h">
         <thead><tr><th scope="col">Compressor</th><th scope="col">Model it runs</th><th scope="col">{HEAD_TO_HEAD.columns[0]}</th><th scope="col">{HEAD_TO_HEAD.columns[1]}</th><th scope="col">{HEAD_TO_HEAD.columns[2]}</th><th scope="col">Cost per 1k</th><th scope="col">Time per question</th></tr></thead>
         <tbody>{HEAD_TO_HEAD.rows.map((row) => <tr key={row.system}>
-          <th scope="row" className={row.best ? "is-best" : undefined}>{row.system}</th><td>{row.model}</td>
+          <th scope="row" className={row.best ? "is-best" : undefined}><span className="bm-sys"><SystemMark name={row.system} size={16} />{row.system}</span></th><td>{row.model}</td>
           <td className={`num${row.best ? " is-best" : ""}`}>{row.scoreA}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreB}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreC}</td>
           <td className="num">{row.cost}</td><td>{row.time}</td>
         </tr>)}</tbody>
@@ -94,12 +104,12 @@ export default function BenchmarksPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="loses-title">
-      <Reveal className="p-head"><p className="p-kicker">Weak spots</p><h2 id="loses-title">Where LLMSlim loses. <span>Published with the rest.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Weak spots</p><h2 id="loses-title">Where LLMSlim loses. <span>Published with the rest.</span></h2></Reveal>
       <ol className="p-notes">{[...ROUND6_WEAK_SPOTS, ...WEAK_SPOTS].map((spot, index) => <li key={spot.title}><span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><p><strong>{spot.title}.</strong> {spot.body}</p></li>)}</ol>
     </section>
 
     <section className="bm-section" aria-labelledby="docs-title">
-      <Reveal className="p-head"><p className="p-kicker">Long documents · Core {CORE_VERSION_LONG_DOCS} · 12 Oct 2026</p><h2 id="docs-title">Long documents. <span>Against full context and truncation.</span></h2>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Long documents · Core {CORE_VERSION_LONG_DOCS} · 12 Oct 2026</p><h2 id="docs-title">Long documents. <span>Against full context and truncation.</span></h2>
         <p className="p-body">From the previous round, with fresh questions run once after the code was frozen. 0.9.0 changes only how chat transcripts are selected. Costs here are the answer call alone.</p></Reveal>
     </section>
     <section className="bm-suites" aria-label="Long-document results">
@@ -107,7 +117,7 @@ export default function BenchmarksPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="agents-title">
-      <Reveal className="p-head"><p className="p-kicker">Agents · Core {CORE_VERSION_LONG_DOCS}</p><h2 id="agents-title">Where compression does not help. <span>Yet.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Agents · Core {CORE_VERSION_LONG_DOCS}</p><h2 id="agents-title">Where compression does not help. <span>Yet.</span></h2></Reveal>
       {AGENT_FINDINGS.map((finding) => <div key={finding.name} className="bm-agent">
         <div className="bm-agent-copy"><h3>{finding.name}</h3><p>{finding.what}</p><p className="bm-takeaway">{finding.takeaway}</p></div>
         <dl className="bm-rows">{finding.rows.map((row) => <div key={row.arm}><dt>{row.arm}</dt><dd><strong>{row.result}</strong><span>{row.detail}</span></dd></div>)}</dl>
@@ -115,19 +125,19 @@ export default function BenchmarksPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="others-title">
-      <Reveal className="p-head"><p className="p-kicker">Other systems</p><h2 id="others-title">Their own published results. <span>With their readers.</span></h2>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Other systems</p><h2 id="others-title">Their own published results. <span>With their readers.</span></h2>
         <p className="p-body">These numbers come from each project&apos;s paper or a third-party re-run, with different reader models. Compare each system&apos;s gap to its own full-context baseline, not raw scores across models.</p></Reveal>
       <div className="bm-table-wrap"><table className="bm-table">
         <thead><tr><th scope="col">System</th><th scope="col">Benchmark</th><th scope="col">Reader</th><th scope="col">Score</th><th scope="col">Full context</th><th scope="col">Tokens</th><th scope="col">Source</th></tr></thead>
         <tbody>{PUBLISHED.map((row) => <tr key={`${row.system}-${row.benchmark}`}>
-          <th scope="row">{row.system}</th><td>{row.benchmark}</td><td>{row.reader}</td><td>{row.score}</td><td>{row.fullContext}</td><td>{row.tokens}</td>
+          <th scope="row"><span className="bm-sys"><SystemMark name={row.system} size={16} />{row.system}</span></th><td>{row.benchmark}</td><td>{row.reader}</td><td>{row.score}</td><td>{row.fullContext}</td><td>{row.tokens}</td>
           <td><a href={row.url} target="_blank" rel="noreferrer">{row.source} <ArrowUpRight size={12} /></a></td>
         </tr>)}</tbody>
       </table></div>
     </section>
 
     <section className="bm-section bm-method" aria-labelledby="method-title">
-      <Reveal className="p-head"><p className="p-kicker">How we measured</p><h2 id="method-title">Same model. Same questions. <span>Only the context changes.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />How we measured</p><h2 id="method-title">Same model. Same questions. <span>Only the context changes.</span></h2></Reveal>
       <ol className="p-notes">{METHOD_NOTES.map((note, index) => <li key={note}><span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><p>{note}</p></li>)}</ol>
       <p className="bm-story-link"><a className="text-link" href={`${siteConfig.github}/tree/main/benchmarks/live/round3`} target="_blank" rel="noreferrer">How the numbers were kept honest, and everything that went wrong <ArrowUpRight size={14} /></a></p>
     </section>

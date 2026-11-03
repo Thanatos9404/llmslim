@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { preload } from "react-dom"
 import { ArrowLeft, ArrowRight, Link2, Plus } from "lucide-react"
 import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
 import { Inline, plainText } from "@/components/docs/DocInline"
@@ -11,6 +12,10 @@ import { breadcrumbJsonLd, faqJsonLd, isoDate, jsonLdScript, techArticleJsonLd }
 
 /** One guide in one version: notice, header, sections, questions, related guides and the pager. */
 export function DocArticle({ doc, version }: { doc: DocPage; version: DocsVersion }) {
+  // The title's and subtitle's faces, requested with the stylesheet instead of after it: a late swap re-wrapped the
+  // header and moved the first section on phones (CLS 0.029, already on main before this pass).
+  preload("/fonts/geist-latin.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
+  preload("/fonts/InstrumentSerif-Italic.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
   const path = docHref(version, doc.slug)
   const home = docsHome(version)
   const status = versionStatus(version)

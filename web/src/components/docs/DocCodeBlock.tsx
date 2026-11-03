@@ -1,12 +1,12 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy, SquareTerminal } from "lucide-react"
-import { ProductLogo } from "@/components/brand/ProductLogo"
+import { DocLogo } from "@/components/docs/DocLogo"
 
 /** The language's mark in the window's bar: Python's and TypeScript's logos, a terminal for shell, else the pixel. */
 export function CodeMark({ language }: { language: string }) {
-  if (language === "python") return <ProductLogo logo="python" size={13} className="doc-code-mark" />
-  if (language === "typescript" || language === "ts") return <ProductLogo logo="typescript" size={12} className="doc-code-mark" />
+  if (language === "python") return <DocLogo logo="python" size={13} className="doc-code-mark" />
+  if (language === "typescript" || language === "ts") return <DocLogo logo="typescript" size={12} className="doc-code-mark" />
   if (language === "bash" || language === "shell" || language === "sh") return <SquareTerminal size={13} className="doc-code-mark doc-code-term" aria-hidden="true" />
   return <span className="doc-code-pixel" aria-hidden="true" />
 }

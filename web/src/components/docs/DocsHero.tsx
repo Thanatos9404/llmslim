@@ -2,8 +2,6 @@
 import { m, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react"
 import { Check, Copy } from "lucide-react"
-import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
-import { CodeMark } from "@/components/docs/DocCodeBlock"
 import { PixelField } from "@/components/results/PixelField"
 
 const INSTALL = "pip install llmslim"
@@ -37,7 +35,7 @@ export function DocsHero({ kicker = "Documentation" }: { kicker?: string }) {
   return <section ref={ref} className="docs-hero" aria-labelledby="docs-title">
     <m.div className="docs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField gap={9} /></m.div>
     <div className="docs-hero-copy">
-      <p className="docs-kicker has-glyph rise" {...rise(0)}><MemoryGlyph size={14} />{kicker}</p>
+      <p className="docs-kicker rise" {...rise(0)}>{kicker}</p>
       <h1 id="docs-title" className="rise" {...rise(0.06)}>Start in one line. <em>Go as deep as you need.</em></h1>
       <p className="docs-lede rise" {...rise(0.12)}>Short guides for agent memory with no LLM in the loop, from Python, MCP, HTTP and TypeScript, and for fitting chat, retrieval and tool output into a real token budget.</p>
       <button type="button" className="docs-install rise" onClick={() => copy("install")} {...rise(0.18)} aria-label="Copy the install command">
@@ -47,7 +45,7 @@ export function DocsHero({ kicker = "Documentation" }: { kicker?: string }) {
     </div>
     <figure className="docs-quick rise" onPointerMove={spot} {...rise(0.24)}>
       <figcaption className="doc-code-bar">
-        <span className="doc-code-name"><CodeMark language="python" />quickstart.py</span>
+        <span className="doc-code-name"><span className="doc-code-pixel" aria-hidden="true" />quickstart.py</span>
         <span className="doc-code-lang">python</span>
         <button type="button" className="doc-code-copy" onClick={() => copy("quick")} aria-label="Copy the example">{copied === "quick" ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</button>
       </figcaption>

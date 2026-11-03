@@ -170,14 +170,28 @@ raster card:
 same lines of this file.) A light touch on `/docs` and its guides, in both versions (1.0 and 0.12): no photos, not a
 word changes, and the version switch keeps its links and behaviour. Styles are at the end of `src/app/docs/docs.css`.
 
-- **Glyph.** The memory glyph replaces the pixel in the docs hero's kicker and leads each guide's breadcrumb, still.
-- **Type.** Guide titles use `--fs-h2` (36 to 60px); the hero's serif half sits on its own line.
+- **Glyph.** The memory glyph leads each guide's breadcrumb, still. The docs hero is left as it was: with the glyph in
+  its kicker and the Python mark in its code window, the overview lost 11 phone points (80 to 69, TBT 160 to 520 ms)
+  in two interleaved measurements, and with both taken out it was back at par. Which of the two costs it (the hero
+  rises in with a blur filter, and both sit inside it) was not pinned down.
+- **Type.** Guide titles use `--fs-h2` (36 to 60px). The hero's headline keeps its serif half inline: on its own line
+  it stopped being the largest element, the code window (which rises in later) became the LCP, and desktop LCP grew
+  by 0.4 s.
 - **Code windows.** In the docs, the bar shows the language's mark in place of the pixel: Python's and TypeScript's
   logos (Simple Icons, new in `public/logos`), a terminal for shell, the pixel for the rest. This is a `mark` prop on
   `DocCodeBlock`, off by default, so the compare, integration and article pages keep the pixel. The window's edge takes
   the brand under the pointer, and the copy button presses in on the spring curve.
-- **Navigation.** The current guide in the sidebar is a brand-tinted pill (it still slides between guides) instead of a
-  one-sided bar; the current version in the switch carries the brand pixel. Colour changes run on `--ease-out`.
+- **Logos on the overview.** The path cards carry the Python, MCP and TypeScript marks beside those names; the framework
+  and comparison rows carry the product's logo (Hermes Agent publishes none, so its row has a pixel). The docs draw
+  logos with `DocLogo` (a CSS mask, or a plain `img` for multi-colour files) rather than `ProductLogo`, which keeps
+  next/image out of the docs' client code; a 12 to 15px self-hosted logo needs no responsive sizes. The overview's
+  lists below the fold are `content-visibility:auto`, so their logo masks are not fetched before the first paint (they
+  had pushed the desktop LCP from about 0.85 to 1.25 s).
+- **Fonts.** Guide pages preload Geist and Instrument Serif italic: a late swap re-wrapped the header and moved the
+  first section on phones (CLS 0.029, already on `main`; now 0).
+- **Navigation.** The current guide (or the overview) in the sidebar is a brand-tinted pill (it still slides between
+  guides) instead of a one-sided bar; the current version in the switch carries the brand pixel. Colour changes run on
+  `--ease-out`.
 - **Hover.** The overview's path cards lift and their arrows step on the spring curve; the pager lifts; the questions'
   plus turns on it. Phones get no hover lift.
 

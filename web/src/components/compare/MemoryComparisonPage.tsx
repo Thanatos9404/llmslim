@@ -11,7 +11,7 @@ import { DiffPlot, NumberCell, Reading, ScoreCell, SystemName, differenceDomain 
 import { DocCodeBlock } from "@/components/docs/DocCodeBlock"
 import { Inline } from "@/components/docs/DocInline"
 import { DEFAULT_DOCS_VERSION } from "@/data/docs-versions"
-import { LLMSLIM_PRICES_TITLE, PRICES_CHECKED, llmslimPriceRows, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
+import { LLMSLIM_PRICES_TITLE, PRICES_CHECKED, llmslimPriceRows, roundLabel, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
 import { breadcrumbJsonLd, constructMetadata, faqJsonLd, isoDate, jsonLdScript, techArticleJsonLd } from "@/lib/seo"
 
 /**
@@ -42,6 +42,8 @@ export function memoryComparisonMetadata(page: MemoryComparison) {
 }
 
 const text = (value: string) => <Inline text={value} version={DEFAULT_DOCS_VERSION} />
+
+const ACCURACY = "Accuracy (95% CI)"
 
 function PriceTable({ caption, rows, logo }: { caption: string; rows: PriceRow[]; logo: ProductLogoKey | "llmslim" }) {
   return <div className="bm-table-wrap"><table className="bm-table cmp-prices">
@@ -102,14 +104,16 @@ export function MemoryComparisonPage({ page }: { page: MemoryComparison }) {
 
     {page.benchmarks.map((block) => {
       const domain = differenceDomain(block.pairedDiffs.map((row) => row.difference))
-      return <section key={block.id} id={block.id} className="bm-section" aria-labelledby={`${block.id}-title`}>
-        <SectionHead kicker={`Head to head · ${block.kicker}`} id={`${block.id}-title`} heading={block.heading}>
+      const weakDomain = block.weakSpots && differenceDomain(block.weakSpots.rows.map((row) => row.difference))
+      return <section key={block.id} id={block.id} className={`bm-section cmp-round is-${block.status}`} aria-labelledby={`${block.id}-title`}>
+        <SectionHead kicker={`${roundLabel(block)} · ${block.kicker}`} id={`${block.id}-title`} heading={block.heading}>
+          {block.context && <p className="cmp-round-context">{block.context}</p>}
           <p className="p-body">{block.intro}</p>
         </SectionHead>
         {block.tables.map((table) => <div key={table.title} className="cmp-result">
           <h3 className="cmp-subhead">{table.title}</h3>
           <MotionTable className="bm-table-wrap"><table className="bm-table bm-h2h cmp-results">
-            <thead><tr><th scope="col">System</th><th scope="col">Context tokens</th><th scope="col">Accuracy (95% CI)</th><th scope="col">Cost per 1k questions</th></tr></thead>
+            <thead><tr><th scope="col">System</th><th scope="col">Context tokens</th><th scope="col">{table.scoreLabel ?? ACCURACY}</th><th scope="col">Cost per 1k questions</th></tr></thead>
             <tbody>{table.rows.map((row, index) => <Fragment key={`${row.system}-${row.tokens}`}>
               {row.budget && row.budget !== table.rows[index - 1]?.budget && <tr className="cmp-budget"><th scope="rowgroup" colSpan={4}>{row.budget}</th></tr>}
               <tr className={`is-${row.kind}`}>
@@ -133,6 +137,19 @@ export function MemoryComparisonPage({ page }: { page: MemoryComparison }) {
           </tr>)}</tbody>
         </table></MotionTable>
         <p className="bm-note">{block.pairedNote} <span className="cmp-axis-note">Each plot runs from −{domain} to +{domain} points, with zero in the middle.</span></p>
+
+        {block.weakSpots && weakDomain && <>
+          <h3 className="cmp-subhead">{block.weakSpots.title}</h3>
+          <MotionTable className="bm-table-wrap"><table className="bm-table cmp-diffs">
+            <thead><tr><th scope="col">{block.weakSpots.columns[0]}</th><th scope="col">{block.weakSpots.columns[1]}</th><th scope="col">Difference (95% CI)</th><th scope="col">Reading</th></tr></thead>
+            <tbody>{block.weakSpots.rows.map((row) => <tr key={`${row.comparison}-${row.benchmark}`}>
+              <th scope="row">{row.comparison}</th><td>{row.benchmark}</td>
+              <td className="cmp-diff"><span className="cmp-diff-text">{row.difference}</span><DiffPlot difference={row.difference} domain={weakDomain} reading={row.reading} /></td>
+              <td><Reading reading={row.reading} /></td>
+            </tr>)}</tbody>
+          </table></MotionTable>
+          <p className="bm-note">{block.weakSpots.note} <span className="cmp-axis-note">Each plot runs from −{weakDomain} to +{weakDomain} points, with zero in the middle.</span></p>
+        </>}
 
         <h3 className="cmp-subhead">What this does not show</h3>
         <dl className="cmp-caveats">{block.caveats.map((caveat) => <div key={caveat.title}><dt>{caveat.title}</dt><dd>{caveat.body}</dd></div>)}</dl>

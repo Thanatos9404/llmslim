@@ -2,11 +2,14 @@
  * Comparison pages for memory systems (/compare/mem0, /compare/zep). The page and its Markdown twin
  * (/compare/<slug>.md, llms-full.txt) both render from this data.
  *
- * Benchmark numbers come only from what is public on main: round 3 (benchmarks/live/round3/RESULTS.md, LLMSlim Core
- * 0.9.0, 13-15 Oct 2026), as on /benchmarks and in the README, and the evidence measurements in docs/roadmap/1.0.md.
- * Paired differences are the RESULTS.md tables' own, turned round to read "LLMSlim minus the other system". Wording
- * as on the LLMLingua page: "level" whenever the 95% interval includes zero; costs are per 1,000 questions end to
- * end. Each round is one entry in `benchmarks`, so a later round is one more block.
+ * Benchmark numbers come only from what is public on main: round 6 (benchmarks/live/round6, LLMSlim 0.12 on BEAM-1M,
+ * 24-27 Oct 2026, published as results only; the numbers are in src/data/round6-memory.ts, checked against its
+ * summary.json by a unit test), round 3 (benchmarks/live/round3/RESULTS.md, LLMSlim Core 0.9.0, 13-15 Oct 2026), as
+ * on /benchmarks and in the README, and the evidence measurements in docs/roadmap/1.0.md. Paired differences are the
+ * reports' own, reading "LLMSlim minus the other system". Wording as on the LLMLingua page: "level" whenever the 95%
+ * interval includes zero; on round 6, "on par with Mem0" and "ahead of Zep" (on its 30 conversations), as the round 6
+ * report words them, never "beats Mem0". Costs are per 1,000 questions end to end. Each round is one entry in
+ * `benchmarks`, the latest first, so a later round is one more block.
  *
  * Competitor facts come from their own documentation and pricing pages, read on PRICES_CHECKED; the URLs are in
  * each page's sources. Nothing here describes another product beyond what its own pages say.
@@ -19,6 +22,10 @@ import {
   ZEP_IMPORT_COMMAND, ZEP_IMPORT_OUTPUT, ZEP_SAMPLE, type CodeSample,
 } from "@/data/migration-snippets"
 import { PLANS, formatPrice } from "@/data/pricing"
+import {
+  QUESTION_TYPES, ROUND6_ARMS, ROUND6_BELOW_ZEP, ROUND6_COST_MULTIPLES, ROUND6_DATES, ROUND6_DIFFS, ROUND6_FIGURES, ROUND6_REPORT, ROUND6_SUMMARY,
+  ROUND6_WEAK_SPOTS_VS_MEM0, behind, budgetOf, diffText, range, readingOf, scoreText, signed, tokens, usd, type Round6Arm, type Round6Diff,
+} from "@/data/round6-memory"
 
 /** When the competitors' pricing pages and docs were read. */
 export const PRICES_CHECKED = "2 November 2026"
@@ -39,23 +46,42 @@ export type ResultRow = {
   budget?: string
 }
 
-export type ResultTable = { title: string; rows: ResultRow[]; note: string }
+export type ResultTable = {
+  title: string
+  rows: ResultRow[]
+  note: string
+  /** The score column's heading, when the score is not an accuracy ("Accuracy (95% CI)"). */
+  scoreLabel?: string
+}
 
 /** A paired difference on the same questions: LLMSlim minus the other system, with its 95% interval. */
 export type PairedDiff = { comparison: string; benchmark: string; difference: string; reading: "Level" | "Ahead" | "Behind" }
 
-/** One benchmark round. A later round is one more of these. */
+/** Question types where LLMSlim trails, as paired differences; `columns` name the first two columns. */
+export type WeakSpots = { title: string; columns: [string, string]; rows: PairedDiff[]; note: string }
+
+/** One benchmark round. A later round is one more of these, first in the list. */
 export type BenchmarkBlock = {
   id: string
+  /** The newest round leads as the latest results; earlier rounds follow it, labelled as earlier. */
+  status: "latest" | "earlier"
   kicker: string
   heading: [string, string]
   intro: string
+  /** For an earlier round: one line that places it against the latest. */
+  context?: string
   tables: ResultTable[]
   pairedDiffs: PairedDiff[]
   pairedNote: string
+  weakSpots?: WeakSpots
   caveats: { title: string; body: string }[]
   links: { label: string; url: string }[]
+  /** What the Markdown twin calls the links; "Sources and reruns" when absent. A results-only round has no reruns. */
+  linksLabel?: string
 }
+
+/** The page and its Markdown twin label a round by its status: the latest leads, earlier rounds say so. */
+export const roundLabel = (block: Pick<BenchmarkBlock, "status">) => (block.status === "latest" ? "Latest results" : "Earlier round")
 
 export type PriceRow = { plan: string; price: string; includes: string }
 
@@ -129,6 +155,46 @@ const MEASURED_ON_09 = {
   body: "Round 3 measured LLMSlim selecting from whole sessions with compress_documents. Since 0.12.0, Memory.search reads a history turn by turn. On 230 LoCoMo development questions, counting the questions whose labelled evidence is all in the context (no reader in the loop), the 0.12 read path kept all of it for 75.7% of questions at 2,500 tokens, against 85.7% for the path benchmarked here. Fixes on main raise that to 80.0%; the rest of the gap is open, and is listed in the 1.0 roadmap's known quality issues.",
 }
 
+// ------------------------------------------------------------------ Round 6, shared by both pages
+
+const R6 = ROUND6_ARMS
+const D6 = ROUND6_DIFFS
+const F6 = ROUND6_FIGURES
+const ROUND6_KICKER = `Round 6 · LLMSlim 0.12 · ${ROUND6_DATES}`
+const ROUND6_SCORE = "Score out of 100 (95% CI)"
+const BUDGET_2500 = "2,500-token budget"
+const BUDGET_10000 = "10,000-token budget"
+
+const row6 = (system: string, arm: Round6Arm, kind: ResultRow["kind"], budget: string): ResultRow =>
+  ({ budget, system, tokens: tokens(arm.tokens), score: scoreText(arm), cost: usd(arm.cost), kind })
+const diff6 = (diff: Round6Diff, comparison: string, benchmark: string): PairedDiff =>
+  ({ comparison, benchmark, difference: diffText(diff), reading: readingOf(diff) })
+const typeName = (diff: Round6Diff) => QUESTION_TYPES[diff.type ?? ""] ?? diff.type ?? ""
+/** "summarization by 8.9 points at 2,500 tokens (95% CI −13.1 to −4.7)" reads from these parts. */
+const trails = (diff: Round6Diff) => `${behind(diff.mean)} points at ${budgetOf(diff.key)} (95% CI ${range(diff.low, diff.high)})`
+
+const [SUMMARIZATION_2500, SUMMARIZATION_10000, MULTI_SESSION_10000, EXTRACTION_2500, EXTRACTION_10000] = ROUND6_WEAK_SPOTS_VS_MEM0
+
+/** The round's weak spots against Mem0, in one sentence, for the short answers. */
+const ROUND6_LOSSES = `summarization trails by ${trails(SUMMARIZATION_2500)} and ${behind(SUMMARIZATION_10000.mean)} at 10,000 (${range(SUMMARIZATION_10000.low, SUMMARIZATION_10000.high)}), and multi-session reasoning by ${trails(MULTI_SESSION_10000)}. Information extraction is ${behind(EXTRACTION_2500.mean)} and ${behind(EXTRACTION_10000.mean)} points behind, within noise`
+
+const ROUND6_INTRO_COMMON = `LLMSlim was developed on BEAM's smaller tiers only, none of this data was opened while it was tuned, and every system was read and judged once. Claude Haiku 5.5 read every context with BEAM's answer prompt, three times per question, and BEAM's rubric judge, also on Haiku 5.5, scored each read: the score is the mean rubric score out of 100. Costs are per 1,000 questions at list prices, with BEAM's 20 questions per conversation`
+
+const ROUND6_CAVEATS = {
+  resultsOnly: { title: "Published as results only", body: "The round 6 report and its summary.json hold every aggregate number. The protocol, the harness and the per-question answers are not published with this round." },
+  oneReader: { title: "One reader and one judge", body: `Every answer is Claude Haiku 5.5's, and the judge is Haiku 5.5 too. A stronger reader could change both the scores and the gaps. Before any test answer was judged, the judge scored ${F6.judgeWrongAnswers.value} deliberately wrong answers at ${F6.judgeWrongMean.value.toFixed(1)} points on average, under the bar of ${F6.judgeBar.value}, but it is one model.` },
+  reranker: { title: "With the reranker, not the default mode", body: "LLMSlim ran with its optional reranker (relevance=\"semantic\"), a 22M-parameter cross-encoder on the CPU, and made no LLM call when storing or searching. The default lexical mode, with no model, was not scored in this round." },
+  commit: { title: "0.12.0 is not byte for byte the benchmarked commit", body: "\"LLMSlim 0.12\" is commit 16a2708, which became 0.12.0 after hardening. In the hardening's parity checks 0.12.0 returned the same bytes on 14,377 of 14,377 English test rows, but the 1,400 round-6 contexts were not rebuilt with 0.12.0: evidence of equivalence on English text, not a rerun." },
+  oneBenchmark: { title: "One benchmark", body: "BEAM-1M is synthetic, long, English chat between a user and an assistant. Other histories (shorter, multilingual, multi-party, tool-heavy) may rank the systems differently." },
+}
+
+const ROUND6_LINKS = [
+  { label: "Round 6 report and tables", url: ROUND6_REPORT },
+  { label: "Round 6 numbers (summary.json)", url: ROUND6_SUMMARY },
+]
+
+const ROUND6_REPRODUCE = "Round 6 is published as results only: its report and summary.json in benchmarks/live/round6 hold every aggregate number, and the protocol, the harness and the per-question answers are not published with it."
+
 // ------------------------------------------------------------------ Mem0
 
 export const MEM0_COMPARISON: MemoryComparison = {
@@ -138,17 +204,20 @@ export const MEM0_COMPARISON: MemoryComparison = {
   description: "LLMSlim vs Mem0: verbatim memory with no LLM calls on write, LoCoMo and LongMemEval results with cost and 95% intervals, both pricing pages, and a tested Mem0 migration.",
   kicker: "Comparison · Mem0 alternative",
   heading: ["LLMSlim vs Mem0.", "An honest comparison."],
-  lede: "Mem0 is a memory layer for AI agents: by default an LLM reads what you add and stores the facts it extracts. LLMSlim Core is an MIT-licensed Python library that stores every turn word for word and, when you search, returns the turns that answer the question within a token budget, with no LLM call on either side. Here is how they differ, what two public benchmarks show, what each costs, and how to bring your Mem0 memories across.",
-  lastUpdated: "November 2, 2026",
-  meta: ["Updated November 2, 2026", "Results: LLMSlim Core 0.9, round 3", "Reader: Claude Haiku 5.5", `Prices checked ${PRICES_CHECKED}`],
+  lede: "Mem0 is a memory layer for AI agents: by default an LLM reads what you add and stores the facts it extracts. LLMSlim Core is an MIT-licensed Python library that stores every turn word for word and, when you search, returns the turns that answer the question within a token budget, with no LLM call on either side. Here is how they differ, what three public benchmarks show, what each costs, and how to bring your Mem0 memories across.",
+  lastUpdated: "November 3, 2026",
+  meta: ["Updated November 3, 2026", "Latest results: LLMSlim 0.12, round 6 (BEAM-1M)", "Earlier: LLMSlim Core 0.9, round 3", "Reader: Claude Haiku 5.5", `Prices checked ${PRICES_CHECKED}`],
   disclosure: "We build LLMSlim. We are not affiliated with Mem0. We ran Mem0's open-source library (mem0ai 2.2.1) ourselves, through Mem0's own benchmark harness; Mem0's hosted Platform was not benchmarked. Mem0 did not run, review or endorse this comparison.",
   shortAnswer: [
     "Mem0 extracts facts with an LLM when you add memories; LLMSlim stores the turns themselves and selects from them when you search, with no model call on either side. Both are open source (Mem0 under Apache-2.0, LLMSlim under MIT) and both run on your own machines. Mem0 also runs as a hosted Platform today; LLMSlim's hosted edition, Orbit, opens with LLMSlim 1.0.",
-    "Level on accuracy on LoCoMo. At about 2,500 tokens, read by Claude Haiku 5.5, LLMSlim Core 0.9 answered 91.7% with no model and 93.0% with its optional 22M-parameter reranker, against 91.0% for Mem0's top 50 memories. The default LLMSlim and Mem0 are level (+0.8 points, 95% CI −0.9 to +2.5); at about 10,000 tokens LLMSlim is ahead (94.3% against 91.6%, +2.7, 95% CI +1.2 to +4.1).",
-    "About a third of the cost: $0.89 to $0.95 per 1,000 LoCoMo questions end to end, against $2.66 for Mem0, most of it the model calls that build Mem0's memory.",
-    "On Mem0's own 60 LongMemEval questions, LLMSlim with its reranker answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0's top 200 memories: each question has its own 500-message history, so Mem0 builds a memory for each. On 60 questions the 95% intervals are about ±10 points.",
-    "Where Mem0 is better: at about 1,000 tokens it is clearly ahead on LoCoMo's multi-hop (88.7% against 80.3%) and temporal (93.4% against 85.7%) questions, where its extracted facts pack evidence from many sessions into few tokens. Overall at that budget the default LLMSlim and Mem0 are within noise (87.5% and 88.7%); with its reranker LLMSlim scored 90.5%.",
-    "These results are for LLMSlim Core 0.9.0 selecting from whole sessions. The Memory API of 0.12 reads a history differently, and on two-person conversations it keeps less of the evidence than the version benchmarked here; see what this does not show.",
+    `On par with Mem0 in round 6, the latest results: on BEAM-1M, ${F6.questions.value} held-out questions about ${F6.conversations.value} conversations of about 946,000 tokens each, read by Claude Haiku 5.5, LLMSlim 0.12 with its reranker scored ${R6.all.llmslim2500.score.toFixed(1)} out of 100 against ${R6.all.mem0Top50.score.toFixed(1)} for Mem0's top 50 memories at 2,500 tokens (${signed(D6.M2500.mean)} points, 95% CI ${range(D6.M2500.low, D6.M2500.high)}), and ${R6.all.llmslim10000.score.toFixed(1)} against ${R6.all.mem0Top200.score.toFixed(1)} for Mem0's top 200 at 10,000 (${signed(D6.M10000.mean)}, ${range(D6.M10000.low, D6.M10000.high)}). Neither difference is significant, so we do not claim to beat Mem0.`,
+    `${usd(R6.all.llmslim2500.cost)} and ${usd(R6.all.llmslim10000.cost)} per 1,000 BEAM-1M questions at list prices, against ${usd(R6.all.mem0Top50.cost)} and ${usd(R6.all.mem0Top200.cost)} for Mem0: ${ROUND6_COST_MULTIPLES.at2500} and ${ROUND6_COST_MULTIPLES.at10000} cheaper, because Mem0 makes an LLM call for every exchange it stores and LLMSlim makes none. The ratios assume BEAM's 20 questions per conversation; with more, the gap narrows.`,
+    `Where LLMSlim loses on BEAM-1M: against Mem0, ${ROUND6_LOSSES}.`,
+    "In round 3, an earlier round on LoCoMo and LongMemEval-S: level on accuracy on LoCoMo. At about 2,500 tokens, read by Claude Haiku 5.5, LLMSlim Core 0.9 answered 91.7% with no model and 93.0% with its optional 22M-parameter reranker, against 91.0% for Mem0's top 50 memories. The default LLMSlim and Mem0 are level (+0.8 points, 95% CI −0.9 to +2.5); at about 10,000 tokens LLMSlim is ahead (94.3% against 91.6%, +2.7, 95% CI +1.2 to +4.1).",
+    "In round 3, about a third of the cost: $0.89 to $0.95 per 1,000 LoCoMo questions end to end, against $2.66 for Mem0, most of it the model calls that build Mem0's memory.",
+    "In round 3, on Mem0's own 60 LongMemEval questions, LLMSlim with its reranker answered 78.3% for $1.04 per 1,000 questions, against 76.7% for $220.88 for Mem0's top 200 memories: each question has its own 500-message history, so Mem0 builds a memory for each. On 60 questions the 95% intervals are about ±10 points.",
+    "Where Mem0 is better in round 3: at about 1,000 tokens it is clearly ahead on LoCoMo's multi-hop (88.7% against 80.3%) and temporal (93.4% against 85.7%) questions, where its extracted facts pack evidence from many sessions into few tokens. Overall at that budget the default LLMSlim and Mem0 are within noise (87.5% and 88.7%); with its reranker LLMSlim scored 90.5%.",
+    "The round-3 results are for LLMSlim Core 0.9.0 selecting from whole sessions. The Memory API of 0.12 reads a history differently, and on two-person conversations it keeps less of the evidence than the version benchmarked in round 3; see what round 3 does not show.",
   ],
   glance: [
     { aspect: "What it stores", llmslim: "Every turn, word for word, under its date and scope", rival: "Facts an LLM extracts from what you add (infer=True, the default); with infer=False, the messages as given" },
@@ -186,8 +255,53 @@ export const MEM0_COMPARISON: MemoryComparison = {
   ],
   benchmarks: [
     {
+      id: "round6",
+      status: "latest",
+      kicker: ROUND6_KICKER,
+      heading: ["BEAM-1M, held out.", "On par with Mem0, at a fraction of the cost."],
+      intro: `BEAM's 1M tier: ${F6.conversations.value} conversations of about 946,000 tokens each between a user and an assistant, and ${F6.questions.value} questions of 10 types about them. ${ROUND6_INTRO_COMMON}: the answer call, Mem0's memory-building calls, and each system's compute. Mem0 OSS 2.2.1 stored every exchange through its own pipeline, with extraction on; LLMSlim 0.12 ran with its reranker.`,
+      tables: [
+        {
+          title: `BEAM-1M: ${F6.questions.value} held-out questions on ${F6.conversations.value} conversations of about 946,000 tokens`,
+          scoreLabel: ROUND6_SCORE,
+          rows: [
+            row6("LLMSlim 0.12 + reranker", R6.all.llmslim2500, "llmslim", BUDGET_2500),
+            row6("Mem0, top 50 memories", R6.all.mem0Top50, "rival", BUDGET_2500),
+            row6("LLMSlim 0.12 + reranker", R6.all.llmslim10000, "llmslim", BUDGET_10000),
+            row6("Mem0, top 200 memories", R6.all.mem0Top200, "rival", BUDGET_10000),
+          ],
+          note: `BEAM's rubric score out of 100, each question read three times and each read judged, with the 95% t interval over the ${F6.conversations.value} conversations. Mem0's top 50 and top 200 memories are its pairs for the two budgets; they came to ${tokens(R6.all.mem0Top50.tokens)} and ${tokens(R6.all.mem0Top200.tokens)} tokens on average, more than LLMSlim's. Per 1,000 questions at list prices, Mem0 costs ${ROUND6_COST_MULTIPLES.at2500} LLMSlim's total at 2,500 tokens and ${ROUND6_COST_MULTIPLES.at10000} at 10,000. Most of Mem0's cost is the extraction calls that build its memory (${usd(F6.mem0MemoryBuilding.value)} per 1,000 questions), which it pays once per stored exchange whatever is asked later. No history fits in the reader's 1M-token window, so there is no whole-history row.`,
+        },
+      ],
+      pairedDiffs: [
+        diff6(D6.M2500, "LLMSlim 0.12 + reranker vs Mem0, top 50 memories", `BEAM-1M, 2,500 tokens (${F6.questions.value})`),
+        diff6(D6.M10000, "LLMSlim 0.12 + reranker vs Mem0, top 200 memories", `BEAM-1M, 10,000 tokens (${F6.questions.value})`),
+      ],
+      pairedNote: `Paired differences in points, LLMSlim 0.12 with its reranker minus Mem0 at the same budget, on the same questions, with the 95% t interval over the ${F6.conversations.value} conversations in brackets; the paired cluster bootstrap gives ${range(D6.M2500.bootstrapLow, D6.M2500.bootstrapHigh)} and ${range(D6.M10000.bootstrapLow, D6.M10000.bootstrapHigh)}. Both intervals include zero, so LLMSlim and Mem0 are on par at both budgets: neither difference is significant, and we do not claim to beat Mem0.`,
+      weakSpots: {
+        title: "Where LLMSlim trails Mem0, by question type",
+        columns: ["Question type", "Budget (questions)"],
+        rows: ROUND6_WEAK_SPOTS_VS_MEM0.map((diff) => diff6(diff, typeName(diff), `${budgetOf(diff.key)} (70)`)),
+        note: `LLMSlim 0.12 minus Mem0 at the same budget, per question type on all ${F6.conversations.value} conversations, with 95% t intervals, which are descriptive and not adjusted for multiple comparisons. These are every type more than 3 points behind, as the round 6 report lists them: summarization at both budgets and multi-session reasoning at 10,000 tokens are behind; information extraction is behind within noise. No type is more than 10 points behind.`,
+      },
+      caveats: [
+        ROUND6_CAVEATS.resultsOnly,
+        { title: "Mem0's open-source library, set up as the report describes", body: "Mem0 OSS 2.2.1 with extraction on (infer=True, Mem0's default): every exchange added in order, with Claude Haiku 5.5 as its LLM, Qwen3-Embedding-0.6B as its embedder and embedded Qdrant with BM25. One search per question (top_k=200, Mem0's default threshold, no reranker); the reader got the top 50 or top 200 memories with their dates, in the format of Mem0's own BEAM harness. Its LLM calls went through one metering proxy that recorded every call. Mem0's hosted Platform was not benchmarked." },
+        ROUND6_CAVEATS.oneReader,
+        ROUND6_CAVEATS.reranker,
+        { title: "The cost gap depends on questions per conversation", body: `The ratios assume BEAM's 20 questions per conversation. Mem0's cost is mostly the one-time extraction of each stored exchange, so with more questions per conversation the gap gets smaller: at 2,500 tokens, storing one conversation and asking 20 questions costs ${usd(F6.mem0PerConversation20.value, 3)} on Mem0 against ${usd(F6.llmslimPerConversation20.value, 3)} on LLMSlim, and asking 100 costs ${usd(F6.mem0PerConversation100.value, 3)} against ${usd(F6.llmslimPerConversation100.value, 3)}.` },
+        { title: "Cost details that favour Mem0, and one that burdens it", body: `Mem0's extraction calls are priced as they ran, with the prompt cache the metering proxy put on its long system prompt; without that cache they cost more, so this favours Mem0. Compute is priced on the device each store was built on: Mem0's embedder ran on the benchmark laptop's GPU for some conversations and on its CPU for others, where they did not fit in the GPU's memory, and CPU embedding takes much longer, so part of Mem0's ${usd(F6.mem0Compute.value)} of compute per 1,000 questions comes from that. Its extraction calls (${usd(F6.mem0MemoryBuilding.value)}) are most of its cost either way.` },
+        ROUND6_CAVEATS.commit,
+        ROUND6_CAVEATS.oneBenchmark,
+      ],
+      links: ROUND6_LINKS,
+      linksLabel: "Sources",
+    },
+    {
       id: "round3",
+      status: "earlier",
       kicker: "Round 3 · LLMSlim Core 0.9.0 · 13–15 Oct 2026",
+      context: "The earlier round, on different benchmarks: round 3 measured LLMSlim Core 0.9.0 against Mem0 on LoCoMo and LongMemEval-S. The latest results, round 6 on BEAM-1M, are above.",
       heading: ["Two memory benchmarks, one reader.", "Same questions, same budget."],
       intro: "Mem0's open-source library ran through Mem0's own benchmark harness on LoCoMo and LongMemEval-S, and LLMSlim selected from the same histories at the same token budgets. Claude Haiku 5.5 read every context with Mem0's own answer prompt; Mem0's judge scored LoCoMo and the official judge LongMemEval. Costs are per 1,000 questions end to end at list prices: the answer call, Mem0's memory-building calls, and each system's compute.",
       tables: [
@@ -313,12 +427,12 @@ export const MEM0_COMPARISON: MemoryComparison = {
     guide: { label: "The full migration guide", href: "/docs/migrate-from-mem0" },
   },
   faqs: [
-    ["Is LLMSlim better than Mem0?", "Not across the board. In round 3, read by Claude Haiku 5.5, the default LLMSlim and Mem0 were level on LoCoMo at about 1,000 and 2,500 tokens, LLMSlim was ahead at 10,000 (+2.7 points, 95% CI +1.2 to +4.1), and they were level on Mem0's own LongMemEval sample. LLMSlim cost about a third as much on LoCoMo and 212 times less on Mem0's LongMemEval questions, because it makes no model calls to build memory. Mem0 was clearly better on multi-hop and temporal questions at about 1,000 tokens. These results are for LLMSlim Core 0.9.0; the 0.12 Memory API keeps less of the evidence on two-person conversations, a gap that is still open."],
+    ["Is LLMSlim better than Mem0?", `Not across the board. In round 6, the latest results, LLMSlim 0.12 with its reranker was on par with Mem0 on BEAM-1M's conversations of about 946,000 tokens: ${signed(D6.M2500.mean)} points at 2,500 tokens and ${signed(D6.M10000.mean)} at 10,000, and both 95% intervals include zero, so we do not claim to beat Mem0. It cost ${usd(R6.all.llmslim2500.cost)} and ${usd(R6.all.llmslim10000.cost)} per 1,000 questions against ${usd(R6.all.mem0Top50.cost)} and ${usd(R6.all.mem0Top200.cost)}, and it trails Mem0 on summarization at both budgets and on multi-session reasoning at 10,000 tokens. ` + "In round 3, read by Claude Haiku 5.5, the default LLMSlim and Mem0 were level on LoCoMo at about 1,000 and 2,500 tokens, LLMSlim was ahead at 10,000 (+2.7 points, 95% CI +1.2 to +4.1), and they were level on Mem0's own LongMemEval sample. LLMSlim cost about a third as much on LoCoMo and 212 times less on Mem0's LongMemEval questions, because it makes no model calls to build memory. Mem0 was clearly better on multi-hop and temporal questions at about 1,000 tokens. The round-3 results are for LLMSlim Core 0.9.0; the 0.12 Memory API keeps less of the evidence on two-person conversations, a gap that is still open."],
     ["Can I keep my Mem0 code?", "Mostly. from llmslim.memory.compat import Mem0Memory as Memory keeps the method names, keyword arguments and return shapes of Mem0 2.x's open-source Memory class. The differences fail loudly: filters other than user_id, agent_id and run_id raise, reset raises, and infer, prompt and memory_type are accepted and ignored. It doesn't cover Mem0's hosted MemoryClient."],
     ["How do I move my existing Mem0 memories?", "Export them with get_all as JSON lines, then run llmslim import mem0 (LLMSlim 1.0, or main from GitHub today), or a short Memory.add loop on 0.12.0. Each memory becomes one user turn under its own user_id, agent_id and run_id, at its original time. The steps and their real output are above and in the migration guide."],
     ["Does LLMSlim call an LLM?", "No. Storing and searching run no LLM. By default no model runs at all; relevance=\"semantic\" adds a 22M-parameter cross-encoder that runs on your CPU."],
     ["Is LLMSlim affiliated with Mem0?", "No. LLMSlim is an independent MIT-licensed project from AMEYOR. We ran Mem0's open-source library through Mem0's own benchmark harness; Mem0 did not run, review or endorse the comparison."],
-    ["Can I reproduce the numbers?", "Yes. The splits, the scripts that ran Mem0 (mem0_locomo.py and mem0_lme.py) and every answer and judgement are in benchmarks/live/round3 in the public repository. All of round 3, every system and benchmark, cost $107.10 in Claude API calls."],
+    ["Can I reproduce the numbers?", `Round 3's, yes. The splits, the scripts that ran Mem0 (mem0_locomo.py and mem0_lme.py) and every answer and judgement are in benchmarks/live/round3 in the public repository. All of round 3, every system and benchmark, cost $107.10 in Claude API calls. ${ROUND6_REPRODUCE}`],
   ],
   sources: [
     { label: `Mem0 pricing (read ${PRICES_CHECKED})`, url: "https://mem0.ai/pricing" },
@@ -331,6 +445,7 @@ export const MEM0_COMPARISON: MemoryComparison = {
     { label: "mem0ai/mem0 on GitHub (Apache-2.0)", url: "https://github.com/mem0ai/mem0" },
     { label: "Mem0's benchmark harness", url: "https://github.com/mem0ai/memory-benchmarks" },
     { label: "Third-party Mem0 re-run (MemOS paper)", url: "https://arxiv.org/abs/2507.03724" },
+    ...ROUND6_LINKS,
     { label: "Round 3 report and tables", url: ROUND3_REPORT },
     { label: "How round 3 was run, and where Mem0's run differs", url: ROUND3 },
     { label: "Known memory quality issues (1.0 roadmap)", url: ROADMAP_ISSUES },
@@ -347,16 +462,19 @@ export const ZEP_COMPARISON: MemoryComparison = {
   description: "LLMSlim vs Zep: verbatim turns with no LLM calls on write against a temporal context graph, LoCoMo and LongMemEval results with cost and 95% intervals, pricing, and a migration path.",
   kicker: "Comparison · Zep alternative",
   heading: ["LLMSlim vs Zep.", "An honest comparison."],
-  lede: "Zep is a context layer for agents: an LLM turns the messages and data you send into a temporal graph of entities and facts, and agents retrieve from that graph. LLMSlim Core is an MIT-licensed Python library that stores every turn word for word and, when you search, returns the turns that answer the question within a token budget, with no LLM call on either side. Here is how they differ, what two public benchmarks show, what each costs, and how to bring your Zep threads across.",
-  lastUpdated: "November 2, 2026",
-  meta: ["Updated November 2, 2026", "Results: LLMSlim Core 0.9, round 3", "Reader: Claude Haiku 5.5", `Prices checked ${PRICES_CHECKED}`],
+  lede: "Zep is a context layer for agents: an LLM turns the messages and data you send into a temporal graph of entities and facts, and agents retrieve from that graph. LLMSlim Core is an MIT-licensed Python library that stores every turn word for word and, when you search, returns the turns that answer the question within a token budget, with no LLM call on either side. Here is how they differ, what three public benchmarks show, what each costs, and how to bring your Zep threads across.",
+  lastUpdated: "November 3, 2026",
+  meta: ["Updated November 3, 2026", "Latest results: LLMSlim 0.12, round 6 (BEAM-1M)", "Earlier: LLMSlim Core 0.9, round 3", "Reader: Claude Haiku 5.5", `Prices checked ${PRICES_CHECKED}`],
   disclosure: "We build LLMSlim. We are not affiliated with Zep. Zep Cloud is a hosted service; we benchmarked Graphiti 0.30.2, the open-source framework Zep is built on, on Neo4j, through Zep's own benchmark harness. Zep did not run, review or endorse this comparison.",
   shortAnswer: [
     "Zep builds a temporal graph: an LLM extracts entities and facts from each message, dates them, and resolves them against what the graph already holds. LLMSlim keeps the messages and selects from them when you ask. Zep is a hosted service, with Graphiti as its open-source framework; LLMSlim Core is a library you run, and its hosted edition, Orbit, opens with LLMSlim 1.0.",
-    "On LoCoMo at about 2,500 tokens, read by Claude Haiku 5.5, Graphiti on Neo4j answered 74.4%, against 91.7% for LLMSlim Core 0.9 with no model (+17.3 points, 95% CI +14.8 to +19.7) and 93.0% with its optional 22M-parameter reranker. Per 1,000 questions end to end, that cost $6.24 for Graphiti, against $0.89 and $0.95 for LLMSlim.",
-    "On the 24 LongMemEval questions pre-registered for Zep, Graphiti answered 58.3% for $697.56 per 1,000 questions, against 87.5% for $0.94 for LLMSlim (+29.2 points, 95% CI +12.5 to +45.8). Building a graph of each 500-message history costs about $0.70 a question. 24 questions is a small sample: the intervals are about ±17 points.",
-    "Our Graphiti results are far below Zep's own published LongMemEval result (71.2% with GPT-4o, in the Zep paper), and we ran Graphiti with Claude Haiku 5.5 rather than Zep Cloud. Read them as one setup, not a verdict on Zep Cloud.",
-    "These results are for LLMSlim Core 0.9.0 selecting from whole sessions. The Memory API of 0.12 reads a history differently, and on two-person conversations it keeps less of the evidence than the version benchmarked here; see what this does not show.",
+    `Ahead of Zep in round 6, the latest results: on BEAM-1M, on ${F6.zepConversations.value} of its ${F6.conversations.value} conversations of about 946,000 tokens each (${F6.zepQuestions.value} held-out questions), read by Claude Haiku 5.5, LLMSlim 0.12 with its reranker scored ${R6.zep.llmslim2500.score.toFixed(1)} out of 100 at 2,500 tokens and ${R6.zep.llmslim10000.score.toFixed(1)} at 10,000, against ${R6.zep.zep.score.toFixed(1)} for Graphiti 0.30.2 on Neo4j: ${signed(D6.Z2500.mean)} points (95% CI ${range(D6.Z2500.low, D6.Z2500.high)}) and ${signed(D6.Z10000.mean)} (${range(D6.Z10000.low, D6.Z10000.high)}). Zep ran on those ${F6.zepConversations.value} conversations to cap its cost, so the comparison is on them only.`,
+    `${usd(R6.zep.llmslim2500.cost)} and ${usd(R6.zep.llmslim10000.cost)} per 1,000 of those questions at list prices, against ${usd(R6.zep.zep.cost)} for Zep, ${usd(F6.zepMemoryBuilding.value)} of it the LLM calls that build its graph. LLMSlim makes no LLM call when storing or searching.`,
+    `Where LLMSlim loses in round 6: against Zep, no question type is more than 3 points behind; against Mem0, on all ${F6.conversations.value} conversations, ${ROUND6_LOSSES}.`,
+    "In round 3, an earlier round on LoCoMo and LongMemEval-S: on LoCoMo at about 2,500 tokens, read by Claude Haiku 5.5, Graphiti on Neo4j answered 74.4%, against 91.7% for LLMSlim Core 0.9 with no model (+17.3 points, 95% CI +14.8 to +19.7) and 93.0% with its optional 22M-parameter reranker. Per 1,000 questions end to end, that cost $6.24 for Graphiti, against $0.89 and $0.95 for LLMSlim.",
+    "In round 3, on the 24 LongMemEval questions pre-registered for Zep, Graphiti answered 58.3% for $697.56 per 1,000 questions, against 87.5% for $0.94 for LLMSlim (+29.2 points, 95% CI +12.5 to +45.8). Building a graph of each 500-message history costs about $0.70 a question. 24 questions is a small sample: the intervals are about ±17 points.",
+    "Our round-3 Graphiti results are far below Zep's own published LongMemEval result (71.2% with GPT-4o, in the Zep paper), and in both rounds we ran Graphiti with Claude Haiku 5.5 rather than Zep Cloud. Read them as one setup, not a verdict on Zep Cloud.",
+    "The round-3 results are for LLMSlim Core 0.9.0 selecting from whole sessions. The Memory API of 0.12 reads a history differently, and on two-person conversations it keeps less of the evidence than the version benchmarked in round 3; see what round 3 does not show.",
   ],
   glance: [
     { aspect: "What it stores", llmslim: "Every turn, word for word, under its date and scope", rival: "Each message as an episode, which stays retrievable, and the entities and facts an LLM extracts from it, in a temporal graph" },
@@ -394,8 +512,57 @@ export const ZEP_COMPARISON: MemoryComparison = {
   ],
   benchmarks: [
     {
+      id: "round6",
+      status: "latest",
+      kicker: ROUND6_KICKER,
+      heading: ["BEAM-1M, held out.", "Ahead of Zep, on its 30 conversations."],
+      intro: `BEAM's 1M tier: conversations of about 946,000 tokens each between a user and an assistant, with 20 questions of 10 types about each. To cap its cost, Zep ran on ${F6.zepConversations.value} of the ${F6.conversations.value} conversations, drawn with a fixed seed before any result, so every comparison here is on those ${F6.zepConversations.value} and their ${F6.zepQuestions.value} questions. ${ROUND6_INTRO_COMMON}: the answer call, Mem0's and Zep's memory-building calls, and each system's compute. Graphiti 0.30.2 on Neo4j stored every exchange through its own pipeline; LLMSlim 0.12 ran with its reranker.`,
+      tables: [
+        {
+          title: `BEAM-1M on Zep's ${F6.zepConversations.value} conversations: ${F6.zepQuestions.value} held-out questions`,
+          scoreLabel: ROUND6_SCORE,
+          rows: [
+            row6("LLMSlim 0.12 + reranker", R6.zep.llmslim2500, "llmslim", BUDGET_2500),
+            row6("Mem0, top 50 memories", R6.zep.mem0Top50, "other", BUDGET_2500),
+            row6("LLMSlim 0.12 + reranker", R6.zep.llmslim10000, "llmslim", BUDGET_10000),
+            row6("Mem0, top 200 memories", R6.zep.mem0Top200, "other", BUDGET_10000),
+            row6("Zep (Graphiti 0.30.2 on Neo4j)", R6.zep.zep, "rival", "Zep: 20 facts and 20 entities"),
+          ],
+          note: `BEAM's rubric score out of 100, each question read three times and each read judged, with the 95% t interval over Zep's ${F6.zepConversations.value} conversations. Zep's 20 facts and 20 entities, in Zep's LongMemEval context template, came to ${tokens(R6.zep.zep.tokens)} tokens on average. Most of Zep's cost is the LLM calls that build its graph: ${usd(F6.zepMemoryBuilding.value)} of its ${usd(R6.zep.zep.cost)} per 1,000 questions at list prices. On these ${F6.zepConversations.value} conversations LLMSlim at 10,000 tokens is level with Mem0's top 200 (${signed(F6.llmslimVsMem0OnZep10000.value)}); the on-par reading against Mem0 is on all ${F6.conversations.value} conversations.`,
+        },
+      ],
+      pairedDiffs: [
+        diff6(D6.Z2500, "LLMSlim 0.12 + reranker, 2,500 tokens, vs Zep", `BEAM-1M, Zep's ${F6.zepConversations.value} conversations (${F6.zepQuestions.value})`),
+        diff6(D6.Z10000, "LLMSlim 0.12 + reranker, 10,000 tokens, vs Zep", `BEAM-1M, Zep's ${F6.zepConversations.value} conversations (${F6.zepQuestions.value})`),
+      ],
+      pairedNote: `Paired differences in points, LLMSlim 0.12 with its reranker minus Zep, on the same ${F6.zepQuestions.value} questions, with the 95% t interval over Zep's ${F6.zepConversations.value} conversations in brackets; the paired cluster bootstrap gives ${range(D6.Z2500.bootstrapLow, D6.Z2500.bootstrapHigh)} and ${range(D6.Z10000.bootstrapLow, D6.Z10000.bootstrapHigh)}. Both intervals are above zero, so LLMSlim is ahead of Zep at both budgets, on Zep's ${F6.zepConversations.value} conversations only.`,
+      weakSpots: {
+        title: "Where LLMSlim trails, by question type",
+        columns: ["Question type, against", "Budget, conversations (questions)"],
+        rows: [
+          ...ROUND6_BELOW_ZEP.map((diff) => diff6(diff, `${typeName(diff)}, vs Zep`, `${budgetOf(diff.key)}, Zep's ${F6.zepConversations.value} (60)`)),
+          ...ROUND6_WEAK_SPOTS_VS_MEM0.map((diff) => diff6(diff, `${typeName(diff)}, vs Mem0 ${diff.key === "M2500" ? "top 50" : "top 200"}`, `${budgetOf(diff.key)}, all ${F6.conversations.value} (70)`)),
+        ],
+        note: `LLMSlim 0.12 minus the other system per question type, with 95% t intervals, which are descriptive and not adjusted for multiple comparisons. Against Zep no type is more than 3 points behind at either budget; temporal reasoning at 2,500 tokens is the only type below Zep, within noise. The round's weak spots are against Mem0, on all ${F6.conversations.value} conversations: every type more than 3 points behind, as the round 6 report lists them. Summarization at both budgets and multi-session reasoning at 10,000 tokens are behind; information extraction is behind within noise.`,
+      },
+      caveats: [
+        ROUND6_CAVEATS.resultsOnly,
+        { title: "Graphiti, set up as the report describes", body: "Graphiti 0.30.2 on Neo4j, one exchange per episode, with Claude Haiku 5.5 as its LLM, Qwen3-Embedding-0.6B as its embedder and BAAI/bge-reranker-v2-m3. Search returned 20 facts and 20 entities in Zep's LongMemEval context template. Its LLM calls went through one metering proxy that recorded every call. Zep Cloud, the hosted service, was not benchmarked." },
+        { title: "Zep on a seeded 30", body: `Zep ran on ${F6.zepConversations.value} of the ${F6.conversations.value} conversations, drawn with a fixed seed before any result, to cap its cost. Its comparisons are on those ${F6.zepConversations.value} only, and so is every number in the table above.` },
+        ROUND6_CAVEATS.oneReader,
+        ROUND6_CAVEATS.reranker,
+        { title: "The cost gap depends on questions per conversation", body: `The cost figures assume BEAM's 20 questions per conversation. Most of Zep's cost is the one-time work of building its graph, so with more questions per conversation the gap gets smaller: at 2,500 tokens, storing one conversation and asking 20 questions costs ${usd(F6.zepPerConversation20.value, 3)} on Zep against ${usd(F6.llmslimOnZepPerConversation20.value, 3)} on LLMSlim, and asking 100 costs ${usd(F6.zepPerConversation100.value, 3)} against ${usd(F6.llmslimOnZepPerConversation100.value, 3)}.` },
+        ROUND6_CAVEATS.commit,
+        ROUND6_CAVEATS.oneBenchmark,
+      ],
+      links: ROUND6_LINKS,
+      linksLabel: "Sources",
+    },
+    {
       id: "round3",
+      status: "earlier",
       kicker: "Round 3 · LLMSlim Core 0.9.0 · 13–15 Oct 2026",
+      context: "The earlier round, on different benchmarks: round 3 measured LLMSlim Core 0.9.0 against Graphiti on LoCoMo and LongMemEval-S. The latest results, round 6 on BEAM-1M, are above.",
       heading: ["Two memory benchmarks, one reader.", "Same questions, similar budgets."],
       intro: "Graphiti ran through Zep's own benchmark harness: each LoCoMo message an episode, each LongMemEval session an episode, and 20 facts and 20 entities in Zep's own context template. LLMSlim selected from the same histories at about the same number of tokens. Claude Haiku 5.5 read every context with Mem0's answer prompt; Mem0's judge scored LoCoMo and the official judge LongMemEval. Costs are per 1,000 questions end to end at list prices, including the calls that build Graphiti's graph.",
       tables: [
@@ -512,12 +679,12 @@ export const ZEP_COMPARISON: MemoryComparison = {
     guide: { label: "Import your chat history (1.0 docs)", href: "/docs/1.0/import-history" },
   },
   faqs: [
-    ["Is LLMSlim better than Zep?", "In the setup we ran, LLMSlim was ahead: on LoCoMo, 91.7% with no model against 74.4% for Graphiti (+17.3 points, 95% CI +14.8 to +19.7), and on Zep's 24 LongMemEval questions 87.5% against 58.3%. But we ran Graphiti, not Zep Cloud, with Claude Haiku 5.5 as every model, and Zep's own paper reports 71.2% on LongMemEval-S with GPT-4o. Zep also does things LLMSlim doesn't: graphs shared across users and sources, fact invalidation, and compliance options. These results are for LLMSlim Core 0.9.0; the 0.12 Memory API keeps less of the evidence on two-person conversations, a gap that is still open."],
+    ["Is LLMSlim better than Zep?", `In the setups we ran, LLMSlim was ahead. In round 6, the latest results, on Zep's ${F6.zepConversations.value} BEAM-1M conversations, LLMSlim 0.12 with its reranker was ahead of Zep (Graphiti 0.30.2) by ${D6.Z2500.mean.toFixed(1)} points at 2,500 tokens (95% CI ${range(D6.Z2500.low, D6.Z2500.high)}) and ${D6.Z10000.mean.toFixed(1)} at 10,000 (${range(D6.Z10000.low, D6.Z10000.high)}). ` + "In round 3: on LoCoMo, 91.7% with no model against 74.4% for Graphiti (+17.3 points, 95% CI +14.8 to +19.7), and on Zep's 24 LongMemEval questions 87.5% against 58.3%. But we ran Graphiti, not Zep Cloud, with Claude Haiku 5.5 as every model, and Zep's own paper reports 71.2% on LongMemEval-S with GPT-4o. Zep also does things LLMSlim doesn't: graphs shared across users and sources, fact invalidation, and compliance options. The round-3 results are for LLMSlim Core 0.9.0; the 0.12 Memory API keeps less of the evidence on two-person conversations, a gap that is still open."],
     ["Can LLMSlim import my Zep data?", "Not directly: llmslim import has no Zep format. Export your threads' messages with Zep's SDK as JSON lines and import them with llmslim import jsonl (LLMSlim 1.0, or main from GitHub today), or with a Memory.add loop on 0.12.0. Facts and entities from Zep's graph don't come across; LLMSlim reads the messages themselves."],
     ["Can I self-host Zep instead?", "Zep's FAQ says Zep Community Edition is deprecated and no longer supported, and points to Zep Cloud, the open-source Graphiti framework, and BYOC deployments for enterprise customers. LLMSlim Core is self-hosted by default."],
     ["Does LLMSlim call an LLM?", "No. Storing and searching run no LLM. By default no model runs at all; relevance=\"semantic\" adds a 22M-parameter cross-encoder that runs on your CPU."],
     ["Is LLMSlim affiliated with Zep?", "No. LLMSlim is an independent MIT-licensed project from AMEYOR. We ran Graphiti, Zep's open-source framework, through Zep's own benchmark harness; Zep did not run, review or endorse the comparison."],
-    ["Can I reproduce the numbers?", "Yes. The splits, the scripts that ran Graphiti (zep_locomo.py and zep_lme.py) and every answer and judgement are in benchmarks/live/round3 in the public repository. All of round 3, every system and benchmark, cost $107.10 in Claude API calls."],
+    ["Can I reproduce the numbers?", `Round 3's, yes. The splits, the scripts that ran Graphiti (zep_locomo.py and zep_lme.py) and every answer and judgement are in benchmarks/live/round3 in the public repository. All of round 3, every system and benchmark, cost $107.10 in Claude API calls. ${ROUND6_REPRODUCE}`],
   ],
   sources: [
     { label: `Zep pricing (read ${PRICES_CHECKED})`, url: "https://www.getzep.com/pricing" },
@@ -531,6 +698,7 @@ export const ZEP_COMPARISON: MemoryComparison = {
     { label: "getzep/graphiti on GitHub (Apache-2.0)", url: "https://github.com/getzep/graphiti" },
     { label: "Zep paper (arXiv:2501.13956)", url: "https://arxiv.org/abs/2501.13956" },
     { label: "Zep's benchmark harness", url: "https://github.com/getzep/zep-papers" },
+    ...ROUND6_LINKS,
     { label: "Round 3 report and tables", url: ROUND3_REPORT },
     { label: "How round 3 was run, and where Zep's run differs", url: ROUND3 },
     { label: "Known memory quality issues (1.0 roadmap)", url: ROADMAP_ISSUES },

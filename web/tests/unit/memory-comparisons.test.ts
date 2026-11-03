@@ -22,7 +22,7 @@ describe("memory comparisons", () => {
     for (const page of pages) {
       for (const block of page.benchmarks) {
         expect(block.pairedDiffs.length, `${page.slug}/${block.id}`).toBeGreaterThan(0)
-        for (const row of block.pairedDiffs) {
+        for (const row of [...block.pairedDiffs, ...(block.weakSpots?.rows ?? [])]) {
           const [point, low, high] = interval(row.difference)
           const where = `${page.slug}: ${row.comparison}, ${row.benchmark}`
           expect(low <= point && point <= high, where).toBe(true)

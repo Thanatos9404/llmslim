@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getImageProps } from "next/image"
 import { headers } from "next/headers"
+import { preload } from "react-dom"
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react"
 import { GlyphStage } from "@/components/brand/GlyphStage"
 import { LogoMark } from "@/components/brand/LogoMark"
@@ -21,7 +22,6 @@ import {
 import { getAuthConfig } from "@/lib/auth/config"
 import { foundingListFeatures } from "@/lib/founding-list/features"
 import { constructMetadata, faqJsonLd, jsonLdScript, orbitPricingJsonLd } from "@/lib/seo"
-import "./pricing.css"
 
 export const metadata = constructMetadata({
   title: "Pricing",
@@ -116,6 +116,10 @@ function CellValue({ value }: { value: Cell }) {
 }
 
 export default async function PricingPage({ searchParams }: { searchParams: SearchParams }) {
+  // The headline's two faces, requested with the stylesheet instead of after it: with the serif half on its own line,
+  // a late swap changed the headline's height and moved the lede under it on phones.
+  preload("/fonts/geist-latin.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
+  preload("/fonts/InstrumentSerif-Italic.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
   const params = await searchParams
   const requestHeaders = await headers()
   // Vercel sets the visitor's country on every request; rupees for India, dollars elsewhere, unless the visitor chose.

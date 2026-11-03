@@ -1,7 +1,13 @@
 import Link from "next/link"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import { productsNamedIn } from "@/components/brand/product-logos"
+import { CompareHero } from "@/components/compare/CompareHero"
+import { NamedProducts, ProductHeading, SectionHead } from "@/components/compare/compare-parts"
+import { MotionTable } from "@/components/compare/MotionTable"
+import { DiffPlot, NumberCell, Reading, SystemName, differenceDomain } from "@/components/compare/score-parts"
 import { DocCodeBlock } from "@/components/docs/DocCodeBlock"
-import { Reveal } from "@/components/landing/Premium"
 import { siteConfig } from "@/config/site"
 import { LLMLINGUA_COMPARISON as page } from "@/data/comparisons"
 import { HEAD_TO_HEAD, ROUND3_REPORT } from "@/data/live-benchmarks"
@@ -27,16 +33,13 @@ export default function LLMLinguaComparisonPage() {
     breadcrumbJsonLd([["Home", "/"], ["LLMSlim vs LLMLingua", path]]),
     faqJsonLd(page.faqs, path),
   ]
-  return <div className="bm-page">
+  const domain = differenceDomain(page.pairedDiffs.map((row) => row.difference))
+  return <div className="bm-page cmp-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
 
-    <header className="bm-hero">
-      <p className="p-kicker">{page.kicker}</p>
-      <h1>{page.heading[0]} <span>{page.heading[1]}</span></h1>
-      <p className="bm-lede">{page.lede}</p>
-      <p className="cmp-meta"><span>Updated {page.lastUpdated}</span><span>LLMSlim Core 0.9</span><span>Reader: Claude Haiku 5.5</span></p>
-      <p className="cmp-disclosure">{page.disclosure}</p>
-    </header>
+    <CompareHero kicker={page.kicker} heading={page.heading} lede={page.lede}
+      meta={[`Updated ${page.lastUpdated}`, "LLMSlim Core 0.9", "Reader: Claude Haiku 5.5"]} disclosure={page.disclosure}
+      rival={{ name: "LLMLingua", logo: "llmlingua" }} photo={{ src: "/media/stock/server-aisle.webp", position: "60% 50%" }} />
 
     <section className="cmp-answer" aria-labelledby="answer-title">
       <h2 id="answer-title">The short answer</h2>
@@ -44,9 +47,9 @@ export default function LLMLinguaComparisonPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="glance-title">
-      <Reveal className="p-head"><p className="p-kicker">At a glance</p><h2 id="glance-title">Three ways to shrink context. <span>Different trade-offs.</span></h2></Reveal>
+      <SectionHead kicker="At a glance" id="glance-title" heading={["Three ways to shrink context.", "Different trade-offs."]} />
       <div className="bm-table-wrap"><table className="bm-table cmp-glance">
-        <thead><tr><th scope="col">Aspect</th><th scope="col" className="is-us">LLMSlim</th><th scope="col">LLMLingua-2</th><th scope="col">LongLLMLingua</th></tr></thead>
+        <thead><tr><th scope="col">Aspect</th><th scope="col" className="is-us"><ProductHeading name="LLMSlim" logo="llmslim" /></th><th scope="col"><ProductHeading name="LLMLingua-2" logo="llmlingua" /></th><th scope="col"><ProductHeading name="LongLLMLingua" logo="llmlingua" /></th></tr></thead>
         <tbody>{page.glance.map((row) => <tr key={row.aspect}>
           <th scope="row">{row.aspect}</th>
           <td className="is-us">{row.llmslim}</td>
@@ -56,8 +59,9 @@ export default function LLMLinguaComparisonPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="baselines-title">
-      <Reveal className="p-head"><p className="p-kicker">The LLMLingua family</p><h2 id="baselines-title">What LLMLingua-2 and LongLLMLingua are. <span>From their papers.</span></h2></Reveal>
-      <div className="cmp-pair">{page.baselines.map((baseline) => <article key={baseline.name}>
+      <SectionHead kicker="The LLMLingua family" id="baselines-title" heading={["What LLMLingua-2 and LongLLMLingua are.", "From their papers."]} />
+      <div className="cmp-pair">{page.baselines.map((baseline) => <article key={baseline.name} className="glow-card">
+        <ProductLogo logo="llmlingua" size={28} className="cmp-pair-logo is-rounded" />
         <h3>{baseline.name}</h3>
         <a className="cmp-cite" href={baseline.url} target="_blank" rel="noreferrer">{baseline.citation} <ArrowUpRight size={12} aria-hidden="true" /></a>
         <p>{baseline.body}</p>
@@ -66,41 +70,47 @@ export default function LLMLinguaComparisonPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="differs-title">
-      <Reveal className="p-head"><p className="p-kicker">How LLMSlim differs</p><h2 id="differs-title">Choose sentences, not tokens. <span>No 7B model required.</span></h2></Reveal>
+      <SectionHead kicker="How LLMSlim differs" id="differs-title" heading={["Choose sentences, not tokens.", "No 7B model required."]} />
       <ol className="cmp-notes">{page.differences.map((item, index) => <li key={item.title}>
         <span className="p-note-index">{String(index + 1).padStart(2, "0")}</span><h3>{item.title}</h3><p>{item.body}</p>
+        <NamedProducts text={item.body} />
       </li>)}</ol>
     </section>
 
     <section className="bm-section" aria-labelledby="h2h-title">
-      <Reveal className="p-head"><p className="p-kicker">Head to head</p><h2 id="h2h-title">Three benchmarks, same reader. <span>Same questions, same budget.</span></h2>
-        <p className="p-body">{page.headToHeadIntro}</p></Reveal>
-      <div className="bm-table-wrap"><table className="bm-table bm-h2h">
+      <SectionHead kicker="Head to head" id="h2h-title" heading={["Three benchmarks, same reader.", "Same questions, same budget."]}>
+        <p className="p-body">{page.headToHeadIntro}</p>
+      </SectionHead>
+      <MotionTable className="bm-table-wrap"><table className="bm-table bm-h2h cmp-results cmp-lingua">
         <thead><tr><th scope="col">Compressor</th><th scope="col">Model it runs</th><th scope="col">{HEAD_TO_HEAD.columns[0]}</th><th scope="col">{HEAD_TO_HEAD.columns[1]}</th><th scope="col">{HEAD_TO_HEAD.columns[2]}</th><th scope="col">Cost per 1k</th><th scope="col">Time per question</th></tr></thead>
-        <tbody>{HEAD_TO_HEAD.rows.map((row) => <tr key={row.system}>
-          <th scope="row" className={row.best ? "is-best" : undefined}>{row.system}</th><td>{row.model}</td>
-          <td className={`num${row.best ? " is-best" : ""}`}>{row.scoreA}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreB}</td><td className={`num${row.best ? " is-best" : ""}`}>{row.scoreC}</td>
-          <td className="num">{row.cost}</td><td>{row.time}</td>
+        <tbody>{HEAD_TO_HEAD.rows.map((row) => <tr key={row.system} className={/^LLMSlim/.test(row.system) ? "is-llmslim" : /Lingua/.test(row.system) ? "is-rival" : "is-other"}>
+          <th scope="row" className={row.best ? "is-best" : undefined}><SystemName system={row.system} /></th><td>{row.model}</td>
+          <td className={`num cmp-score${row.best ? " is-best" : ""}`}><NumberCell text={row.scoreA} bar /></td>
+          <td className={`num cmp-score${row.best ? " is-best" : ""}`}><NumberCell text={row.scoreB} bar /></td>
+          <td className={`num cmp-score${row.best ? " is-best" : ""}`}><NumberCell text={row.scoreC} bar /></td>
+          <td className="num"><NumberCell text={row.cost} /></td><td>{row.time}</td>
         </tr>)}</tbody>
-      </table></div>
+      </table></MotionTable>
       <p className="bm-note">{HEAD_TO_HEAD.note}</p>
 
       <h3 className="cmp-subhead">Paired differences with 95% intervals</h3>
-      <div className="bm-table-wrap"><table className="bm-table cmp-diffs">
+      <MotionTable className="bm-table-wrap"><table className="bm-table cmp-diffs">
         <thead><tr><th scope="col">Comparison</th><th scope="col">Benchmark (questions)</th><th scope="col">Difference (95% CI)</th><th scope="col">Reading</th></tr></thead>
         <tbody>{page.pairedDiffs.map((row) => <tr key={`${row.benchmark}-${row.comparison}`}>
-          <th scope="row">{row.comparison}</th><td>{row.benchmark}</td><td>{row.difference}</td><td>{row.reading}</td>
+          <th scope="row">{row.comparison}</th><td>{row.benchmark}</td>
+          <td className="cmp-diff"><span className="cmp-diff-text">{row.difference}</span><DiffPlot difference={row.difference} domain={domain} reading={row.reading} /></td>
+          <td><Reading reading={row.reading} /></td>
         </tr>)}</tbody>
-      </table></div>
-      <p className="bm-note">{page.pairedNote}</p>
+      </table></MotionTable>
+      <p className="bm-note">{page.pairedNote} <span className="cmp-axis-note">Each plot runs from −{domain} to +{domain} points, with zero in the middle.</span></p>
 
       <h3 className="cmp-subhead">On every test question</h3>
-      <div className="bm-table-wrap"><table className="bm-table bm-h2h">
+      <MotionTable className="bm-table-wrap"><table className="bm-table bm-h2h cmp-results">
         <thead><tr><th scope="col">System</th>{page.testSets.columns.map((column) => <th key={column} scope="col">{column}</th>)}</tr></thead>
-        <tbody>{page.testSets.rows.map((row) => <tr key={row.system}>
-          <th scope="row">{row.system}</th>{row.cells.map((value, index) => <td key={page.testSets.columns[index]} className="num">{value}</td>)}
+        <tbody>{page.testSets.rows.map((row) => <tr key={row.system} className={/^LLMSlim/.test(row.system) ? "is-llmslim" : /Lingua/.test(row.system) ? "is-rival" : "is-other"}>
+          <th scope="row"><SystemName system={row.system} /></th>{row.cells.map((value, index) => <td key={page.testSets.columns[index]} className="num"><NumberCell text={value} /></td>)}
         </tr>)}</tbody>
-      </table></div>
+      </table></MotionTable>
       <p className="bm-note">{page.testSets.note}</p>
 
       <h3 className="cmp-subhead">What this does not show</h3>
@@ -114,48 +124,55 @@ export default function LLMLinguaComparisonPage() {
     </section>
 
     <section className="bm-section" aria-labelledby="choose-them-title">
-      <Reveal className="p-head"><p className="p-kicker">When to choose LLMLingua</p><h2 id="choose-them-title">Cases where LLMLingua <span>is the better fit.</span></h2></Reveal>
-      <ul className="cmp-cards">{page.chooseThem.map((item) => <li key={item.title}><h3>{item.title}</h3><p>{item.body}</p></li>)}</ul>
+      <SectionHead kicker="When to choose LLMLingua" id="choose-them-title" heading={["Cases where LLMLingua", "is the better fit."]} />
+      <ul className="cmp-cards">{page.chooseThem.map((item) => <li key={item.title} className="glow-card"><h3>{item.title}</h3><p>{item.body}</p></li>)}</ul>
     </section>
 
     <section className="bm-section" aria-labelledby="choose-us-title">
-      <Reveal className="p-head"><p className="p-kicker">When LLMSlim fits</p><h2 id="choose-us-title">Where LLMSlim <span>makes sense.</span></h2></Reveal>
+      <SectionHead kicker="When LLMSlim fits" id="choose-us-title" heading={["Where LLMSlim", "makes sense."]} />
       <ul className="cmp-fit">{page.chooseUs.map((line) => <li key={line}>{line}</li>)}</ul>
     </section>
 
     <section className="bm-section" aria-labelledby="migrate-title">
-      <Reveal className="p-head"><p className="p-kicker">Migrate</p><h2 id="migrate-title">Swap the class. <span>Keep the pipeline.</span></h2>
-        <p className="p-body">The LLMSlim adapters go in the same slots as the LLMLingua classes. Snippets assume your existing retriever, index or pipeline.</p></Reveal>
-      {page.migrations.map((migration) => <div key={migration.framework} className="cmp-migration">
-        <h3>{migration.framework}</h3>
-        <div className="cmp-code-pair">
-          {migration.before && <div>
-            <p className="cmp-code-label">Before <strong>{migration.before.label}</strong></p>
-            <DocCodeBlock language="python" filename={migration.before.filename} code={`# ${migration.before.install}\n${migration.before.code}`} />
-          </div>}
-          <div>
-            <p className="cmp-code-label is-us">{migration.before ? "After" : "Add"} <strong>{migration.after.label}</strong></p>
-            <DocCodeBlock language="python" filename={migration.after.filename} code={`# ${migration.after.install}\n${migration.after.code}`} />
+      <SectionHead kicker="Migrate" id="migrate-title" heading={["Swap the class.", "Keep the pipeline."]}>
+        <p className="p-body">The LLMSlim adapters go in the same slots as the LLMLingua classes. Snippets assume your existing retriever, index or pipeline.</p>
+      </SectionHead>
+      {page.migrations.map((migration) => {
+        const logo = productsNamedIn(migration.framework)[0]
+        return <div key={migration.framework} className="cmp-migration">
+          <h3 className="cmp-migration-title">{logo && <ProductLogo logo={logo} size={24} />}{migration.framework}</h3>
+          <div className="cmp-code-pair">
+            {migration.before && <div>
+              <p className="cmp-code-label">Before <strong>{migration.before.label}</strong></p>
+              <DocCodeBlock language="python" filename={migration.before.filename} code={`# ${migration.before.install}\n${migration.before.code}`} />
+            </div>}
+            <div>
+              <p className="cmp-code-label is-us">{migration.before ? "After" : "Add"} <strong>{migration.after.label}</strong></p>
+              <DocCodeBlock language="python" filename={migration.after.filename} code={`# ${migration.after.install}\n${migration.after.code}`} />
+            </div>
           </div>
+          {migration.notes.length > 0 && <ul className="cmp-migration-notes">{migration.notes.map((note) => <li key={note}>{note}</li>)}</ul>}
+          <p className="cmp-migration-foot"><Link className="text-link" href={migration.guide}>{migration.guide.startsWith("/integrations/") ? `${migration.framework} integration guide` : "Document pipelines"} <ArrowUpRight size={14} aria-hidden="true" /></Link></p>
         </div>
-        {migration.notes.length > 0 && <ul className="cmp-migration-notes">{migration.notes.map((note) => <li key={note}>{note}</li>)}</ul>}
-        <p className="cmp-migration-foot"><Link className="text-link" href={migration.guide}>{migration.guide.startsWith("/integrations/") ? `${migration.framework} integration guide` : "Document pipelines"} <ArrowUpRight size={14} aria-hidden="true" /></Link></p>
-      </div>)}
+      })}
       <ul className="cmp-migration-general">{page.migrationNotes.map((note) => <li key={note}>{note}</li>)}</ul>
     </section>
 
     <section className="bm-section" aria-labelledby="faq-title">
-      <Reveal className="p-head"><p className="p-kicker">FAQ</p><h2 id="faq-title">Questions people ask <span>before switching.</span></h2></Reveal>
+      <SectionHead kicker="FAQ" id="faq-title" heading={["Questions people ask", "before switching."]} />
       <div className="faq-list cmp-faq">{page.faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div>
     </section>
 
     <section className="bm-section" aria-labelledby="sources-title">
       <h2 id="sources-title" className="bm-small-title">Sources</h2>
       <ul className="cmp-sources">{page.sources.map((source) => <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.label} <ArrowUpRight size={12} aria-hidden="true" /></a></li>)}</ul>
-      <div className="cmp-cta">
-        <Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} aria-hidden="true" /></Link>
-        <Link className="button button-outline" href="/integrations">Framework integrations</Link>
-        <Link className="button button-outline" href="/benchmarks">Every benchmark</Link>
+      <div className="cmp-end">
+        <MemoryGlyph size={56} />
+        <div className="cmp-cta">
+          <Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link className="button button-outline" href="/integrations">Framework integrations</Link>
+          <Link className="button button-outline" href="/benchmarks">Every benchmark</Link>
+        </div>
       </div>
     </section>
   </div>

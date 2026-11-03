@@ -71,6 +71,8 @@
   .stack-core, .stack-node { left:var(--tx); top:var(--ty); }
   .stack-node { width:42px; height:42px; margin:-21px 0 0 -21px; }
   .stack-core { width:80px; height:80px; margin:-40px 0 0 -40px; border-radius:20px; }
+  /* No photo on phones (page.tsx serves them a blank pixel); the stage is the dark plate and the drawing. */
+  .int-stage-photo { display:none; }
 }
 @media (max-width:700px) {
   .int-v2 .int-row { grid-template-columns:48px minmax(0,1fr) 22px; gap:6px 16px; padding:14px 6px; }

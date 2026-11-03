@@ -1,4 +1,4 @@
-import Image from "next/image"
+import { getImageProps } from "next/image"
 import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
 import { IntegrationRows } from "@/components/integrations/IntegrationRows"
 import { StackDiagram } from "@/components/integrations/StackDiagram"
@@ -11,8 +11,13 @@ import "./integrations.css"
 
 export const metadata = constructMetadata({ title: "Python Integrations | LLMSlim", description: "Use LLMSlim in LangChain, LlamaIndex, Haystack, gptme, Hermes Agent and Pydantic AI, or with your Python model client: install lines, runnable examples and their real output.", path: "/integrations", markdownPath: "/integrations.md" })
 
+/** Phones (the tall stage, 640px and under) get a blank pixel instead of the photo: it was their largest paint and cost the phone score. */
+const BLANK_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
 export default function IntegrationsIndexPage() {
   const integrations = Object.values(INTEGRATIONS_REGISTRY)
+  // Eager on wider screens: the stage is the largest thing in the first screen there.
+  const { props: stagePhoto } = getImageProps({ src: "/media/stock/laptop-code.webp", alt: "", fill: true, loading: "eager", sizes: "(max-width: 980px) 100vw, 560px", style: { objectPosition: "50% 40%" } })
   return <div className="int-page int-v2 has-backdrop">
     <PageBackdrop code={BACKDROP_CODE.langchain} low />
     <header className="int-hero">
@@ -23,9 +28,12 @@ export default function IntegrationsIndexPage() {
       </div>
       <div className="int-stage on-dark">
         {/* A still photo here (the compare plates drift): this page already carries the pixel backdrop. */}
-        <div className="px-photo" aria-hidden="true"><div className="px-photo-media">
-          {/* Eager: the stage is the largest thing in the first screen on desktop and on most phones. */}
-          <Image src="/media/stock/laptop-code.webp" alt="" fill loading="eager" sizes="(max-width: 980px) 100vw, 560px" style={{ objectPosition: "50% 40%" }} />
+        <div className="px-photo int-stage-photo" aria-hidden="true"><div className="px-photo-media">
+          <picture>
+            <source media="(max-width: 640px)" srcSet={BLANK_PIXEL} />
+            {/* A plain img: next/image cannot sit inside <picture>; getImageProps gives it the same optimized srcset. */}
+            <img {...stagePhoto} alt="" />
+          </picture>
         </div></div>
         <div className="int-stage-veil" aria-hidden="true" />
         <StackDiagram />

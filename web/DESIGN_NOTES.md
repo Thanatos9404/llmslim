@@ -66,11 +66,13 @@ body 16, lede 17 to 20, h3 24, h2 36 to 60, h1 40 to 72, display 48 to 96. Headi
   and tilt their logo tile; cards and chips lift 1 to 2px. These are CSS transitions on `--ease-spring`, not Framer
   Motion components: on /integrations, Framer hover components on the stage and the rows, flowing strands and animated
   group glyphs cost 8 mobile points (hydration, style and paint work; SVG transforms and stroke animations are not
-  composited), so that page now hydrates one delegated hover handler and animates nothing on its own. It is still
-  7 points below the old page on a phone (median of five, 66 against 73); the gap left is hydration and first-render
-  work that this pilot did not pin down.
+  composited), so that page now hydrates one delegated hover handler and animates nothing on its own. Phones (640px
+  and under) no longer load the stage photo: a `<picture>` source gives them a blank pixel. Measured afterwards,
+  interleaved against `main`, median of five: 67 against 72 on a phone (runs 61 to 80 against 66 to 76). The gap
+  left is hydration and first-render work (React's hydration task about 1.0 s against 0.8 s, style and layout
+  0.56 s against 0.33 s), not bytes.
 - Parallax: the compare plates' photos drift 6% against the scroll (`ParallaxPhoto`, `useScroll`/`useTransform`); the
-  integrations stage photo is still.
+  integrations stage photo is still, and shown only above 640px.
 - The glyph plays once on load (CSS keyframes), again on pointer enter, and on phones when the plate scrolls into view.
 
 ### The glyph

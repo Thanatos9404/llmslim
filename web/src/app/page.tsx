@@ -2,7 +2,12 @@ import Link from "next/link"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { GitHubMark, SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { CopyCommand, HomeEffects, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
+import { GlyphStage } from "@/components/brand/GlyphStage"
+import { LogoMark } from "@/components/brand/LogoMark"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import type { ProductLogoKey } from "@/components/brand/product-logos"
+import { CopyCommand, CodeExample, ContextPreview } from "@/components/landing/RedesignInteractions"
 import { LogoCloud, PhotoSection, PremiumHero, Reveal } from "@/components/landing/Premium"
 import { CompressVisual, Showcase, StatsBand, TraceVisual, type Stat } from "@/components/landing/Visuals"
 import { startupProgramCount, startupProgramNames } from "@/components/landing/StartupPrograms"
@@ -11,6 +16,7 @@ import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
 import { homeFaqs } from "@/data/home"
 import { constructMetadata, faqJsonLd, jsonLdScript } from "@/lib/seo"
+import "./home.css"
 
 export const metadata = constructMetadata({ path: "/", markdownPath: "/index.md" })
 
@@ -32,12 +38,23 @@ const stats: Stat[] = [
     meter: { before: { name: "Full document", value: 15532, display: "15.5k tokens" }, after: { name: "LLMSlim", value: 5232, display: "5.2k" }, max: 15532 } },
 ]
 
+/** The agent frameworks the pipeline section names, in its order, each linked to its guide. Hermes Agent publishes no
+ *  logo file, so its chip has a plain pixel. */
+const PIPELINE: { slug: string; name: string; logo?: ProductLogoKey }[] = [
+  { slug: "langchain", name: "LangChain", logo: "langchain" },
+  { slug: "llamaindex", name: "LlamaIndex", logo: "llamaindex" },
+  { slug: "haystack", name: "Haystack", logo: "haystack" },
+  { slug: "gptme", name: "gptme", logo: "gptme" },
+  { slug: "hermes-agent", name: "Hermes Agent" },
+  { slug: "pydantic-ai", name: "Pydantic AI", logo: "pydantic" },
+]
+
 export default function Home() {
-  return <div className="slim-site premium"><HomeEffects /><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
+  return <div className="slim-site premium home-v2"><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
 
     <PremiumHero>
-      <Link className="p-announce" href="/changelog"><span className="p-announce-dot" aria-hidden="true" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
+      <Link className="p-announce" href="/changelog"><MemoryGlyph size={14} animate className="p-announce-glyph" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
       {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
           The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
       <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
@@ -52,29 +69,29 @@ export default function Home() {
     </PremiumHero>
 
     <section className="p-section site-width" id="receipts" aria-labelledby="receipts-title">
-      <Reveal className="p-head"><p className="p-kicker">The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />The receipts</p><h2 id="receipts-title">Less context. <span>Sharper agents.</span></h2></Reveal>
       <StatsBand stats={stats} />
       <Reveal className="p-foot"><span>Public benchmarks. One reader and one prompt for every run; only the context changes.*</span><Link className="text-link" href="/results">See the results, chapter by chapter <ArrowUpRight size={14} /></Link></Reveal>
-      <p className="p-fineprint">* Every context was read by Claude Haiku 5.5.</p>
+      <p className="p-fineprint">* Every context was read by <ProductLogo logo="claude" size={13} className="p-fineprint-logo" />Claude Haiku 5.5.</p>
     </section>
 
     <section className="p-section site-width" id="layers" aria-labelledby="layers-title">
-      <Reveal className="p-head"><p className="p-kicker">Open-source core · self-hosted Vault</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
+      <Reveal className="p-head"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Open-source core · self-hosted Vault</p><h2 id="layers-title">Start in one line. <span>Scale to agents that remember.</span></h2></Reveal>
       <div className="duo">
         <div>
           <Showcase><CompressVisual before={111372} after={10008} foot={<><span><b>42× cheaper</b> per question</span><span>LongMemEval at Haiku 5.5 list prices, as accurate as the whole history</span></>} /></Showcase>
-          <Reveal className="duo-copy"><p className="sheet-eyebrow">LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
+          <Reveal className="duo-copy"><p className="sheet-eyebrow"><LogoMark size={10} />LLMSlim Core · v{siteConfig.coreVersion} · MIT</p><h3>Control exactly what reaches the model.</h3><p>Compress context in your own process, keep provenance on every piece, and fit it all into your token budget. No API key, no network call.</p><TrackedLink className="text-link" href="/docs/getting-started" event="core_docs_clicked" properties={{ location: "layers" }}>Start with Core <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
         <div>
           <Showcase><TraceVisual /></Showcase>
-          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow">LLMSlim Vault · v{siteConfig.vaultVersion} beta · self-hosted</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/vault" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore Vault <ArrowUpRight size={15} /></TrackedLink></Reveal>
+          <Reveal className="duo-copy" delay={0.08}><p className="sheet-eyebrow"><LogoMark size={10} />LLMSlim Vault · v{siteConfig.vaultVersion} beta · self-hosted</p><h3>Give your agents a memory you can audit.</h3><p>A tamper-evident timeline of what your agents were told, a trace for every context decision, and policies that learn from real outcomes.</p><TrackedLink className="text-link" href="/vault" event="platform_beta_clicked" properties={{ location: "layers" }}>Explore Vault <ArrowUpRight size={15} /></TrackedLink></Reveal>
         </div>
       </div>
     </section>
 
     <section className="p-section site-width" id="features" aria-labelledby="features-title">
-      <Reveal className="p-head p-head-center"><p className="p-kicker">Signal in · noise out</p><h2 id="features-title">Great context makes great agents. <span>Everything else is a tax.</span></h2></Reveal>
-      <ContextPreview />
+      <Reveal className="p-head p-head-center"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Signal in · noise out</p><h2 id="features-title">Great context makes great agents. <span>Everything else is a tax.</span></h2></Reveal>
+      <Reveal><ContextPreview /></Reveal>
       <ol className="p-notes">
         <Reveal as="li"><span className="p-note-index">01</span><h3>Keep what matters</h3><p>Rank and select content around the question before a single token reaches the model.</p></Reveal>
         <Reveal as="li" delay={0.08}><span className="p-note-index">02</span><h3>Know where it came from</h3><p>Instructions, retrieved documents, and tool output keep their roles, so untrusted text never gets promoted.</p></Reveal>
@@ -84,18 +101,23 @@ export default function Home() {
 
     <PhotoSection src="/media/india-night.webp" lightSrc="/media/india-day.webp" lightPosition="50% 60%" id="programs" labelledBy="programs-title" className="p-programs" position="60% 40%">
       <div className="site-width">
-        <Reveal className="p-head p-head-center"><p className="p-kicker">Supported by {startupProgramCount} startup programs</p><h2 id="programs-title">Built in India. <span>Fuelled by {startupProgramCount} startup programs.</span></h2></Reveal>
+        <Reveal className="p-head p-head-center"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Supported by {startupProgramCount} startup programs</p><h2 id="programs-title">Built in India. <span>Fuelled by {startupProgramCount} startup programs.</span></h2></Reveal>
         <LogoCloud />
-        <Reveal className="p-programs-foot"><Link className="text-link" href="/integrations/sarvam">Explore the Sarvam integration <ArrowUpRight size={15} /></Link></Reveal>
+        <Reveal className="p-programs-foot"><Link className="text-link" href="/integrations/sarvam"><ProductLogo logo="sarvam" size={18} />Explore the Sarvam integration <ArrowUpRight size={15} /></Link></Reveal>
       </div>
     </PhotoSection>
 
-    <section className="p-section build-section site-width" id="pipeline"><div className="build-copy" data-reveal><p className="p-kicker">Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, into the LangChain, LlamaIndex or Haystack pipeline you already run, or into a gptme, Hermes Agent or Pydantic AI agent&apos;s history. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p><p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></div><CodeExample /></section>
+    <section className="p-section build-section site-width" id="pipeline"><Reveal className="build-copy"><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Tiny library · massive leverage</p><h2>Three lines. <span>Then back to shipping.</span></h2><p className="p-body">Drop LLMSlim in front of your model call, into the LangChain, LlamaIndex or Haystack pipeline you already run, or into a gptme, Hermes Agent or Pydantic AI agent&apos;s history. Extraction runs locally and instantly, or bring any provider for rewrite and hybrid strategies.</p>
+      <ul className="h-chips" aria-label="Frameworks named here">{PIPELINE.map((item) => <li key={item.slug}><Link href={`/integrations/${item.slug}`} prefetch={false}>
+        {item.logo ? <ProductLogo logo={item.logo} size={15} /> : <span className="h-chip-dot" aria-hidden="true" />}{item.name}
+      </Link></li>)}</ul>
+      <p className="build-links"><Link className="text-link" href="/docs/getting-started">Open the documentation <ArrowUpRight size={15} /></Link><Link className="text-link" href="/integrations">LangChain, LlamaIndex and Haystack <ArrowUpRight size={15} /></Link></p></Reveal><Reveal className="build-code" delay={0.1}><CodeExample /></Reveal></section>
 
-    <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker">Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+    <section className="p-section questions-section site-width" id="faq"><Reveal><p className="p-kicker g-kicker"><MemoryGlyph size={14} animate />Before you start</p><h2>A few good <span>questions.</span></h2></Reveal><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
 
     <PhotoSection src="/media/earth-limb.webp" lightSrc="/media/dusk-light.webp" lightPosition="50% 40%" className="p-final" labelledBy="final-title" position="30% 50%">
       <div className="site-width p-final-copy">
+        <div className="p-final-glyph" aria-hidden="true"><GlyphStage size={84} /></div>
         <Reveal><h2 id="final-title">Ship agents that know <span>exactly enough.</span></h2></Reveal>
         <Reveal delay={0.1}><p className="p-hero-lede">One install. Your next model call gets sharper.</p></Reveal>
         <Reveal delay={0.2} className="p-hero-actions"><Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer">Star on GitHub <ArrowUpRight size={16} /></a></Reveal>

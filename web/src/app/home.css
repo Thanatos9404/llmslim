@@ -1,0 +1,59 @@
+/* The home page, design rollout (November 2026), scoped to .home-v2. The sky hero, the photo bands and the startup
+   program wall keep their look; this adds the pilot's glyph, logos, type scale and hover springs. Motion is transform
+   and opacity on --ease-out and --ease-spring; reduced motion stills it (globals.css). */
+
+/* Kickers and the release line: the memory glyph in place of the pixel. Inside a Reveal it plays when shown. */
+.g-kicker { gap:10px; }
+.g-kicker::before { display:none; }
+.g-kicker .mg, .p-announce-glyph { flex-shrink:0; }
+
+/* Section headings on the type scale's h2, the Instrument Serif half on its own line. */
+.home-v2 .p-section h2, .home-v2 .photo-section h2 { font-size:var(--fs-h2); line-height:1.02; letter-spacing:-.05em; }
+.home-v2 .p-section h2 span, .home-v2 .photo-section h2 span { display:block; margin-top:.08em; }
+.home-v2 .p-final h2 { font-size:var(--fs-display); line-height:.98; letter-spacing:-.055em; }
+
+/* The receipts' footnote names the reader model: its logo sits in the sentence. */
+.p-fineprint-logo { margin:-2px 5px 0 1px; }
+
+/* Product plates: the window lifts on a spring when the plate is pointed at. Its own transform, not the scroll drift
+   on .stage-mock. */
+.home-v2 .stage .win { transition:transform var(--dur-move) var(--ease-spring), box-shadow var(--dur-hover) var(--ease-out); }
+@media (hover:hover) { .home-v2 .stage:hover .win { transform:translateY(-6px); } }
+.home-v2 .sheet-eyebrow { display:flex; align-items:center; gap:8px; }
+
+/* The three notes under the live demo hang from a spectrum hairline (the mark's violet, blue and green). */
+.home-v2 .p-notes { border-top:0; background:var(--spectrum) top left / 100% 1px no-repeat; }
+.home-v2 .p-note-index { transition:transform var(--dur-move) var(--ease-spring); }
+@media (hover:hover) { .home-v2 .p-notes li:hover .p-note-index { transform:translateX(4px); } }
+
+/* Programs: the Sarvam link carries Sarvam's mark. */
+.p-programs-foot .text-link .plogo { margin-right:2px; }
+
+/* Pipeline: the frameworks the paragraph names, as logo chips linking to their guides. */
+.h-chips { display:flex; flex-wrap:wrap; gap:8px; margin:26px 0 0; padding:0; list-style:none; }
+.h-chips a { display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:4px 14px 4px 10px; border-radius:999px; font-size:13.5px; font-weight:520; letter-spacing:-.01em; color:var(--ink); background:var(--soft); box-shadow:inset 0 0 0 1px var(--line);
+  transition:box-shadow var(--dur-hover) var(--ease-out), transform var(--dur-move) var(--ease-spring); }
+.h-chips a:hover, .h-chips a:focus-visible { transform:translateY(-2px); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 45%,var(--line)), 0 12px 24px -16px color-mix(in srgb,var(--brand) 70%,transparent); }
+.h-chips a:active { transform:translateY(0) scale(.98); }
+.h-chips .plogo-img { border-radius:4px; }
+.h-chip-dot { width:6px; height:6px; margin-inline:4px 5px; background:color-mix(in srgb,var(--ink) 38%,transparent); }
+.home-v2 .build-copy > p.build-links { margin-top:26px; }
+.build-code { min-width:0; }
+
+/* Questions: the plus answers the pointer on the spring curve. */
+.home-v2 .faq-plus { transition:transform var(--dur-move) var(--ease-spring), color var(--dur-hover) var(--ease-out); }
+.home-v2 .faq-list summary:hover .faq-plus { color:var(--brand); transform:scale(1.18); }
+.home-v2 .faq-list details[open] summary:hover .faq-plus { transform:rotate(45deg) scale(1.18); }
+
+/* The closing band: the glyph on a small dark plate above the headline. It plays on load, again when the band scrolls
+   into view, and when pointed at (GlyphStage). Plates are dark in both themes. */
+.p-final-glyph { display:flex; justify-content:center; margin-bottom:30px; }
+.p-final-glyph .glyph-stage { display:grid; place-items:center; padding:20px 24px; border-radius:24px; background:#05060b;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 30px 60px -32px rgba(0,0,0,.7), 0 0 56px -14px rgba(0,245,155,.4);
+  --ink:#f3f4f7; --brand:#00f59b; --mark-left-0:#5C50FD; --mark-left-2:#2A98FA; --mark-end-4:#00E789; }
+
+@media (max-width:600px) {
+  .home-v2 .p-section h2, .home-v2 .photo-section h2 { line-height:1.04; }
+  .h-chips { margin-top:22px; }
+  .p-final-glyph { margin-bottom:24px; }
+}

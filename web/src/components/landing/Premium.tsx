@@ -10,7 +10,8 @@ import { ProgramLogo, startupPrograms } from "./StartupPrograms"
 // and reduced-motion users get the final, still state. Above-the-fold copy never starts hidden:
 // the hero headline is static and its other lines use `fade={false}`, so they are painted on first load.
 
-const EASE = [0.16, 1, 0.3, 1] as const
+/** The site's one movement curve, --ease-out in globals.css. */
+const EASE = [0.22, 1, 0.36, 1] as const
 
 /* ------------------------------------------------------------------ Reveal */
 
@@ -86,9 +87,10 @@ export function LogoCloud() {
     {startupPrograms.map((program, index) => <m.li key={program.id} className="logo-cloud-item"
       // As in Reveal: the HTML arrives hidden (the server cannot know the motion preference), so reduced-motion
       // visitors get the visible state set on mount instead of no animation at all, which left the logos invisible.
+      // Transform and opacity only (a blur filter is not composited).
       {...(reduced
-        ? { initial: false, animate: { opacity: 1, filter: "blur(0px)" } }
-        : { initial: { opacity: 0, filter: "blur(10px)" }, whileInView: { opacity: 1, filter: "blur(0px)" }, viewport: { once: true, amount: 0.6 }, transition: { duration: 1.1, ease: EASE, delay: (index % 4) * 0.08 } })}>
+        ? { initial: false, animate: { opacity: 1, y: 0 } }
+        : { initial: { opacity: 0, y: 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.6 }, transition: { duration: 0.8, ease: EASE, delay: (index % 4) * 0.08 } })}>
       <a href={program.href} target="_blank" rel="noreferrer" aria-label={program.name} title={program.name} onClick={() => track("startup_program_clicked", { program: program.id })}>
         <ProgramLogo program={program} />
       </a>

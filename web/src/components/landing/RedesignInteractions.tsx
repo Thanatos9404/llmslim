@@ -3,33 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, Copy, RotateCcw } from "lucide-react"
 
-export function HomeEffects() {
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (entry.isIntersecting) { entry.target.classList.add("revealed"); observer.unobserve(entry.target) }
-    }), { threshold: .12 })
-    const reveals = document.querySelectorAll<HTMLElement>("[data-reveal]")
-    if (!media.matches) reveals.forEach(el => { el.classList.add("reveal-ready"); observer.observe(el) })
-    const layers = [...document.querySelectorAll<HTMLElement>("[data-parallax]")]
-    let frame = 0
-    const render = () => {
-      frame = 0
-      layers.forEach(el => {
-        const rect = el.getBoundingClientRect()
-        if (rect.bottom < -400 || rect.top > innerHeight + 400) return
-        const offset = media.matches ? 0 : Math.max(-130, Math.min(130, (innerHeight / 2 - (rect.top + rect.height / 2)) * Number(el.dataset.parallax)))
-        el.style.setProperty("--scroll-y", `${offset}px`)
-      })
-    }
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(render) }
-    window.addEventListener("scroll", schedule, { passive: true })
-    media.addEventListener("change", schedule)
-    schedule()
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); media.removeEventListener("change", schedule); reveals.forEach(el => el.classList.remove("reveal-ready")) }
-  }, [])
-  return null
-}
+// The home page's scroll reveals are the shared Reveal (components/motion/Reveal.tsx), on the site's one curve.
 
 export function CopyCommand() {
   const [status, setStatus] = useState("Copy install command")
@@ -55,7 +29,7 @@ const sentences = [
 export function ContextPreview() {
   const [compressed, setCompressed] = useState(false)
   const wordCount = sentences.filter(s => !compressed || s.keep).reduce((n,s) => n + s.text.split(/\s+/).length, 0)
-  return <div className={`context-preview ${compressed ? "is-compressed" : ""}`} data-reveal>
+  return <div className={`context-preview ${compressed ? "is-compressed" : ""}`}>
     <div className="preview-toolbar"><span>context.txt</span><div><span className="preview-count" aria-live="polite">{wordCount} words</span><button className="preview-switch" aria-pressed={compressed} onClick={() => setCompressed(!compressed)}>{compressed ? <><RotateCcw size={13} />Show original</> : <>Focus the context <span>↗</span></>}</button></div></div>
     <div className="preview-document" aria-live="polite">{sentences.map((sentence,i) => <span key={i} className={sentence.keep ? "sentence-kept" : "sentence-extra"} hidden={compressed && !sentence.keep}>{sentence.text}{" "}</span>)}</div>
     <div className="preview-caption"><span>Illustrative excerpt · word counts, not tokens</span><span>{compressed ? "Relevant details, brought forward." : "A deployment note with room to trim."}</span></div>
@@ -69,5 +43,5 @@ const snippets = {
 
 export function CodeExample() {
   const [selected, setSelected] = useState<"compress" | "rag">("compress")
-  return <div className="developer-code" data-reveal><div className="code-toolbar"><div role="tablist" aria-label="Python examples">{(["compress", "rag"] as const).map((key, index) => <button id={`tab-${key}`} role="tab" aria-selected={selected === key} aria-controls="code-panel" tabIndex={selected === key ? 0 : -1} key={key} onClick={() => setSelected(key)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? "compress" : e.key === "End" ? "rag" : index === 0 ? "rag" : "compress"; setSelected(next); document.getElementById(`tab-${next}`)?.focus() } }}>{key === "compress" ? "compress.py" : "rag_pipeline.py"}</button>)}</div><span>PYTHON</span></div><pre id="code-panel" role="tabpanel" aria-labelledby={`tab-${selected}`} tabIndex={0}><code>{snippets[selected]}</code></pre><div className="code-status"><span><span className="status-dot" /> Runs locally</span><span>No API key needed</span></div></div>
+  return <div className="developer-code"><div className="code-toolbar"><div role="tablist" aria-label="Python examples">{(["compress", "rag"] as const).map((key, index) => <button id={`tab-${key}`} role="tab" aria-selected={selected === key} aria-controls="code-panel" tabIndex={selected === key ? 0 : -1} key={key} onClick={() => setSelected(key)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? "compress" : e.key === "End" ? "rag" : index === 0 ? "rag" : "compress"; setSelected(next); document.getElementById(`tab-${next}`)?.focus() } }}>{key === "compress" ? "compress.py" : "rag_pipeline.py"}</button>)}</div><span>PYTHON</span></div><pre id="code-panel" role="tabpanel" aria-labelledby={`tab-${selected}`} tabIndex={0}><code>{snippets[selected]}</code></pre><div className="code-status"><span><span className="status-dot" /> Runs locally</span><span>No API key needed</span></div></div>
 }

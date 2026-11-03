@@ -163,8 +163,6 @@
 .page-shell h1 { font-weight:500; letter-spacing:-.05em; line-height:1.15; font-size:clamp(32px,4vw,50px); }
 [data-slot="card"] { box-shadow:none; }
 [data-slot="button"] { transition:background .2s,transform .2s; }
-.reveal-ready { opacity:0; transform:translateY(24px); transition:opacity .8s ease,transform .8s cubic-bezier(.2,.8,.2,1); }
-.reveal-ready.revealed { opacity:1; transform:none; }
 @keyframes sentence-in { from { opacity:.3; filter:blur(3px); } to { opacity:1; filter:blur(0); } }
 @media (max-width:1100px) {
   .site-width { width:calc(100% - 72px); }
@@ -245,8 +243,6 @@
 }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation:none !important; transition-duration:.01ms !important; }
-  .reveal-ready { opacity:1; transform:none; }
-  [data-parallax] { --scroll-y:0px !important; }
 }
 .dark .cinema-copy > p { color:#b0b2bc; }
 .cinema-hero { overflow:hidden; }
@@ -474,7 +470,9 @@ html[data-accounts] .island-panel-foot a.island-panel-signin { display:inline-fl
 /* Hero: night sky and word-by-word headline. */
 .premium main { overflow:clip; }
 .p-hero { font-family:"Geist",Arial,sans-serif; position:relative; isolation:isolate; display:grid; place-items:center; min-height:100svh; padding:150px 24px 120px; overflow:hidden; background:#04050a; text-align:center; }
-.p-hero-sky { position:absolute; inset:-12% 0 -12% 0; z-index:-3; }
+/* The top edge is set in viewport units, not as a share of the hero: on a phone the hero grows a little when the web
+   fonts arrive, and a top edge that followed it moved the whole sky (a 0.16 layout shift). */
+.p-hero-sky { position:absolute; inset:-12svh 0 -12% 0; z-index:-3; }
 .p-hero-sky img { object-fit:cover; }
 .p-hero-sky-set, .photo-set { position:absolute; inset:0; }
 .p-hero-sky-tall { display:none; }
@@ -482,7 +480,6 @@ html[data-accounts] .island-panel-foot a.island-panel-signin { display:inline-fl
 .p-hero-copy { position:relative; display:flex; flex-direction:column; align-items:center; max-width:1200px; }
 .p-announce { display:inline-flex; align-items:center; gap:12px; margin-bottom:30px; padding:6px 2px; font:12px var(--mono); letter-spacing:.04em; color:rgba(240,242,248,.8); transition:color .25s; }
 .p-announce:hover { color:#fff; } .p-announce svg { transition:transform .3s; } .p-announce:hover svg { transform:translateX(3px); }
-.p-announce-dot { width:6px; height:6px; background:var(--brand); }
 .p-announce-sep { width:4px; height:4px; background:rgba(255,255,255,.35); }
 .p-announce-item { display:inline-flex; align-items:center; gap:12px; white-space:nowrap; }
 .p-hero h1 { margin:0 0 28px; font-size:clamp(46px,8.2vw,108px); line-height:.98; letter-spacing:-.058em; font-weight:620; color:#fff; text-wrap:balance; }
@@ -558,7 +555,6 @@ html:not(.dark) .p-hero .p-hero-lede, html:not(.dark) .p-final .p-hero-lede { co
 html:not(.dark) .p-hero .install-command, html:not(.dark) .p-final .install-command { color:rgba(22,24,29,.78); }
 html:not(.dark) .p-announce { color:rgba(22,24,29,.74); }
 html:not(.dark) .p-announce:hover { color:var(--ink); }
-html:not(.dark) .p-announce-dot { background:var(--brand); box-shadow:0 0 10px color-mix(in srgb,var(--brand) 60%,transparent); }
 html:not(.dark) .p-announce-sep { background:rgba(22,24,29,.3); }
 html:not(.dark) .photo-section { background:#eef1f5; }
 html:not(.dark) .photo-section-veil { background:linear-gradient(180deg, var(--surface) 0%, rgba(247,249,252,.6) 16%, rgba(247,249,252,.48) 50%, rgba(247,249,252,.6) 84%, var(--surface) 100%); }
@@ -697,6 +693,11 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
 .ledger-meter { display:grid; gap:9px; margin-top:auto; padding-top:30px; }
 .ledger-bar { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:5px 10px; font-size:12px; color:var(--subtle); }
 .ledger-bar-value { font:11.5px var(--mono); color:var(--ink); }
+/* A bar that is a product's names it with its logo (StatsBand); a bar beside one that is not gets a neutral pixel. */
+.ledger-bar-name { display:inline-flex; align-items:center; gap:7px; }
+.ledger-bar-logo { display:inline-grid; place-items:center; flex-shrink:0; width:16px; height:16px; }
+.ledger-bar-logo .plogo-img { border-radius:4px; }
+.ledger-bar-dot { width:5px; height:5px; background:color-mix(in srgb,var(--ink) 34%,transparent); }
 .ledger-bar-track { grid-column:1 / -1; position:relative; height:4px; border-radius:1px; background:color-mix(in srgb,var(--ink) 8%,transparent); }
 .ledger-bar-fill { position:absolute; inset:0 auto 0 0; min-width:3px; border-radius:1px; background:color-mix(in srgb,var(--ink) 34%,transparent); transform-origin:left; }
 .ledger-bar.is-ours .ledger-bar-fill { background:var(--brand); }
@@ -1060,3 +1061,72 @@ html:not(.dark) .page-backdrop[data-lit] .page-backdrop-glow { opacity:1; }
 .px-photo { position:absolute; inset:0; z-index:-2; overflow:hidden; }
 .px-photo-media { position:absolute; inset:-7% 0; }
 .px-photo-media img { object-fit:cover; }
+
+/* ================= The home page, design rollout (November 2026), scoped to .home-v2 =================
+   Here rather than in a route stylesheet: a second render-blocking stylesheet cost the phone LCP about 300ms. The sky
+   hero, the photo bands and the startup program wall keep their look; this adds the pilot's glyph, logos, type scale
+   and hover springs, as transform and opacity on --ease-out and --ease-spring. */
+
+/* Everything below the hero is laid out and painted only as it nears the viewport. The first paint of a phone was
+   waiting on style and layout for the whole page (and on the logos it masks); `auto` keeps each section's real height
+   once it has been shown, so the page does not jump on the way back up. */
+.home-v2 main > section:not(.p-hero) { content-visibility:auto; contain-intrinsic-size:auto 1100px; }
+
+/* Kickers and the release line: the memory glyph in place of the pixel. Inside a Reveal it plays when shown. */
+.home-v2 .g-kicker { gap:10px; }
+.home-v2 .g-kicker::before { display:none; }
+.home-v2 .g-kicker .mg, .p-announce-glyph { flex-shrink:0; }
+
+/* Section headings on the type scale's h2, the Instrument Serif half on its own line. */
+.home-v2 .p-section h2, .home-v2 .photo-section h2 { font-size:var(--fs-h2); line-height:1.02; letter-spacing:-.05em; }
+.home-v2 .p-section h2 span, .home-v2 .photo-section h2 span { display:block; margin-top:.08em; }
+.home-v2 .p-final h2 { font-size:var(--fs-display); line-height:.98; letter-spacing:-.055em; }
+
+/* The receipts' footnote names the reader model: its logo sits in the sentence. */
+.p-fineprint-logo { margin:-2px 5px 0 1px; }
+
+/* Product plates: the window lifts on a spring when the plate is pointed at (its own transform, not the scroll drift
+   on .stage-mock). */
+.home-v2 .stage .win { transition:transform var(--dur-move) var(--ease-spring), box-shadow var(--dur-hover) var(--ease-out); }
+@media (hover:hover) { .home-v2 .stage:hover .win { transform:translateY(-6px); } }
+.home-v2 .sheet-eyebrow { display:flex; align-items:center; gap:8px; }
+
+/* The three notes under the live demo hang from a spectrum hairline (the mark's violet, blue and green). */
+.home-v2 .p-notes { border-top:0; background:var(--spectrum) top left / 100% 1px no-repeat; }
+.home-v2 .p-note-index { transition:transform var(--dur-move) var(--ease-spring); }
+@media (hover:hover) { .home-v2 .p-notes li:hover .p-note-index { transform:translateX(4px); } }
+
+/* Programs: the Sarvam link carries Sarvam's mark. */
+.home-v2 .p-programs-foot .text-link .plogo { margin-right:2px; }
+
+/* Pipeline: the frameworks the paragraph names, as logo chips linking to their guides. */
+.h-chips { display:flex; flex-wrap:wrap; gap:8px; margin:26px 0 0; padding:0; list-style:none; }
+.h-chips a { display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:4px 14px 4px 10px; border-radius:999px; font-size:13.5px; font-weight:520; letter-spacing:-.01em; color:var(--ink); background:var(--soft); box-shadow:inset 0 0 0 1px var(--line);
+  transition:box-shadow var(--dur-hover) var(--ease-out), transform var(--dur-move) var(--ease-spring); }
+.h-chips a:hover, .h-chips a:focus-visible { transform:translateY(-2px); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 45%,var(--line)), 0 12px 24px -16px color-mix(in srgb,var(--brand) 70%,transparent); }
+.h-chips a:active { transform:translateY(0) scale(.98); }
+.h-chips .plogo-img { border-radius:4px; }
+.h-chip-dot { width:6px; height:6px; margin-inline:4px 5px; background:color-mix(in srgb,var(--ink) 38%,transparent); }
+.home-v2 .build-copy > p.build-links { margin-top:26px; }
+.home-v2 .build-code { min-width:0; }
+
+/* Questions: the plus answers the pointer on the spring curve. */
+.home-v2 .faq-plus { transition:transform var(--dur-move) var(--ease-spring), color var(--dur-hover) var(--ease-out); }
+.home-v2 .faq-list summary:hover .faq-plus { color:var(--brand); transform:scale(1.18); }
+.home-v2 .faq-list details[open] summary:hover .faq-plus { transform:rotate(45deg) scale(1.18); }
+
+/* The closing band: the glyph on a small dark plate above the headline, playing when the band is revealed. Plates are
+   dark in both themes. */
+.p-final-glyph { display:flex; justify-content:center; margin-bottom:30px; }
+.p-final-plate { display:grid; place-items:center; padding:20px 24px; border-radius:24px; background:#05060b;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 30px 60px -32px rgba(0,0,0,.7), 0 0 56px -14px rgba(0,245,155,.4);
+  --ink:#f3f4f7; --brand:#00f59b; --mark-left-0:#5C50FD; --mark-left-2:#2A98FA; --mark-end-4:#00E789; }
+
+/* On a phone the hero's copy is about a screen tall: anchor it to the top, so a change in its height (a font arriving)
+   cannot re-centre and move all of it. */
+@media (max-width:700px) { .home-v2 .p-hero { align-items:start; } }
+@media (max-width:600px) {
+  .home-v2 .p-section h2, .home-v2 .photo-section h2 { line-height:1.04; }
+  .h-chips { margin-top:22px; }
+  .p-final-glyph { margin-bottom:24px; }
+}

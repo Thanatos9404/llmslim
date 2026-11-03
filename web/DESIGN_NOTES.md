@@ -2,6 +2,37 @@
 
 The landing page follows the user's Raycast reference: a cinematic composition, custom dimensional artwork, concise product copy, and open layouts rather than a grid of promotional cards. Light and dark modes use separate artwork and shared semantic theme tokens. The existing theme persistence script and SEO infrastructure remain in place.
 
+## Design rollout, phase 2: home (November 2026)
+
+The pilot's system (below) applied to `/`, with no copy, number or claim changed. The sky hero, the photo bands and the
+startup program wall keep their look and their data; the wall's logos are untouched. Styles are at the end of
+`globals.css`, scoped to `.home-v2` (a route stylesheet of its own was a second render-blocking request and cost the
+phone LCP about 300ms).
+
+- **Glyph.** The memory glyph replaces the pixel in every section kicker and plays when its section is revealed; in the
+  hero's release line it is still. The closing band carries it at hero size on a small dark plate, playing when the
+  band is revealed (not on load: SVG animation is main-thread work, and off screen it is wasted).
+- **Type.** Section headings use `--fs-h2` with the Instrument Serif half on its own line; the closing headline uses
+  `--fs-display` (48 to 96px).
+- **Logos.** The receipts' bars name LLMSlim, Mem0, Zep and LongLLMLingua with their marks (`StatsBand`, so /benchmarks
+  and /vault get them too; a bar beside a product's gets a neutral pixel). The footnote's reader model, the Core and
+  Vault eyebrows (LLMSlim's mark) and the Sarvam link carry logos, and the pipeline section lists the frameworks its
+  paragraph names as logo chips linked to their guides. Hermes Agent publishes no logo file, so its chip has a pixel.
+- **Motion.** Everything on `--ease-out` (Framer constants included) and transform or opacity only: the receipts' cells
+  and the startup logos no longer animate a blur filter, and the old `HomeEffects` observer and its own curve are gone (the
+  demo, the pipeline copy and the code window use the shared `Reveal`). Hover springs, in CSS: the product plates' windows lift, the chips lift, the notes' numbers step, the
+  FAQ plus scales. The notes under the demo hang from a spectrum hairline.
+- **Performance.** The first version cost 7 phone points (71 against 78): the phone's first paint waited on style and
+  layout for the whole page and on the logo masks. Three changes took it past `main`: every section below the hero is
+  `content-visibility:auto` (laid out and painted as it nears the viewport; `auto` remembers its height); the hero's
+  two faces (Geist and Instrument Serif italic) are preloaded, because the earlier first paint now beat them and the
+  swap reflowed the hero; and on phones the hero copy is top-anchored. A fix for a shift that was already on `main`
+  rides along: the sky's top edge was a share of the hero's height, so when the hero grew a few pixels as fonts
+  arrived, the whole photo moved (CLS 0.156 on every phone run). It is now in viewport units, and the phone CLS is 0.
+  Measured interleaved against `main`, median of 5 on a phone and 3 on desktop: phone 74 to 82 (after runs 79 to 83),
+  desktop 98 to 98, accessibility 100 to 100, CLS 0.156 to 0 (phone) and 0.005 to 0 (desktop). The phone LCP is about
+  0.3 s later (4.33 to 4.62 s, the font preloads share the early bandwidth); TBT is lower.
+
 ## Design pilot, phase 1 (3 November 2026)
 
 Pages: `/compare/mem0`, `/compare/zep`, `/compare/llmlingua`, `/integrations`. Everything else changes only through

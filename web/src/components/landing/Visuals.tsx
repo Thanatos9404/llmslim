@@ -2,11 +2,16 @@
 
 import { animate, m, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useEffect, useRef, type PointerEvent, type ReactNode } from "react"
+import { LogoMark } from "@/components/brand/LogoMark"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import { logoForSystem } from "@/components/brand/product-logos"
+import { Reveal } from "@/components/motion/Reveal"
 
 // Product visuals in place of text boxes: each one shows what LLMSlim actually does.
 // Transform and opacity only; reduced-motion users get the finished state.
 
-const EASE = [0.16, 1, 0.3, 1] as const
+/** The site's one movement curve, --ease-out in globals.css. */
+const EASE = [0.22, 1, 0.36, 1] as const
 
 /* ------------------------------------------------------------------ window chrome */
 
@@ -163,35 +168,51 @@ function Ticker({ value }: { value: string }) {
   return <span ref={node}>{value}</span>
 }
 
-function Meter({ bar, max, ours, delay }: { bar: Bar; max: number; ours?: boolean; delay: number }) {
+/** A bar's name, with the product's logo where the name is a product's (LLMSlim, Mem0, Zep, LongLLMLingua). In a cell
+ *  where only one bar has a logo, the other gets a neutral pixel, so the two names stay aligned. */
+function BarName({ name, marked }: { name: string; marked: boolean }) {
+  if (!marked) return <span>{name}</span>
+  const logo = logoForSystem(name)
+  return <span className="ledger-bar-name">
+    <span className="ledger-bar-logo">
+      {logo === "llmslim" ? <LogoMark size={8} /> : logo ? <ProductLogo logo={logo} size={14} /> : <span className="ledger-bar-dot" aria-hidden="true" />}
+    </span>
+    {name}
+  </span>
+}
+
+function Meter({ bar, max, ours, delay, marked = false }: { bar: Bar; max: number; ours?: boolean; delay: number; marked?: boolean }) {
   const reduced = useReducedMotion()
   return <div className={`ledger-bar${ours ? " is-ours" : ""}`}>
-    <span>{bar.name}</span><span className="ledger-bar-value">{bar.display}</span>
+    <BarName name={bar.name} marked={marked} /><span className="ledger-bar-value">{bar.display}</span>
     <span className="ledger-bar-track"><m.span className="ledger-bar-fill" style={{ width: `${Math.max(0, Math.min(100, (bar.value / max) * 100))}%` }}
       initial={reduced ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.8 }} transition={{ duration: 1.2, ease: EASE, delay }} /></span>
   </div>
 }
 
-/** Four results in one ledger. A light follows the cursor across the panel and its edge. */
+/** Four results in one ledger. A light follows the cursor across the panel and its edge. Each cell rises into view
+ *  (Reveal: transform and opacity, and shown from the first paint to reduced-motion and no-script visitors), and a bar
+ *  that is a product's carries its logo. */
 export function StatsBand({ stats }: { stats: Stat[] }) {
-  const reduced = useReducedMotion()
   const move = (event: PointerEvent<HTMLDListElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     event.currentTarget.style.setProperty("--mx", `${event.clientX - box.left}px`)
     event.currentTarget.style.setProperty("--my", `${event.clientY - box.top}px`)
   }
   return <dl className="ledger" onPointerMove={move}>
-    {stats.map((stat, i) => <m.div key={stat.topic} className="ledger-cell" initial={reduced ? false : { opacity: 0, y: 18, filter: "blur(6px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.8, ease: EASE, delay: i * 0.08 }}>
-      <dt className="ledger-topic">{stat.topic}</dt>
-      <dd className="ledger-value"><Ticker value={stat.value} />{stat.unit && <span className="ledger-unit">{stat.unit}</span>}</dd>
-      <dd className="ledger-label">{stat.label}</dd>
-      <dd className="ledger-meter">
-        <Meter bar={stat.meter.before} max={stat.meter.max} delay={0.2 + i * 0.08} />
-        <Meter bar={stat.meter.after} max={stat.meter.max} ours delay={0.35 + i * 0.08} />
-      </dd>
-      <dd className="ledger-source">{stat.source}</dd>
-    </m.div>)}
+    {stats.map((stat, i) => {
+      const marked = Boolean(logoForSystem(stat.meter.before.name) || logoForSystem(stat.meter.after.name))
+      return <Reveal key={stat.topic} className="ledger-cell" delay={i * 0.08}>
+        <dt className="ledger-topic">{stat.topic}</dt>
+        <dd className="ledger-value"><Ticker value={stat.value} />{stat.unit && <span className="ledger-unit">{stat.unit}</span>}</dd>
+        <dd className="ledger-label">{stat.label}</dd>
+        <dd className="ledger-meter">
+          <Meter bar={stat.meter.before} max={stat.meter.max} delay={0.2 + i * 0.08} marked={marked} />
+          <Meter bar={stat.meter.after} max={stat.meter.max} ours delay={0.35 + i * 0.08} marked={marked} />
+        </dd>
+        <dd className="ledger-source">{stat.source}</dd>
+      </Reveal>
+    })}
   </dl>
 }
 

@@ -1,8 +1,8 @@
 import Link from "next/link"
+import { preload } from "react-dom"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
 import { GitHubMark, SiteHeader } from "@/components/site/SiteHeader"
 import { SiteFooter } from "@/components/site/SiteFooter"
-import { GlyphStage } from "@/components/brand/GlyphStage"
 import { LogoMark } from "@/components/brand/LogoMark"
 import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
 import { ProductLogo } from "@/components/brand/ProductLogo"
@@ -16,7 +16,6 @@ import { PageView } from "@/components/site/Telemetry"
 import { siteConfig } from "@/config/site"
 import { homeFaqs } from "@/data/home"
 import { constructMetadata, faqJsonLd, jsonLdScript } from "@/lib/seo"
-import "./home.css"
 
 export const metadata = constructMetadata({ path: "/", markdownPath: "/index.md" })
 
@@ -50,11 +49,15 @@ const PIPELINE: { slug: string; name: string; logo?: ProductLogoKey }[] = [
 ]
 
 export default function Home() {
+  // The hero's two faces, requested with the stylesheet instead of after it. With the rest of the page laid out lazily
+  // (globals.css, .home-v2), the first paint comes early enough to beat them, and the swap reflowed the hero.
+  preload("/fonts/geist-latin.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
+  preload("/fonts/InstrumentSerif-Italic.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" })
   return <div className="slim-site premium home-v2"><PageView event="homepage_view" /><SiteHeader /><main id="main-content">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(faqs)) }} />
 
     <PremiumHero>
-      <Link className="p-announce" href="/changelog"><MemoryGlyph size={14} animate className="p-announce-glyph" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
+      <Link className="p-announce" href="/changelog"><MemoryGlyph size={14} className="p-announce-glyph" /><span className="p-announce-item">Core v{siteConfig.coreVersion} is out</span><span className="p-announce-sep" aria-hidden="true" /><span className="p-announce-item">Vault v{siteConfig.vaultVersion} in beta<ArrowRight size={14} aria-hidden="true" /></span></Link>
       {/* No reveal on the headline and only transform motion below it, so the copy is painted on first load (LCP).
           The space before the <br> keeps "layer for" apart on phones, where the <br> is hidden. */}
       <h1 id="hero-title">The context layer{" "}<br /><span className="p-hero-dim">for production AI agents.</span></h1>
@@ -117,7 +120,8 @@ export default function Home() {
 
     <PhotoSection src="/media/earth-limb.webp" lightSrc="/media/dusk-light.webp" lightPosition="50% 40%" className="p-final" labelledBy="final-title" position="30% 50%">
       <div className="site-width p-final-copy">
-        <div className="p-final-glyph" aria-hidden="true"><GlyphStage size={84} /></div>
+        {/* Plays when the band is revealed, not on load: an SVG animation is main-thread work, and off screen it is wasted. */}
+        <Reveal className="p-final-glyph"><span className="p-final-plate"><MemoryGlyph size={84} animate /></span></Reveal>
         <Reveal><h2 id="final-title">Ship agents that know <span>exactly enough.</span></h2></Reveal>
         <Reveal delay={0.1}><p className="p-hero-lede">One install. Your next model call gets sharper.</p></Reveal>
         <Reveal delay={0.2} className="p-hero-actions"><Link className="button" href="/docs/getting-started">Get started <ArrowRight size={16} /></Link><a className="button button-outline" href={siteConfig.github} target="_blank" rel="noreferrer">Star on GitHub <ArrowUpRight size={16} /></a></Reveal>

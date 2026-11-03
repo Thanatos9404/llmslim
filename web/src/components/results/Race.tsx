@@ -4,7 +4,9 @@ import { LayoutGroup, m, useReducedMotion } from "framer-motion"
 import { useState } from "react"
 import { HEAD_TO_HEAD } from "@/data/live-benchmarks"
 import { RACE, type RacePoint } from "@/data/results-story"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
 import { EASE, fmt } from "./Charts"
+import { SystemMark } from "./SystemMark"
 
 const W = 720, H = 430
 const M = { left: 52, right: 28, top: 28, bottom: 52 }
@@ -42,7 +44,7 @@ export function Race() {
 
   return <section className="rs-race" aria-labelledby="race-title">
     <header className="rs-head">
-      <p className="rs-kicker">Head to head</p>
+      <p className="rs-kicker has-glyph"><MemoryGlyph size={14} />Head to head</p>
       <h2 id="race-title">More right answers per dollar. <em>Against memory systems and compressors.</em></h2>
       <p className="rs-lede">Accuracy against what 1,000 questions cost end to end, including the model calls that build Mem0&apos;s and Zep&apos;s memory. Up and to the left is better. We ran every system ourselves, with its own settings, on held-out questions.</p>
     </header>
@@ -84,7 +86,7 @@ export function Race() {
         <ol className="rs-board">
           {ranked.map((row, i) => <m.li key={`${key}-${row.name}`} layout transition={spring} className={`rs-board-row is-${row.kind}`}>
             <span className="rs-board-rank">{i + 1}</span>
-            <span className="rs-board-name">{row.name}<small>{row.model} · ${fmt(row.cost, 2)} per 1k</small></span>
+            <span className="rs-board-name"><span className="rs-board-sys"><SystemMark name={row.name} size={16} />{row.name}</span><small>{row.model} · ${fmt(row.cost, 2)} per 1k</small></span>
             <span className="rs-board-score">{fmt(row.score, 1)}</span>
           </m.li>)}
         </ol>

@@ -1,3 +1,4 @@
+import { SystemMark } from "@/components/results/SystemMark"
 import type { Arm } from "@/data/live-benchmarks"
 
 const LABEL: Record<Arm["kind"], string> = { full: "full context", llmslim: "LLMSlim", previous: "earlier LLMSlim", baseline: "baseline", competitor: "other system" }
@@ -16,7 +17,7 @@ export function ResultBars({ arms, metric, compact = false }: { arms: Arm[]; met
     <figcaption className="sr-only">{metric} by configuration</figcaption>
     <ul className="rb-list">{arms.map((arm) => <li key={arm.name} className={`rb-row is-${arm.kind}`}>
       <div className="rb-head">
-        <span className="rb-name">{arm.name}<span className="sr-only"> ({LABEL[arm.kind]})</span></span>
+        <span className="rb-name"><SystemMark name={arm.name} size={14} />{arm.name}<span className="sr-only"> ({LABEL[arm.kind]})</span></span>
         <span className="rb-score">{arm.score.toFixed(1)}</span>
       </div>
       <div className="rb-track" aria-hidden="true">

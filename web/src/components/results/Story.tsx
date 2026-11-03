@@ -6,6 +6,10 @@ import { useRef, type CSSProperties } from "react"
 import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react"
 import { READER, STILL_AHEAD } from "@/data/results-story"
 import { ROUND3_REPORT, ROUND6_REPORT, ROUND6_WEAK_SPOTS, WEAK_SPOTS } from "@/data/live-benchmarks"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
+import { ProductLogo } from "@/components/brand/ProductLogo"
+import type { ProductLogoKey } from "@/components/brand/product-logos"
+import { Reveal } from "@/components/motion/Reveal"
 import { PixelField } from "./PixelField"
 import { Plates } from "./Plates"
 import { Race } from "./Race"
@@ -16,6 +20,9 @@ const FIGURES = [
   { value: "212", unit: "×", text: "lower cost than Mem0 on its own LongMemEval questions, and as accurate (78.3% vs 76.7%)" },
   { value: "20", unit: "pts", text: "ahead of LongLLMLingua on LoCoMo conversations (93.3% vs 73.3%), at a seventh of its cost" },
 ]
+
+/** The other systems the hero's lede names, in its order, with their logos (nominative: they identify the product). */
+const RIVALS: [string, ProductLogoKey][] = [["Mem0", "mem0"], ["Zep", "zep"], ["LLMLingua-2", "llmlingua"], ["LongLLMLingua", "llmlingua"]]
 
 function Hero() {
   const ref = useRef<HTMLElement>(null)
@@ -29,9 +36,12 @@ function Hero() {
   return <section ref={ref} className="rs-hero" aria-labelledby="results-title">
     <m.div className="rs-hero-field" style={reduced ? undefined : { y: fieldY }}><PixelField /></m.div>
     <m.div className="rs-hero-copy" style={reduced ? undefined : { y: copyY, opacity: fade }}>
-      <p className="rs-kicker rise" {...rise(0)}>Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></p>
+      <p className="rs-kicker has-glyph rise" {...rise(0)}><MemoryGlyph size={14} />Results, October 2026<a href="#fine-print" className="rs-star" aria-label="How these were measured">*</a></p>
       <h1 id="results-title" className="rise" {...rise(0.1)}>Cut the context.<br /><em>Keep the answers.</em></h1>
       <p className="rs-hero-lede rise" {...rise(0.2)}>LLMSlim Core 0.12 and 0.9 against Mem0, Zep, LLMLingua-2, LongLLMLingua and dense retrieval, on held-out test questions read by the same model. Only the context changed between runs, and every cost is end to end.</p>
+      <ul className="rs-chips rise" {...rise(0.26)} aria-label="Systems named here">
+        {RIVALS.map(([name, logo]) => <li key={name}><ProductLogo logo={logo} size={14} />{name}</li>)}
+      </ul>
       <dl className="rs-figures rise" {...rise(0.32)}>
         {FIGURES.map((figure) => <div key={figure.text}><dt><span>{figure.value}</span><em>{figure.unit}</em></dt><dd>{figure.text}</dd></div>)}
       </dl>
@@ -44,7 +54,7 @@ function Hero() {
 function Loses() {
   return <section className="rs-held" aria-labelledby="loses-title">
     <header className="rs-head">
-      <p className="rs-kicker">Weak spots</p>
+      <p className="rs-kicker has-glyph"><MemoryGlyph size={14} />Weak spots</p>
       <h2 id="loses-title">Where it loses. <em>Published with the rest.</em></h2>
       <p className="rs-lede">LLMSlim was tuned on separate development questions, and the test questions were read once. These are the places it trails.</p>
     </header>
@@ -57,6 +67,8 @@ function Loses() {
 function Close() {
   return <section className="rs-close" aria-labelledby="close-title">
     <div className="rs-close-field"><PixelField fade="bottom" gap={8} /></div>
+    {/* Plays when the section is revealed: an SVG animation is main-thread work, and off screen it is wasted. */}
+    <Reveal className="rs-close-glyph"><span className="rs-close-plate"><MemoryGlyph size={84} animate /></span></Reveal>
     <h2 id="close-title">Run it on <em>your</em> context.</h2>
     <p className="rs-lede">Paste a long history, a stack of passages or a CI log, and watch what stays.</p>
     <div className="rs-close-actions">

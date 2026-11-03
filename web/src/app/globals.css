@@ -867,6 +867,29 @@ html:not(.dark) .p-final .photo-section-veil { background:linear-gradient(180deg
 .platform-row:last-child { border-bottom:1px solid var(--line); }
 .bm-story-link { margin-top:22px; font-size:15px; }
 
+/* /benchmarks, design rollout (November 2026), scoped to .bm-page (the benchmark pages have no route stylesheet, and a
+   new one would be a second render-blocking request). The glyph in the kickers, the type scale, logos on every row
+   that names a system (src/components/results/SystemMark.tsx) and the systems the lede names as logo chips. Not a
+   number or caption changes. */
+.bm-page .g-kicker { gap:10px; }
+.bm-page .g-kicker::before { display:none; }
+.bm-page .g-kicker .mg { flex-shrink:0; }
+.bm-page .bm-hero { max-width:900px; }
+.bm-page .bm-hero h1 { font-size:var(--fs-h1); line-height:1; letter-spacing:-.052em; }
+.bm-page .bm-hero h1 span { display:block; margin-top:.04em; font-family:var(--serif); font-style:italic; font-weight:400; letter-spacing:-.025em; color:color-mix(in srgb,var(--ink) 56%,transparent); }
+.bm-chips { display:flex; flex-wrap:wrap; gap:6px; margin:20px 0 0; padding:0; list-style:none; }
+.bm-chips li { display:inline-flex; align-items:center; gap:7px; min-height:30px; padding:3px 11px 3px 9px; border-radius:999px; font-size:12.5px; font-weight:520; color:var(--ink); background:var(--soft); box-shadow:inset 0 0 0 1px var(--line); }
+.bm-chips .plogo-img, .bm-page .sys-mark .plogo-img { border-radius:4px; }
+.bm-page .sys-mark { display:inline-grid; place-items:center; flex-shrink:0; }
+.bm-page .sys-mark-dot { width:5px; height:5px; background:color-mix(in srgb,var(--ink) 30%,transparent); }
+.bm-page .rb-name { display:inline-flex; align-items:center; gap:8px; min-width:0; }
+.bm-sys { display:inline-flex; align-items:center; gap:9px; }
+.bm-page .bm-section .p-head h2 { font-size:var(--fs-h2); line-height:1.02; }
+.bm-page .bm-section .p-head h2 span { display:block; margin-top:.06em; }
+.bm-page .bm-table tbody tr { transition:background-color var(--dur-hover) var(--ease-out); }
+.bm-page .bm-table tbody tr:hover { background:color-mix(in srgb,var(--ink) 3%,transparent); }
+.bm-page .p-notes { border-top:0; background:var(--spectrum) top left / 100% 1px no-repeat; }
+
 /* Company and policy pages (About, Contact, Terms, Privacy, Refunds, Delivery): one narrow column of plain text. */
 .policy-updated { font:11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--subtle); }
 .policy-page .policy-lede { font-size:17px; line-height:1.75; color:var(--ink); }

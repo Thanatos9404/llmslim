@@ -14,7 +14,7 @@ import unicodedata
 
 import pytest
 
-from llmslim import compress, plan_context
+from llmslim import compress, plan_context, tokenization
 from llmslim._fit import fit_text
 from llmslim.analysis import analyze
 from llmslim.optimizers.markdown_opt import optimize_markdown
@@ -46,7 +46,12 @@ def test_code_span_placeholders_are_restored_in_linear_time(unit):
     assert _seconds(compress, text, target_ratio=0.25, query="x") < BOUND
 
 
-def test_code_span_restoration_is_unchanged():
+def test_code_span_restoration_is_unchanged(monkeypatch):
+    # The expected split is the regex splitter's. Where nltk's punkt data is installed, split_sentences uses punkt,
+    # which keeps "Then ```x. y``` ok. And `c.d` here." as one sentence; restoration is the same either way. Pin the
+    # regex splitter, so the result doesn't depend on what the machine has downloaded.
+    monkeypatch.setattr(tokenization, "_NLTK_CHECKED", True)
+    monkeypatch.setattr(tokenization, "_NLTK_SPLIT", None)
     text = "Use `a ```code``` b` now. Then ```x. y``` ok. And `c.d` here. Odd \x00BLOCK7\x00 stays."
     assert split_sentences(text) == [
         "Use `a ```code``` b` now.",

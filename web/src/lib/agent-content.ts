@@ -18,7 +18,7 @@ import { COMPARISONS, type Comparison } from "@/data/comparisons"
 import { DOC_CATEGORIES, DOCS_BY_VERSION, DOCS_REGISTRY, docsInOrder, versionNoticeText, type DocPage } from "@/data/docs"
 import { DEFAULT_DOCS_VERSION, DOCS_VERSIONS, docHref, docsHome, isDocsVersion, resolveDocLink, versionStatus, type DocsVersion } from "@/data/docs-versions"
 import { homeFaqs } from "@/data/home"
-import { LLMSLIM_PRICES_TITLE, MEMORY_COMPARISONS, PRICES_CHECKED, llmslimPriceRows, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
+import { LLMSLIM_PRICES_TITLE, MEMORY_COMPARISONS, PRICES_CHECKED, llmslimPriceRows, roundLabel, type MemoryComparison, type PriceRow } from "@/data/memory-comparisons"
 import { FEATURE_MATRIX, LAUNCH_OFFERS, PLANS, PRICING_FAQS, formatPrice, type Billing, type Cell, type Currency, type Plan } from "@/data/pricing"
 import { INTEGRATION_CATEGORIES, INTEGRATIONS_REGISTRY, type IntegrationData } from "@/data/integrations"
 import { absoluteUrl } from "@/lib/seo"
@@ -259,19 +259,22 @@ export function memoryComparisonMarkdown(page: MemoryComparison): string {
     `## What ${page.rival} is\n\n` + page.about.map((item) => `### ${item.name}\n\n[${item.cite}](${item.url}). ${item.body}`).join("\n\n") + `\n\n${page.aboutNote}`,
     "## How LLMSlim differs\n\n" + page.differences.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
     ...page.benchmarks.map((block) => join(
-      `## Head to head: ${block.kicker}`,
+      `## ${roundLabel(block)}: ${block.kicker}`,
+      block.context,
       block.intro,
       ...block.tables.map((result) => join(
         `### ${result.title}`,
         result.rows.some((row) => row.budget)
-          ? table(["Budget", "System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.budget ?? "", row.system, row.tokens, row.score, row.cost]))
-          : table(["System", "Context tokens", "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.system, row.tokens, row.score, row.cost])),
+          ? table(["Budget", "System", "Context tokens", result.scoreLabel ?? "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.budget ?? "", row.system, row.tokens, row.score, row.cost]))
+          : table(["System", "Context tokens", result.scoreLabel ?? "Accuracy (95% CI)", "Cost per 1k questions"], result.rows.map((row) => [row.system, row.tokens, row.score, row.cost])),
         result.note,
       ).trimEnd()),
       "### Paired differences with 95% intervals\n\n" + table(["Comparison", "Benchmark (questions)", "Difference (95% CI)", "Reading"], block.pairedDiffs.map((row) => [row.comparison, row.benchmark, row.difference, row.reading])),
       block.pairedNote,
+      block.weakSpots && `### ${block.weakSpots.title}\n\n` + table([...block.weakSpots.columns, "Difference (95% CI)", "Reading"], block.weakSpots.rows.map((row) => [row.comparison, row.benchmark, row.difference, row.reading])),
+      block.weakSpots?.note,
       "### What this does not show\n\n" + block.caveats.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
-      "Sources and reruns:\n\n" + block.links.map((link) => `- [${link.label}](${link.url})`).join("\n"),
+      `${block.linksLabel ?? "Sources and reruns"}:\n\n` + block.links.map((link) => `- [${link.label}](${link.url})`).join("\n"),
     ).trimEnd()),
     `## When to choose ${page.rival}\n\n` + page.chooseThem.map((item) => `- **${item.title}.** ${item.body}`).join("\n"),
     "## When LLMSlim fits\n\n" + page.chooseUs.map((line) => `- ${line}`).join("\n"),

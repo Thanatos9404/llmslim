@@ -1,9 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "functions": {
-    "api/sarvam_answer.py": {
-      "maxDuration": 90
-    }
-  }
-}

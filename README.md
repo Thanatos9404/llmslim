@@ -346,7 +346,8 @@ the same size would have kept instead.
 - **In place:** kept lines are highlighted inside the original, next to the exact text the model would receive.
 - **No model call:** the Studio runs Core on the server and calls no provider. Nothing you paste is stored.
 
-See [Studio deployment](web/VERCEL_STUDIO_DEPLOYMENT.md) and the [security policy](SECURITY.md).
+See the [security policy](SECURITY.md). The website's source, the Studio included, lives in a private repository;
+Core, everything `pip install llmslim` installs, is here under the MIT license.
 
 👉 **[Open Interactive Studio](https://www.llmslim.app)**
 

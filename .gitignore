@@ -95,5 +95,4 @@ test_llmslim.py
 .phase5-pytest-tmp/
 .pnpm-store/
 node_modules/
-web/.next*/
 .playwright-cli/

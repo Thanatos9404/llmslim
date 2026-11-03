@@ -28,8 +28,10 @@ trademarks of their owners, and Simple Icons asks users to follow each brand's g
 | `neo4j.svg` | Neo4j | `neo4j` | https://neo4j.com/brand/#logo |
 | `postgresql.svg` | PostgreSQL | `postgresql` | https://wiki.postgresql.org/wiki/Logo (trademark policy: https://www.postgresql.org/about/policies/trademarks/) |
 | `pydantic.svg` | Pydantic (for Pydantic AI, whose docs use the same mark) | `pydantic` | https://github.com/pydantic/pydantic/blob/94c748001a32992a587694b999fb1f3d2f1fc1fe/docs/logo-white.svg |
+| `python.svg` | Python | `python` | https://www.python.org/community/logos/ (downloaded on 3 November 2026, for /pricing and /docs) |
 | `qwen.svg` | Qwen | `qwen` | https://qwen.ai |
 | `sqlite.svg` | SQLite | `sqlite` | https://github.com/sqlite/sqlite/blob/43e862723ec680542ca6f608f9963c0993dd7324/art/sqlite370.eps |
+| `typescript.svg` | TypeScript | `typescript` | https://www.typescriptlang.org/branding (downloaded on 3 November 2026, for /docs) |
 | `vercel.svg` | Vercel (for the Vercel AI SDK) | `vercel` | https://vercel.com/geist/brands |
 | `zoho.svg` | Zoho | `zoho` | https://www.zoho.com/branding |
 

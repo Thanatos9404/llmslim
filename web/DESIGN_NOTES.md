@@ -164,6 +164,23 @@ raster card:
 - Existing docs, benchmarks, articles, Studio, and changelog remain available with shared visual styling.
 - Sitemap source, robots source, SEO helpers, site metadata configuration, and Google verification assets were not changed. The existing sitemap generator automatically discovers the new Sarvam registry entry.
 
+## Design rollout, phase 2: docs (November 2026)
+
+(Placed here, not with the other phase 2 sections at the top, so that the four phase 2 pull requests do not edit the
+same lines of this file.) A light touch on `/docs` and its guides, in both versions (1.0 and 0.12): no photos, not a
+word changes, and the version switch keeps its links and behaviour. Styles are at the end of `src/app/docs/docs.css`.
+
+- **Glyph.** The memory glyph replaces the pixel in the docs hero's kicker and leads each guide's breadcrumb, still.
+- **Type.** Guide titles use `--fs-h2` (36 to 60px); the hero's serif half sits on its own line.
+- **Code windows.** In the docs, the bar shows the language's mark in place of the pixel: Python's and TypeScript's
+  logos (Simple Icons, new in `public/logos`), a terminal for shell, the pixel for the rest. This is a `mark` prop on
+  `DocCodeBlock`, off by default, so the compare, integration and article pages keep the pixel. The window's edge takes
+  the brand under the pointer, and the copy button presses in on the spring curve.
+- **Navigation.** The current guide in the sidebar is a brand-tinted pill (it still slides between guides) instead of a
+  one-sided bar; the current version in the switch carries the brand pixel. Colour changes run on `--ease-out`.
+- **Hover.** The overview's path cards lift and their arrows step on the spring curve; the pager lifts; the questions'
+  plus turns on it. Phones get no hover lift.
+
 ## Verification
 
 - Production Next.js build passed, including TypeScript and all 30 generated entries.

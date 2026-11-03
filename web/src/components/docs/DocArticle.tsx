@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, Link2, Plus } from "lucide-react"
+import { MemoryGlyph } from "@/components/brand/MemoryGlyph"
 import { Inline, plainText } from "@/components/docs/DocInline"
 import { DocSectionBody } from "@/components/docs/DocProse"
 import { DocToc, ReadingProgress } from "@/components/docs/DocToc"
@@ -26,7 +27,7 @@ export function DocArticle({ doc, version }: { doc: DocPage; version: DocsVersio
     <ReadingProgress />
     <article className="doc">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
-      <nav className="doc-crumbs" aria-label="Breadcrumb"><Link href={home}>{status === "current" ? "Docs" : `Docs ${version}`}</Link><span aria-hidden="true">/</span><span>{doc.category}</span></nav>
+      <nav className="doc-crumbs" aria-label="Breadcrumb"><MemoryGlyph size={12} className="doc-crumbs-glyph" /><Link href={home}>{status === "current" ? "Docs" : `Docs ${version}`}</Link><span aria-hidden="true">/</span><span>{doc.category}</span></nav>
       <DocsVersionNotice version={version} slug={doc.slug} />
       <header className="doc-head">
         <h1>{doc.title}</h1>

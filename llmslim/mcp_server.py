@@ -395,7 +395,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim mcp",
         description="Serve LLMSlim memory and context tools to MCP clients: over stdio (the default), or over HTTP "
-        "with --transport http so several machines share one memory.",
+        "with --transport http so several machines share one memory. The HTTP transport and its options are "
+        "experimental: they may change in a minor release (docs/API_STABILITY.md).",
     )
     parser.add_argument(
         "--db",
@@ -419,8 +420,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--transport",
         choices=_TRANSPORTS,
         default="stdio",
-        help="stdio (default): the client starts the server and talks to it over stdin and stdout. http: serve MCP's "
-        "Streamable HTTP transport, so clients on other machines share this memory. The options below apply to http.",
+        help="stdio (default): the client starts the server and talks to it over stdin and stdout. http "
+        "(experimental): serve MCP's Streamable HTTP transport, so clients on other machines share this memory. The "
+        "options below apply to http.",
     )
     parser.add_argument(
         "--host",

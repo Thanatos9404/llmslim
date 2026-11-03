@@ -166,6 +166,7 @@ COMMANDS: Tuple[Tuple[str, str, str], ...] = (
 
 #: Experimental flags of otherwise stable commands, by command. Keep this in step with docs/API_STABILITY.md.
 EXPERIMENTAL_FLAGS: Dict[str, Tuple[str, ...]] = {
+    "llmslim mcp": ("--allowed-host", "--api-key", "--host", "--path", "--port", "--transport"),
     "llmslim serve": ("--memory-budget", "--store-only", "--upstream-timeout", "--upstream-url"),
 }
 

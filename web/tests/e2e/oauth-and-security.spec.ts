@@ -65,7 +65,7 @@ test.describe("request safety", () => {
 })
 
 test.describe("security headers and the rest of the site", () => {
-  const pages = ["/", "/playground", "/docs", "/docs/getting-started", "/results", "/benchmarks", "/integrations", "/articles", "/changelog", "/platform", "/compare/llmlingua", "/compare/mem0", "/compare/zep", "/privacy", "/sign-in", "/sign-up", "/forgot-password", "/verify-email", "/reset-password"]
+  const pages = ["/", "/playground", "/docs", "/docs/getting-started", "/results", "/benchmarks", "/integrations", "/articles", "/changelog", "/platform", "/compare/llmlingua", "/compare/mem0", "/compare/zep", "/pricing", "/privacy", "/sign-in", "/sign-up", "/forgot-password", "/verify-email", "/reset-password"]
 
   for (const path of pages) {
     test(`${path} loads with the CSP and no policy violations`, async ({ page }) => {

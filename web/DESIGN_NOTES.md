@@ -132,6 +132,27 @@ them, rather than snapping every one to a step.
 Logos: `public/logos/SOURCES.md` (Simple Icons 16.36.0, CC0 data, and the companies' own files). Photos:
 `public/media/stock/CREDITS.md` (four Pexels photos, no people). Both self-hosted; the CSP is unchanged.
 
+## Design rollout, phase 2: pricing (November 2026)
+
+The pilot's system applied to `/pricing`. Not a word, price or plan changes, and the founding-list form inside the plan
+cards (its fields, requests, wording and `.pr-join` styles) is untouched. /vault has its own layout (a photo hero and
+feature rows), so it is not part of this group. Styles sit with the other pricing rules in `globals.css`, scoped to
+`.pricing-page`: a route stylesheet would be a second render-blocking request.
+
+- **Hero.** The headline moves to `--fs-h1` with the serif half on its own line, beside a dark plate from 980px: the
+  server-aisle photo (already in `public/media/stock`) under a veil, the memory glyph playing on it, and "LLMSlim Orbit"
+  with its opening status underneath (both already on the page; the plate is hidden from assistive technology). Under
+  980px the plate is hidden and its photo is a blank pixel, so phones never download it. The kicker carries the glyph.
+- **Logos.** LLMSlim's mark beside "LLMSlim Core" and "LLMSlim Orbit"; Python and MCP chips under the sentence that names
+  them; Razorpay's mark in the payments line. Python and Razorpay are new in `public/logos` (Simple Icons, CC0).
+- **Plans.** Each card and each matrix heading has a five-square ladder (one more square lit per plan, Free to
+  Enterprise). The featured plan (Team, `featured` in `src/data/pricing.ts`) is ringed in the brand with a spectrum
+  edge, and its matrix column carries a faint tint. Cards lift on the spring curve; matrix rows tint under the pointer.
+- **Motion.** The compare and FAQ heads rise in with `Reveal` and their glyphs play then; the FAQ plus scales on the
+  spring curve.
+- **Fonts.** Geist and Instrument Serif italic are preloaded: with the serif half on its own line, a late swap changed
+  the headline's height and moved the lede under it on phones (CLS 0.024, now 0).
+
 ## Assets
 
 The 3D compression ribbon that floated behind the home hero was removed on 30 October 2026, with both of its images.

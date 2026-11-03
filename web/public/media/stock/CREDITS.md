@@ -12,5 +12,5 @@ smaller AVIF and WebP sizes from these files, on the site's own origin.
 |---|---|---|---|---|
 | `fiber-blue-green.webp` | /compare/mem0 hero plate | Close-Up Shot of a Green and Blue Fiber Optic | Atlantic Ambience (https://www.pexels.com/@freestockpro/) | https://www.pexels.com/photo/12932191/ |
 | `fiber-violet.webp` | /compare/zep hero plate | Lights in Darkness around Thin Lines | Suki Lee (https://www.pexels.com/@suki-lee-110686949/) | https://www.pexels.com/photo/17194840/ |
-| `server-aisle.webp` | /compare/llmlingua hero plate | Server Racks on Data Center | Brett Sayles (https://www.pexels.com/@brett-sayles/) | https://www.pexels.com/photo/4508751/ |
+| `server-aisle.webp` | /compare/llmlingua hero plate; /pricing hero plate (from 980px) | Server Racks on Data Center | Brett Sayles (https://www.pexels.com/@brett-sayles/) | https://www.pexels.com/photo/4508751/ |
 | `laptop-code.webp` | /integrations hero stage | Programming Code on Laptop Screen | Nemuel Sereti (https://www.pexels.com/@nemuel/) | https://www.pexels.com/photo/6424590/ |

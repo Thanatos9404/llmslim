@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
+import { INTEGRATION_LOGOS, type ProductLogoKey } from "@/components/brand/product-logos"
+import { DocLogo } from "@/components/docs/DocLogo"
 import { DocsHero } from "@/components/docs/DocsHero"
 import { DocsVersionNotice } from "@/components/docs/DocsVersionNotice"
 import { DOC_CATEGORIES, DOCS_BY_VERSION, docsInOrder, isNewIn } from "@/data/docs"
@@ -16,6 +18,15 @@ const FRAMEWORKS = Object.values(INTEGRATIONS_REGISTRY).filter((item) => item.ca
 const COMPARISON_PAGES = [...Object.values(MEMORY_COMPARISONS), ...Object.values(COMPARISONS)].map((page) => ({
   slug: page.slug, name: page.heading[0].replace(/\.$/, ""), description: page.description,
 }))
+
+/** Logos for the interfaces and products the overview names (nominative; public/logos/SOURCES.md). */
+const STEP_LOGOS: Partial<Record<string, ProductLogoKey>> = { Python: "python", MCP: "mcp", TypeScript: "typescript" }
+const COMPARISON_LOGOS: Partial<Record<string, ProductLogoKey>> = { mem0: "mem0", zep: "zep", llmlingua: "llmlingua" }
+
+/** A row's logo tile, or a neutral pixel where the product publishes no logo file (Hermes Agent). */
+function RowMark({ logo }: { logo?: ProductLogoKey }) {
+  return <span className="docs-row-mark" aria-hidden="true">{logo ? <DocLogo logo={logo} size={15} /> : <span className="docs-row-dot" />}</span>
+}
 
 /** The four ways in, one per interface. */
 const PATHS = [
@@ -48,7 +59,7 @@ export function DocsIndex({ version }: { version: DocsVersion }) {
     <DocsHero kicker={status === "current" ? "Documentation" : status === "preview" ? `Documentation · ${version} preview` : `Documentation · ${version}`} />
     <section className="docs-paths" aria-label="Where to start">
       {PATHS.filter((path) => pages[path.slug]).map((path, i) => <Link key={path.slug} href={docHref(version, path.slug)} className="docs-path">
-        <span className="docs-path-step"><span>{String(i + 1).padStart(2, "0")}</span>{path.step}</span>
+        <span className="docs-path-step"><span>{String(i + 1).padStart(2, "0")}</span>{STEP_LOGOS[path.step] && <DocLogo logo={STEP_LOGOS[path.step]!} size={13} />}{path.step}</span>
         <strong>{path.title}</strong>
         <span className="docs-path-body">{path.body}</span>
         <span className="docs-path-go">Read <ArrowRight size={14} /></span>
@@ -69,7 +80,7 @@ export function DocsIndex({ version }: { version: DocsVersion }) {
     <section className="docs-group" aria-labelledby="group-frameworks">
       <h2 id="group-frameworks">Framework integrations</h2>
       <ul>{FRAMEWORKS.map((item) => <li key={item.slug}><Link href={`/integrations/${item.slug}`}>
-        <span className="docs-row-title">{item.name}</span>
+        <span className="docs-row-title"><RowMark logo={INTEGRATION_LOGOS[item.slug]} />{item.name}</span>
         <span className="docs-row-body">{item.tagline}</span>
         <span className="docs-row-time">{item.installation.command.match(/llmslim\[[a-z-]+\]/)?.[0] ?? "Guide"}</span>
         <ArrowRight size={15} className="docs-row-arrow" aria-hidden="true" />
@@ -78,7 +89,7 @@ export function DocsIndex({ version }: { version: DocsVersion }) {
     <section className="docs-group" aria-labelledby="group-comparisons">
       <h2 id="group-comparisons">Comparisons</h2>
       <ul>{COMPARISON_PAGES.map((page) => <li key={page.slug}><Link href={`/compare/${page.slug}`}>
-        <span className="docs-row-title">{page.name}</span>
+        <span className="docs-row-title"><RowMark logo={COMPARISON_LOGOS[page.slug]} />{page.name}</span>
         <span className="docs-row-body">{page.description}</span>
         <span className="docs-row-time">Comparison</span>
         <ArrowRight size={15} className="docs-row-arrow" aria-hidden="true" />

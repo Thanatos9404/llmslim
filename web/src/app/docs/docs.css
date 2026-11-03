@@ -174,3 +174,48 @@
   .docs-paths { grid-template-columns:1fr; }
   .doc-table td:first-child { white-space:normal; }
 }
+
+/* Design rollout (November 2026), a light touch: the memory glyph as an accent (each guide's breadcrumb), the guides'
+   titles on the type scale, the language's mark in each code window's bar, logos on the overview, a brand-tinted
+   current page in the sidebar and the version switch, and hover springs on the shared curves. No photos; not a word
+   changes. */
+.doc-crumbs-glyph { flex-shrink:0; }
+.doc-crumbs { align-items:center; }
+.doc-crumbs-glyph { margin-right:2px; }
+.doc-head h1 { font-size:var(--fs-h2); line-height:1.02; letter-spacing:-.05em; }
+
+/* Code windows: Python's and TypeScript's logos, a terminal for shell; the window's edge takes the brand under the
+   pointer, and the copy button presses in. */
+.doc-code-mark { flex-shrink:0; }
+.doc-code-term { color:var(--brand); }
+.doc-code-name .plogo { border-radius:2px; }
+.docs-main .doc-code, .docs-quick { transition:box-shadow var(--dur-hover) var(--ease-out); }
+.docs-main .doc-code:hover { box-shadow:0 0 0 1px color-mix(in srgb,var(--brand) 34%,var(--win-line)), var(--win-shadow); }
+.docs-main .doc-code-copy, .docs-quick .doc-code-copy { transition:background var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out), transform var(--dur-move) var(--ease-spring); }
+.docs-main .doc-code-copy:active, .docs-quick .doc-code-copy:active { transform:scale(.95); }
+
+/* Navigation: the current guide is a brand-tinted pill (it still slides between guides), the current version carries
+   the brand pixel. */
+.docs-nav-on { background:color-mix(in srgb,var(--brand) 8%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 28%,transparent); }
+.docs-nav li a, .docs-nav-home, .doc-toc a { transition:color var(--dur-hover) var(--ease-out), background var(--dur-hover) var(--ease-out); }
+.docs-nav-home[aria-current] { background:color-mix(in srgb,var(--brand) 8%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 28%,transparent); }
+.docs-version-option[aria-current]::before { content:""; flex-shrink:0; width:5px; height:5px; background:var(--brand); }
+
+/* The overview names interfaces and products: their logos sit beside the names (path cards, framework and comparison
+   rows); Hermes Agent publishes no logo file, so its row has a pixel. */
+.docs-path-step .plogo { margin-left:-2px; }
+/* The overview's lists below the fold are laid out (and their logo masks fetched) as they near the viewport, so the
+   logos do not compete with the first paint; `auto` keeps each list's real height once shown. */
+.docs-index .docs-group { content-visibility:auto; contain-intrinsic-size:auto 420px; }
+.docs-row-mark { display:inline-grid; place-items:center; width:26px; height:26px; margin:-4px 10px -4px 0; vertical-align:middle; border-radius:8px; background:var(--soft); box-shadow:inset 0 0 0 1px var(--line); }
+.docs-row-mark .plogo-img { border-radius:4px; }
+.docs-row-dot { width:5px; height:5px; background:color-mix(in srgb,var(--ink) 34%,transparent); }
+
+/* Hover springs: the path cards lift, the arrows step, the pager lifts, the questions' plus turns on the curve. */
+.docs-path { transition:box-shadow var(--dur-hover) var(--ease-out), transform var(--dur-move) var(--ease-spring); }
+.docs-path:hover { transform:translateY(-3px); }
+.docs-path-go svg, .docs-row-arrow { transition:transform var(--dur-move) var(--ease-spring), color var(--dur-hover) var(--ease-out); }
+.doc-pager-link { transition:box-shadow var(--dur-hover) var(--ease-out), background var(--dur-hover) var(--ease-out), transform var(--dur-move) var(--ease-spring); }
+.doc-pager-link:hover { transform:translateY(-2px); }
+.doc-faq summary svg { transition:transform var(--dur-move) var(--ease-spring); }
+@media (hover:none) { .docs-path:hover, .doc-pager-link:hover { transform:none; } }

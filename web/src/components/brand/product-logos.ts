@@ -43,6 +43,7 @@ export const PRODUCT_LOGOS = {
   razorpay: { name: "Razorpay", kind: "mask", src: "/logos/razorpay.svg", color: "#0C2451", colorDark: "#3395FF" },
   sarvam: { name: "Sarvam", kind: "mask", src: "/sarvam-symbol.svg" },
   sqlite: { name: "SQLite", kind: "mask", src: "/logos/sqlite.svg", color: "#003B57", colorDark: "#5FB4E0" },
+  typescript: { name: "TypeScript", kind: "mask", src: "/logos/typescript.svg", color: "#3178C6", colorDark: "#5B9BE6" },
   vercel: { name: "Vercel", kind: "mask", src: "/logos/vercel.svg" },
   zep: { name: "Zep", kind: "image", src: "/logos/zep-icon.svg" },
   // One colour, Zep's purple; on dark backgrounds it is drawn in the ink colour instead (no light variant is published).

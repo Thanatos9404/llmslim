@@ -16,7 +16,7 @@ export function DocSectionBody({ section, version }: { section: DocSection; vers
         <tbody>{section.table.rows.map((row) => <tr key={row.join("|")}>{row.map((cell, i) => <td key={i}><Inline text={cell} version={version} /></td>)}</tr>)}</tbody>
       </table>
     </div>}
-    {snippets.map((snippet) => <DocCodeBlock key={`${snippet.filename}:${snippet.code.slice(0, 40)}`} language={snippet.language} filename={snippet.filename} code={snippet.code} wrap={snippet.wrap} />)}
+    {snippets.map((snippet) => <DocCodeBlock key={`${snippet.filename}:${snippet.code.slice(0, 40)}`} language={snippet.language} filename={snippet.filename} code={snippet.code} wrap={snippet.wrap} mark />)}
     {section.after && <p><Inline text={section.after} version={version} /></p>}
     {section.callout && <DocCallout callout={section.callout} version={version} />}
   </>

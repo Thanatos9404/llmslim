@@ -32,6 +32,7 @@ trademarks of their owners, and Simple Icons asks users to follow each brand's g
 | `qwen.svg` | Qwen | `qwen` | https://qwen.ai |
 | `razorpay.svg` | Razorpay | `razorpay` | https://razorpay.com/newsroom/brand-assets/ (downloaded on 3 November 2026, for /pricing) |
 | `sqlite.svg` | SQLite | `sqlite` | https://github.com/sqlite/sqlite/blob/43e862723ec680542ca6f608f9963c0993dd7324/art/sqlite370.eps |
+| `typescript.svg` | TypeScript | `typescript` | https://www.typescriptlang.org/branding (downloaded on 3 November 2026, for /docs) |
 | `vercel.svg` | Vercel (for the Vercel AI SDK) | `vercel` | https://vercel.com/geist/brands |
 | `zoho.svg` | Zoho | `zoho` | https://www.zoho.com/branding |
 

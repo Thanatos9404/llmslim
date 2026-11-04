@@ -12,11 +12,12 @@ _FIT_SLACK = 1.02
 
 
 def fit_text(text: str, budget: int, query: Optional[str] = None) -> str:
-    """``text`` compressed to at most about ``budget`` tokens (within 2%), focused on ``query`` when given.
+    """``text`` compressed to ``budget`` tokens, at most 2% over (``budget * 1.02``), focused on ``query`` when given.
 
-    Text that already fits comes back unchanged. When compression can't get under the budget (a text that is one
-    long code block, say, which compression keeps whole), the compressed text is cut to the longest head that fits,
-    so the bound holds for any input.
+    Text that already fits comes back unchanged. When compression can't get within 2% of the budget (a text that is
+    one long code block, say, which compression keeps whole), the compressed text is cut to the longest head that fits
+    ``budget``, so the bound holds for any input. The 2% keeps a text that compression brought close whole, instead
+    of cutting off its end.
     """
     if budget <= 0:
         raise ValueError("budget must be a positive number of tokens")

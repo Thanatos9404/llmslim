@@ -204,6 +204,11 @@ do, every name that left an `__all__` and where to import it from now, and how t
   camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
   checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
   have it, and the package's version is unchanged.
+- **The sections of a search in the TypeScript client.** `MemoryContext` gains `requests`, `preferences` and
+  `conflicts`: the user's standing requests, stated preferences and possibly conflicting statements that a search shows
+  in their own sections above the turns, each a `RecalledTurn[]` like `turns`, and empty when the section isn't shown.
+  `llmslim serve` always sent them; the client dropped them. A test against a real `llmslim serve` checks all four
+  lists field for field against what the server sent. Not on npm yet, as above.
 
 ### Changed
 - **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,

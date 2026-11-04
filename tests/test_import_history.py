@@ -609,12 +609,12 @@ def test_a_lone_surrogate_is_read_as_a_replacement_character(tmp_path):
     stored = {item.content: item for item in Memory(db).get_all(user_id="default")}
     assert set(stored) == {
         "before",
-        "broken � emoji",
+        "broken \ufffd emoji",
         "with an odd id",
         "in an odd session",
         "a whole pair \U0001f600 stays",
     }
-    assert stored["in an odd session"].run_id == "s�"
+    assert stored["in an odd session"].run_id == "s\ufffd"
     assert import_history(path, db, format="jsonl").imported == 0  # still idempotent
     # The same in an export's titles and messages.
     export = tmp_path / "export"
@@ -624,8 +624,8 @@ def test_a_lone_surrogate_is_read_as_a_replacement_character(tmp_path):
     (export / "conversations.json").write_text(text, encoding="utf-8")
     memory = Memory()
     report = import_history(export, memory, format="chatgpt")
-    assert report.imported == 1 and report.sessions[0].title == "T�"
-    assert _text(memory) == "p�"
+    assert report.imported == 1 and report.sessions[0].title == "T\ufffd"
+    assert _text(memory) == "p\ufffd"
 
 
 def test_a_time_with_no_utc_equivalent_does_not_stop_the_import(tmp_path):

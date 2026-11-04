@@ -234,7 +234,7 @@ def _parse_int(text: str) -> int:
 def _without_surrogates(value: Any) -> Any:
     """``value`` with every lone surrogate in its strings (keys included) replaced by U+FFFD."""
     if isinstance(value, str):
-        return _SURROGATE.sub("�", value)
+        return _SURROGATE.sub("\ufffd", value)
     if isinstance(value, list):
         return [_without_surrogates(item) for item in value]
     if isinstance(value, dict):

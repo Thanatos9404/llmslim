@@ -795,6 +795,70 @@ def test_sqlite_store_refuses_a_newer_schema(tmp_path):
         SQLiteStore(path)
 
 
+def test_sqlite_store_opens_a_new_file_while_another_connection_writes_it(tmp_path):
+    # "PRAGMA journal_mode=WAL" answers "database is locked" at once, without sqlite3's busy timeout, while another
+    # connection writes a file that is not in WAL mode yet. Opening a new memory file then failed at start.
+    import threading
+
+    path = tmp_path / "new.db"
+    other = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    other.execute("BEGIN IMMEDIATE")
+    other.execute("CREATE TABLE IF NOT EXISTS unrelated (x)")
+    release = threading.Timer(0.3, other.execute, args=("COMMIT",))
+    release.start()
+    try:
+        store = SQLiteStore(path)  # waits for the other writer instead of failing
+        store.add([MemoryItem(id="a", role="user", content="hi", created_at=T0, user_id="u1")])
+        assert store.get("a").content == "hi"
+        store.close()
+    finally:
+        release.join()
+        other.close()
+
+
+def _open_new_file_and_write(path, barrier, results):
+    """A process that opens the memory file at the same moment as the others, then writes to it."""
+    barrier.wait()
+    try:
+        store = SQLiteStore(path)
+        for k in range(10):
+            item_id = f"{os.getpid()}-{k}"
+            store.add(
+                [MemoryItem(id=item_id, role="user", content="x", created_at=T0, user_id="u")]
+            )
+        store.close()
+        results.put("ok")
+    except Exception as error:  # reported to the test, which fails on it
+        results.put(f"{type(error).__name__}: {error}")
+
+
+def test_several_processes_can_open_a_new_sqlite_file_at_once(tmp_path):
+    # Two MCP clients starting `llmslim mcp`, a server's workers, or imports run side by side, on a memory file that
+    # does not exist yet: one of them failed with "database is locked".
+    import multiprocessing
+
+    context = multiprocessing.get_context("spawn")
+    processes = 4
+    for attempt in range(2):
+        path = str(tmp_path / f"new-{attempt}.db")
+        barrier, results = context.Barrier(processes), context.Queue()
+        workers = [
+            context.Process(target=_open_new_file_and_write, args=(path, barrier, results))
+            for _ in range(processes)
+        ]
+        for worker in workers:
+            worker.start()
+        outcomes = [results.get(timeout=120) for _ in workers]
+        for worker in workers:
+            worker.join(timeout=60)
+        assert outcomes == ["ok"] * processes
+        with sqlite3.connect(path) as conn:
+            count, distinct = conn.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT seq) FROM llmslim_memory"
+            ).fetchone()
+        assert count == distinct == processes * 10
+
+
 def test_in_memory_store_refuses_duplicate_ids():
     store = InMemoryStore()
     item = MemoryItem(id="x", role="user", content="a", created_at=T0, user_id="u1")

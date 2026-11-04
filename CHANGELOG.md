@@ -360,6 +360,13 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **Several processes can open a new SQLite memory file at once.** `SQLiteStore` switches a file to WAL mode when it
+  opens it, and SQLite answers that switch "database is locked" at once, without the 5-second busy timeout other
+  statements wait for, while another connection is writing a file not yet in WAL mode. So when two or more processes
+  opened a memory file that did not exist yet (two MCP clients starting `llmslim mcp` on a new machine, a server's
+  workers, imports run side by side), one of them could fail at start; with four processes it happened in most
+  tries. The switch is now retried for up to 5 seconds, and the schema version is written with `INSERT OR IGNORE`,
+  so two first opens can't both write it. A file already in WAL mode is opened as before.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

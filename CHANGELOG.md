@@ -360,6 +360,13 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **`llmslim import`'s credential pass takes linear time.** Three of its patterns read a run of key characters to its
+  end again from every word boundary inside it: the OpenAI key's check for a digit, a JWT's header, and a URL's
+  scheme. A 100,000-character turn (the `max_turn_chars` limit) such as `sk-sk-sk-...` took 22 seconds to redact,
+  `a.a.a...` 8 and `eyJ-eyJ-...` 7, and a title, limited only by the 32 MiB record size, far longer, so a crafted
+  export could stall an import. Each pattern now reads such a run once: about 0.1 seconds for any of them. What is
+  redacted is unchanged: a test compares the new patterns with the old ones on 20,000 random texts made of the
+  pieces they look for, and `tests/test_security_dos.py` times each shape.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

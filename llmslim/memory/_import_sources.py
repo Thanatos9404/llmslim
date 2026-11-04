@@ -558,7 +558,10 @@ def _chatgpt_session(conversation: Mapping[str, Any], tally: Tally, where: str) 
     for node_id in thread:
         node = mapping[node_id]
         message = node.get("message") if isinstance(node, dict) else None
-        if not isinstance(message, dict):
+        if not isinstance(node, dict) or not (message is None or isinstance(message, dict)):
+            tally.bad(MALFORMED, f"{where} node {node_id}")  # counted, not passed over in silence
+            continue
+        if message is None:
             continue  # the root and other placeholders carry no message
         author = message.get("author")
         role = author.get("role") if isinstance(author, dict) else None

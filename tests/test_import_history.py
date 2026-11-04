@@ -999,6 +999,22 @@ def test_records_in_the_wrong_shape_are_malformed(tmp_path):
     assert report.malformed == 2 and report.skipped["empty"] == 1
 
 
+def test_a_chatgpt_node_or_message_that_is_not_an_object_is_malformed(tmp_path):
+    # Such a node on the thread was passed over like the root, which has no message, and counted nowhere.
+    conversation = _conversation(
+        [("u", "root", "user", "kept", 1700000000), ("a", "u", "assistant", "kept too", 1700000001)],
+        current="a",
+    )
+    conversation["mapping"]["text"] = {"id": "text", "parent": "u", "message": "not a message"}
+    conversation["mapping"]["a"]["parent"] = "text"
+    odd = _conversation([], cid="conv-odd", current="odd")
+    odd["mapping"]["odd"] = "not a node"
+    (tmp_path / "conversations.json").write_text(json.dumps([conversation, odd]), encoding="utf-8")
+    memory = Memory()
+    report = import_history(tmp_path, memory, format="chatgpt")
+    assert _text(memory) == "kept\nkept too" and report.malformed == 2
+
+
 def test_a_document_that_is_not_json_is_an_error(tmp_path):
     (tmp_path / "conversations.json").write_text("hello", encoding="utf-8")
     with pytest.raises(HistoryImportError, match="not valid JSON"):

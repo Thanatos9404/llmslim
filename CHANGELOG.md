@@ -372,7 +372,8 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
     conversations are imported and the cut one is counted as malformed, as when the cut falls between characters.
 
   Epoch seconds before 1970 or after 3000 are also read on Windows now, as on other platforms; they were unreadable
-  there.
+  there. And a ChatGPT node on the thread that is not an object, or whose message is not one, is counted as
+  malformed; it was passed over like the root and counted nowhere.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

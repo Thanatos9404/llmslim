@@ -38,14 +38,15 @@ __all__ = [
 
 T = TypeVar("T")
 
-_VERSION = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
+_VERSION = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?((?:a|b|rc)\d+)?")
 
 
-def _parse(version: str, what: str) -> Tuple[int, int, int]:
+def _parse(version: str, what: str, *, pre_release: bool = False) -> Tuple[int, int, int]:
     match = _VERSION.fullmatch(version)
-    if match is None:
-        raise ValueError(f"{what} must be a release like '1.2' or '1.2.0', got {version!r}")
-    major, minor, patch = match.groups()
+    if match is None or (match.group(4) and not pre_release):
+        examples = "'1.2', '1.2.0' or '1.0.0rc1'" if pre_release else "'1.2' or '1.2.0'"
+        raise ValueError(f"{what} must be a release like {examples}, got {version!r}")
+    major, minor, patch, _ = match.groups()
     return int(major), int(minor), int(patch or 0)
 
 
@@ -55,13 +56,14 @@ def deprecation_message(
     """The warning text for ``name``, after checking the versions follow the deprecation policy.
 
     ``removed_in`` must be a major release (``2.0``) later than the major release of ``since``: a deprecated name
-    is removed only in a major release. ``replacement`` is required by name; pass ``None`` only when nothing
+    is removed only in a major release. ``since`` may be a release candidate (``1.0.0rc1``) when the deprecation
+    first ships in one; ``removed_in`` may not. ``replacement`` is required by name; pass ``None`` only when nothing
     replaces the deprecated name.
     """
 
     if not name:
         raise ValueError("name must not be empty")
-    deprecated_in = _parse(since, "since")
+    deprecated_in = _parse(since, "since", pre_release=True)
     removed = _parse(removed_in, "removed_in")
     if removed[1:] != (0, 0) or removed[0] <= deprecated_in[0]:
         raise ValueError(

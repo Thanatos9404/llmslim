@@ -49,7 +49,8 @@ If `llmslim` isn't on the client's `PATH`, give the full path to it, or let `uvx
 
 ## Share one memory across machines
 
-`llmslim mcp --transport http` serves the same tools over MCP's Streamable HTTP transport (llmslim 0.13.0 or newer).
+`llmslim mcp --transport http` serves the same tools over MCP's Streamable HTTP transport (llmslim 1.0 or newer;
+[try the release candidate](UPGRADING.md#try-the-release-candidate) to use it before then).
 Run it on one machine, and point the clients on your laptop, desktop and CI runner at it: what one of them stores, the
 others recall.
 

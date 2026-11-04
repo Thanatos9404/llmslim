@@ -859,6 +859,18 @@ def test_several_processes_can_open_a_new_sqlite_file_at_once(tmp_path):
         assert count == distinct == processes * 10
 
 
+def test_sqlite_store_that_cannot_open_lets_go_of_the_file(tmp_path):
+    path = tmp_path / "notes.db"
+    path.write_bytes(b"these are notes, not a database\n" * 64)
+    with pytest.raises(sqlite3.DatabaseError) as raised:
+        SQLiteStore(path)
+    # The error (and the store in its traceback) is still alive here; the file must not be: on Windows an open
+    # handle makes moving or deleting it fail.
+    path.rename(tmp_path / "moved.db")
+    (tmp_path / "moved.db").unlink()
+    assert "not a database" in str(raised.value)
+
+
 def test_in_memory_store_refuses_duplicate_ids():
     store = InMemoryStore()
     item = MemoryItem(id="x", role="user", content="a", created_at=T0, user_id="u1")

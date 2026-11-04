@@ -147,6 +147,35 @@ def test_signatures_are_the_same_on_every_machine():
     assert api.describe(Path.home())["type"] == "Path"  # not WindowsPath or PosixPath
 
 
+def test_annotations_are_the_same_on_every_python():
+    """Python 3.14 prints ``Optional[str]`` as ``str | None``; the snapshot keeps the spelling of 3.10 to 3.13."""
+    import sys
+    from typing import Callable, Dict, List, Optional, Union
+
+    from llmslim import ContextRole
+
+    expected = [
+        (Optional[str], "Optional[str]"),
+        (Union[None, str], "Optional[str]"),
+        (Union[str, Callable[..., Any]], "Union[str, Callable[..., Any]]"),
+        (Union[ContextRole, str], "Union[ContextRole, str]"),
+        (Optional[Dict[str, Any]], "Optional[Dict[str, Any]]"),
+        (Union[int, str, None], "Union[int, str, None]"),
+        (List[Optional[int]], "List[Optional[int]]"),
+        (Dict[str, Union[int, List[Optional[str]]]], "Dict[str, Union[int, List[Optional[str]]]]"),
+        (Callable[[Optional[int]], Any], "Callable[[Optional[int]], Any]"),
+        (Optional[Callable[..., Any]], "Optional[Callable[..., Any]]"),
+        (Dict[str, Any], "Dict[str, Any]"),
+    ]
+    for annotation, text in expected:
+        assert api._annotation_text(annotation) == text
+        # Before 3.14 this is exactly what typing printed, so the recorded snapshot is unchanged.
+        if sys.version_info < (3, 14):
+            assert api._plain_text(annotation) == text
+    # On 3.14 `X | None` is the same type as Optional[X], so every Python writes it the same way.
+    assert api._annotation_text(int | None) == "Optional[int]"
+
+
 def test_a_deprecated_name_is_recorded_as_deprecated():
     from llmslim._deprecation import deprecated
 

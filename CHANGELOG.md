@@ -360,6 +360,18 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **Python 3.14 is supported and tested.** CI runs the whole test suite on Python 3.14, and the package says it
+  supports 3.14. Two things failed there:
+  - The public API snapshot wrote `Optional[str]` as `str | None` on 3.14 for the Haystack, LangChain and LlamaIndex
+    adapters, so their snapshot tests failed. It now writes a type the same way on 3.10 to 3.14. The API is unchanged.
+  - On Windows, a test that stops the MCP server and opens its database right away got "disk I/O error". That is
+    SQLite on Windows, not llmslim: right after a process holding a database is killed, the newer SQLite that
+    Python 3.13.14 and 3.14.8 ship can fail to open it for a few milliseconds, then opens it with every row. The test
+    now retries that one error on Windows.
+- **A memory file that can't be opened is let go at once.** When `SQLiteStore` (or `Memory("path.db")`) failed to
+  open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
+  while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
+  raised.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,
@@ -372,6 +384,11 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
   so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
 - `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
+- **`RELEASE_CHECKLIST.md` is up to date.** It said `black` (the repository uses `ruff format`) and five one-click
+  links (there are 10), and left out the Hermes files, `tests/test_dx.py`, `docs/MIGRATE_FROM_MEM0.md`, the MCP
+  Registry, the Hermes catalog and awesome-copilot. It now has all of them, the 1.0.0 classifier, the website's
+  `npm run sync:core` step, and how a release candidate is cut: on a release branch (CI now runs on `release/**`),
+  published to PyPI as a pre-release, with `main` and every plugin pin left on the last final release.
 
 ## [0.12.0] - 2026-10-27
 

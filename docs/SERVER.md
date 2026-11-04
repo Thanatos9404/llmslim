@@ -52,7 +52,10 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
   (`mongodb://llmslim:<password>@mongo:27017/llmslim?authSource=admin`): `localhost` in the container is the container
   itself.
 - Collections, tables and indexes are created when the server starts. If the database can't be reached or the login
-  fails, the server exits at start with one line saying why, without the URL or its password.
+  fails, the server exits at start with one line saying why, without the URL or its password. It waits up to 10
+  seconds for Postgres (`?connect_timeout=` in the URL or `PGCONNECT_TIMEOUT` sets another limit), and for MongoDB
+  the URL's `serverSelectionTimeoutMS` (PyMongo's default is 30 seconds). In Docker Compose, start the server once
+  the database's health check passes.
 - Once it is running, a database restart or outage makes the requests that need the database answer 503 until it is
   back, with no restart of the server. `GET /healthz` keeps answering: it checks the process, not the database.
 
@@ -82,8 +85,8 @@ LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net
 ## API
 
 All bodies and responses are JSON. Errors look like `{"error": {"type": "invalid_request", "message": "..."}}`, with
-status 400, 401, 403, 404, 405, 413, 500, 501 or 503. A value of the wrong type or out of range, JSON nested past the
-parser's limit, `NaN` and `Infinity` (which JSON doesn't have), and text that isn't valid Unicode (a lone surrogate
+status 400, 401, 403, 404, 405, 413, 500, 501 or 503. A value of the wrong type or out of range, JSON nested more than
+64 levels deep, `NaN` and `Infinity` (which JSON doesn't have), and text that isn't valid Unicode (a lone surrogate
 such as `"\ud800"`) are 400s. A path no route has is a 404 (`"type": "not_found"`), and a method its route doesn't
 take a 405 (`"type": "method_not_allowed"`, with `Allow`); `HEAD` works wherever `GET` does. When the memory's
 database (Postgres or MongoDB) can't be reached, the answer is a 503 with `"type": "store_unavailable"` and

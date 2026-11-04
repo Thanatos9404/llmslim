@@ -574,11 +574,11 @@ class ChatRelay:
     # ------------------------------------------------------------------ helpers
 
     @staticmethod
-    def _request_key(plan: _Plan, messages: Sequence[Any]) -> str:
-        """The scope and every message up to the latest user turn: the same for a retry, different for a new turn."""
-        assert plan.latest_user is not None
+    def _request_key(plan: _Plan, messages: Sequence[Any], latest_user: int) -> str:
+        """The scope and every message up to the latest user turn (``latest_user``, its index): the same for a retry,
+        different for a new turn."""
         data = json.dumps(
-            [sorted(plan.scope.items()), list(messages[: plan.latest_user + 1])],
+            [sorted(plan.scope.items()), list(messages[: latest_user + 1])],
             ensure_ascii=False,
             sort_keys=True,
         )
@@ -737,7 +737,7 @@ class ChatRelay:
                 return
             key = None
             if user_turn.strip() and (cut_off or self._cut_off):
-                key = self._request_key(plan, messages)
+                key = self._request_key(plan, messages, plan.latest_user)
             turns = []
             if user_turn.strip() and not (key is not None and self._stored_when_cut_off(key)):
                 turns.append({"role": "user", "content": user_turn})

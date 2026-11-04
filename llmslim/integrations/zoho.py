@@ -86,7 +86,8 @@ class _ZohoSourceBase:
     async def _token(self) -> str:
         if self._access_token:
             return self._access_token
-        assert self._token_provider is not None
+        if self._token_provider is None:
+            raise ZohoAuthenticationError("Zoho source has no access token or token provider")
         value = self._token_provider()
         token = await value if inspect.isawaitable(value) else value
         if not isinstance(token, str) or not token:

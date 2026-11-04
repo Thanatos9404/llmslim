@@ -322,6 +322,27 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
 
 ### Fixed
+- **The proxy no longer adds a bare `?` to requests, or fails on deeply nested JSON.**
+  - `llmslim proxy` and `llmslim wrap` sent a request without a query string, such as `POST /v1/messages`, upstream
+    as `POST /v1/messages?`, and a strict upstream answered 404. Such a request now goes out as it came in; a query
+    string is passed on as before.
+  - A body nested too deeply for Python's parser was a 500 from the proxy itself. It is now forwarded unchanged, for
+    the API to answer.
+- **An unreachable Postgres fails in 10 seconds, with the reason.** A memory store on a `postgresql://` URL that
+  couldn't reach the server waited 30 seconds whatever `connect_timeout` said, then failed with a `PoolTimeout` that
+  didn't say why: psycopg's pool kept retrying in the background. The store now connects once before it opens the
+  pool, so `Memory(...)`, `llmslim serve`, `llmslim mcp` and `llmslim import` fail within the URL's
+  `connect_timeout`, else libpq's `PGCONNECT_TIMEOUT`, else 10 seconds, with psycopg's own error (`connection timeout
+  expired`, a refused connection, a wrong password). The commands still print it in one line without the password.
+  The pool's later connections use the same limit, instead of psycopg's 130 seconds. A pool or connection you pass in
+  is unchanged.
+- **No `assert` guards real input or state any more.** Python drops `assert` under `-O`, so these checks could vanish:
+  - `MongoDBContextSource.search` with an `embedding_provider` but no `vector_index` (both are public attributes)
+    raises `ValueError`, not `AssertionError`;
+  - `Neo4jContextStore` with a `uri` that isn't a string (bytes, a `Path`) raises `TypeError` with a clear message;
+  - a `ZohoCRMContextSource` left with neither a token nor a token provider raises `ZohoAuthenticationError`.
+
+  The other eight asserts could never fail; the code now proves the same thing without them. Nothing else changes.
 - **The Docker image runs on Postgres and MongoDB.** It installed only the `server` extra, so with
   `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
   now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,
@@ -360,6 +381,22 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **Python 3.14 is supported and tested.** CI runs the whole test suite on Python 3.14, and the package says it
+  supports 3.14. Three things failed there:
+  - The public API snapshot wrote `Optional[str]` as `str | None` on 3.14 for the Haystack, LangChain and LlamaIndex
+    adapters, so their snapshot tests failed. It now writes a type the same way on 3.10 to 3.14. The API is unchanged.
+  - On Windows, a test that stops the MCP server and opens its database right away got "disk I/O error". That is
+    SQLite on Windows, not llmslim: right after a process holding a database is killed, the newer SQLite that
+    Python 3.13.14 and 3.14.8 ship can fail to open it for a few milliseconds, then opens it with every row. The test
+    now retries that one error on Windows.
+  - On Linux, Python 3.14's JSON parser accepted a request body nested 100,000 levels deep, where 3.10 to 3.13 stop
+    near their recursion limit, so `llmslim serve` stored such metadata instead of refusing it. Request bodies of
+    `llmslim serve` and its chat endpoint nested more than 64 levels deep are now a 400 (`invalid_json`) on every
+    Python, checked before the body is parsed, as `llmslim import` already does for its records.
+- **A memory file that can't be opened is let go at once.** When `SQLiteStore` (or `Memory("path.db")`) failed to
+  open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
+  while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
+  raised.
 - **Compressing a long text with many distinct words no longer takes gigabytes of memory.** The default TF-IDF
   backend made its whole matrix dense, one row per sentence and one column per distinct word, though the compressor
   reads one chunk of sentences at a time. `llmslim serve`'s `POST /v1/context/fit` without a `query` (and MCP's
@@ -379,6 +416,11 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
   so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
 - `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
+- **`RELEASE_CHECKLIST.md` is up to date.** It said `black` (the repository uses `ruff format`) and five one-click
+  links (there are 10), and left out the Hermes files, `tests/test_dx.py`, `docs/MIGRATE_FROM_MEM0.md`, the MCP
+  Registry, the Hermes catalog and awesome-copilot. It now has all of them, the 1.0.0 classifier, the website's
+  `npm run sync:core` step, and how a release candidate is cut: on a release branch (CI now runs on `release/**`),
+  published to PyPI as a pre-release, with `main` and every plugin pin left on the last final release.
 
 ## [0.12.0] - 2026-10-27
 

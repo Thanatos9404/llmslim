@@ -10,6 +10,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -473,6 +474,9 @@ def test_constructor_validates_inputs_without_echoing_secrets() -> None:
     assert "hunter2" not in str(captured.value)
     with pytest.raises(ValueError, match="auth is required"):
         Neo4jContextStore(uri="neo4j+s://x.example", tenant_id=TENANT)
+    for uri in (b"neo4j+s://x.example", Path("neo4j+s://x.example"), 7):
+        with pytest.raises(TypeError, match="uri must be a string"):
+            Neo4jContextStore(uri=uri, auth=("neo4j", "pw"), tenant_id=TENANT)  # type: ignore[arg-type]
     for auth in (("neo4j",), ("neo4j", ""), ("neo4j", 5)):
         with pytest.raises(ValueError, match="username, password"):
             Neo4jContextStore(uri="neo4j+s://x.example", auth=auth, tenant_id=TENANT)

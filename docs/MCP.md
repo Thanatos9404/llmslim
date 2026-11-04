@@ -53,6 +53,12 @@ If `llmslim` isn't on the client's `PATH`, give the full path to it, or let `uvx
 Run it on one machine, and point the clients on your laptop, desktop and CI runner at it: what one of them stores, the
 others recall.
 
+**Experimental.** The HTTP transport and its options (`--transport`, `--host`, `--port`, `--path`, `--api-key`,
+`--allowed-host`, `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT` and `LLMSLIM_MCP_API_KEYS`) may change in a minor release:
+MCP's HTTP transport is changing, and one scope per server may gain per-key scopes (see
+[API_STABILITY.md](API_STABILITY.md#experimental)). `llmslim mcp` over stdio, its other options and its tools are
+stable.
+
 **1. Make a key and start the server.** It needs the same `mcp` extra; nothing else.
 
 ```bash

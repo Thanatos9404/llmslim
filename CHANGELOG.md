@@ -238,6 +238,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `llmslim.server` exports `create_app` and `main`. `api_keys_from` and `is_loopback` are internal.
 - `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
   `build_wrap_parser`. The commands are unchanged.
+- **Experimental features say so where you meet them.** `llmslim proxy --help`, `llmslim proxy stats --help` and
+  `llmslim wrap --help` say the commands are experimental, and `llmslim mcp --help` says the HTTP transport and its
+  options are, as `docs/API_STABILITY.md` already listed them. So do `docs/PROXY.md`, the "Share one memory across
+  machines" section of `docs/MCP.md` and the README. `tests/fixtures/public_api.json` now records `llmslim mcp`'s
+  `--transport`, `--host`, `--port`, `--path`, `--api-key` and `--allowed-host` as experimental, as it already did the
+  chat endpoint's flags of `llmslim serve`. No flag or behaviour changes.
 - **A database that is down is a clean, retryable error.** When Postgres or MongoDB can't be reached (restarting, a
   network cut), `llmslim serve` answers a 503 with `"type": "store_unavailable"` and `Retry-After: 5`, and logs one
   line with the error's type; it used to answer a plain-text 500 and log a traceback. The `llmslim mcp` tools fail

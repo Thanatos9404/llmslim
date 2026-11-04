@@ -610,6 +610,9 @@ pages get paid for again and again, and they add to the context that Claude Code
 - Output of Claude Code's own `Read`, `Edit` and `Write` tools is never touched. A file printed through the shell
   (`cat`, `head`) counts as shell output.
 
+`llmslim wrap` and `llmslim proxy` are experimental: they may change in a minor release
+([API stability](docs/API_STABILITY.md#experimental)).
+
 ```bash
 pip install "llmslim[proxy]"
 llmslim wrap claude
@@ -685,8 +688,9 @@ claude mcp add llmslim -- llmslim mcp
 - **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
 - **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
-- **Several machines:** `llmslim mcp --transport http` (0.13.0 and newer) serves the same memory over HTTP behind bearer
-  keys, so your laptop and desktop share it; see [docs/MCP.md](docs/MCP.md#share-one-memory-across-machines).
+- **Several machines (experimental):** `llmslim mcp --transport http` (0.13.0 and newer) serves the same memory over
+  HTTP behind bearer keys, so your laptop and desktop share it; see
+  [docs/MCP.md](docs/MCP.md#share-one-memory-across-machines).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
 
 **One-click install** in other clients. Each link runs `uvx --from "llmslim[mcp]==0.12.0" llmslim mcp`, so it needs

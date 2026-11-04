@@ -20,6 +20,10 @@ llmslim proxy stats                 # what it has saved so far
 
 No model is called, and nothing leaves your machine except the requests Claude Code was already sending, now shorter.
 
+**Experimental.** `llmslim proxy`, `llmslim wrap`, their flags, `LLMSLIM_PROXY_DB`, `LLMSLIM_PROXY_UPSTREAM` and the
+`llmslim.proxy` package may change in a minor release: they sit on the Anthropic Messages wire format and on Claude
+Code's traffic, which change without notice (see [API_STABILITY.md](API_STABILITY.md#experimental)).
+
 ## What it changes, and what it never touches
 
 - **Compressed:** output from `Bash`, `PowerShell`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Monitor` when it is

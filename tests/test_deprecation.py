@@ -41,11 +41,27 @@ def test_message_names_the_release_the_removal_and_the_replacement():
         ("1.2", "1.0"),
         ("one", "2.0"),
         ("1.2", "next"),
+        ("1.0.0rc1", "1.0"),  # a release candidate's own release is not later
+        ("1.2", "2.0rc1"),  # removal is in a final major release
+        ("1.0.0rc", "2.0"),  # not a release candidate
+        ("1.0.0dev1", "2.0"),
+        ("1.0.0-rc1", "2.0"),
     ],
 )
 def test_versions_that_break_the_policy_are_refused(since, removed_in):
     with pytest.raises(ValueError):
         deprecation_message("old", since=since, removed_in=removed_in, replacement="new")
+
+
+def test_a_deprecation_may_first_ship_in_a_release_candidate():
+    message = deprecation_message("old", since="1.0.0rc1", removed_in="2.0", replacement="new")
+    assert (
+        message
+        == "old is deprecated since llmslim 1.0.0rc1 and will be removed in 2.0; use new instead."
+    )
+    assert "since llmslim 1.3b2 " in deprecation_message(
+        "old", since="1.3b2", removed_in="2.0", replacement=None
+    )
 
 
 def test_an_empty_name_is_refused():

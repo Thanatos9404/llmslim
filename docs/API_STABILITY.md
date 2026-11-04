@@ -2,12 +2,15 @@
 
 From 1.0.0, LLMSlim follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for the public API on this
 page. Until then, 0.x minor releases may still make breaking changes, and the CHANGELOG lists each one. The surface
-below is the one 1.0 will freeze.
+below is the one 1.0 will freeze. The release candidate, 1.0.0rc1, will carry it; from then until 1.0.0, only fixes
+go in.
 
 - **What is public:** the modules listed below, and in each one only the names in its `__all__`.
 - **The record:** [`tests/fixtures/public_api.json`](../tests/fixtures/public_api.json) holds every public name with
   its signature, plus the command line, the `llmslim serve` routes, the `llmslim mcp` tools, the entry points and the
   environment variables. A test fails when any of them changes (see [Changing the API](#changing-the-api)).
+- **Upgrading from 0.12:** [UPGRADING.md](UPGRADING.md) lists every change that can break code, every name that left
+  an `__all__` and where to import it from now, and how to try the release candidate.
 
 ## What a version number promises
 
@@ -115,7 +118,10 @@ counts the tokens of that rendering, and `compile_cache_plan` builds the cache p
 | `llmslim.integrations.web_search` | `WebSearchSource`, `WebSearchResult` and their errors, for web-search sources |
 
 Each integration module exports its documented classes and functions, the types they return and the errors they
-raise. Its constants, default limits and helper functions are internal, even when they are importable.
+raise. Its constants, default limits and helper functions are internal, even when they are importable. Four of them
+were public in 0.12 as names of `llmslim.integrations.sarvam`: `DEFAULT_TEXT_LIMITS`, `TEXT_GUARD_PREFIX`,
+`DEFAULT_DOCUMENT_LIMITS` and `DOCUMENT_GUARD_PREFIX`. They still import from it, deprecated since 1.0.0rc1 and until
+2.0, with a warning that names the module that defines them ([UPGRADING.md](UPGRADING.md#names-that-left-__all__)).
 
 The API of each integration module is stable. The framework versions it supports follow the framework: when a
 framework or vendor SDK changes incompatibly, a minor release may raise the minimum version in the extra, or cap it
@@ -137,7 +143,7 @@ each time, and a deprecation period is given when it is practical.
 | In `llmslim.tools`: `rank_tools`, `select_tools`, `plan_tool_context`, `RankedTool`, `ToolSelection`, `ToolContextPlan` and `LazyToolRegistry` | Ranking and showing a model fewer tools is research-only. The contract utilities in the same module are stable. |
 | `PlanMode.SELECTIVE`, in `llmslim.mcp` and through `plan_mcp_context` | Research-only; it already needs `experimental=True`. The other modes are stable. |
 | `llmslim.TransformersKVSession` | It works with Transformers' internal KV cache classes, which change between Transformers releases. |
-| `llmslim mcp --transport http`: the `--transport`, `--host`, `--port`, `--path`, `--api-key` and `--allowed-host` flags of `llmslim mcp`, and `LLMSLIM_MCP_HOST` and `LLMSLIM_MCP_PORT` | New in 0.13. MCP's HTTP transport is changing with its 2026-07-28 revision, and the trust model (one scope per server, every key reaches it) may gain per-key scopes. `llmslim mcp` over stdio, its other flags and its tools stay stable. |
+| `llmslim mcp --transport http`: the `--transport`, `--host`, `--port`, `--path`, `--api-key` and `--allowed-host` flags of `llmslim mcp`, and `LLMSLIM_MCP_HOST` and `LLMSLIM_MCP_PORT` | New in 1.0. MCP's HTTP transport is changing with its 2026-07-28 revision, and the trust model (one scope per server, every key reaches it) may gain per-key scopes. `llmslim mcp` over stdio, its other flags and its tools stay stable. |
 
 Making experimental API stable is a CHANGELOG entry in a minor release.
 

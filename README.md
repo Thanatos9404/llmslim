@@ -688,7 +688,7 @@ claude mcp add llmslim -- llmslim mcp
 - **Tools:** `remember`, `recall`, `list_memories`, `forget` and `fit_context`.
 - **Scope:** the server fixes it with `--user-id`, so the model can't read another user's memory.
 - **Storage:** a local SQLite file; the server makes no network calls of its own (the tokenizer downloads one file once and caches it).
-- **Several machines (experimental):** `llmslim mcp --transport http` (0.13.0 and newer) serves the same memory over
+- **Several machines (experimental):** `llmslim mcp --transport http` (1.0 and newer) serves the same memory over
   HTTP behind bearer keys, so your laptop and desktop share it; see
   [docs/MCP.md](docs/MCP.md#share-one-memory-across-machines).
 - **More:** client configs and options are in [docs/MCP.md](docs/MCP.md).
@@ -1032,6 +1032,10 @@ llmslim document.txt --stats
 Release notes for every version, including 0.12.0, are in
 [CHANGELOG.md](CHANGELOG.md) and on
 [GitHub Releases](https://github.com/Thanatos9404/llmslim/releases).
+
+Upgrading from 0.12 to 1.0: [docs/UPGRADING.md](docs/UPGRADING.md) lists every change that can break code, every name
+that moved and where to import it from now, and how to try the release candidate (`pip install "llmslim==1.0.0rc1"`
+once it is out).
 
 ---
 

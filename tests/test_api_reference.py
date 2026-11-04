@@ -1,4 +1,7 @@
-"""The website's API reference is generated from the source and kept up to date (scripts/api_reference.py)."""
+"""The API reference is generated from the source and kept up to date (scripts/api_reference.py).
+
+It is docs/reference/api-reference.json, which the llmslim.app documentation copies from this repository.
+"""
 
 from __future__ import annotations
 
@@ -18,15 +21,36 @@ def package():
 
 
 def _pages(text: str):
-    return json.loads(text[text.index("= [") + 2 :])
+    return json.loads(text)["pages"]
 
 
-def test_the_reference_on_the_site_is_up_to_date(package):
+def test_the_reference_is_up_to_date(package):
     current = reference.OUTPUT.read_text(encoding="utf-8").replace("\r\n", "\n")
     assert current == reference.render(package), (
-        "web/src/data/api-reference.ts is out of date with the source. "
+        "docs/reference/api-reference.json is out of date with the source. "
         "Run `python scripts/api_reference.py --write` and commit it."
     )
+
+
+def test_the_reference_names_its_version_and_format(package):
+    import llmslim
+
+    document = json.loads(reference.render(package))
+    assert document["format"] == reference.FORMAT
+    assert document["package"] == "llmslim"
+    assert document["version"] == llmslim.__version__
+    assert document["unreleased"] is reference.unreleased()
+    assert [page["slug"] for page in document["pages"]] == [
+        meta["slug"] for meta in reference.PAGES.values()
+    ]
+
+
+def test_the_frozen_reference_of_0_12_0_describes_that_release():
+    frozen = reference.OUTPUT.with_name("api-reference-0.12.0.json")
+    document = json.loads(frozen.read_text(encoding="utf-8"))
+    assert (document["format"], document["version"], document["unreleased"]) == (1, "0.12.0", False)
+    for page in document["pages"]:
+        assert page["description"].endswith("generated from the source of llmslim 0.12.0.")
 
 
 def test_every_public_name_is_documented(package):
@@ -206,10 +230,9 @@ def _checkout(folder, unreleased: bool):
 def test_the_reference_of_a_release_comes_from_its_own_checkout(tmp_path):
     # The tests run from the repository root, which has its own llmslim folder: the checkout must still win.
     root = _checkout(tmp_path, unreleased=False)
-    text = reference.render(reference.load(root), root, "API_REFERENCE_DOCS_9_9")
+    text = reference.render(reference.load(root), root)
     pages = _pages(text)
-    assert "export const API_REFERENCE_DOCS_9_9: DocPage[] = " in text
-    assert "from the source of llmslim 9.9.9" in text.splitlines()[0]
+    assert (json.loads(text)["version"], json.loads(text)["unreleased"]) == ("9.9.9", False)
     assert [s["title"] for s in pages[0]["sections"][1:]] == ["ping()"]
     assert [s["title"] for s in pages[1]["sections"][1:]] == ["recall()"]
     assert pages[0]["description"].endswith("generated from the source of llmslim 9.9.9.")
@@ -219,7 +242,9 @@ def test_the_reference_of_a_release_comes_from_its_own_checkout(tmp_path):
 def test_unreleased_changes_are_named_as_the_main_branch(tmp_path):
     root = _checkout(tmp_path, unreleased=True)
     assert reference.unreleased(root)
-    pages = _pages(reference.render(reference.load(root), root, "X"))
+    text = reference.render(reference.load(root), root)
+    assert json.loads(text)["unreleased"] is True
+    pages = _pages(text)
     assert pages[0]["description"].endswith(
         "generated from the main branch (llmslim 9.9.9 and the changes since, not released yet)."
     )
@@ -230,4 +255,15 @@ def test_the_command_keeps_this_checkout_in_its_own_file(tmp_path):
     with pytest.raises(SystemExit):
         reference.main(["--source", str(tmp_path)])
     with pytest.raises(SystemExit):
-        reference.main(["--output", str(tmp_path / "x.ts")])
+        reference.main(["--output", str(tmp_path / "x.json")])
+
+
+def test_the_command_writes_and_checks_the_reference_of_another_checkout(tmp_path, capsys):
+    root = _checkout(tmp_path / "checkout", unreleased=False)
+    output = tmp_path / "out" / "api-reference-9.9.9.json"
+    assert reference.main(["--write", "--source", str(root), "--output", str(output)]) == 0
+    assert json.loads(output.read_text(encoding="utf-8"))["version"] == "9.9.9"
+    assert reference.main(["--source", str(root), "--output", str(output)]) == 0
+    output.write_text("{}", encoding="utf-8")
+    assert reference.main(["--source", str(root), "--output", str(output)]) == 1
+    assert "out of date" in capsys.readouterr().out

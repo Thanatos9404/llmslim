@@ -4,13 +4,30 @@ LLMSlim takes the security and integrity of prompt data seriously.
 
 ## Supported versions
 
-Only the latest release receives security updates.
+Security fixes go into the latest release only. Until 1.0.0 is released, that is the latest 0.12.x release. From
+1.0.0 on, it is the latest 1.x release, and 0.12.x gets no more fixes.
 
 | Version | Supported |
 | --- | --- |
-| 0.12.x | :white_check_mark: |
-| 0.11.x | :white_check_mark: |
-| < 0.11.0 | :x: |
+| Latest 1.x, once 1.0.0 is released | :white_check_mark: |
+| 0.12.x, until 1.0.0 is released | :white_check_mark: |
+| Release candidates, such as 1.0.0rc1 | :x: (fixed in the release they lead to) |
+| < 0.12.0 | :x: |
+
+### Python 3.10
+
+LLMSlim supports Python 3.10 and newer. Python 3.10 reached its end of life in October 2026, and three dependencies
+publish security fixes only in releases that need Python 3.11 or newer, so on 3.10 pip installs a release without the
+fix. `pip-audit` found these when 1.0.0rc1 was prepared (November 2026):
+
+| Package | Newest release for Python 3.10 | Fixed in (Python 3.11+) | Pulled in by the extras |
+| --- | --- | --- | --- |
+| dnspython | 2.8.0 | 2.9.0 | `mongodb` |
+| filelock | 4.1.0 | 4.2.1 | `semantic`, `transformers-cache` |
+| pillow | 12.3.0 | 13.0.0 | `llamaindex`, `gptme` |
+
+`all` pulls in all three; the base install, none. If you use these extras, run Python 3.11 or newer. The same audit on
+Python 3.12 found no advisories in the base install or in any extra.
 
 ## Adaptive planning and external sources
 
@@ -45,13 +62,25 @@ errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
   Client credentials are forwarded to that upstream only, never stored or logged.
 - **Input limits.** `serve` caps bodies at 1 MB before parsing (413), budgets at 100,000 tokens and list pages at 1,000.
   Over-deep JSON, values of the wrong type or out of range, and text that isn't valid Unicode are 400s with a fixed
-  error shape; unexpected errors are a bare 500 with no traceback. `mcp` over HTTP caps bodies at 1 MB too (413),
-  answers malformed JSON-RPC with a 400, and keeps no session between requests. Storage queries are parameterised
-  (SQLite and Postgres), and no file path is built from request input.
+  error shape. A memory store that can't be reached is a 503 (`store_unavailable`), and any other failure a JSON 500
+  (`server_error`); neither shows a traceback, host or URL. `mcp` over HTTP caps bodies at 1 MB too (413),
+  answers malformed JSON-RPC with a 400, and keeps no session between requests. No file path is built from request
+  input.
+- **Storage queries.** SQLite and Postgres queries are parameterised. MongoDB queries take caller values as data,
+  never as operators: ids and scope values must be strings and are matched with `$eq`, and metadata whose keys MongoDB
+  would read as operators or paths (`$where`, `a.b`) is stored as JSON text. Errors from opening a Postgres or MongoDB
+  store have the URL's password and secret options removed.
+- **The chat endpoint (experimental).** `llmslim serve --upstream-url` forwards `POST /v1/chat/completions` and
+  `GET /v1/models` to one upstream, fixed when the server starts: no request field or header can change it, and
+  redirects are not followed. The client's key is never forwarded; the server sends its own, from
+  `LLMSLIM_UPSTREAM_API_KEY`. That key never appears in answers, errors or logs, and an upstream answer that echoes it
+  is not passed on. An upstream URL with a user name or password is refused at start, without being echoed.
 - **Algorithmic cost.** Content detection, sentence splitting, code-span handling and the YAML comment stripper take
   linear time on any input; `tests/test_security_dos.py` times each against inputs that used to take quadratic time.
-  `fit` (`/v1/context/fit`, MCP `fit_context`) holds its budget for any text. XML with entity declarations is never
-  parsed, so entity-expansion bombs can't run on any expat.
+  `fit` (`/v1/context/fit`, MCP `fit_context`) stays within about 2% of its budget for any text: it accepts a
+  compressed result up to `budget * 1.02` tokens, and when compression can't get within that, it cuts the result to
+  the longest head that fits the budget. XML with entity declarations is never parsed, so entity-expansion bombs can't
+  run on any expat.
 
 ## Studio
 
@@ -135,7 +164,7 @@ workflow, so there are no long-lived signing keys to leak.
   ```bash
   pip install pypi-attestations
   pypi-attestations verify pypi --repository https://github.com/Thanatos9404/llmslim \
-    pypi:llmslim-0.12.0-py3-none-any.whl
+    pypi:llmslim-<version>-py3-none-any.whl
   ```
 
 - **GitHub artifact attestations** (releases built by the current workflow onward). Each wheel and sdist has a SLSA

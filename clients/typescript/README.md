@@ -122,7 +122,7 @@ conversations, and the result stays in the history.
 | Method | Does |
 |---|---|
 | `memories.add({ userId?, agentId?, runId?, messages, timestamp?, metadata? })` | Stores messages (a string, a `{ role, content }` object, or a list). Needs one scope id. |
-| `memories.search({ ...scope, query, budget?, relevance?, since?, until? })` | Returns the turns that answer `query` as a `MemoryContext`: `text`, `tokens`, `turns`, `historyTokens`. |
+| `memories.search({ ...scope, query, budget?, relevance?, since?, until?, explain? })` | Returns the turns that answer `query` as a `MemoryContext`: `text`, `tokens`, `turns`, `historyTokens`. With `explain: true` it also has `explanation`, a `SearchExplanation`: why each stored turn and each section was kept, cut or left out ([how to read it](https://github.com/Thanatos9404/llmslim/blob/main/docs/MEMORY.md#why-a-turn-was-kept-or-left-out)). |
 | `memories.list({ ...scope, limit?, offset?, since?, until? })` | Returns a scope's messages, oldest first. |
 | `memories.get(id)`, `memories.update(id, { content?, metadata? })` | Read or correct one message. Returns `null` when it doesn't exist. |
 | `memories.delete(id)`, `memories.deleteAll(scope)` | Delete one message, or a whole scope. |

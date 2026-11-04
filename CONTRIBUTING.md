@@ -75,6 +75,21 @@ python scripts/public_api.py --write
 ```
 A stable name is deprecated before it is removed. [docs/API_STABILITY.md](docs/API_STABILITY.md) has the rules.
 
+### 5. API Reference
+`docs/reference/api-reference.json` is the API reference generated from the signatures, type annotations and
+docstrings of `llmslim` and `llmslim.memory`. `tests/test_api_reference.py` fails when it is out of date, when a
+public name has no docstring, or when a public function is not fully annotated. After changing a public signature
+or docstring, regenerate it and commit it with the change:
+```bash
+python scripts/api_reference.py --write
+```
+
+### The website
+The source of [llmslim.app](https://www.llmslim.app) lives in a separate, private repository; this repository
+holds Core, everything `pip install llmslim` installs, under the MIT license. The site's API reference pages are
+copied from `docs/reference/api-reference.json` here, so nothing in this repository depends on the site. Report a
+problem with the website as an issue here or at support@llmslim.app.
+
 ---
 
 ## Running Benchmarks

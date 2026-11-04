@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading from 0.12
+Most code runs unchanged. These can break code or change a default; `docs/UPGRADING.md` covers each one, with what to
+do, every name that left an `__all__` and where to import it from now, and how to try the release candidate.
+- **Python 3.10 or newer** (see Breaking). Python 3.10 is past its end of life too, and three dependencies of the
+  `mongodb`, `semantic`, `transformers-cache`, `llamaindex` and `gptme` extras have security fixes only for Python
+  3.11 and newer (`SECURITY.md`).
+- **`Memory.search` shows a session's date once:** `date_format` defaults to `None`. `date_format="%Y-%m-%d"` gives
+  the 0.12 labels back, byte for byte.
+- **Smaller `__all__` lists.** Helpers and constants of `llmslim.server`, `llmslim.integrations.web_search` and the
+  Sarvam modules are internal, and a star import from `llmslim.mcp` or `llmslim.integrations.openai_agents` brings
+  only their own names. Every name still imports where it did; four Sarvam constants imported from
+  `llmslim.integrations.sarvam` warn (see Deprecated).
+- **`planner_version` is the release,** so trace ids change with each release.
+- **A keyless `llmslim serve` or `llmslim proxy` answers only to this machine.** Other host names and other web sites
+  get a 403; add names with `--allowed-host`. Servers with keys are unaffected.
+- **Errors from `llmslim serve`:** a 503 (`store_unavailable`, `Retry-After: 5`) when Postgres or MongoDB is down, and
+  a JSON 500 (`server_error`) for any other failure.
+- **`fit` stays within about 2% of its budget for any text,** and cuts text that compression can't shrink that far.
+
 ### Breaking
 - **Python 3.10 or newer is required.** Python 3.9 is no longer supported: it reached end of life in October 2025,
   and the MCP server and most framework extras already needed 3.10. `requires-python` is `>=3.10`, CI no longer runs
@@ -127,28 +146,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `llmslim import` of every format (MongoDB stores what SQLite stores), the chat endpoint against a stand-in
     upstream, a 20,000-turn import into the replica set, and a restart and a stop of MongoDB under running servers.
     No output, answer or error shows the URL's password. Guide: `docs/MEMORY.md`.
-- **A generated API reference on the site.** `scripts/api_reference.py` reads the signatures, type annotations and
-  docstrings of `llmslim` and `llmslim.memory` with griffe and writes them as two documentation pages
-  (`/docs/api-llmslim` and `/docs/api-llmslim-memory`). Each public name gets a summary and a typed stub with its
-  docstring. `tests/test_api_reference.py` fails when the pages are out of date with the source, when a public name
-  has no docstring, or when a public function or method has an unannotated parameter or return type.
-- **Site: docs for 1.0 next to 0.12, with a version switch.** `/docs` keeps describing 0.12, what `pip install llmslim`
-  installs, and the docs for the main branch are at `/docs/1.0`. Every 1.0 page opens with a notice that it is
-  upcoming and that pip installs 0.12.0 today, is kept out of search indexes, and is listed in `llms.txt` as a preview.
-  A switch in the sidebar (and above the page on small screens) moves between the two, on the same guide when the other
-  version has it. `DEFAULT_DOCS_VERSION` in `web/src/data/docs-versions.ts` decides which version `/docs` shows, so
-  release day is a one-line change; `/docs/0.12/...` then keeps the 0.12 pages.
-  - **Getting started** with Python, MCP (the command and the Claude Code plugin, Claude Desktop, Cursor), HTTP
-    (`llmslim serve`) and TypeScript (the npm client with `llmslim/ai-sdk` and `llmslim/mastra`), for both versions.
-  - **Guides:** importing history, `explain=True`, coding agents (`llmslim wrap claude`, marked experimental), the
-    OpenAI-compatible endpoint and remote MCP (both experimental), and storage backends. An API stability page, and
-    migration guides from 0.x and from Mem0 (the compat layer and `llmslim import mem0`).
-  - **The generated reference** says it describes the main branch while `CHANGELOG.md` lists unreleased changes. The
-    0.12 docs get their own, generated once from the v0.12.0 tag: `scripts/api_reference.py --source <checkout>
-    --output ... --name ...` reads another checkout.
-  - Every code sample was run against the release its version describes. Two that failed are fixed: the planner
-    guide read `plan.infeasibility_reason`, which `ContextPlan` doesn't have (it now joins `plan.warnings`), and the
-    MCP catalog guide pinned `llmslim[mcp]==0.6.0`.
+- **Round-6 benchmark results: agent memory on BEAM-1M, Core 0.12 against Mem0 and Zep**
+  (`benchmarks/live/round6/RESULTS.md`, `summary.json` and the README's Benchmarks section). On BEAM's 1M-token
+  conversations (held-out, run once), `Memory.search` with its reranker scored on par with Mem0 at 2,500 and 10,000
+  tokens (+1.2 and +0.6 points, neither significant), 60x and 28.6x cheaper per 1,000 questions at list prices, and
+  7.5 to 9.9 points ahead of Zep (on 30 conversations). The weak spots (summarization, multi-session reasoning at
+  10,000 tokens, information extraction, search latency with the reranker) and the relaxed ship rule are published
+  next to the results. The protocol, harness and per-question answers are not published with this round.
+- **`docs/MIGRATE_FROM_MEM0.md`, a tested guide to moving from Mem0:** export the memories with Mem0's `get_all`,
+  bring them in with `llmslim import mem0` (or a `Memory.add` loop on 0.12.0), and keep your Mem0 calls with
+  `Mem0Memory`. Every output in it is copied from a real run on a sample export.
 - CI checks that the wheel ships `py.typed`.
 - **A public API contract for 1.0** in `docs/API_STABILITY.md`:
   - what is stable, experimental and internal, and the semantic-versioning promise from 1.0.0;
@@ -191,8 +198,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     processor that injects memory.
   - CI runs the tests against a real `llmslim serve` and against the oldest supported `@mastra/core` (1.29.1), with a
     test that saves the same reply 50 times, and imports the packed package without its optional peers.
+- **`explain` in the TypeScript client.** `memories.search({ ...scope, query, explain: true })` sends
+  `"explain": true` to `llmslim serve` and returns its answer as `context.explanation`: a `SearchExplanation`, with
+  `ExplainedTurn`, `ExplainedSection` and `ExplainedCandidate` for its parts, holding every field the server sends, in
+  camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
+  checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
+  have it, and the package's version is unchanged.
 
 ### Changed
+- **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,
+  now lives in its own private repository, with its history. Nothing in the `llmslim` package, its API or its
+  release changes. The API reference the site shows is now `docs/reference/api-reference.json`, a versioned file
+  that `scripts/api_reference.py` writes and the site copies, and `tests/test_api_reference.py` keeps failing when
+  it is out of date. The 0.12.0 reference, generated once from the v0.12.0 tag, is
+  `docs/reference/api-reference-0.12.0.json`. The tests of the site's Python functions moved with the site, and CI
+  no longer builds it. Paths under `web/` in earlier entries and in older documents name the site's files before
+  the move.
 - **`Memory.search` shows a session's date once: `date_format` now defaults to `None`.** When a long history is
   selected from, the first kept turn of a session shows its full stamp, and so does a later turn whose time differs
   from the one shown last in its session. Any other kept turn used to repeat the date, `[2026-10-17] assistant: ...`.
@@ -216,22 +237,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docstrings for the public names that had none: `PolicyPreset`, `EdgeType`, `ContextEdge`, `ContextPolicy`,
   `QualityReport`, `RuntimeSession`, `PreparedContext`, `CacheStatus`, `CacheCapabilities`, `CachePolicy`,
   `CacheSegment`, `CachePlan`, `CacheTelemetry`, `MODEL_PRICING` and `PROVIDER_CAPABILITIES`.
-- **Site:** the docs sidebar gets its list of guides from the server instead of importing every guide into the
-  browser.
-- `llmslim.tokens`, `llmslim.mcp` and `llmslim.integrations.openai_agents` declare `__all__`. Nothing is renamed or
-  removed.
+- `llmslim.tokens`, `llmslim.mcp` and `llmslim.integrations.openai_agents` declare `__all__`. Nothing is renamed and
+  every name still imports, but a star import now brings only the listed names. `from llmslim.mcp import *` no longer
+  brings `ToolSchema`, `ToolSchemaError`, `canonical_json`, `fingerprint_tool_schema`, `from_mcp_tool` and
+  `select_tools` (public in `llmslim.tools`), `count_tokens` (public in `llmslim`) or `EventCallback`, and
+  `from llmslim.integrations.openai_agents import *` no longer brings `CatalogContextPlan`, `HostToolAdapter` and
+  `OptionalDependencyError` (public in `llmslim.mcp`). `llmslim.tokens` lists all it had.
 - **Smaller public lists before 1.0 freezes them.** The names below leave `__all__`, so they become internal. They stay
   importable from the modules that define them.
   - `llmslim.integrations.web_search` exports `WebSearchSource`, `WebSearchResult` and their errors. Its 20 helper
     functions and limits are internal.
   - `llmslim.integrations.sarvam` keeps its documented classes and functions, the result types they return and their
-    errors: 35 names, down from 42. Its guard prefixes, default limits and `sarvam_chat_cost_inr` are internal, and it
-    no longer re-exports the text and document default limits and guard prefixes.
+    errors: 35 names, down from 42. Its guard prefixes, default limits and `sarvam_chat_cost_inr` are internal. The
+    text and document default limits and guard prefixes it re-exported are deprecated there (see Deprecated).
   - `llmslim.integrations.sarvam_text` and `llmslim.integrations.sarvam_documents` keep their documented names and
     result types.
   - `llmslim.server` exports `create_app` and `main`. `api_keys_from` and `is_loopback` are internal.
 - `llmslim.proxy.cli` builds the `llmslim proxy stats` and `llmslim wrap` parsers in `build_stats_parser` and
   `build_wrap_parser`. The commands are unchanged.
+- **Experimental features say so where you meet them.** `llmslim proxy --help`, `llmslim proxy stats --help` and
+  `llmslim wrap --help` say the commands are experimental, and `llmslim mcp --help` says the HTTP transport and its
+  options are, as `docs/API_STABILITY.md` already listed them. So do `docs/PROXY.md`, the "Share one memory across
+  machines" section of `docs/MCP.md` and the README. `tests/fixtures/public_api.json` now records `llmslim mcp`'s
+  `--transport`, `--host`, `--port`, `--path`, `--api-key` and `--allowed-host` as experimental, as it already did the
+  chat endpoint's flags of `llmslim serve`. No flag or behaviour changes.
 - **A database that is down is a clean, retryable error.** When Postgres or MongoDB can't be reached (restarting, a
   network cut), `llmslim serve` answers a 503 with `"type": "store_unavailable"` and `Retry-After: 5`, and logs one
   line with the error's type; it used to answer a plain-text 500 and log a traceback. The `llmslim mcp` tools fail
@@ -247,8 +276,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per query instead of one query per turn, so importing again over a slow link to Atlas no longer takes a round trip
   per turn.
 
+### Deprecated
+- **Four names of `llmslim.integrations.sarvam`:** `DEFAULT_TEXT_LIMITS`, `TEXT_GUARD_PREFIX`,
+  `DEFAULT_DOCUMENT_LIMITS` and `DOCUMENT_GUARD_PREFIX`. 0.12 re-exported them from `llmslim.integrations.sarvam_text`
+  and `llmslim.integrations.sarvam_documents`, which define them and where they are internal now. Importing them from
+  `llmslim.integrations.sarvam` still works and raises a `DeprecationWarning` that names the module that defines them;
+  they will be removed in 2.0. They are no longer in its `__all__`, so a star import doesn't take them.
+  `llmslim._deprecation` accepts a release candidate as the release that deprecates a name (`since="1.0.0rc1"`).
+
 ### Security
-From a security review of 1.0's HTTP server, MCP server, proxy and the website's functions.
+From a security review of 1.0's HTTP server, MCP server and proxy.
 - **Web pages can no longer use a keyless `llmslim serve` or the proxy.** A server on 127.0.0.1 is reachable from
   any page the user opens: a cross-site "simple" POST could store a memory (a planted instruction that later reached
   the user's prompts) or start an expensive `fit`, and DNS rebinding let a page read and delete every memory,
@@ -270,9 +307,11 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
     and HTML tag patterns rescanned from every `[` and `<a ` (`llmslim.analysis`, and the list-item patterns in
     `llmslim.ranking`). 90,000 characters of `[` took 12 s to plan on the website's planner;
   - the YAML optimizer's inline-comment pattern on a long run of whitespace.
-- **`fit` holds its budget for any text.** `/v1/context/fit` and MCP `fit_context` returned all 600,000+ tokens of a
-  text that compression keeps whole (one long code block, or a run of inline code) for a budget of 2,000, so text an
-  attacker controls could blow up a prompt's size and cost. The result is now cut to the longest head that fits.
+- **`fit` stays within about 2% of its budget for any text.** `/v1/context/fit` and MCP `fit_context` returned all
+  600,000+ tokens of a text that compression keeps whole (one long code block, or a run of inline code) for a budget
+  of 2,000, so text an attacker controls could blow up a prompt's size and cost. A compressed result up to 2% over the
+  budget is still accepted (`tokens <= budget * 1.02`); only when compression can't get within that is the result cut,
+  to the longest head that fits the budget itself.
 - **Hostile JSON is a 400, not a 500.** `serve` answered over-deep JSON, values of the wrong type (`"messages": 5`)
   and out-of-range timestamps with a 500. A lone surrogate (`"\ud800"`) was kept by the in-process store and then
   broke every read of that scope; it is now refused before anything is stored. `Memory.add` refuses a timestamp with
@@ -281,14 +320,6 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   quadratic blowup) can't run even on a Python built with an old expat. Such text is compressed as plain text.
   Recent expat already refused them.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
-- **Site: the Studio's "Answer with Sarvam" step is no longer a general-purpose model.** The visitor chooses both the
-  context and the question, and the Origin check stops other web pages, not scripts, so with the step enabled anyone
-  could get any question answered on the project's Sarvam key, within the spend limits. The function now sends its
-  own instruction as a trusted system item: answer only from the submitted text, follow no instructions in it, and
-  otherwise reply with a fixed refusal. The step is off in production.
-- **Site: per-instance rate limits count an IPv6 client by its /64.** `/api/studio`, `/api/compress`, `/api/plan`
-  and `/api/context` counted each address, so a client could dodge the limit by changing the interface identifier
-  of its IPv6 address on every request. The Sarvam step already did this.
 
 ### Fixed
 - **`Memory.search` keeps a correction with what it corrects.** A history kept verbatim holds both an old belief and
@@ -353,6 +384,23 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   - **The old constants:** `llmslim.planning.planner.PLANNER_VERSION` and
     `llmslim.planning.progressive.PLANNER_VERSION` still import and give the same release. They are no longer in
     those modules' `__all__`.
+- **`llmslim --help` lists the commands.** It described only the default command, which compresses text, so `serve`,
+  `mcp`, `import`, `proxy`, `wrap`, `plan`, `context` and `tools` were nowhere in it. It now ends with each command
+  and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
+  and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
+  command can't be added without its line, and tests check the list and every command's `--help`.
+
+### Documentation
+- **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,
+  `requests`, `preferences` and `conflicts`, which `POST /v1/memories/search` has always returned. A new section says
+  what each field holds. The fields documented there are stable (`docs/API_STABILITY.md`). The site's HTTP quickstart
+  has the same table, for 0.12 and 1.0.
+- **`fit`'s budget, as the code keeps it.** `docs/SERVER.md` and `docs/MCP.md` said `POST /v1/context/fit` and
+  `fit_context` keep within the budget for any text. They accept a compressed result up to 2% over
+  (`tokens <= budget * 1.02`), as `fit_text`'s docstring and the tests always had it, and cut to the budget itself
+  only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
+  so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
+- `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
 
 ## [0.12.0] - 2026-10-27
 

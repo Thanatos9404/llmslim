@@ -360,6 +360,19 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **`llmslim serve` refuses `NaN` and `Infinity`, and answers every error in its JSON format.**
+  - **`NaN` and `Infinity`** aren't JSON, but Python's parser reads them. `POST /v1/memories` with one in its
+    `metadata` stored the turn and then answered 400, because the turn could not be written back as JSON; from then
+    on every list and search of that scope answered 400 too. `PATCH` did the same to a stored turn. A body with
+    either is now a 400 (`invalid_json`) and nothing is stored, as the chat endpoint already did.
+  - **`HEAD /v1/memories/{id}`** answered a plain-text 500: Starlette adds `HEAD` to a `GET` route, and the route had
+    no handler for it. It now answers as `GET` does, without the body.
+  - **A path no route has, and a method a route doesn't take** (`OPTIONS`, `PUT`, `GET` on a `POST` route), got
+    Starlette's plain-text "Not Found" and "Method Not Allowed". They are now JSON: 404 `not_found`, and 405
+    `method_not_allowed` with `Allow`. Any other failure outside a route's own handling is the JSON 500
+    (`server_error`).
+  - **A client that disconnects before its body arrives** was logged as a failed request, with a traceback, at
+    `ERROR`. It is now one `INFO` line.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

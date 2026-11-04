@@ -82,8 +82,10 @@ LLMSLIM_MEMORY_DB="mongodb+srv://llmslim:<password>@cluster0.example.mongodb.net
 ## API
 
 All bodies and responses are JSON. Errors look like `{"error": {"type": "invalid_request", "message": "..."}}`, with
-status 400, 401, 403, 404, 413, 500, 501 or 503. A value of the wrong type or out of range, JSON nested past the
-parser's limit, and text that isn't valid Unicode (a lone surrogate such as `"\ud800"`) are 400s. When the memory's
+status 400, 401, 403, 404, 405, 413, 500, 501 or 503. A value of the wrong type or out of range, JSON nested past the
+parser's limit, `NaN` and `Infinity` (which JSON doesn't have), and text that isn't valid Unicode (a lone surrogate
+such as `"\ud800"`) are 400s. A path no route has is a 404 (`"type": "not_found"`), and a method its route doesn't
+take a 405 (`"type": "method_not_allowed"`, with `Allow`); `HEAD` works wherever `GET` does. When the memory's
 database (Postgres or MongoDB) can't be reached, the answer is a 503 with `"type": "store_unavailable"` and
 `Retry-After: 5`: retry it. Its message names no host, URL or driver error, and the server logs one line with the
 error's type. Any other failure is a 500 (`"type": "server_error"`), with the traceback in the server's log only.

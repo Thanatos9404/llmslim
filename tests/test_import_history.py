@@ -1002,7 +1002,10 @@ def test_records_in_the_wrong_shape_are_malformed(tmp_path):
 def test_a_chatgpt_node_or_message_that_is_not_an_object_is_malformed(tmp_path):
     # Such a node on the thread was passed over like the root, which has no message, and counted nowhere.
     conversation = _conversation(
-        [("u", "root", "user", "kept", 1700000000), ("a", "u", "assistant", "kept too", 1700000001)],
+        [
+            ("u", "root", "user", "kept", 1700000000),
+            ("a", "u", "assistant", "kept too", 1700000001),
+        ],
         current="a",
     )
     conversation["mapping"]["text"] = {"id": "text", "parent": "u", "message": "not a message"}

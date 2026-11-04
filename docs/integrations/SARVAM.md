@@ -258,7 +258,7 @@ with `bulbul:v3` in parts of at most 2,500 characters merged into one WAV.
 ## Hosting your own route
 
 The llmslim.app Studio compresses without calling Sarvam. Its optional Answer with
-Sarvam step (`web/api/sarvam_answer.py`, off by default) is built on `llmslim.hosted`,
+Sarvam step (off by default; the site's source is private) is built on `llmslim.hosted`,
 which you can also use for a paid Sarvam route of your own. It provides a local
 plan before any call, a conservative cost reservation, and MongoDB-backed sliding rate windows,
 per-identity token allowances, daily and monthly spend limits and concurrency

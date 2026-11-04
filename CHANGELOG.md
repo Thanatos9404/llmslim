@@ -206,6 +206,14 @@ do, every name that left an `__all__` and where to import it from now, and how t
   have it, and the package's version is unchanged.
 
 ### Changed
+- **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,
+  now lives in its own private repository, with its history. Nothing in the `llmslim` package, its API or its
+  release changes. The API reference the site shows is now `docs/reference/api-reference.json`, a versioned file
+  that `scripts/api_reference.py` writes and the site copies, and `tests/test_api_reference.py` keeps failing when
+  it is out of date. The 0.12.0 reference, generated once from the v0.12.0 tag, is
+  `docs/reference/api-reference-0.12.0.json`. The tests of the site's Python functions moved with the site, and CI
+  no longer builds it. Paths under `web/` in earlier entries and in older documents name the site's files before
+  the move.
 - **`Memory.search` shows a session's date once: `date_format` now defaults to `None`.** When a long history is
   selected from, the first kept turn of a session shows its full stamp, and so does a later turn whose time differs
   from the one shown last in its session. Any other kept turn used to repeat the date, `[2026-10-17] assistant: ...`.

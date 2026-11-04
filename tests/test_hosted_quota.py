@@ -7,7 +7,6 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Mapping, Optional
 
@@ -401,14 +400,6 @@ def test_sarvam_provider_chat_validates_messages_and_never_exposes_key() -> None
         provider.chat([])
     with pytest.raises(ValueError):
         provider.chat([{"role": "owner", "content": "unsafe"}])
-
-
-def test_studio_frontend_holds_no_provider_secret_or_public_key_variable() -> None:
-    studio = Path(__file__).resolve().parents[1] / "web" / "src" / "components" / "studio"
-    for source in studio.glob("*.tsx"):
-        text = source.read_text(encoding="utf-8")
-        assert "SARVAM_API_KEY" not in text
-        assert "NEXT_PUBLIC_" not in text
 
 
 class CapturingCollection:

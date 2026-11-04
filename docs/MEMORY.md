@@ -240,6 +240,7 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 **Postgres details:**
 - `PostgresStore` creates its table (`llmslim_memory`, or `table=...`) and a `<table>_meta` version table if they don't exist. It does this under an advisory lock, so several processes can start at once.
 - Pass a URL, and the store opens a small connection pool. You can pass your own `psycopg_pool.ConnectionPool`, or an autocommit `psycopg.Connection`, instead.
+- With a URL, the store waits up to 10 seconds to connect, then raises psycopg's error (`llmslim serve` and `llmslim mcp` print it in one line, without the password). Set another limit in the URL (`?connect_timeout=30`) or with libpq's `PGCONNECT_TIMEOUT` environment variable. A refused connection or a wrong password ends the wait as soon as psycopg reports it, so if Postgres can start after llmslim (Docker Compose), wait for its health check first.
 - Times are stored as `TIMESTAMPTZ` and come back in UTC, whatever the session time zone.
 
 **MongoDB details:**

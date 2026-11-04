@@ -178,6 +178,10 @@ def test_zoho_constructor_token_and_protocol_boundaries() -> None:
     )
     with pytest.raises(ZohoAuthenticationError):
         asyncio.run(empty.search("Acme"))
+    # A source left with neither (its attributes changed after construction) says so, even under python -O.
+    empty._token_provider = None
+    with pytest.raises(ZohoAuthenticationError, match="no access token or token provider"):
+        asyncio.run(empty.search("Acme"))
 
 
 @pytest.mark.parametrize(

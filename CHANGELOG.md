@@ -360,6 +360,16 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **Turn times read the same on every platform and Python.** `Memory` (and so `llmslim serve`'s `timestamp`, `since`
+  and `until`) read some times differently by platform or by Python version, or not at all:
+  - **Epoch seconds** before 1970 or after the year 3000 were refused as out of range on Windows only, because
+    `datetime.fromtimestamp` refuses them there. They are now added to the epoch, as `llmslim import` does.
+  - **ISO-8601 text** with a fraction of a second of other than 3 or 6 digits (`...:00.1234567`, as Go and Java write
+    nanoseconds) or an offset without a colon (`+0530`) was a `ValueError` (a 400 from `llmslim serve`) on Python
+    3.10, which 3.11 and newer read. Both forms are now read on 3.10 too.
+  - **A turn at the edge of the calendar:** with `Memory(tz=...)` ahead of UTC, a turn stored in the last hours of
+    the year 9999 (or, behind UTC, the first hours of the year 1) has no local time, and every search of its scope
+    raised `OverflowError`. Such a turn is now shown in UTC.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -141,6 +142,65 @@ def test_timestamps_from_datetime_epoch_iso_and_per_message(memory):
     assert by_text["epoch"] == datetime(1970, 1, 1, tzinfo=timezone.utc)
     assert by_text["iso"] == datetime(2026, 2, 1, 8, 0, tzinfo=timezone.utc)
     assert by_text["own"] == datetime(2025, 12, 31, 17, 30, tzinfo=timezone.utc)
+
+
+def test_epoch_seconds_before_1970_and_after_3000_on_every_platform(memory):
+    # datetime.fromtimestamp refuses these on Windows only; the same numbers now mean the same time everywhere.
+    memory.add("moon landing", user_id="u1", timestamp=-14182940)
+    memory.add("before the epoch", user_id="u1", timestamp=-1576800000.5)
+    memory.add("far future", user_id="u1", timestamp=253402300799)
+    by_text = {i.content: i.created_at for i in memory.get_all(user_id="u1")}
+    assert by_text["moon landing"] == datetime(1969, 7, 20, 20, 17, 40, tzinfo=timezone.utc)
+    assert by_text["before the epoch"] == datetime(
+        1920, 1, 13, 23, 59, 59, 500000, tzinfo=timezone.utc
+    )
+    assert by_text["far future"] == datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    for out_of_range in (253402300800, -62135596801, 1e20, float("nan"), float("inf"), 10**400):
+        with pytest.raises(ValueError, match="out of range"):
+            memory.add("x", user_id="u2", timestamp=out_of_range)
+    assert memory.get_all(user_id="u2") == []
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("2026-01-01T00:00:00+0530", datetime(2025, 12, 31, 18, 30, tzinfo=timezone.utc)),
+        ("2026-01-01T00:00-0530", datetime(2026, 1, 1, 5, 30, tzinfo=timezone.utc)),
+        ("2026-01-01T00:00:00.1234567Z", datetime(2026, 1, 1, 0, 0, 0, 123456, timezone.utc)),
+        (
+            "2026-01-01T05:30:00.123456789-0700",
+            datetime(2026, 1, 1, 12, 30, 0, 123456, timezone.utc),
+        ),
+        ("2026-01-01T00:00:00.12+00:00", datetime(2026, 1, 1, 0, 0, 0, 120000, timezone.utc)),
+        ("2026-01-01 00:00:00.5", datetime(2026, 1, 1, 0, 0, 0, 500000, timezone.utc)),
+    ],
+)
+def test_iso_times_read_the_same_on_every_supported_python(text, expected):
+    # Python 3.10's fromisoformat refused these (fractions of other than 3 or 6 digits, offsets without a colon), and
+    # 3.11 and newer read them; llmslim serve passes timestamp, since and until through as text.
+    memory = Memory()
+    (item,) = memory.add("x", user_id="u1", timestamp=text)
+    assert item.created_at == expected
+    assert memory.get_all(user_id="u1", since=text, until=expected + timedelta(seconds=1)) == [item]
+
+
+def test_a_turn_at_the_edge_of_the_calendar_reads_in_any_time_zone(memory):
+    # In a zone ahead of UTC the last hour of 9999 has no local time (nor the first of year 1 behind it); one such
+    # turn made every search of its scope raise OverflowError. It is shown in UTC instead.
+    memory.add("the last hour", user_id="u1", timestamp="9999-12-31T23:30:00Z")
+    memory.add("the first hour", user_id="u1", timestamp="0001-01-01T00:10:00Z")
+    memory.add("an ordinary turn", user_id="u1", timestamp=T0)
+    for offset in (14, 5.5, -12):
+        memory.tz = timezone(timedelta(hours=offset))
+        memory.date_format = None
+        text = memory.search("hour", user_id="u1", budget=2000).text
+        assert "user: the last hour" in text and "user: the first hour" in text
+        if offset > 0:
+            assert "[9999-12-31 (Fri) 23:30] user: the last hour" in text
+        else:  # glibc's strftime does not pad a year below 1000
+            assert re.search(r"\[0{0,3}1-01-01 \(Mon\) 00:10\] user: the first hour", text)
+        memory.date_format = "%Y-%m-%d"
+        assert memory.search("hour", user_id="u1", budget=12).tokens <= 12
 
 
 def test_scopes_isolate_users_and_match_as_wildcards(memory):

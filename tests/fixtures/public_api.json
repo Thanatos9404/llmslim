@@ -109,18 +109,29 @@
     "llmslim mcp": {
       "arguments": {
         "--agent-id": {},
-        "--allowed-host": {},
-        "--api-key": {},
+        "--allowed-host": {
+          "status": "experimental"
+        },
+        "--api-key": {
+          "status": "experimental"
+        },
         "--budget": {},
         "--db": {},
-        "--host": {},
-        "--path": {},
-        "--port": {},
+        "--host": {
+          "status": "experimental"
+        },
+        "--path": {
+          "status": "experimental"
+        },
+        "--port": {
+          "status": "experimental"
+        },
         "--transport": {
           "choices": [
             "http",
             "stdio"
-          ]
+          ],
+          "status": "experimental"
         },
         "--user-id": {}
       },

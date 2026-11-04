@@ -49,9 +49,16 @@ If `llmslim` isn't on the client's `PATH`, give the full path to it, or let `uvx
 
 ## Share one memory across machines
 
-`llmslim mcp --transport http` serves the same tools over MCP's Streamable HTTP transport (llmslim 0.13.0 or newer).
+`llmslim mcp --transport http` serves the same tools over MCP's Streamable HTTP transport (llmslim 1.0 or newer;
+[try the release candidate](UPGRADING.md#try-the-release-candidate) to use it before then).
 Run it on one machine, and point the clients on your laptop, desktop and CI runner at it: what one of them stores, the
 others recall.
+
+**Experimental.** The HTTP transport and its options (`--transport`, `--host`, `--port`, `--path`, `--api-key`,
+`--allowed-host`, `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT` and `LLMSLIM_MCP_API_KEYS`) may change in a minor release:
+MCP's HTTP transport is changing, and one scope per server may gain per-key scopes (see
+[API_STABILITY.md](API_STABILITY.md#experimental)). `llmslim mcp` over stdio, its other options and its tools are
+stable.
 
 **1. Make a key and start the server.** It needs the same `mcp` extra; nothing else.
 
@@ -206,8 +213,8 @@ The tools carry MCP annotations (`readOnlyHint`, `destructiveHint`), so a client
   give a key to, and nothing else.
 - **Hostile text stays cheap and within budget.** Text a tool fetched from the web can be crafted to be slow to
   process. Content detection, sentence splitting and code-span handling take time linear in their input, and
-  `fit_context` holds its budget for any text: when compression can't get under it (one long code block, say), the
-  result is cut to the longest head that fits.
+  `fit_context` stays at most 2% over its budget for any text: when compression can't get within that (one long code
+  block, say), the result is cut to the longest head that fits the budget.
 - **It shares its database with `llmslim serve`.** Both default to `~/.llmslim/memory.db`. Run `llmslim serve` without
   a key only on loopback (it refuses anything else); it then refuses requests from web pages, so a page can't read
   this memory through it.

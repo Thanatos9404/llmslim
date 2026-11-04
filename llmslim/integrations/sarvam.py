@@ -26,9 +26,12 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Dict, List, NoReturn, Optional, Type, TypeVar, Union
 
+from .._deprecation import Alias, deprecated_attributes
 from ..planning.models import ModelProfile
 from ..planning.profiles import BUILTIN_MODEL_PROFILES
 from ..rewrite import BaseRewriteProvider, RewriteRequest
+from . import sarvam_documents as _sarvam_documents
+from . import sarvam_text as _sarvam_text
 from ._guard import (
     RateLimitExceeded,
     UsageCapExceeded,
@@ -463,3 +466,27 @@ __all__ = [
     "sarvam_prompt_token_bound",
     "split_for_sarvam",
 ]
+
+
+def _moved(module: Any, name: str) -> Alias:
+    """A name 0.12 re-exported from ``module``, which defines it (as an internal name since 1.0)."""
+
+    return Alias(
+        getattr(module, name),
+        since="1.0.0rc1",
+        removed_in="2.0",
+        replacement=f"{module.__name__}.{name}",
+    )
+
+
+# 0.12 listed these in __all__. They still import from here until 2.0, with a DeprecationWarning that names the module
+# that defines them (docs/UPGRADING.md). A star import doesn't take them.
+__getattr__ = deprecated_attributes(
+    __name__,
+    {
+        "DEFAULT_TEXT_LIMITS": _moved(_sarvam_text, "DEFAULT_TEXT_LIMITS"),
+        "TEXT_GUARD_PREFIX": _moved(_sarvam_text, "TEXT_GUARD_PREFIX"),
+        "DEFAULT_DOCUMENT_LIMITS": _moved(_sarvam_documents, "DEFAULT_DOCUMENT_LIMITS"),
+        "DOCUMENT_GUARD_PREFIX": _moved(_sarvam_documents, "DOCUMENT_GUARD_PREFIX"),
+    },
+)

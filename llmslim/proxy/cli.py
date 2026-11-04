@@ -140,7 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim proxy",
         description="Forward Anthropic API requests and compress long tool output once, replaying the same bytes "
-        "afterwards so prompt caching and thinking keep working. Subcommand: stats.",
+        "afterwards so prompt caching and thinking keep working. Subcommand: stats. Experimental: this command and "
+        "its flags may change in a minor release (docs/API_STABILITY.md).",
     )
     parser.add_argument(
         "--host", default="127.0.0.1", help="Interface to bind (default 127.0.0.1)."
@@ -171,7 +172,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def build_stats_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="llmslim proxy stats", description="Tokens the proxy kept out of requests."
+        prog="llmslim proxy stats",
+        description="Tokens the proxy kept out of requests. Experimental, like llmslim proxy.",
     )
     parser.add_argument("--db", default=os.environ.get("LLMSLIM_PROXY_DB") or str(DEFAULT_DB))
     parser.add_argument("--days", type=float, help="Only the last N days.")
@@ -317,7 +319,8 @@ def build_wrap_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim wrap",
         description="Run a coding agent with its API traffic through the LLMSlim proxy. "
-        "Example: llmslim wrap claude -- --continue",
+        "Example: llmslim wrap claude -- --continue. Experimental: this command and its flags may change in a minor "
+        "release (docs/API_STABILITY.md).",
     )
     parser.add_argument("agent", choices=sorted(AGENTS), help="The agent to run.")
     parser.add_argument(

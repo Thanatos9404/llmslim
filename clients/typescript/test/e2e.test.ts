@@ -50,6 +50,15 @@ function lastToolResults(model: MockLanguageModelV4): string {
   return JSON.stringify(prompt.filter((message) => message.role === "tool").flatMap((message) => message.content));
 }
 
+/** `value` with every object key in camelCase, as the client names the server's snake_case fields. */
+function camelCase(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(camelCase);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([name, inner]) => [name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()), camelCase(inner)]),
+  );
+}
+
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
@@ -127,6 +136,51 @@ describe.skipIf(!python)("against llmslim serve", { timeout: 20_000 }, () => {
     expect(await client.memories.delete(stored[1]!.id)).toBe(true);
     expect(await client.memories.delete(stored[1]!.id)).toBe(false);
     expect(await client.memories.deleteAll({ userId: "asha" })).toBe(1);
+  });
+
+  it("explains a search, field for field as the server sends it", async () => {
+    const day = (date: number) => `2026-10-${String(date).padStart(2, "0")}T09:00:00Z`;
+    const stored = await client.memories.add({
+      userId: "nisha",
+      messages: [
+        { role: "user", content: "I live in Delhi, near Lodhi Garden.", timestamp: day(1) },
+        { role: "user", content: "I moved to Pune last month, to Koregaon Park.", timestamp: day(20) },
+        { role: "assistant", content: "Noted: you live in Pune now, in Koregaon Park.", timestamp: day(20) },
+        { role: "user", content: "Book me a window seat whenever you can.", timestamp: day(21) },
+      ],
+    });
+    const request = { userId: "nisha", query: "Where did I move to?", budget: 60, since: "2026-10-10" };
+    const context = await client.memories.search({ ...request, explain: true });
+    const explanation = context.explanation!;
+
+    // Asking for an explanation changes nothing else, and without it there is none.
+    const plain = await client.memories.search(request);
+    expect(plain).not.toHaveProperty("explanation");
+    expect(plain.text).toBe(context.text);
+    expect(plain.turns).toEqual(context.turns);
+
+    // Every stored turn of the scope is named, oldest first, the one before the window included.
+    expect(explanation.mode).toBe("turns");
+    expect(explanation.turns.map((turn) => turn.id)).toEqual(stored.map((item) => item.id));
+    expect(explanation.turns[0]).toMatchObject({ status: "dropped", reason: "outside_window", session: null, tokens: 0 });
+    expect(explanation.turns[1]).toMatchObject({ role: "user", pool: "user", status: "kept" });
+    expect(explanation.sections.map((section) => section.name)).toEqual(["requests", "preferences", "conflicts"]);
+    const attributed = [...explanation.turns, ...explanation.sections].reduce((sum, part) => sum + part.tokens, 0);
+    expect(attributed + explanation.unattributedTokens).toBe(context.tokens);
+
+    // Field for field what the server sent, in camelCase: nothing left out, nothing added.
+    const response = await fetch(`${client.baseUrl}/v1/memories/search`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ user_id: "nisha", query: request.query, budget: 60, since: request.since, explain: true }),
+    });
+    const raw = (await response.json()) as { explanation: unknown };
+    expect(explanation).toEqual(camelCase(raw.explanation));
+
+    // A value that isn't true or false is the server's 400, passed on.
+    const wrong = { ...request, explain: "yes" as unknown as boolean };
+    await expect(client.memories.search(wrong)).rejects.toMatchObject({ status: 400, type: "invalid_request" });
+    expect(await client.memories.deleteAll({ userId: "nisha" })).toBe(4);
   });
 
   it("surfaces validation errors from the server", async () => {

@@ -96,8 +96,8 @@ error's type. Any other failure is a 500 (`"type": "server_error"`), with the tr
 | `PATCH /v1/memories/{id}` | `content` and/or `metadata` | the updated message |
 | `DELETE /v1/memories/{id}` | | `{"deleted": 1}` |
 | `DELETE /v1/memories` | `?user_id=` (or `agent_id`, `run_id`; one is required) | `{"deleted": n}` |
-| `POST /v1/memories/search` | `query`, the scope, optional `budget`, `relevance` (`"lexical"` or `"semantic"`), `since`, `until`, `explain` (`true` or `false`) | `{"text", "tokens", "budget", "history_tokens", "sessions_total", "sessions_kept", "turns": [...]}`, and `"explanation"` with `explain` |
-| `POST /v1/context/fit` | `text`, `budget` (default 2000), optional `query` | `{"text", "tokens", "original_tokens"}`, within the budget for any text |
+| `POST /v1/memories/search` | `query`, the scope, optional `budget`, `relevance` (`"lexical"` or `"semantic"`), `since`, `until`, `explain` (`true` or `false`) | `{"query", "text", "tokens", "budget", "history_tokens", "sessions_total", "sessions_kept", "elapsed_ms", "turns", "requests", "preferences", "conflicts"}`, and `"explanation"` with `explain` (see [the search response](#the-search-response)) |
+| `POST /v1/context/fit` | `text`, `budget` (default 2000), optional `query` | `{"text", "tokens", "original_tokens"}`: `tokens` is at most 2% over the budget, for any text (see [fit's budget](#fits-budget)) |
 | `GET /v1/info` | | name, version and budgets |
 | `POST /v1/chat/completions` | an OpenAI chat-completions request | the upstream's answer, with memory (see [below](#chat-with-memory-an-openai-compatible-endpoint-experimental)); 404 unless started with an upstream |
 | `GET /v1/models` | | the upstream's model list; 404 unless started with an upstream |
@@ -119,6 +119,38 @@ curl -s localhost:8080/v1/memories/search -H 'content-type: application/json' \
 
 Put `text` from a search into your prompt as **data, not instructions**. Add it to the new user turn rather than
 rewriting earlier turns or a system prompt (see [MEMORY.md](MEMORY.md#where-to-put-the-context-never-re-render-earlier-turns)).
+
+### The search response
+
+`POST /v1/memories/search` answers with `MemoryContext.to_dict()`. Every field is always there, except
+`explanation`:
+
+| Field | What it holds |
+|---|---|
+| `query` | The query, as sent. |
+| `text` | The context for the prompt: the sections, then the kept turns of each session under their dates, oldest first. At most `budget` tokens. |
+| `tokens` | The tokens `text` takes. |
+| `budget` | The budget the search used: the request's `budget`, else the server's `--budget`. |
+| `history_tokens` | The tokens of the scope's whole history within `since` and `until`, as one text. When it is at most `budget`, `text` is that whole history. |
+| `sessions_total` | The sessions in that history. A session is a `run_id`, or a calendar day of the turns stored without one. |
+| `sessions_kept` | The sessions with a turn in `text`. |
+| `elapsed_ms` | How long the search took on the server, in milliseconds. |
+| `turns` | The turns in `text`, oldest first. Each is a stored message (`id`, `role`, `content`, `created_at`, `updated_at`, `user_id`, `agent_id`, `run_id`, `metadata`, as `GET /v1/memories/{id}` returns it) with `score`, its word overlap with the query from 0 to 1, and `partial`, true when only some of its sentences are in `text`. `content` is always the whole stored message. |
+| `requests` | The user's standing requests ("always ...", "from now on ...") shown in their own section at the top of `text`, in the same form as `turns`. Empty when the section isn't shown. |
+| `preferences` | The preferences the user stated ("I prefer ...") shown in their section, after the requests. Same form; empty when not shown. |
+| `conflicts` | For a question such as "Have I ever ...?", the user's statements on it that may conflict, shown in their section. Same form; empty when not shown. |
+| `explanation` | Only with `"explain": true`: `SearchExplanation.to_dict()`, why each stored turn and each section was kept, cut or left out (see [MEMORY.md](MEMORY.md#why-a-turn-was-kept-or-left-out)). It names turns by id and repeats no text. |
+
+The sections appear only when the history doesn't fit the budget, and only for the kinds of question that get them
+(see [MEMORY.md](MEMORY.md#concepts)).
+
+### Fit's budget
+
+`POST /v1/context/fit` returns `text` unchanged when it already fits. Otherwise it compresses it towards `budget`
+and accepts a result up to 2% over, so `tokens` is at most `budget * 1.02`, for any text. When compression can't get
+within that (one long code block, say, which compression keeps whole), the result is cut to the longest head that
+fits `budget` itself. The 2% spares a text compression brought close from losing its end to that cut. If you need a
+hard ceiling, ask for 2% less: `"budget": 1960` for 2,000 tokens. MCP's `fit_context` is the same function.
 
 ## Chat with memory: an OpenAI-compatible endpoint (experimental)
 
@@ -275,8 +307,9 @@ changed, so the loop's prefix holds.
   attach the key to a cross-site request, and every `Host` is accepted unless you pin names with `--allowed-host`.
 - **Requests are capped:** bodies at 1 MB (413), search and fit budgets at 100,000 tokens, list pages at 1,000 items.
 - **Hostile text stays cheap.** Content detection, sentence splitting and code-span handling take time linear in the
-  input, so a crafted 1 MB body can't hold a worker for minutes, and `fit` holds its budget for any text: when
-  compression can't get under it (one long code block, say), the result is cut to the longest head that fits.
+  input, so a crafted 1 MB body can't hold a worker for minutes, and `fit` stays at most 2% over its budget for any
+  text: when compression can't get within that (one long code block, say), the result is cut to the longest head
+  that fits the budget.
 - **Put TLS in front.** The server speaks plain HTTP. Run it behind a reverse proxy or a load balancer that terminates
   TLS.
 - **Access logs.** Uvicorn's access log shows paths and query strings, including scope ids, but never bodies or keys.

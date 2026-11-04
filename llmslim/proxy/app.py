@@ -106,7 +106,10 @@ def create_proxy_app(
     async def rewritten(path: str, body: bytes) -> bytes:
         try:
             payload = json.loads(body)
-        except ValueError:
+        except (
+            ValueError,
+            RecursionError,
+        ):  # not JSON, or nested past the parser's stack: the API answers it
             return body
         if not isinstance(payload, dict):
             return body

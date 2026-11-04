@@ -195,6 +195,23 @@ def test_a_request_without_a_query_is_forwarded_without_a_question_mark(proxy, u
     ]
 
 
+def test_a_body_nested_past_the_parser_is_forwarded_unchanged(store):
+    """It was a 500: the proxy's own parse raised RecursionError. The upstream judges the request, as without it."""
+    sent = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(request.content)
+        return streamed(400, {"type": "error", "error": {"type": "invalid_request_error"}})
+
+    app = create_proxy_app(
+        store=store, upstream="https://api.example.test", transport=httpx.MockTransport(handler)
+    )
+    body = b'{"model": "m", "messages": ' + b"[" * 100_000 + b"]" * 100_000 + b"}"
+    with TestClient(app, base_url=LOCAL) as client:
+        response = client.post("/v1/messages", content=body, headers=HEADERS)
+    assert response.status_code == 400 and sent == [body]
+
+
 def test_a_whole_agent_loop_keeps_thinking_valid(proxy, upstream):
     """Turn 1 sends a long tool result; turn 2 replays it with the thinking the model produced after it. Without the
     byte-for-byte replay the fake API would reject turn 2, as Anthropic does."""

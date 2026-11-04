@@ -322,9 +322,12 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
 
 ### Fixed
-- **The proxy no longer adds a bare `?` to requests.** `llmslim proxy` and `llmslim wrap` sent a request without a
-  query string, such as `POST /v1/messages`, upstream as `POST /v1/messages?`, and a strict upstream answered 404.
-  Such a request now goes out as it came in. A query string is passed on as before.
+- **The proxy no longer adds a bare `?` to requests, or fails on deeply nested JSON.**
+  - `llmslim proxy` and `llmslim wrap` sent a request without a query string, such as `POST /v1/messages`, upstream
+    as `POST /v1/messages?`, and a strict upstream answered 404. Such a request now goes out as it came in; a query
+    string is passed on as before.
+  - A body nested too deeply for Python's parser was a 500 from the proxy itself. It is now forwarded unchanged, for
+    the API to answer.
 - **An unreachable Postgres fails in 10 seconds, with the reason.** A memory store on a `postgresql://` URL that
   couldn't reach the server waited 30 seconds whatever `connect_timeout` said, then failed with a `PoolTimeout` that
   didn't say why: psycopg's pool kept retrying in the background. The store now connects once before it opens the

@@ -389,6 +389,32 @@ def test_hostile_json_is_a_400_not_a_500(client):
     assert client.get("/v1/memories", params={"user_id": "u"}, headers=AUTH).json()["total"] == 0
 
 
+def test_json_nested_more_than_64_levels_is_refused_on_every_python(client):
+    """Python's parser alone accepts a depth that depends on the version and the stack: Python 3.14 on Linux parsed
+    100,000 levels of metadata and stored them, where 3.12 refused them."""
+    from llmslim._local_http import MAX_JSON_DEPTH
+
+    json_headers = {**AUTH, "content-type": "application/json"}
+
+    def body(depth: int, messages: str = "x") -> bytes:  # the body and metadata are two levels
+        nested = "[" * (depth - 2) + "]" * (depth - 2)
+        payload = f'{{"user_id": "u", "messages": "{messages}", "metadata": {{"a": {nested}}}}}'
+        return payload.encode()
+
+    assert MAX_JSON_DEPTH == 64
+    assert client.post("/v1/memories", content=body(64), headers=json_headers).status_code == 201
+    for depth in (65, 100_000):
+        refused = client.post("/v1/memories", content=body(depth), headers=json_headers)
+        assert refused.status_code == 400 and refused.json()["error"] == {
+            "type": "invalid_json",
+            "message": "request body is nested more than 64 levels deep",
+        }
+    # Brackets in a string are text, not nesting.
+    stored = client.post("/v1/memories", content=body(3, "[{" * 100), headers=json_headers)
+    assert stored.status_code == 201 and stored.json()["items"][0]["content"] == "[{" * 100
+    assert client.get("/v1/memories", params={"user_id": "u"}, headers=AUTH).json()["total"] == 2
+
+
 def test_lone_surrogates_are_refused_before_anything_is_stored(memory, client):
     json_headers = {**AUTH, "content-type": "application/json"}
     for raw in (

@@ -45,6 +45,8 @@ _INSIDE = re.compile(r'["\\]')
 _SCALAR_END = re.compile(r"[ \t\n\r,\]}]")
 _WHITESPACE = re.compile(r"[ \t\n\r]*")
 _DRIVE = re.compile(r"^[A-Za-z]:")
+_SURROGATE_ESCAPE = re.compile(r"\\u[dD][89a-fA-F]")
+_SURROGATE = re.compile("[\ud800-\udfff]")
 
 
 def size_text(count: int) -> str:
@@ -229,11 +231,27 @@ def _parse_int(text: str) -> int:
     return int(text)
 
 
+def _without_surrogates(value: Any) -> Any:
+    """``value`` with every lone surrogate in its strings (keys included) replaced by U+FFFD."""
+    if isinstance(value, str):
+        return _SURROGATE.sub("�", value)
+    if isinstance(value, list):
+        return [_without_surrogates(item) for item in value]
+    if isinstance(value, dict):
+        return {_without_surrogates(key): _without_surrogates(item) for key, item in value.items()}
+    return value
+
+
 def _loads(text: str) -> Record:
     try:
-        return OK, json.loads(text, parse_int=_parse_int)
+        value = json.loads(text, parse_int=_parse_int)
     except (ValueError, RecursionError):
         return MALFORMED, None
+    # A lone surrogate escape ("\ud83d" without its pair, half of an emoji a client cut off) is valid JSON, but not
+    # text that can be stored: it stopped the whole import with a UnicodeEncodeError. It is read as U+FFFD.
+    if _SURROGATE_ESCAPE.search(text):
+        value = _without_surrogates(value)
+    return OK, value
 
 
 def too_deep(text: str, max_depth: int) -> bool:
@@ -338,6 +356,10 @@ class _Document:
         try:
             self.buf += self.decoder.decode(chunk, final=not chunk)
         except UnicodeDecodeError as error:
+            if not chunk and error.reason == "unexpected end of data":
+                # The file ends inside a character: it was cut short, like one cut between two characters.
+                self.eof = True
+                raise _Truncated from None
             raise HistoryImportError(
                 f"{self.stream.name} is not UTF-8 text (near byte {self.stream.consumed})"
             ) from error

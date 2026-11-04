@@ -14,7 +14,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple
 
@@ -54,6 +54,7 @@ _TEXT_PARTS = ("text", "input_text", "output_text")
 
 _FRACTION = re.compile(r"(T\d{2}:\d{2}:\d{2})\.(\d+)")
 _COMPACT_OFFSET = re.compile(r"([+-]\d{2})(\d{2})$")
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 _NUMBER = re.compile(r"^-?\d+(?:\.\d+)?$")
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 _SYSTEM_REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.DOTALL)
@@ -180,8 +181,10 @@ def parse_time(value: Any) -> Optional[datetime]:
             return None
         seconds = value / 1000 if abs(value) >= 1e11 else value  # milliseconds past the year 5138
         try:
-            return datetime.fromtimestamp(seconds, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
+            # Added to the epoch rather than datetime.fromtimestamp, which on Windows refuses times before 1970 and
+            # after 3000 that every other platform reads.
+            moment = _EPOCH + timedelta(seconds=seconds)
+        except OverflowError:
             return None
     elif isinstance(value, str):
         text = value.strip()
@@ -199,7 +202,12 @@ def parse_time(value: Any) -> Optional[datetime]:
             return None
     else:
         return None
-    return moment if moment.tzinfo is not None else moment.replace(tzinfo=timezone.utc)
+    moment = moment if moment.tzinfo is not None else moment.replace(tzinfo=timezone.utc)
+    try:  # stored in UTC: 9999-12-31T23:59-01:00 has no UTC time, and storing it stopped the whole import
+        moment.astimezone(timezone.utc)
+    except OverflowError:
+        return None
+    return moment
 
 
 def _raw_time(value: Any) -> str:

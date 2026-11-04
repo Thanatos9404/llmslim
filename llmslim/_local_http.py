@@ -21,6 +21,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import json
+import math
 from typing import Any, Awaitable, Callable, Dict, Iterable, NoReturn, Optional, Tuple
 from urllib.parse import urlsplit
 
@@ -62,12 +63,20 @@ def _no_constants(name: str) -> NoReturn:
     raise ValueError(f"{name} is not valid JSON")
 
 
+def _finite(text: str) -> float:
+    value = float(text)
+    # 1e400 is valid JSON, but Python reads it as inf, which would go on to the upstream as "Infinity".
+    if not math.isfinite(value):
+        raise ValueError(f"the number {text[:40]} is too large")
+    return value
+
+
 async def read_json_object(request: Any, max_bytes: int, *, strict: bool = False) -> Dict[str, Any]:
     """The body of a Starlette ``request`` as a JSON object, read in chunks and refused past ``max_bytes`` (413).
 
     Bodies that are not JSON, not UTF-8, nested past the interpreter's stack or not an object, and text that isn't
     valid Unicode, are 400s. ``strict`` also refuses ``NaN`` and ``Infinity``, which Python's parser accepts but
-    which can't be sent on as JSON.
+    which can't be sent on as JSON, and numbers too large for a float (``1e400``), which it reads as infinity.
     """
     declared = request.headers.get("content-length")
     if declared is not None and declared.isdigit() and int(declared) > max_bytes:
@@ -79,7 +88,7 @@ async def read_json_object(request: Any, max_bytes: int, *, strict: bool = False
             raise HTTPError(413, "payload_too_large", f"request body is over {max_bytes} bytes")
     try:
         if strict:
-            payload = json.loads(raw or b"{}", parse_constant=_no_constants)
+            payload = json.loads(raw or b"{}", parse_constant=_no_constants, parse_float=_finite)
         else:
             payload = json.loads(raw or b"{}")
     except ValueError as error:

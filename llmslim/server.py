@@ -327,6 +327,13 @@ def create_app(
                 return JSONResponse(
                     {"error": {"type": error.kind, "message": error.message}}, error.status
                 )
+            except Exception:
+                # As on the other routes: a JSON 500, with the traceback in the log only (it was Starlette's
+                # plain-text "Internal Server Error").
+                logger.exception("%s %s failed", request.method, request.url.path)
+                return JSONResponse(
+                    {"error": {"type": "server_error", "message": "the request failed"}}, 500
+                )
 
         return run
 

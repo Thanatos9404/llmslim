@@ -360,6 +360,14 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **`llmslim mcp` refuses a blank user or agent id at start, and answers `HEAD /healthz` without a key.**
+  - `--user-id ""` ended in a traceback, after the database had been created. `--user-id " "`, `--agent-id ""` or a
+    blank `LLMSLIM_AGENT_ID` started a server whose every tool failed, since the memory refuses a blank id on each
+    read and write. A blank flag or variable now counts as not given, as an empty variable already did, and a server
+    left with neither id is a usage error before the database is opened. `build_server` refuses a blank `user_id` or
+    `agent_id` with a `ValueError` when it is called.
+  - Over `--transport http`, `HEAD /healthz` needed a key while `GET /healthz` didn't, so a load balancer or
+    `curl -I` checking a keyed server got a 401. It answers without a key now, as in `llmslim serve`.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

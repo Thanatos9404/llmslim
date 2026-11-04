@@ -179,6 +179,22 @@ def test_messages_are_rewritten_and_headers_forwarded(proxy, upstream):
     assert forwarded.startswith("[LLMSlim") and len(forwarded) < len(make_log())
 
 
+def test_a_request_without_a_query_is_forwarded_without_a_question_mark(proxy, upstream):
+    """`POST /v1/messages?`, with a bare "?", got a 404 from a strict upstream."""
+    proxy.post("/v1/messages", json=request(), headers=HEADERS)
+    proxy.post("/v1/messages/count_tokens", json=request(), headers=HEADERS)
+    proxy.get("/v1/models", headers=HEADERS)
+    proxy.get("/v1/models?", headers=HEADERS)  # a bare "?" from the client isn't passed on either
+    proxy.get("/v1/models?limit=5&after_id=a%20b", headers=HEADERS)
+    assert [sent.url.raw_path for sent in upstream.requests] == [
+        b"/v1/messages",
+        b"/v1/messages/count_tokens",
+        b"/v1/models",
+        b"/v1/models",
+        b"/v1/models?limit=5&after_id=a%20b",
+    ]
+
+
 def test_a_whole_agent_loop_keeps_thinking_valid(proxy, upstream):
     """Turn 1 sends a long tool result; turn 2 replays it with the thinking the model produced after it. Without the
     byte-for-byte replay the fake API would reject turn 2, as Anthropic does."""

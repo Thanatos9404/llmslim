@@ -136,10 +136,14 @@ def create_proxy_app(
             for name, value in request.headers.raw
             if name.decode("latin-1").lower() not in _DROP
         ]
+        query = request.url.query
         try:
             upstream_request = client.build_request(
                 request.method,
-                httpx.URL(path=path, query=request.url.query.encode("latin-1")),
+                # An empty query would be sent as a bare "?" (POST /v1/messages?), which a strict upstream rejects.
+                httpx.URL(path=path, query=query.encode("latin-1"))
+                if query
+                else httpx.URL(path=path),
                 headers=headers,
                 content=body,
             )

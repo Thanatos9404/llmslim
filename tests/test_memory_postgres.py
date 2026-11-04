@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -55,6 +56,70 @@ def test_table_names_are_checked_before_connecting(name):
 def test_other_inputs_are_refused():
     with pytest.raises(TypeError):
         PostgresStore(42)
+
+
+# 10.255.255.1 is a private address that nothing answers: a connection to it hangs until its timeout.
+UNREACHABLE = "postgresql://shop:hunter2@10.255.255.1:5432/app"
+
+
+@pytest.mark.parametrize("set_by", ["url", "PGCONNECT_TIMEOUT"])
+def test_an_unreachable_server_fails_within_connect_timeout(set_by, monkeypatch):
+    """It took 30 seconds whatever connect_timeout said: the pool kept retrying until its own timeout."""
+    pytest.importorskip("psycopg_pool")
+    monkeypatch.delenv("PGCONNECT_TIMEOUT", raising=False)
+    url = UNREACHABLE
+    if set_by == "url":
+        url += "?connect_timeout=2"
+    else:
+        monkeypatch.setenv("PGCONNECT_TIMEOUT", "2")
+    started = time.monotonic()
+    with pytest.raises(psycopg.OperationalError) as raised:
+        PostgresStore(url)
+    assert time.monotonic() - started < 10
+    assert "hunter2" not in str(raised.value)
+
+
+def test_connections_wait_ten_seconds_unless_told_otherwise(monkeypatch):
+    """The first connection, made before the pool, and the pool's own use the same settings."""
+    pytest.importorskip("psycopg_pool")
+    import psycopg_pool
+
+    from llmslim.memory import postgres
+
+    made = []
+
+    class Refused(Exception):
+        pass
+
+    class Connection:
+        def close(self):
+            made.append("closed")
+
+    def connect(conninfo, **kwargs):
+        made.append(("connect", kwargs))
+        return Connection()
+
+    def pool(conninfo, **kwargs):
+        made.append(("pool", kwargs["kwargs"]))
+        raise Refused
+
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr(psycopg_pool, "ConnectionPool", pool)
+    monkeypatch.delenv("PGCONNECT_TIMEOUT", raising=False)
+    with pytest.raises(Refused):
+        PostgresStore(UNREACHABLE)
+    settings = {"autocommit": True, "connect_timeout": postgres.DEFAULT_CONNECT_TIMEOUT}
+    assert postgres.DEFAULT_CONNECT_TIMEOUT == 10
+    assert made == [("connect", settings), "closed", ("pool", settings)]
+    # The URL's connect_timeout, or libpq's environment variable, is left to psycopg.
+    from psycopg.conninfo import conninfo_to_dict
+
+    def kwargs(conninfo, environ):
+        return postgres._connection_kwargs(conninfo, conninfo_to_dict, environ)
+
+    assert kwargs(UNREACHABLE + "?connect_timeout=30", {}) == {"autocommit": True}
+    assert kwargs("host=db connect_timeout=30", {}) == {"autocommit": True}
+    assert kwargs(UNREACHABLE, {"PGCONNECT_TIMEOUT": "30"}) == {"autocommit": True}
 
 
 @needs_db

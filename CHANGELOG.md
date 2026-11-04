@@ -322,6 +322,24 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
 
 ### Fixed
+- **The proxy no longer adds a bare `?` to requests.** `llmslim proxy` and `llmslim wrap` sent a request without a
+  query string, such as `POST /v1/messages`, upstream as `POST /v1/messages?`, and a strict upstream answered 404.
+  Such a request now goes out as it came in. A query string is passed on as before.
+- **An unreachable Postgres fails in 10 seconds, with the reason.** A memory store on a `postgresql://` URL that
+  couldn't reach the server waited 30 seconds whatever `connect_timeout` said, then failed with a `PoolTimeout` that
+  didn't say why: psycopg's pool kept retrying in the background. The store now connects once before it opens the
+  pool, so `Memory(...)`, `llmslim serve`, `llmslim mcp` and `llmslim import` fail within the URL's
+  `connect_timeout`, else libpq's `PGCONNECT_TIMEOUT`, else 10 seconds, with psycopg's own error (`connection timeout
+  expired`, a refused connection, a wrong password). The commands still print it in one line without the password.
+  The pool's later connections use the same limit, instead of psycopg's 130 seconds. A pool or connection you pass in
+  is unchanged.
+- **No `assert` guards real input or state any more.** Python drops `assert` under `-O`, so these checks could vanish:
+  - `MongoDBContextSource.search` with an `embedding_provider` but no `vector_index` (both are public attributes)
+    raises `ValueError`, not `AssertionError`;
+  - `Neo4jContextStore` with a `uri` that isn't a string (bytes, a `Path`) raises `TypeError` with a clear message;
+  - a `ZohoCRMContextSource` left with neither a token nor a token provider raises `ZohoAuthenticationError`.
+
+  The other eight asserts could never fail; the code now proves the same thing without them. Nothing else changes.
 - **The Docker image runs on Postgres and MongoDB.** It installed only the `server` extra, so with
   `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
   now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,

@@ -331,6 +331,10 @@ def test_mongodb_source_downgrades_stored_trust_and_vector_provider_is_explicit(
     stage = collection.last_pipeline[0]["$vectorSearch"]
     assert stage["queryVector"] == [0.1, 0.2, 0.3]
     assert stage["limit"] == 1
+    # The two are public attributes: a provider left without its index is a clear error, even under python -O.
+    vector_source.vector_index = None
+    with pytest.raises(ValueError, match="configured together"):
+        asyncio.run(vector_source.search("customer"))
 
 
 def test_mongodb_errors_never_echo_connection_material() -> None:

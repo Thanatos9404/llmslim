@@ -57,24 +57,6 @@ const ROUTES_012 = [
   ["`DELETE /v1/memories`", "`?user_id=` (or `agent_id`, `run_id`; one is required)", "`{\"deleted\": n}`"],
 ]
 
-const SEARCH_RETURNS = "`{\"query\", \"text\", \"tokens\", \"budget\", \"history_tokens\", \"sessions_total\", \"sessions_kept\", \"elapsed_ms\", \"turns\", \"requests\", \"preferences\", \"conflicts\"}` ([fields](#search-response))"
-
-/** The fields of a search response in 0.12 and 1.0; 1.0 adds `explanation`. Mirrors docs/SERVER.md. */
-const SEARCH_FIELDS = [
-  ["`query`", "The query, as sent."],
-  ["`text`", "The context for the prompt: the sections, then the kept turns of each session under their dates, oldest first. At most `budget` tokens."],
-  ["`tokens`", "The tokens `text` takes."],
-  ["`budget`", "The budget the search used: the request's `budget`, else the server's `--budget`."],
-  ["`history_tokens`", "The tokens of the scope's whole history within `since` and `until`, as one text. When it is at most `budget`, `text` is that whole history."],
-  ["`sessions_total`", "The sessions in that history. A session is a `run_id`, or a calendar day of the turns stored without one."],
-  ["`sessions_kept`", "The sessions with a turn in `text`."],
-  ["`elapsed_ms`", "How long the search took on the server, in milliseconds."],
-  ["`turns`", "The turns in `text`, oldest first. Each is a stored message (`id`, `role`, `content`, `created_at`, `updated_at`, `user_id`, `agent_id`, `run_id`, `metadata`) with `score`, its word overlap with the query from 0 to 1, and `partial`, true when only some of its sentences are in `text`. `content` is always the whole stored message."],
-  ["`requests`", "The user's standing requests (\"always ...\", \"from now on ...\") shown in their own section at the top of `text`, in the same form as `turns`. Empty when the section isn't shown."],
-  ["`preferences`", "The preferences the user stated (\"I prefer ...\") shown in their section, after the requests. Same form; empty when not shown."],
-  ["`conflicts`", "For a question such as \"Have I ever ...?\", the user's statements on it that may conflict, shown in their section. Same form; empty when not shown."],
-]
-
 export const CORE_DOCS: DocPage[] = [
   // ------------------------------------------------------------------ Getting started
   {
@@ -173,25 +155,19 @@ export const CORE_DOCS: DocPage[] = [
       { id: "local-only", title: "Keyless means this machine only", versions: ONE, content: "A keyless server is reachable from any web page the user opens, so it answers only requests addressed to this machine by name (`localhost`, `127.0.0.1`, `[::1]` or a `*.localhost` name) that no other web page sent. Other requests get a 403. Clients that send no `Origin`, such as curl, SDKs and the TypeScript client, are not affected. If clients reach it by another name, such as `host.docker.internal` from a container, add the name with `--allowed-host` or `LLMSLIM_ALLOWED_HOSTS`.", callout: { type: "note", title: "Changed in 1.0", content: "0.12 answered any `Host`. See [the upgrade guide](doc:migrate-to-1-0#keyless-servers)." } },
       { id: "routes", title: "Routes", versions: TWELVE, content: "Bodies and responses are JSON. Errors look like `{\"error\": {\"type\": \"invalid_request\", \"message\": \"...\"}}`.", table: { headers: ["Method and path", "Body or query", "Returns"], rows: [
         ...ROUTES_012,
-        ["`POST /v1/memories/search`", "`query`, the scope, optional `budget`, `relevance` (`\"lexical\"` or `\"semantic\"`), `since`, `until`", SEARCH_RETURNS],
+        ["`POST /v1/memories/search`", "`query`, the scope, optional `budget`, `relevance` (`\"lexical\"` or `\"semantic\"`), `since`, `until`", "`{\"text\", \"tokens\", \"budget\", \"history_tokens\", \"sessions_total\", \"sessions_kept\", \"turns\": [...]}`"],
         ["`POST /v1/context/fit`", "`text`, `budget` (default 2000), optional `query`", "`{\"text\", \"tokens\", \"original_tokens\"}`"],
         ["`GET /v1/info`", "", "Name, version and budgets"],
         ["`GET /healthz`", "", "`{\"status\": \"ok\"}`, without a key"],
       ] } },
       { id: "routes", title: "Routes", versions: ONE, content: "Bodies and responses are JSON. Errors look like `{\"error\": {\"type\": \"invalid_request\", \"message\": \"...\"}}`. When Postgres or MongoDB can't be reached, the answer is a 503 with `\"type\": \"store_unavailable\"` and `Retry-After: 5`: retry it.", table: { headers: ["Method and path", "Body or query", "Returns"], rows: [
         ...ROUTES_012,
-        ["`POST /v1/memories/search`", "`query`, the scope, optional `budget`, `relevance` (`\"lexical\"` or `\"semantic\"`), `since`, `until`, `explain`", `${SEARCH_RETURNS}, and \`"explanation"\` with \`"explain": true\` ([guide](doc:explain))`],
-        ["`POST /v1/context/fit`", "`text`, `budget` (default 2000), optional `query`", "`{\"text\", \"tokens\", \"original_tokens\"}`: `tokens` is at most 2% over the budget, for any text ([fit's budget](#fit-budget))"],
+        ["`POST /v1/memories/search`", "`query`, the scope, optional `budget`, `relevance` (`\"lexical\"` or `\"semantic\"`), `since`, `until`, `explain`", "`{\"text\", \"tokens\", \"budget\", \"history_tokens\", \"sessions_total\", \"sessions_kept\", \"turns\": [...]}`, and `\"explanation\"` with `\"explain\": true` ([guide](doc:explain))"],
+        ["`POST /v1/context/fit`", "`text`, `budget` (default 2000), optional `query`", "`{\"text\", \"tokens\", \"original_tokens\"}`, within about 2% of the budget for any text"],
         ["`GET /v1/info`", "", "Name, version and budgets"],
         ["`POST /v1/chat/completions`, `GET /v1/models`", "An OpenAI chat-completions request", "The upstream's answer, with memory; 404 unless started with `--upstream-url` ([experimental](doc:openai-compatible-endpoint))"],
         ["`GET /healthz`", "", "`{\"status\": \"ok\"}`, without a key"],
       ] } },
-      { id: "search-response", title: "The search response", versions: TWELVE, content: "A search answers with `MemoryContext.to_dict()`, every field always there:", table: { headers: ["Field", "What it holds"], rows: SEARCH_FIELDS }, after: "The sections appear only when the history doesn't fit the budget, and only for the kinds of question that get them." },
-      { id: "search-response", title: "The search response", versions: ONE, content: "A search answers with `MemoryContext.to_dict()`. Every field is always there, except `explanation`:", table: { headers: ["Field", "What it holds"], rows: [
-        ...SEARCH_FIELDS,
-        ["`explanation`", "Only with `\"explain\": true`: `SearchExplanation.to_dict()`, why each stored turn and each section was kept, cut or left out ([guide](doc:explain)). It names turns by id and repeats no text."],
-      ] }, after: "The sections appear only when the history doesn't fit the budget, and only for the kinds of question that get them." },
-      { id: "fit-budget", title: "Fit's budget", versions: ONE, content: "`POST /v1/context/fit` returns `text` unchanged when it already fits. Otherwise it compresses it towards `budget` and accepts a result up to 2% over, so `tokens` is at most `budget * 1.02`, for any text. When compression can't get within that (one long code block, say, which compression keeps whole), the result is cut to the longest head that fits `budget` itself. The 2% spares a text compression brought close from losing its end to that cut. For a hard ceiling, ask for 2% less: `\"budget\": 1960` for 2,000 tokens. MCP's `fit_context` is the same function." },
       { id: "options", title: "Options", content: "Flags win over environment variables.", table: { headers: ["Flag", "Environment variable", "Default"], rows: [
         ["`--host`", "`LLMSLIM_HOST`", "`127.0.0.1`"],
         ["`--port`", "`LLMSLIM_PORT`", "`8080`"],
@@ -226,7 +202,7 @@ export const CORE_DOCS: DocPage[] = [
         ["`context.fit({ text, budget?, query? })`", "Shrinks long text to the budget, keeping what answers `query`."],
         ["`info()`", "The server's version and budgets."],
       ] } },
-      { id: "explain", title: "Explanations", versions: ONE, content: "`memories.search({ ...scope, query, explain: true })` adds `explanation` to the context: [why each turn was kept, cut or left out](doc:explain), as a `SearchExplanation` with the server's fields in camelCase (`historyTokens`, `userRoom`, `turnId` and so on). This is in the client on main, for its next npm release. With `llmslim` 0.2.0 from npm, post `\"explain\": true` to `/v1/memories/search` yourself and read `explanation` from the response." },
+      { id: "explain", title: "Explanations", versions: ONE, content: "The client's `memories.search` doesn't pass `explain` yet. To see [why each turn was kept](doc:explain) from TypeScript, post `\"explain\": true` to `/v1/memories/search` yourself and read `explanation` from the response." },
     ],
   },
 
@@ -516,7 +492,7 @@ export const CORE_DOCS: DocPage[] = [
       { id: "errors", title: "Cleaner errors from servers", content: "When Postgres or MongoDB can't be reached, `llmslim serve` answers a 503 with `\"type\": \"store_unavailable\"` and `Retry-After: 5` (0.12 answered a plain-text 500), and recovers by itself when the database is back. Any other failure in a route is a JSON 500, `\"type\": \"server_error\"`. `llmslim serve` and `llmslim mcp` exit at start with one line when the store can't be opened. Hostile JSON (too deep, wrong types, out-of-range times, a lone surrogate) is a 400, and `Memory.add` refuses a timestamp with no UTC time with a `ValueError`." },
       { id: "output", title: "Output that changes", content: "Which turns `search` keeps is output content, which a minor release may improve (see [API stability](doc:api-stability#semver)). Between 0.12 and 1.0:", items: [
         "a reply short enough to be one window inherits its session's relevance, as a user turn does, so conversations between two people stored as `user` and `assistant` keep more of the second speaker's turns;",
-        "`fit` (`/v1/context/fit`, `fit_context`) stays at most 2% over its budget for any text: when compression can't get within that (one long code block, say), the result is cut to the longest head that fits the budget;",
+        "`fit` (`/v1/context/fit`, `fit_context`) stays within about 2% of its budget for any text: when compression can't get there (one long code block, say), the result is cut to the longest head that fits the budget;",
         "the Docker image installs the Postgres and MongoDB drivers.",
       ] },
       { id: "new", title: "What's new", content: "Each has its own guide:", items: [

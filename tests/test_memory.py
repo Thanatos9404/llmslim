@@ -735,7 +735,7 @@ def test_search_stays_within_the_budget_when_a_pick_runs_over(memory, monkeypatc
 
     for i, note in enumerate(PROJECT_NOTES):
         memory.add(note, user_id="u1", timestamp=T0 + timedelta(minutes=i))
-    monkeypatch.setattr(turns.Selection, "label_cost", lambda self, turn: 0)
+    monkeypatch.setattr(turns.Selection, "opening_cost", lambda self, piece, text: 0)
     context = memory.search("How do I run the tests?", user_id="u1", budget=budget)
     assert context.compressed and count_tokens(str(context)) == context.tokens <= budget
     assert "pnpm test -- --runInBand" in context.text

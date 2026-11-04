@@ -3,11 +3,12 @@
 Every turn gets a fixed id (``m0001``, ``m0002``, ...) and a fixed time, so a search's whole output, ids included, is
 the same on every run. The output of each case with ``explain`` off is pinned in
 ``tests/fixtures/memory_search_golden.json``, with tiktoken's ``cl100k_base`` and the built-in sentence splitter. It
-was first recorded from ``Memory.search`` before it had an ``explain`` argument, and again when ``date_format``'s
-default became ``None`` (no date on a later turn of a session whose time was already shown). The output with
-``date_format="%Y-%m-%d"``, the labels of 0.12, is pinned too, as one SHA-256 per case in
-``tests/fixtures/memory_search_golden_date_0_12.json``: it equals the first recording. If a release changes what
-search selects on purpose, regenerate both and say so in the CHANGELOG::
+was first recorded from ``Memory.search`` before it had an ``explain`` argument, again when ``date_format``'s
+default became ``None`` (no date on a later turn of a session whose time was already shown), and again when
+selection began charging each kept turn what it adds to the context, counted in place (``Selection.opening_cost``:
+more turns fit). The output with ``date_format="%Y-%m-%d"``, the labels of 0.12, is pinned too, as one SHA-256 per
+case in ``tests/fixtures/memory_search_golden_date_0_12.json``: it equalled the first recording until that last
+change. If a release changes what search selects on purpose, regenerate both and say so in the CHANGELOG::
 
     python -m tests._memory_search_cases
 """

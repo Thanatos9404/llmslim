@@ -320,6 +320,17 @@ def labelled(label: str, body: str) -> str:
     return f"{label.rstrip()}{body}" if body.startswith("\n") else f"{label}{body}"
 
 
+def _edges(text: str) -> Tuple[str, str]:
+    """A turn's text at its two ends, where its label and the line break after it meet it: its first word (with the
+    line break a code block opens with) and its last word."""
+    body = text.rstrip()
+    stripped = body.lstrip()
+    if not stripped:
+        return body, body
+    lead = body[: len(body) - len(stripped)]
+    return lead + stripped.split(None, 1)[0], stripped.rsplit(None, 1)[-1]
+
+
 def words(text: str) -> List[str]:
     """The case-folded words of ``text`` (any script), for near-duplicate checks."""
     return _WORDS.findall(text.casefold())
@@ -667,7 +678,9 @@ class Trace:
 
 
 class Selection:
-    """Greedy fill of one budget from ranked pieces, with per-turn label costs and near-duplicate removal."""
+    """Greedy fill of one budget from ranked pieces, each charged what it adds to the context (its text, and for the
+    first kept part of a turn its label, gap marks and line break, counted in place: ``opening_cost``), with
+    near-duplicate removal."""
 
     def __init__(
         self,
@@ -709,6 +722,38 @@ class Selection:
         first = t.stamp not in self.stamps.get(t.session, ())
         return tokens_of(self.label(turn, first)) + 1
 
+    def opening_cost(self, piece: Piece, text: str) -> int:
+        """What ``piece`` adds besides its ``text`` when it is the first kept part of its turn, counted where it
+        meets the context, so selection fills the room the rendered text leaves:
+
+        * the gap mark (``GAP``) shown before it when it is not its turn's first window, and after it when it is not
+          the last, each counted with the word next to it;
+        * its label (``label``, as ``label_cost`` picks it), counted against the first word of the body it opens. A
+          label ends in a space, which joins that word's token: ``"user: "`` is 3 tokens alone, but
+          ``"user: Caroline"`` is ``user``, ``:``, `` Caroline``, and ``"Caroline"`` alone is 2;
+        * the line break after the turn, counted against the body's last word: ``".\\n"`` is one token.
+
+        Counted on its own, each label is a token over and each line break after a full stop a token over, so the
+        selected text came out shorter than the budget by about 2 tokens per kept turn (6% of it on conversations
+        of short turns). A further part of a kept turn is charged 2, at least what it adds: a space and at most one
+        gap mark. The exact labels still depend on the order of the kept turns, so ``fit`` counts the whole."""
+        t = self.turns[piece.turn]
+        label = self.label(piece.turn, t.stamp not in self.stamps.get(t.session, ()))
+        head, tail = _edges(text)
+        mark = GAP.strip()
+        cost = 0
+        if piece.part > 0:
+            # A block opens on its own line, right after the mark; prose after a space.
+            before = mark + head if head.startswith("\n") else f"{mark} {head}"
+            cost += tokens_of(before) - tokens_of(head)
+            head = mark
+        if piece.part < t.parts - 1:
+            after = "\n" if piece.segs and piece.segs[-1].block else " "
+            cost += tokens_of(f"{tail}{after}{mark}") - tokens_of(tail)
+            tail = mark
+        cost += tokens_of(labelled(label, head)) - tokens_of(head)
+        return cost + tokens_of(tail + "\n") - tokens_of(tail)
+
     def duplicate(self, text: str) -> bool:
         ws = tuple(words(text))
         if not ws:
@@ -732,7 +777,7 @@ class Selection:
         else:
             parts = [(s.text, s.block) for s in piece.segs]
             text, cost = piece.text, piece.tokens
-        cost += 2 if piece.turn in self.kept else self.label_cost(piece.turn)
+        cost += 2 if piece.turn in self.kept else self.opening_cost(piece, text)
         if self.used + cost > limit:
             if self.trace is not None:
                 self.trace.refuse(piece, "over_share" if limit < self.budget else "over_budget")

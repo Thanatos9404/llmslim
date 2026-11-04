@@ -9,6 +9,8 @@ Usage:
     llmslim serve --db memory.db        # the same over HTTP, for apps in any language
     llmslim wrap claude                 # run Claude Code with long tool output compressed, cache-safe
     llmslim import claude-code          # bring Claude Code history (or chatgpt, claude-ai, mem0, jsonl) into memory
+
+``llmslim --help`` lists every command (``COMMANDS``); ``llmslim <command> --help`` shows its options.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Callable, Dict, List, Sequence, Tuple
 
 from .analysis import analyze as run_analysis
 from .core import compress
@@ -31,10 +33,27 @@ from .tokens import count_tokens
 from .tools import canonical_json, fingerprint_tool_schema, from_mcp_tool, inspect_schema
 
 
+def _commands_help() -> str:
+    """The command list ``llmslim --help`` ends with: each command of :data:`COMMANDS` and its line."""
+    width = max(len(name) for name, _, _ in COMMANDS)
+    lines = [f"  {name:<{width}}  {line}" for name, line, _ in COMMANDS]
+    return "\n".join(
+        ["commands:", *lines, "", "Run 'llmslim <command> --help' for a command's options."]
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmslim",
-        description="Compress text and prompts to fit an LLM token budget while preserving instructions and entities.",
+        usage="%(prog)s [options] [input]\n       %(prog)s <command> [options]",
+        # Laid out by hand, within 80 columns: the formatter keeps the epilog's command list as it is.
+        description=(
+            "Compress text and prompts to fit an LLM token budget while preserving\n"
+            "instructions and entities. With a command (below), serve memory, import\n"
+            "history, run the proxy or plan a context."
+        ),
+        epilog=_commands_help(),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "input",
@@ -595,32 +614,62 @@ def _run_plan_command(argv: Sequence[str]) -> int:
     return 0
 
 
+def _run_serve_command(argv: Sequence[str]) -> int:
+    from .server import main as run_server
+
+    return run_server(argv)
+
+
+def _run_mcp_command(argv: Sequence[str]) -> int:
+    from .mcp_server import main as run_mcp_server
+
+    return run_mcp_server(argv)
+
+
+def _run_proxy_command(argv: Sequence[str]) -> int:
+    from .proxy.cli import main as run_proxy
+
+    return run_proxy(argv)
+
+
+def _run_wrap_command(argv: Sequence[str]) -> int:
+    from .proxy.cli import wrap
+
+    return wrap(argv)
+
+
+#: The ``llmslim`` commands, in the order ``llmslim --help`` lists them: (name, its line in the help, runner).
+#: ``main`` dispatches on these names, so a command can't be added without a line in the help. Any other first
+#: argument is the input file of the default command, which compresses text.
+COMMANDS: Tuple[Tuple[str, str, Callable[[Sequence[str]], int]], ...] = (
+    (
+        "serve",
+        "Serve memory and context fitting over HTTP, for apps in any language.",
+        _run_serve_command,
+    ),
+    ("mcp", "Serve memory and context tools to MCP clients (stdio or HTTP).", _run_mcp_command),
+    (
+        "import",
+        "Import chat history (Claude Code, ChatGPT, Claude.ai, Mem0, JSONL).",
+        _run_import_command,
+    ),
+    (
+        "proxy",
+        "Run a proxy that compresses tool output, cache-safe (experimental).",
+        _run_proxy_command,
+    ),
+    ("wrap", "Run a coding agent (claude) through that proxy (experimental).", _run_wrap_command),
+    ("plan", "Plan messages, RAG, memory and tools against a model budget.", _run_plan_command),
+    ("context", "Inspect and plan one agent context envelope.", _run_context_command),
+    ("tools", "Inspect or measure a local MCP tool catalog file.", _run_tools_command),
+)
+
+
 def main(argv=None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments and arguments[0] == "context":
-        return _run_context_command(arguments[1:])
-    if arguments and arguments[0] == "tools":
-        return _run_tools_command(arguments[1:])
-    if arguments and arguments[0] == "plan":
-        return _run_plan_command(arguments[1:])
-    if arguments and arguments[0] == "import":
-        return _run_import_command(arguments[1:])
-    if arguments and arguments[0] == "mcp":
-        from .mcp_server import main as run_mcp_server
-
-        return run_mcp_server(arguments[1:])
-    if arguments and arguments[0] == "serve":
-        from .server import main as run_server
-
-        return run_server(arguments[1:])
-    if arguments and arguments[0] == "proxy":
-        from .proxy.cli import main as run_proxy
-
-        return run_proxy(arguments[1:])
-    if arguments and arguments[0] == "wrap":
-        from .proxy.cli import wrap
-
-        return wrap(arguments[1:])
+    for name, _, run in COMMANDS:
+        if arguments[:1] == [name]:
+            return run(arguments[1:])
     parser = build_parser()
     args = parser.parse_args(arguments)
 

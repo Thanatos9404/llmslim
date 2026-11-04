@@ -191,6 +191,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     processor that injects memory.
   - CI runs the tests against a real `llmslim serve` and against the oldest supported `@mastra/core` (1.29.1), with a
     test that saves the same reply 50 times, and imports the packed package without its optional peers.
+- **`explain` in the TypeScript client.** `memories.search({ ...scope, query, explain: true })` sends
+  `"explain": true` to `llmslim serve` and returns its answer as `context.explanation`: a `SearchExplanation`, with
+  `ExplainedTurn`, `ExplainedSection` and `ExplainedCandidate` for its parts, holding every field the server sends, in
+  camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
+  checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
+  have it, and the package's version is unchanged.
 
 ### Changed
 - **`Memory.search` shows a session's date once: `date_format` now defaults to `None`.** When a long history is
@@ -330,6 +336,23 @@ From a security review of 1.0's HTTP server, MCP server, proxy and the website's
   - **The old constants:** `llmslim.planning.planner.PLANNER_VERSION` and
     `llmslim.planning.progressive.PLANNER_VERSION` still import and give the same release. They are no longer in
     those modules' `__all__`.
+- **`llmslim --help` lists the commands.** It described only the default command, which compresses text, so `serve`,
+  `mcp`, `import`, `proxy`, `wrap`, `plan`, `context` and `tools` were nowhere in it. It now ends with each command
+  and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
+  and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
+  command can't be added without its line, and tests check the list and every command's `--help`.
+
+### Documentation
+- **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,
+  `requests`, `preferences` and `conflicts`, which `POST /v1/memories/search` has always returned. A new section says
+  what each field holds. The fields documented there are stable (`docs/API_STABILITY.md`). The site's HTTP quickstart
+  has the same table, for 0.12 and 1.0.
+- **`fit`'s budget, as the code keeps it.** `docs/SERVER.md` and `docs/MCP.md` said `POST /v1/context/fit` and
+  `fit_context` keep within the budget for any text. They accept a compressed result up to 2% over
+  (`tokens <= budget * 1.02`), as `fit_text`'s docstring and the tests always had it, and cut to the budget itself
+  only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
+  so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
+- `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
 
 ## [0.12.0] - 2026-10-27
 

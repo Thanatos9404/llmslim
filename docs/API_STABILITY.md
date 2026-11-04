@@ -172,7 +172,7 @@ one, and how it counts what it skips, is output content, so a minor release may 
 
 **HTTP (`llmslim serve`).** The routes and methods (`/healthz` and everything under `/v1` except the experimental
 chat endpoint, `/v1/chat/completions` and `/v1/models`), the request fields, the
-response fields and the error `code` values in [SERVER.md](SERVER.md) are stable. A minor release may add routes,
+response fields and the error `type` values in [SERVER.md](SERVER.md) are stable. A minor release may add routes,
 optional request fields and response fields. An incompatible change would come under `/v2`, with `/v1` kept until
 the next major release.
 

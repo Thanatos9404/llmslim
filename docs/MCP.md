@@ -212,8 +212,8 @@ The tools carry MCP annotations (`readOnlyHint`, `destructiveHint`), so a client
   give a key to, and nothing else.
 - **Hostile text stays cheap and within budget.** Text a tool fetched from the web can be crafted to be slow to
   process. Content detection, sentence splitting and code-span handling take time linear in their input, and
-  `fit_context` holds its budget for any text: when compression can't get under it (one long code block, say), the
-  result is cut to the longest head that fits.
+  `fit_context` stays at most 2% over its budget for any text: when compression can't get within that (one long code
+  block, say), the result is cut to the longest head that fits the budget.
 - **It shares its database with `llmslim serve`.** Both default to `~/.llmslim/memory.db`. Run `llmslim serve` without
   a key only on loopback (it refuses anything else); it then refuses requests from web pages, so a page can't read
   this memory through it.

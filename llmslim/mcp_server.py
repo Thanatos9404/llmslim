@@ -231,7 +231,7 @@ def build_server(
 
         Args:
             text: The text to shrink.
-            budget: Most tokens to return.
+            budget: Tokens to shrink it to; the result may be up to 2% over.
             query: Optional question; the parts that answer it are kept first.
         """
         try:

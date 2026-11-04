@@ -397,6 +397,13 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
   while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
   raised.
+- **Compressing a long text with many distinct words no longer takes gigabytes of memory.** The default TF-IDF
+  backend made its whole matrix dense, one row per sentence and one column per distinct word, though the compressor
+  reads one chunk of sentences at a time. `llmslim serve`'s `POST /v1/context/fit` without a `query` (and MCP's
+  `fit_context`) took 1.9 GB of memory for a 714 KB body of distinct words, about 4 GB at the 1 MB body cap, and 1.6 GB
+  for 1 MB of prose with a 30,000-word vocabulary. The matrix now stays sparse and each chunk's rows are made dense
+  when they are read: 180 MB or less in each of those cases. The rows hold the same values, so the output is the
+  same, byte for byte. A custom embedding backend is read through its `encode` as before.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

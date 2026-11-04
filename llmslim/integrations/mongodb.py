@@ -276,7 +276,8 @@ class MongoDBContextSource:
         else:
             vector_result = self.embedding_provider(query)
             vector = await vector_result if inspect.isawaitable(vector_result) else vector_result
-            assert self.vector_index is not None
+            if not self.vector_index:  # set together in __init__, but both are public attributes
+                raise ValueError("embedding_provider and vector_index must be configured together")
             items = await self.store.search_vector(
                 vector,
                 index_name=self.vector_index,

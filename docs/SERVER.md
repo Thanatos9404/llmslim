@@ -52,7 +52,10 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
   (`mongodb://llmslim:<password>@mongo:27017/llmslim?authSource=admin`): `localhost` in the container is the container
   itself.
 - Collections, tables and indexes are created when the server starts. If the database can't be reached or the login
-  fails, the server exits at start with one line saying why, without the URL or its password.
+  fails, the server exits at start with one line saying why, without the URL or its password. It waits up to 10
+  seconds for Postgres (`?connect_timeout=` in the URL or `PGCONNECT_TIMEOUT` sets another limit), and for MongoDB
+  the URL's `serverSelectionTimeoutMS` (PyMongo's default is 30 seconds). In Docker Compose, start the server once
+  the database's health check passes.
 - Once it is running, a database restart or outage makes the requests that need the database answer 503 until it is
   back, with no restart of the server. `GET /healthz` keeps answering: it checks the process, not the database.
 

@@ -41,10 +41,11 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import urlsplit
 
-from ._local_http import HTTPError
+from ._local_http import MAX_JSON_DEPTH, HTTPError
 from .core import ContextRole
 from .memory import Memory
 from .memory._core import _text_of
+from .memory._import_reader import too_deep
 from .planning.candidates import render_context_item
 from .planning.models import ContextItem, ContextKind
 
@@ -472,9 +473,14 @@ class StreamReader:
         if data.strip() == b"[DONE]":
             self.done = True
             return
+        if too_deep(data.decode("latin-1"), MAX_JSON_DEPTH):
+            # No later line can make it readable. Checked here, not left to the parser: Python 3.14's no longer
+            # stops at its recursion limit, so an unclosed run of brackets would read as an event still to come.
+            self._fail()
+            return
         try:
             event = json.loads(data)
-        except RecursionError:  # nested past the parser's stack: no later line can make it readable
+        except RecursionError:
             self._fail()
             return
         except ValueError:
@@ -490,6 +496,9 @@ class StreamReader:
         data, self._data = bytes(self._data), None
         if data.strip() == b"[DONE]":
             self.done = True
+            return
+        if too_deep(data.decode("latin-1"), MAX_JSON_DEPTH):
+            self._fail()
             return
         try:
             event = json.loads(data)

@@ -367,13 +367,22 @@ def test_an_empty_body_reads_as_an_empty_object(client):
     assert response.json()["error"]["message"] == "messages is required"
 
 
-@pytest.mark.parametrize("depth", [50, 500])
-def test_nesting_the_parser_takes_is_stored_and_read_back(memory, client, depth):
-    nested = "[" * depth + "]" * depth
+def test_nesting_within_the_limit_is_stored_and_read_back(memory, client):
+    nested = "[" * 50 + "]" * 50
     raw = f'{{"messages": "deep", "user_id": "u", "metadata": {{"x": {nested}}}}}'.encode()
     assert client.post("/v1/memories", content=raw, headers=JSON).status_code == 201
     listed = client.get("/v1/memories", params={"user_id": "u"}, headers=AUTH)
     assert listed.status_code == 200 and listed.json()["total"] == 1
+
+
+def test_nesting_deeper_than_the_limit_is_refused_and_nothing_is_stored(memory, client):
+    nested = "[" * 500 + "]" * 500
+    raw = f'{{"messages": "deep", "user_id": "u", "metadata": {{"x": {nested}}}}}'.encode()
+    response = client.post("/v1/memories", content=raw, headers=JSON)
+    _error(response, 400, "invalid_json")
+    assert "nested more than 64 levels deep" in response.json()["error"]["message"]
+    listed = client.get("/v1/memories", params={"user_id": "u"}, headers=AUTH)
+    assert listed.status_code == 200 and listed.json()["total"] == 0
 
 
 # ----------------------------------------------------------------------------- query strings, paths, methods

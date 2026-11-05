@@ -67,7 +67,8 @@ session. Any other kept turn used to repeat the date, `[2026-10-17] assistant: .
 alone, under the stamp above it. The repeated date was most of each kept turn's label, so more turns fit. A history
 that fits the budget whole still shows the full stamp on every turn.
 
-To get the 0.12 labels back, byte for byte, pass the old default:
+To get the 0.12 labels back, pass the old default. The turns selected can still differ from 0.12's: search now
+charges each kept turn what it adds to the context, so it fills its budget and more turns fit (see the CHANGELOG).
 
 ```python
 from llmslim.memory import Memory

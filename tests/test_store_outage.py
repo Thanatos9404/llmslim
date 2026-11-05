@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+import time
 
 import pytest
 
@@ -195,6 +196,25 @@ def test_serve_and_mcp_refuse_to_start_on_a_store_they_cannot_open_in_one_line(m
         assert "ServerSelectionTimeoutError" in message and "\n" not in message.strip()
         assert "hunter2" not in message and "mongodb://" not in message
         assert caught.value.__cause__ is None and caught.value.__suppress_context__
+
+
+def test_serve_gives_up_on_an_unreachable_postgres_within_its_connect_timeout(monkeypatch):
+    """It waited 30 seconds for psycopg's pool, whatever connect_timeout said."""
+    pytest.importorskip("psycopg_pool")
+    from llmslim import server
+
+    monkeypatch.setattr("uvicorn.run", lambda *a, **k: pytest.fail("the server started"))
+    monkeypatch.delenv("PGCONNECT_TIMEOUT", raising=False)
+    # 10.255.255.1 is a private address that nothing answers: a connection to it hangs until its timeout.
+    url = "postgresql://shop:hunter2@10.255.255.1:5432/app?connect_timeout=2&sslpassword=k3y"
+    started = time.monotonic()
+    with pytest.raises(SystemExit) as caught:
+        server.main(["--db", url])
+    assert time.monotonic() - started < 10
+    message = str(caught.value.code)
+    assert message.startswith("llmslim serve: could not open the memory store: ")
+    assert "\n" not in message.strip() and "PoolTimeout" not in message
+    assert "hunter2" not in message and "k3y" not in message and "postgresql://" not in message
 
 
 def test_a_missing_driver_names_the_extra_to_install(monkeypatch):

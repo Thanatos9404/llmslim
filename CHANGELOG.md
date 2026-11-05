@@ -447,6 +447,20 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   export could stall an import. Each pattern now reads such a run once: about 0.1 seconds for any of them. What is
   redacted is unchanged: a test compares the new patterns with the old ones on 20,000 random texts made of the
   pieces they look for, and `tests/test_security_dos.py` times each shape.
+- **One odd value no longer stops `llmslim import`.** Each of these stopped the whole import, with what came before it
+  stored and nothing after it:
+  - **Half of a surrogate pair** escaped on its own in the JSON (`"\ud83d"`, an emoji a client cut in two), in a
+    turn's text, a title, an id or a session id: a `UnicodeEncodeError`, not even an import error. It is now read as
+    U+FFFD, the replacement character, and the rest of the text is kept.
+  - **A time UTC can't hold**, such as `9999-12-31T23:59:59-01:00`: "could not store an imported turn: date value out
+    of range". It is now unreadable, like any other, so the turn takes the time of the one before it.
+  - **A file cut off in the middle of a character** (a download that stopped): "not UTF-8 text", which stopped the
+    import in the first conversation and failed it (exit 1) after that. It is now a file cut short: the complete
+    conversations are imported and the cut one is counted as malformed, as when the cut falls between characters.
+
+  Epoch seconds before 1970 or after 3000 are also read on Windows now, as on other platforms; they were unreadable
+  there. And a ChatGPT node on the thread that is not an object, or whose message is not one, is counted as
+  malformed; it was passed over like the root and counted nowhere.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

@@ -568,6 +568,87 @@ def test_a_truncated_export_keeps_the_complete_conversations(tmp_path):
         import_history(tmp_path, Memory(), format="chatgpt", strict=True)
 
 
+def test_an_export_cut_inside_a_character_is_cut_short_not_unreadable(tmp_path):
+    # A download cut off in the middle of a multi-byte character used to be "not UTF-8 text": an error that stopped
+    # the import when it came in the first conversation, and failed it (exit 1) after that. It is a file cut short.
+    conversations = [
+        _conversation([("a", "root", "user", f"Café {k} 日本語", 1700000000 + k)], cid=f"c{k}")
+        for k in range(3)
+    ]
+    raw = json.dumps(conversations, ensure_ascii=False).encode("utf-8")
+    first = raw.index("Café 0".encode("utf-8")) + 4  # between the two bytes of "é"
+    second = raw.index("Café 1".encode("utf-8")) + 4
+    for cut, complete in ((first, 0), (second, 1)):
+        assert raw[cut - 1 : cut] == b"\xc3"
+        (tmp_path / "conversations.json").write_bytes(raw[:cut])
+        report = import_history(tmp_path, Memory(), format="chatgpt")
+        assert report.ok and report.malformed == 1 and len(report.sessions) == complete
+    # A byte that is not UTF-8 is still an error.
+    (tmp_path / "conversations.json").write_bytes(raw[: first - 1] + b"\xff" + raw[first + 1 :])
+    with pytest.raises(HistoryImportError, match="not UTF-8"):
+        import_history(tmp_path, Memory(), format="chatgpt")
+
+
+def test_a_lone_surrogate_is_read_as_a_replacement_character(tmp_path):
+    # JSON can escape half of a surrogate pair ("\ud83d" without its "\ude00": an emoji a client cut in two). Python
+    # parses it, but it is not text that can be stored, and it stopped the whole import with a UnicodeEncodeError,
+    # whether it was in a turn's text, its id or its session id. It is read as U+FFFD; the rest is kept as written.
+    half = "\\ud83d"
+    lines = [
+        '{"role": "user", "content": "before"}',
+        '{"role": "user", "content": "broken ' + half + ' emoji"}',
+        '{"role": "user", "content": "with an odd id", "id": "x' + half + '"}',
+        '{"role": "user", "content": "in an odd session", "session_id": "s' + half + '"}',
+        '{"role": "user", "content": "a whole pair \\ud83d\\ude00 stays"}',
+    ]
+    path = tmp_path / "halves.jsonl"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    db = str(tmp_path / "memory.db")
+    report = import_history(path, db, format="jsonl")
+    assert report.imported == 5 and report.malformed == 0 and report.ok
+    stored = {item.content: item for item in Memory(db).get_all(user_id="default")}
+    assert set(stored) == {
+        "before",
+        "broken \ufffd emoji",
+        "with an odd id",
+        "in an odd session",
+        "a whole pair \U0001f600 stays",
+    }
+    assert stored["in an odd session"].run_id == "s\ufffd"
+    assert import_history(path, db, format="jsonl").imported == 0  # still idempotent
+    # The same in an export's titles and messages.
+    export = tmp_path / "export"
+    export.mkdir()
+    conversation = _conversation([("a", "root", "user", "PART", 1700000000)], title="TITLE")
+    text = json.dumps([conversation]).replace("TITLE", "T" + half).replace("PART", "p" + half)
+    (export / "conversations.json").write_text(text, encoding="utf-8")
+    memory = Memory()
+    report = import_history(export, memory, format="chatgpt")
+    assert report.imported == 1 and report.sessions[0].title == "T\ufffd"
+    assert _text(memory) == "p\ufffd"
+
+
+def test_a_time_with_no_utc_equivalent_does_not_stop_the_import(tmp_path):
+    # 9999-12-31T23:59:59-01:00 is a valid ISO-8601 time past the last one UTC has. Storing it failed ("date value
+    # out of range"), which stopped the whole import. It is now unreadable, and takes the time before it.
+    path = _write_jsonl(
+        tmp_path / "times.jsonl",
+        [
+            {"role": "user", "content": "first", "timestamp": "2026-01-01T10:00:00Z"},
+            {"role": "user", "content": "too late", "timestamp": "9999-12-31T23:59:59-01:00"},
+            {"role": "user", "content": "too early", "timestamp": "0001-01-01T00:00:00+05:00"},
+            {"role": "user", "content": "last", "timestamp": "2026-01-01T11:00:00Z"},
+        ],
+    )
+    db = str(tmp_path / "memory.db")
+    report = import_history(path, db, format="jsonl")
+    assert report.imported == 4 and report.ok
+    times = {item.content: item.created_at for item in Memory(db).get_all(user_id="default")}
+    assert times["too late"] == times["too early"] == datetime(2026, 1, 1, 10, tzinfo=timezone.utc)
+    with pytest.raises(ValueError, match="since"):
+        import_history(path, db, format="jsonl", since="9999-12-31T23:59:59-01:00")
+
+
 def test_bom_and_crlf_are_read(tmp_path):
     records = [
         {"role": "user", "content": "with a BOM"},
@@ -918,6 +999,25 @@ def test_records_in_the_wrong_shape_are_malformed(tmp_path):
     assert report.malformed == 2 and report.skipped["empty"] == 1
 
 
+def test_a_chatgpt_node_or_message_that_is_not_an_object_is_malformed(tmp_path):
+    # Such a node on the thread was passed over like the root, which has no message, and counted nowhere.
+    conversation = _conversation(
+        [
+            ("u", "root", "user", "kept", 1700000000),
+            ("a", "u", "assistant", "kept too", 1700000001),
+        ],
+        current="a",
+    )
+    conversation["mapping"]["text"] = {"id": "text", "parent": "u", "message": "not a message"}
+    conversation["mapping"]["a"]["parent"] = "text"
+    odd = _conversation([], cid="conv-odd", current="odd")
+    odd["mapping"]["odd"] = "not a node"
+    (tmp_path / "conversations.json").write_text(json.dumps([conversation, odd]), encoding="utf-8")
+    memory = Memory()
+    report = import_history(tmp_path, memory, format="chatgpt")
+    assert _text(memory) == "kept\nkept too" and report.malformed == 2
+
+
 def test_a_document_that_is_not_json_is_an_error(tmp_path):
     (tmp_path / "conversations.json").write_text("hello", encoding="utf-8")
     with pytest.raises(HistoryImportError, match="not valid JSON"):
@@ -1207,6 +1307,14 @@ def test_mixed_timezones_and_missing_timestamps(tmp_path):
         (1735787045.5, datetime(2025, 1, 2, 3, 4, 5, 500000, tzinfo=timezone.utc)),
         (datetime(2025, 1, 2), datetime(2025, 1, 2, tzinfo=timezone.utc)),
         ("2025-01-02T03:04:05.1+0100", datetime(2025, 1, 2, 2, 4, 5, 100000, tzinfo=timezone.utc)),
+        # Epoch seconds before 1970 and after 3000 read the same on every platform (Windows refused them).
+        (-14182940, datetime(1969, 7, 20, 20, 17, 40, tzinfo=timezone.utc)),
+        ("-1", datetime(1969, 12, 31, 23, 59, 59, tzinfo=timezone.utc)),
+        (33_000_000_000, datetime(3015, 9, 24, 10, 40, tzinfo=timezone.utc)),
+        # A time with no UTC equivalent can't be stored: it is unreadable, like any other.
+        ("9999-12-31T23:59:59-01:00", None),
+        ("0001-01-01T00:00:00+05:00", None),
+        (datetime(9999, 12, 31, 23, 0, tzinfo=timezone(-timedelta(hours=2))), None),
         ("", None),
         ("nonsense", None),
         (True, None),

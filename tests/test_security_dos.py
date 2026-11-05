@@ -17,6 +17,7 @@ import pytest
 from llmslim import compress, plan_context, tokenization
 from llmslim._fit import fit_text
 from llmslim.analysis import analyze
+from llmslim.memory._redact import redact
 from llmslim.optimizers.markdown_opt import optimize_markdown
 from llmslim.optimizers.xml_opt import optimize_xml
 from llmslim.optimizers.yaml_opt import _regex_fallback_optimize
@@ -173,3 +174,12 @@ def test_web_search_control_character_classes_are_exactly_c0_and_c1():
         control = unicodedata.category(char) == "Cc"
         assert bool(web_search._QUERY_CONTROL_RE.search(char)) == (control and char not in "\t\n\r")
         assert bool(web_search._CONTROL_RE.search(char)) == (control and char not in "\t\n")
+
+
+@pytest.mark.parametrize("unit", ["sk-", "sk-a", "eyJ-", "eyJa.", "a.", "a-", "a+"])
+def test_import_redaction_is_linear_in_a_long_run_of_key_characters(unit):
+    # llmslim import redacts every turn (up to max_turn_chars, 100,000 characters) and every title of a file it did
+    # not write. The openai-key lookahead, the JWT header and the URL scheme were each read to the end of a run of
+    # key characters again from every word boundary inside it: tens of seconds for one 100,000-character turn.
+    text = unit * (100_000 // len(unit))
+    assert _seconds(redact, text) < BOUND

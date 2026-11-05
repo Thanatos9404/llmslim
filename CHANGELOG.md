@@ -204,6 +204,11 @@ do, every name that left an `__all__` and where to import it from now, and how t
   camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
   checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
   have it, and the package's version is unchanged.
+- **The sections of a search in the TypeScript client.** `MemoryContext` gains `requests`, `preferences` and
+  `conflicts`: the user's standing requests, stated preferences and possibly conflicting statements that a search shows
+  in their own sections above the turns, each a `RecalledTurn[]` like `turns`, and empty when the section isn't shown.
+  `llmslim serve` always sent them; the client dropped them. A test against a real `llmslim serve` checks all four
+  lists field for field against what the server sent. Not on npm yet, as above.
 
 ### Changed
 - **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,
@@ -397,6 +402,65 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
   while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
   raised.
+- **Compressing a long text with many distinct words no longer takes gigabytes of memory.** The default TF-IDF
+  backend made its whole matrix dense, one row per sentence and one column per distinct word, though the compressor
+  reads one chunk of sentences at a time. `llmslim serve`'s `POST /v1/context/fit` without a `query` (and MCP's
+  `fit_context`) took 1.9 GB of memory for a 714 KB body of distinct words, about 4 GB at the 1 MB body cap, and 1.6 GB
+  for 1 MB of prose with a 30,000-word vocabulary. The matrix now stays sparse and each chunk's rows are made dense
+  when they are read: 180 MB or less in each of those cases. The rows hold the same values, so the output is the
+  same, byte for byte. A custom embedding backend is read through its `encode` as before.
+- **The chat endpoint (experimental) handles more of what an upstream or a client sends.**
+  - **A key cut across two chunks of a stream.** Each chunk of a streamed answer was checked for the upstream key
+    on its own, so a key the upstream echoed across two chunks reached the client. The end of a chunk that could be
+    the start of the key is now held back until the next chunk shows whether it is, and the stream is cut off before
+    any of the key goes out.
+  - **Events on several `data:` lines, and bare CR line ends.** An event whose JSON spans several `data:` lines, as
+    the SSE specification allows, and a stream whose lines end with a CR alone were read as malformed, so the answer
+    was passed on but its turn was not stored. Both are read as the specification says now.
+  - **An error event after a line cut short.** When the upstream broke off in the middle of a line, the closing
+    `error` event was glued to that line, where a client couldn't read it. A blank line now ends the open event
+    first.
+  - **JSON errors.** An `X-LLMSlim-Memory-Budget` of thousands of digits, or with a digit such as `²`, and any
+    unexpected failure, got Starlette's plain-text 500. The header is now a 400, and other failures are a JSON 500
+    (`server_error`), as on the other routes.
+  - **Numbers too large for a float.** A request with `1e400` was forwarded with `Infinity`, which isn't JSON; it is
+    a 400 (`invalid_json`) now, as `NaN` and `Infinity` already were.
+  - **An upstream key that isn't ASCII** failed every request with a 500. `ChatUpstream`, and so `llmslim serve`,
+    refuses it at start.
+- **`llmslim serve` refuses `NaN` and `Infinity`, and answers every error in its JSON format.**
+  - **`NaN` and `Infinity`** aren't JSON, but Python's parser reads them. `POST /v1/memories` with one in its
+    `metadata` stored the turn and then answered 400, because the turn could not be written back as JSON; from then
+    on every list and search of that scope answered 400 too. `PATCH` did the same to a stored turn. A body with
+    either is now a 400 (`invalid_json`) and nothing is stored, as the chat endpoint already did.
+  - **`HEAD /v1/memories/{id}`** answered a plain-text 500: Starlette adds `HEAD` to a `GET` route, and the route had
+    no handler for it. It now answers as `GET` does, without the body.
+  - **A path no route has, and a method a route doesn't take** (`OPTIONS`, `PUT`, `GET` on a `POST` route), got
+    Starlette's plain-text "Not Found" and "Method Not Allowed". They are now JSON: 404 `not_found`, and 405
+    `method_not_allowed` with `Allow`. Any other failure outside a route's own handling is the JSON 500
+    (`server_error`).
+  - **A client that disconnects before its body arrives** was logged as a failed request, with a traceback, at
+    `ERROR`. It is now one `INFO` line.
+- **`llmslim import`'s credential pass takes linear time.** Three of its patterns read a run of key characters to its
+  end again from every word boundary inside it: the OpenAI key's check for a digit, a JWT's header, and a URL's
+  scheme. A 100,000-character turn (the `max_turn_chars` limit) such as `sk-sk-sk-...` took 22 seconds to redact,
+  `a.a.a...` 8 and `eyJ-eyJ-...` 7, and a title, limited only by the 32 MiB record size, far longer, so a crafted
+  export could stall an import. Each pattern now reads such a run once: about 0.1 seconds for any of them. What is
+  redacted is unchanged: a test compares the new patterns with the old ones on 20,000 random texts made of the
+  pieces they look for, and `tests/test_security_dos.py` times each shape.
+- **One odd value no longer stops `llmslim import`.** Each of these stopped the whole import, with what came before it
+  stored and nothing after it:
+  - **Half of a surrogate pair** escaped on its own in the JSON (`"\ud83d"`, an emoji a client cut in two), in a
+    turn's text, a title, an id or a session id: a `UnicodeEncodeError`, not even an import error. It is now read as
+    U+FFFD, the replacement character, and the rest of the text is kept.
+  - **A time UTC can't hold**, such as `9999-12-31T23:59:59-01:00`: "could not store an imported turn: date value out
+    of range". It is now unreadable, like any other, so the turn takes the time of the one before it.
+  - **A file cut off in the middle of a character** (a download that stopped): "not UTF-8 text", which stopped the
+    import in the first conversation and failed it (exit 1) after that. It is now a file cut short: the complete
+    conversations are imported and the cut one is counted as malformed, as when the cut falls between characters.
+
+  Epoch seconds before 1970 or after 3000 are also read on Windows now, as on other platforms; they were unreadable
+  there. And a ChatGPT node on the thread that is not an object, or whose message is not one, is counted as
+  malformed; it was passed over like the root and counted nowhere.
 - **Several processes can open a new SQLite memory file at once.** `SQLiteStore` switches a file to WAL mode when it
   opens it, and SQLite answers that switch "database is locked" at once, without the 5-second busy timeout other
   statements wait for, while another connection is writing a file not yet in WAL mode. So when two or more processes

@@ -922,8 +922,12 @@ class Memory:
         return "\n".join(self._lines(session))
 
     def _lines(self, session: Sequence[MemoryItem]) -> List[str]:
-        """A session's turns as the whole history shows them, one ``[stamp] role: content`` block each."""
-        return [f"[{self._stamp(item)}] {item.role}: {item.content}" for item in session]
+        """A session's turns as the whole history shows them, one ``[stamp] role: content`` block each (a stored line
+        that looks like a label indented; see ``_turns.guard_lines``)."""
+        return [
+            f"[{self._stamp(item)}] {item.role}: {_turns.guard_lines(item.content)}"
+            for item in session
+        ]
 
     def _local(self, item: MemoryItem) -> datetime:
         """The turn's time in ``tz``, or in UTC when ``tz`` would take it past what a datetime holds (the first or

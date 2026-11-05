@@ -127,8 +127,8 @@ Cursor (`~/.cursor/mcp.json`):
 }
 ```
 
-Other clients take the same URL and header. `GET /healthz` answers `{"status": "ok"}` without a key, for load balancer
-and container health checks.
+Other clients take the same URL and header. `GET /healthz` (or `HEAD`) answers `{"status": "ok"}` without a key, for
+load balancer and container health checks.
 
 **Never expose a keyless server.** Without a key the server answers only requests addressed to this machine by name
 (`localhost`, 127.0.0.0/8, `[::1]`) that no other web page sent, so a reverse proxy in front of it gets a 403. Don't
@@ -200,6 +200,8 @@ The tools carry MCP annotations (`readOnlyHint`, `destructiveHint`), so a client
 | `--agent-id ID` | `LLMSLIM_AGENT_ID` | none | Optionally, the agent, so each agent keeps its own memory. |
 | `--budget N` | | `2000` | The default token budget for `recall`. |
 | `--transport stdio\|http` | | `stdio` | How clients reach the server. The HTTP options are under [Share one memory across machines](#share-one-memory-across-machines). |
+
+An empty or blank id counts as not given, and the server doesn't start without a user or an agent id.
 
 ## Security
 

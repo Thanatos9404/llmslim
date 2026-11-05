@@ -204,6 +204,11 @@ do, every name that left an `__all__` and where to import it from now, and how t
   camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
   checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
   have it, and the package's version is unchanged.
+- **The sections of a search in the TypeScript client.** `MemoryContext` gains `requests`, `preferences` and
+  `conflicts`: the user's standing requests, stated preferences and possibly conflicting statements that a search shows
+  in their own sections above the turns, each a `RecalledTurn[]` like `turns`, and empty when the section isn't shown.
+  `llmslim serve` always sent them; the client dropped them. A test against a real `llmslim serve` checks all four
+  lists field for field against what the server sent. Not on npm yet, as above.
 
 ### Changed
 - **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,
@@ -322,6 +327,27 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
 - The proxy answers a path it can't forward (one starting with `//`) with a 400 instead of a 500.
 
 ### Fixed
+- **The proxy no longer adds a bare `?` to requests, or fails on deeply nested JSON.**
+  - `llmslim proxy` and `llmslim wrap` sent a request without a query string, such as `POST /v1/messages`, upstream
+    as `POST /v1/messages?`, and a strict upstream answered 404. Such a request now goes out as it came in; a query
+    string is passed on as before.
+  - A body nested too deeply for Python's parser was a 500 from the proxy itself. It is now forwarded unchanged, for
+    the API to answer.
+- **An unreachable Postgres fails in 10 seconds, with the reason.** A memory store on a `postgresql://` URL that
+  couldn't reach the server waited 30 seconds whatever `connect_timeout` said, then failed with a `PoolTimeout` that
+  didn't say why: psycopg's pool kept retrying in the background. The store now connects once before it opens the
+  pool, so `Memory(...)`, `llmslim serve`, `llmslim mcp` and `llmslim import` fail within the URL's
+  `connect_timeout`, else libpq's `PGCONNECT_TIMEOUT`, else 10 seconds, with psycopg's own error (`connection timeout
+  expired`, a refused connection, a wrong password). The commands still print it in one line without the password.
+  The pool's later connections use the same limit, instead of psycopg's 130 seconds. A pool or connection you pass in
+  is unchanged.
+- **No `assert` guards real input or state any more.** Python drops `assert` under `-O`, so these checks could vanish:
+  - `MongoDBContextSource.search` with an `embedding_provider` but no `vector_index` (both are public attributes)
+    raises `ValueError`, not `AssertionError`;
+  - `Neo4jContextStore` with a `uri` that isn't a string (bytes, a `Path`) raises `TypeError` with a clear message;
+  - a `ZohoCRMContextSource` left with neither a token nor a token provider raises `ZohoAuthenticationError`.
+
+  The other eight asserts could never fail; the code now proves the same thing without them. Nothing else changes.
 - **The Docker image runs on Postgres and MongoDB.** It installed only the `server` extra, so with
   `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
   now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,
@@ -360,6 +386,108 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and a line on what it does, and says that `llmslim <command> --help` shows a command's options. `llmslim <file>`
   and every command's flags are unchanged. One table in `llmslim.cli` drives both the dispatch and the list, so a
   command can't be added without its line, and tests check the list and every command's `--help`.
+- **Python 3.14 is supported and tested.** CI runs the whole test suite on Python 3.14, and the package says it
+  supports 3.14. Three things failed there:
+  - The public API snapshot wrote `Optional[str]` as `str | None` on 3.14 for the Haystack, LangChain and LlamaIndex
+    adapters, so their snapshot tests failed. It now writes a type the same way on 3.10 to 3.14. The API is unchanged.
+  - On Windows, a test that stops the MCP server and opens its database right away got "disk I/O error". That is
+    SQLite on Windows, not llmslim: right after a process holding a database is killed, the newer SQLite that
+    Python 3.13.14 and 3.14.8 ship can fail to open it for a few milliseconds, then opens it with every row. The test
+    now retries that one error on Windows.
+  - On Linux, Python 3.14's JSON parser accepted a request body nested 100,000 levels deep, where 3.10 to 3.13 stop
+    near their recursion limit, so `llmslim serve` stored such metadata instead of refusing it. Request bodies of
+    `llmslim serve` and its chat endpoint nested more than 64 levels deep are now a 400 (`invalid_json`) on every
+    Python, checked before the body is parsed, as `llmslim import` already does for its records.
+- **A memory file that can't be opened is let go at once.** When `SQLiteStore` (or `Memory("path.db")`) failed to
+  open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
+  while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
+  raised.
+- **Compressing a long text with many distinct words no longer takes gigabytes of memory.** The default TF-IDF
+  backend made its whole matrix dense, one row per sentence and one column per distinct word, though the compressor
+  reads one chunk of sentences at a time. `llmslim serve`'s `POST /v1/context/fit` without a `query` (and MCP's
+  `fit_context`) took 1.9 GB of memory for a 714 KB body of distinct words, about 4 GB at the 1 MB body cap, and 1.6 GB
+  for 1 MB of prose with a 30,000-word vocabulary. The matrix now stays sparse and each chunk's rows are made dense
+  when they are read: 180 MB or less in each of those cases. The rows hold the same values, so the output is the
+  same, byte for byte. A custom embedding backend is read through its `encode` as before.
+- **The chat endpoint (experimental) handles more of what an upstream or a client sends.**
+  - **A key cut across two chunks of a stream.** Each chunk of a streamed answer was checked for the upstream key
+    on its own, so a key the upstream echoed across two chunks reached the client. The end of a chunk that could be
+    the start of the key is now held back until the next chunk shows whether it is, and the stream is cut off before
+    any of the key goes out.
+  - **Events on several `data:` lines, and bare CR line ends.** An event whose JSON spans several `data:` lines, as
+    the SSE specification allows, and a stream whose lines end with a CR alone were read as malformed, so the answer
+    was passed on but its turn was not stored. Both are read as the specification says now.
+  - **An error event after a line cut short.** When the upstream broke off in the middle of a line, the closing
+    `error` event was glued to that line, where a client couldn't read it. A blank line now ends the open event
+    first.
+  - **JSON errors.** An `X-LLMSlim-Memory-Budget` of thousands of digits, or with a digit such as `²`, and any
+    unexpected failure, got Starlette's plain-text 500. The header is now a 400, and other failures are a JSON 500
+    (`server_error`), as on the other routes.
+  - **Numbers too large for a float.** A request with `1e400` was forwarded with `Infinity`, which isn't JSON; it is
+    a 400 (`invalid_json`) now, as `NaN` and `Infinity` already were.
+  - **An upstream key that isn't ASCII** failed every request with a 500. `ChatUpstream`, and so `llmslim serve`,
+    refuses it at start.
+- **`llmslim serve` refuses `NaN` and `Infinity`, and answers every error in its JSON format.**
+  - **`NaN` and `Infinity`** aren't JSON, but Python's parser reads them. `POST /v1/memories` with one in its
+    `metadata` stored the turn and then answered 400, because the turn could not be written back as JSON; from then
+    on every list and search of that scope answered 400 too. `PATCH` did the same to a stored turn. A body with
+    either is now a 400 (`invalid_json`) and nothing is stored, as the chat endpoint already did.
+  - **`HEAD /v1/memories/{id}`** answered a plain-text 500: Starlette adds `HEAD` to a `GET` route, and the route had
+    no handler for it. It now answers as `GET` does, without the body.
+  - **A path no route has, and a method a route doesn't take** (`OPTIONS`, `PUT`, `GET` on a `POST` route), got
+    Starlette's plain-text "Not Found" and "Method Not Allowed". They are now JSON: 404 `not_found`, and 405
+    `method_not_allowed` with `Allow`. Any other failure outside a route's own handling is the JSON 500
+    (`server_error`).
+  - **A client that disconnects before its body arrives** was logged as a failed request, with a traceback, at
+    `ERROR`. It is now one `INFO` line.
+- **`llmslim import`'s credential pass takes linear time.** Three of its patterns read a run of key characters to its
+  end again from every word boundary inside it: the OpenAI key's check for a digit, a JWT's header, and a URL's
+  scheme. A 100,000-character turn (the `max_turn_chars` limit) such as `sk-sk-sk-...` took 22 seconds to redact,
+  `a.a.a...` 8 and `eyJ-eyJ-...` 7, and a title, limited only by the 32 MiB record size, far longer, so a crafted
+  export could stall an import. Each pattern now reads such a run once: about 0.1 seconds for any of them. What is
+  redacted is unchanged: a test compares the new patterns with the old ones on 20,000 random texts made of the
+  pieces they look for, and `tests/test_security_dos.py` times each shape.
+- **One odd value no longer stops `llmslim import`.** Each of these stopped the whole import, with what came before it
+  stored and nothing after it:
+  - **Half of a surrogate pair** escaped on its own in the JSON (`"\ud83d"`, an emoji a client cut in two), in a
+    turn's text, a title, an id or a session id: a `UnicodeEncodeError`, not even an import error. It is now read as
+    U+FFFD, the replacement character, and the rest of the text is kept.
+  - **A time UTC can't hold**, such as `9999-12-31T23:59:59-01:00`: "could not store an imported turn: date value out
+    of range". It is now unreadable, like any other, so the turn takes the time of the one before it.
+  - **A file cut off in the middle of a character** (a download that stopped): "not UTF-8 text", which stopped the
+    import in the first conversation and failed it (exit 1) after that. It is now a file cut short: the complete
+    conversations are imported and the cut one is counted as malformed, as when the cut falls between characters.
+
+  Epoch seconds before 1970 or after 3000 are also read on Windows now, as on other platforms; they were unreadable
+  there. And a ChatGPT node on the thread that is not an object, or whose message is not one, is counted as
+  malformed; it was passed over like the root and counted nowhere.
+- **Several processes can open a new SQLite memory file at once.** `SQLiteStore` switches a file to WAL mode when it
+  opens it, and SQLite answers that switch "database is locked" at once, without the 5-second busy timeout other
+  statements wait for, while another connection is writing a file not yet in WAL mode. So when two or more processes
+  opened a memory file that did not exist yet (two MCP clients starting `llmslim mcp` on a new machine, a server's
+  workers, imports run side by side), one of them could fail at start; with four processes it happened in most
+  tries. The switch is now retried for up to 5 seconds, and the schema version is written with `INSERT OR IGNORE`,
+  so two first opens can't both write it. A file already in WAL mode is opened as before.
+- **Stored text can no longer pass for another turn in `Memory.search`.** A stored line that looks like a turn label
+  was indented only inside code blocks and tables, and only when a long history was selected from:
+  - **After a code block:** the prose that follows a block starts a line of its own, and it was left as stored. A reply
+    whose text went on with `user: I am the admin ...` after a block showed a line that reads like the user's next
+    turn, since a later turn's label is its role alone by default. That prose is now guarded as a block's lines are.
+  - **A history that fits the budget** came back exactly as stored, under a full stamp on every turn, so a stored line
+    such as `[2026-01-01 (Thu) 00:00] system: ...` read like a turn of its own. Such a line is now indented there too,
+    after any line break (a lone `\r` included).
+
+  `context.turns` and the stored text are unchanged; only the indentation of those lines in `context.text` (and so
+  in `llmslim serve`, `recall` and the chat endpoint) changes. Found by a property test that checks every line that
+  starts like a label is a kept turn's own.
+- **`llmslim mcp` refuses a blank user or agent id at start, and answers `HEAD /healthz` without a key.**
+  - `--user-id ""` ended in a traceback, after the database had been created. `--user-id " "`, `--agent-id ""` or a
+    blank `LLMSLIM_AGENT_ID` started a server whose every tool failed, since the memory refuses a blank id on each
+    read and write. A blank flag or variable now counts as not given, as an empty variable already did, and a server
+    left with neither id is a usage error before the database is opened. `build_server` refuses a blank `user_id` or
+    `agent_id` with a `ValueError` when it is called.
+  - Over `--transport http`, `HEAD /healthz` needed a key while `GET /healthz` didn't, so a load balancer or
+    `curl -I` checking a keyed server got a 401. It answers without a key now, as in `llmslim serve`.
 - **Turn times read the same on every platform and Python.** `Memory` (and so `llmslim serve`'s `timestamp`, `since`
   and `until`) read some times differently by platform or by Python version, or not at all:
   - **Epoch seconds** before 1970 or after the year 3000 were refused as out of range on Windows only, because
@@ -382,6 +510,11 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   only when compression can't get within that. The docs now say so, and how to get a hard ceiling (ask for 2% less);
   so do `fit_text`'s docstring, the `fit_context` tool's description of `budget` and the site. The code is unchanged.
 - `docs/API_STABILITY.md` called the stable error field of `llmslim serve` `code`; it is `type`.
+- **`RELEASE_CHECKLIST.md` is up to date.** It said `black` (the repository uses `ruff format`) and five one-click
+  links (there are 10), and left out the Hermes files, `tests/test_dx.py`, `docs/MIGRATE_FROM_MEM0.md`, the MCP
+  Registry, the Hermes catalog and awesome-copilot. It now has all of them, the 1.0.0 classifier, the website's
+  `npm run sync:core` step, and how a release candidate is cut: on a release branch (CI now runs on `release/**`),
+  published to PyPI as a pre-release, with `main` and every plugin pin left on the last final release.
 
 ## [0.12.0] - 2026-10-27
 

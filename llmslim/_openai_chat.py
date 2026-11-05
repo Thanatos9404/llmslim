@@ -92,6 +92,9 @@ RECALL_PREAMBLE = (
 _STORED_METADATA = {"source": "chat"}
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _RETRY_AFTER = re.compile(r"[0-9A-Za-z ,:]{1,64}")
+_BUDGET = re.compile(r"[0-9]{1,9}")
+# An event stream's line ends: CRLF, CR or LF (the SSE specification allows all three).
+_LINE_END = re.compile(rb"\r\n|\r|\n")
 
 
 @dataclass(frozen=True)
@@ -142,8 +145,11 @@ class ChatUpstream:
             )
         if parts.query or parts.fragment:
             raise ValueError("the upstream URL must not have a query or a fragment")
-        if self.api_key is not None and (not self.api_key or _CONTROL.search(self.api_key)):
-            raise ValueError("the upstream API key must be non-empty, on one line")
+        if self.api_key is not None and (
+            not self.api_key or _CONTROL.search(self.api_key) or not self.api_key.isascii()
+        ):
+            # httpx sends header values as ASCII: any other key failed every request with a 500.
+            raise ValueError("the upstream API key must be non-empty ASCII text, on one line")
         for name in ("memory_budget", "max_messages"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
@@ -259,7 +265,9 @@ def _budget(headers: Mapping[str, str], default: int, max_budget: int) -> int:
     if value is None:
         return min(default, max_budget)
     value = value.strip()
-    if not value.isdigit() or not 1 <= int(value) <= max_budget:
+    # ASCII digits only, and few enough for int(): "²" passes str.isdigit() and so does a run of thousands of
+    # digits, and int() refused both with a ValueError, which was a 500.
+    if not _BUDGET.fullmatch(value) or not 1 <= int(value) <= max_budget:
         raise HTTPError(
             400,
             "invalid_request",
@@ -385,11 +393,16 @@ class StreamReader:
     It never changes or holds back the bytes; it only watches them. :attr:`complete` is true once the stream said it
     finished (``data: [DONE]``, or a ``finish_reason`` on the first choice) and nothing in it was malformed or an
     error.
+
+    Lines end with LF, CRLF or CR. An event's data is usually one ``data:`` line, read as soon as it is complete; one
+    whose JSON is spread over several ``data:`` lines is joined with line breaks and read at the blank line that ends
+    the event, as the SSE specification says.
     """
 
     def __init__(self) -> None:
         self._buffer = bytearray()
-        self._scanned = 0
+        self._scanned = 0  # the buffer holds no line end before this offset
+        self._data: Optional[bytearray] = None  # an event whose data spans several lines, so far
         self._parts: List[str] = []
         self._chars = 0
         self.done = False
@@ -408,38 +421,73 @@ class StreamReader:
         if self.broken:
             return
         self._buffer += chunk
+        start = 0  # where the next line starts
         while True:
-            end = self._buffer.find(b"\n", self._scanned)
-            if end < 0:
+            found = _LINE_END.search(self._buffer, self._scanned)
+            if found is None:
                 self._scanned = len(self._buffer)
                 break
-            line = bytes(self._buffer[:end])
-            del self._buffer[: end + 1]
-            self._scanned = 0
-            self._line(line)
+            if found.group() == b"\r" and found.end() == len(self._buffer):
+                self._scanned = found.start()  # the LF of a CRLF may open the next chunk
+                break
+            self._line(bytes(self._buffer[start : found.start()]))
             if self.broken:
                 return
+            start = self._scanned = found.end()
+        # The lines read are dropped at once: dropping each as it was read took time quadratic in a chunk's lines.
+        del self._buffer[:start]
+        self._scanned -= start
         if len(self._buffer) > MAX_EVENT_BYTES:
             self._fail()
 
     def close(self) -> None:
-        """The stream ended: read a last line that had no newline."""
+        """The stream ended: read a last line that had no line end, and a last event that had no blank line."""
         if self._buffer and not self.broken:
-            self._line(bytes(self._buffer))
+            line = bytes(self._buffer)
+            self._line(line[:-1] if line.endswith(b"\r") else line)
         self._buffer.clear()
+        if not self.broken:
+            self._dispatch()
 
     def _fail(self) -> None:
         self.broken = True
         self._buffer.clear()
+        self._data = None
         self._parts.clear()
 
-    def _line(self, raw: bytes) -> None:
-        line = raw.rstrip(b"\r")
+    def _line(self, line: bytes) -> None:
+        if not line:
+            self._dispatch()  # a blank line ends an event
+            return
         if not line.startswith(b"data:"):
-            return  # blank lines, comments, event: and id: fields
+            return  # comments, event:, id: and retry: fields
         data = line[5:]
         if data.startswith(b" "):
             data = data[1:]
+        if self._data is not None:
+            self._data += b"\n" + data
+            if len(self._data) > MAX_EVENT_BYTES:
+                self._fail()
+            return
+        if data.strip() == b"[DONE]":
+            self.done = True
+            return
+        try:
+            event = json.loads(data)
+        except RecursionError:  # nested past the parser's stack: no later line can make it readable
+            self._fail()
+            return
+        except ValueError:
+            # Not a whole event on its own: it may go on in the next data: line, so it is read when the event ends.
+            self._data = bytearray(data)
+            return
+        self._event(event)
+
+    def _dispatch(self) -> None:
+        """Read the event whose data spanned several lines, once it has ended."""
+        if self._data is None:
+            return
+        data, self._data = bytes(self._data), None
         if data.strip() == b"[DONE]":
             self.done = True
             return
@@ -448,6 +496,9 @@ class StreamReader:
         except (ValueError, RecursionError):
             self._fail()
             return
+        self._event(event)
+
+    def _event(self, event: Any) -> None:
         if not isinstance(event, dict) or "error" in event:
             self._fail()
             return
@@ -475,6 +526,19 @@ class StreamReader:
 
 def redact(text: str, secret: Optional[str]) -> str:
     return text.replace(secret, "[redacted]") if secret else text
+
+
+def key_start_at_end(data: bytes, secret: bytes) -> int:
+    """How many bytes at the end of ``data`` could be the start of ``secret`` (0 when none): a streamed answer holds
+    them back until the next chunk shows whether the key goes on there."""
+    if not secret:
+        return 0
+    at = data.find(secret[:1], max(0, len(data) - len(secret) + 1))
+    while at >= 0:
+        if secret.startswith(data[at:]):
+            return len(data) - at
+        at = data.find(secret[:1], at + 1)
+    return 0
 
 
 def upstream_error(
@@ -574,11 +638,11 @@ class ChatRelay:
     # ------------------------------------------------------------------ helpers
 
     @staticmethod
-    def _request_key(plan: _Plan, messages: Sequence[Any]) -> str:
-        """The scope and every message up to the latest user turn: the same for a retry, different for a new turn."""
-        assert plan.latest_user is not None
+    def _request_key(plan: _Plan, messages: Sequence[Any], latest_user: int) -> str:
+        """The scope and every message up to the latest user turn (``latest_user``, its index): the same for a retry,
+        different for a new turn."""
         data = json.dumps(
-            [sorted(plan.scope.items()), list(messages[: plan.latest_user + 1])],
+            [sorted(plan.scope.items()), list(messages[: latest_user + 1])],
             ensure_ascii=False,
             sort_keys=True,
         )
@@ -737,7 +801,7 @@ class ChatRelay:
                 return
             key = None
             if user_turn.strip() and (cut_off or self._cut_off):
-                key = self._request_key(plan, messages)
+                key = self._request_key(plan, messages, plan.latest_user)
             turns = []
             if user_turn.strip() and not (key is not None and self._stored_when_cut_off(key)):
                 turns.append({"role": "user", "content": user_turn})
@@ -786,9 +850,13 @@ class ChatRelay:
         return result
 
 
-def _sse_error(message: str) -> bytes:
+def _sse_error(message: str, after: bytes = b"") -> bytes:
+    """An error event. ``after`` is the end of what the client got so far: when it stops inside an event (the
+    upstream broke off mid-line), a blank line ends that event first, so the error is an event of its own instead of
+    the end of a line the client can't read."""
     event = {"error": {"type": "upstream_error", "message": message}}
-    return b"data: " + json.dumps(event).encode("utf-8") + b"\n\n"
+    closed = not after or after.endswith((b"\n\n", b"\r\n\r\n", b"\r\r"))
+    return (b"" if closed else b"\n\n") + b"data: " + json.dumps(event).encode("utf-8") + b"\n\n"
 
 
 _RELAY: Any = None
@@ -835,21 +903,33 @@ def _relay_class() -> Any:
             )
 
         async def _relay(self) -> Any:
+            # The end of the last chunk when it could be the start of the upstream key: a key cut across two chunks
+            # was passed on whole, since each chunk alone did not contain it.
+            held = b""
+            sent = b""  # the last bytes the client got
             try:
                 async for chunk in self._upstream.aiter_bytes():
-                    if self._secret and self._secret in chunk:
+                    data = held + chunk
+                    if self._secret and self._secret in data:
                         self._upstream_failed = True
                         logger.warning("chat: the upstream stream echoed its credentials; cut off")
-                        yield _sse_error("the upstream's answer echoed its credentials")
+                        yield _sse_error("the upstream's answer echoed its credentials", sent)
                         return
-                    self._reader.feed(chunk)
-                    yield chunk
+                    held = data[len(data) - key_start_at_end(data, self._secret) :]
+                    data = data[: len(data) - len(held)]
+                    if data:
+                        self._reader.feed(data)
+                        sent = (sent + data)[-4:]
+                        yield data
+                if held:
+                    self._reader.feed(held)
+                    yield held
                 self._reader.close()
                 self._ended = True
             except self._httpx.HTTPError as error:
                 self._upstream_failed = True
                 logger.warning("chat: the upstream stream broke off (%s)", type(error).__name__)
-                yield _sse_error("the upstream stream broke off before it finished")
+                yield _sse_error("the upstream stream broke off before it finished", sent)
 
         async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
             try:

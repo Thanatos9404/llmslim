@@ -1436,3 +1436,158 @@ def test_main_turns_the_endpoint_on_and_never_logs_the_key(monkeypatch, tmp_path
         main(["--db", str(tmp_path / "m.db"), "--upstream-url", "https://u:p@upstream.test/v1"])
     with pytest.raises(SystemExit, match="need --upstream-url"):
         main(["--db", str(tmp_path / "m.db"), "--memory-budget", "100"])
+
+
+# --------------------------------------------------------------------------- edge cases
+
+
+@pytest.mark.parametrize("cut", [1, 9, len(UPSTREAM_KEY) - 1])
+def test_a_key_cut_across_two_stream_chunks_is_still_cut_off(client, fake, memory, cut):
+    # Each chunk was checked on its own, so a key that arrived in two pieces reached the client whole.
+    event = chunk({"content": f"your key is {UPSTREAM_KEY}, keep it safe"})
+    at = event.index(UPSTREAM_KEY.encode()) + cut
+    parts = [*sse("ok")[:2], event[:at], event[at:], *sse()[1:]]
+    fake.replies.append(lambda request: streamed(parts))
+    response = post(client, [{"role": "user", "content": "hi"}], headers=ASHA, stream=True)
+    assert response.status_code == 200
+    assert UPSTREAM_KEY not in response.text
+    # Not even the part before the cut went out: the line stops before the key, and a blank line ends that event,
+    # so the error is an event of its own.
+    assert b'your key is \n\ndata: {"error": ' in response.content
+    last = json.loads(response.content.rstrip().split(b"\n")[-1][len(b"data: ") :])
+    assert last["error"]["message"] == "the upstream's answer echoed its credentials"
+    assert memory.get_all(user_id="asha") == []
+
+
+def test_a_stream_that_breaks_off_mid_line_ends_with_an_error_event_of_its_own(
+    client, fake, memory
+):
+    start = b"".join(sse("ok")[:2])
+    half = chunk({"content": "half a"})[:30]
+    fake.replies.append(
+        lambda request: streamed([*sse("ok")[:2], half, _raise(httpx.ReadError("reset"))])
+    )
+    response = post(client, [{"role": "user", "content": "hi"}], headers=ASHA, stream=True)
+    # The line the upstream left open is ended, and the error follows as an event a client can read.
+    assert response.content.startswith(start + half + b"\n\ndata: ")
+    error = json.loads(response.content[len(start + half) + 2 :].strip()[len(b"data: ") :])
+    assert error["error"]["type"] == "upstream_error"
+    assert memory.get_all(user_id="asha") == []
+
+
+def test_a_key_cut_into_many_chunks_is_cut_off_and_a_lookalike_passes_whole(client, fake, memory):
+    key = UPSTREAM_KEY.encode()
+    event = chunk({"content": f"[{UPSTREAM_KEY}]"})
+    start = event.index(key)
+    pieces = [
+        event[:start],
+        *[key[i : i + 3] for i in range(0, len(key), 3)],
+        event[start + len(key) :],
+    ]
+    fake.replies.append(lambda request: streamed([*sse("ok")[:2], *pieces, *sse()[1:]]))
+    response = post(client, [{"role": "user", "content": "hi"}], headers=ASHA, stream=True)
+    assert UPSTREAM_KEY[:3] not in response.text and memory.get_all(user_id="asha") == []
+    # A chunk that only ends like the start of the key is held back until the next one, then passed on whole.
+    whole = b"".join(sse("the prefix sk-up", "stream is not the key"))
+    at = whole.index(b"sk-up") + len(b"sk-up")
+    fake.replies.append(lambda request: streamed([whole[:at], whole[at:]]))
+    response = post(client, [{"role": "user", "content": "go"}], headers=ASHA, stream=True)
+    assert response.content == whole
+    assert stored(memory, user_id="asha")[-1] == (
+        "assistant",
+        "the prefix sk-upstream is not the key",
+    )
+    assert chat_module.key_start_at_end(b"xx sk-ups", UPSTREAM_KEY.encode()) == 6
+    assert chat_module.key_start_at_end(b"xx sk-ups ", UPSTREAM_KEY.encode()) == 0
+    assert chat_module.key_start_at_end(b"anything", b"") == 0
+
+
+def test_events_on_several_data_lines_and_any_line_end_are_read():
+    event = json.dumps({"choices": [{"index": 0, "delta": {"content": "multi"}}]}, indent=1)
+    multi = "".join(f"data: {line}\n" for line in event.split("\n")).encode() + b"\n"
+    for stream in (
+        multi + b"data: [DONE]\n\n",  # one event's JSON over several data: lines, as SSE allows
+        b"".join(sse("multi")).replace(b"\n", b"\r"),  # CR line ends
+        b"".join(sse("multi")).replace(b"\n", b"\r\n"),  # CRLF line ends
+    ):
+        for size in (1, 7, len(stream)):  # a CRLF cut between two chunks is still one line end
+            reader = StreamReader()
+            for at in range(0, len(stream), size):
+                reader.feed(stream[at : at + size])
+            reader.close()
+            assert reader.complete and reader.text == "multi", (stream[:30], size)
+    # A malformed line is still malformed when no data: line completes it.
+    for bad in (b"data: {not json}\n\ndata: [DONE]\n\n", b"data: {not json}\ndata: [DONE]\n\n"):
+        reader = StreamReader()
+        reader.feed(bad)
+        reader.close()
+        assert reader.broken and not reader.complete
+    reader = StreamReader()
+    reader.feed(b'data: {"choices": [\n')
+    reader.close()  # an event the stream never finished
+    assert reader.broken
+
+
+def test_a_stream_with_events_on_several_data_lines_is_stored(client, fake, memory):
+    event = json.dumps({"choices": [{"index": 0, "delta": {"content": "spread out"}}]}, indent=1)
+    parts = [
+        "".join(f"data: {line}\r\n" for line in event.split("\n")).encode() + b"\r\n",
+        chunk({}, "stop"),
+        b"data: [DONE]\n\n",
+    ]
+    fake.replies.append(lambda request: streamed(parts))
+    response = post(client, [{"role": "user", "content": "Hi"}], headers=ASHA, stream=True)
+    assert response.content == b"".join(parts)
+    assert stored(memory, user_id="asha") == [("user", "Hi"), ("assistant", "spread out")]
+
+
+def test_odd_memory_budget_headers_are_400s_not_500s(client, fake):
+    for value in ("9" * 5000, "1" * 10, "²", "１２", "+5", "5 5"):
+        with pytest.raises(chat_module.HTTPError) as raised:
+            chat_module._budget({"x-llmslim-memory-budget": value}, 1000, 4000)
+        assert raised.value.status == 400, value
+    response = post(
+        client,
+        [{"role": "user", "content": "hi"}],
+        headers={**ASHA, "X-LLMSlim-Memory-Budget": "9" * 5000},
+    )
+    assert response.status_code == 400 and response.json()["error"]["type"] == "invalid_request"
+    assert fake.requests == []
+    assert chat_module._budget({"x-llmslim-memory-budget": " 007 "}, 1000, 4000) == 7
+
+
+def test_an_unexpected_failure_is_a_json_500(memory, fake, monkeypatch, caplog):
+    def broken(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("something nobody expected")
+
+    monkeypatch.setattr(chat_module, "plan_request", broken)
+    client = TestClient(make_app(memory, fake), raise_server_exceptions=False)
+    with caplog.at_level(logging.ERROR, logger="llmslim.server"):
+        response = post(client, [{"role": "user", "content": "hi"}], headers=ASHA)
+    assert response.status_code == 500
+    assert response.json() == {"error": {"type": "server_error", "message": "the request failed"}}
+    assert "something nobody expected" not in response.text
+    assert any(record.exc_info for record in caplog.records)  # the traceback is in the log only
+
+
+@pytest.mark.parametrize("number", [b"1e400", b"-1e400", b"1" + b"0" * 400 + b".0"])
+def test_a_number_too_large_for_a_float_is_a_400(client, fake, memory, number):
+    # Python reads 1e400 as inf, which went on to the upstream as "Infinity", which isn't JSON.
+    body = (
+        b'{"model": "m", "temperature": '
+        + number
+        + b', "messages": [{"role": "user", "content": "x"}]}'
+    )
+    headers = {**AUTH, **ASHA, "content-type": "application/json"}
+    response = client.post("/v1/chat/completions", content=body, headers=headers)
+    assert response.status_code == 400 and response.json()["error"]["type"] == "invalid_json"
+    assert fake.requests == [] and nothing_stored(memory)
+    fine = body.replace(number, b"1.5e3")
+    assert client.post("/v1/chat/completions", content=fine, headers=headers).status_code == 200
+    assert fake.last["temperature"] == 1500.0
+
+
+def test_an_upstream_key_that_is_not_ascii_is_refused_at_start():
+    # httpx sends header values as ASCII, so such a key failed every chat request.
+    with pytest.raises(ValueError, match="ASCII"):
+        ChatUpstream(UPSTREAM, api_key="sk-clé-0123456789")

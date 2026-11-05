@@ -71,6 +71,9 @@ DEFAULT_PORT = 8080
 MAX_BODY_BYTES = 1_000_000
 MAX_BUDGET = 100_000
 MAX_LIST = 1_000
+# Messages one POST /v1/memories may store. The body cap alone let tiny messages number in the tens of thousands, each
+# a stored row and a read-back. Twice what `llmslim import` writes at a time, and the chat endpoint's own cap.
+MAX_MESSAGES = 1_000
 MIN_KEY_LENGTH = 16
 _SCOPE_KEYS = ("user_id", "agent_id", "run_id")
 _RELEVANCE = ("lexical", "semantic")
@@ -194,12 +197,20 @@ def create_app(
         payload = await body(request)
         if "messages" not in payload:
             raise _HTTPError(400, "invalid_request", "messages is required")
+        messages = payload["messages"]
+        if isinstance(messages, list) and len(messages) > MAX_MESSAGES:
+            # Counted as sent, empty ones included, and refused whole: nothing of the request is stored.
+            raise _HTTPError(
+                400,
+                "invalid_request",
+                f"messages has more than {MAX_MESSAGES} items; send at most {MAX_MESSAGES} per request",
+            )
         metadata = payload.get("metadata")
         if metadata is not None and not isinstance(metadata, dict):
             raise _HTTPError(400, "invalid_request", "metadata must be an object")
         items = await run_in_threadpool(
             memory.add,
-            payload["messages"],
+            messages,
             timestamp=payload.get("timestamp"),
             metadata=metadata,
             **_scope(payload),

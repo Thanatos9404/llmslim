@@ -323,7 +323,10 @@ export class LLMSlim {
 
   /** Store, list, read, correct, delete and search messages. */
   readonly memories = {
-    /** Store messages word for word. Needs at least one scope id. */
+    /**
+     * Store messages word for word. Needs at least one scope id. At most 1,000 messages per call: the server
+     * refuses a longer list with a 400 and stores none of it.
+     */
     add: async (
       request: Scope & {
         messages: MessageInput | MessageInput[];

@@ -665,8 +665,7 @@ def build_request_identity(
     except ValueError:
         canonical_ip = "unknown"
     valid_session = bool(session_id and _SESSION_RE.fullmatch(session_id))
-    normalized_session = session_id if valid_session else secrets.token_urlsafe(32)
-    assert normalized_session is not None
+    normalized_session = session_id if session_id and valid_session else secrets.token_urlsafe(32)
 
     def digest(label: str, value: str) -> str:
         return hmac.new(

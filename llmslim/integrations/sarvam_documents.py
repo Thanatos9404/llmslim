@@ -624,9 +624,10 @@ class _DocumentSourceBase:
         items = []
         with_text = set()
         for order, (document_index, number, content, inferred) in enumerate(
-            page for page in pages if page[2] and page[2].strip()
+            (index, page_number, text, guessed)
+            for index, page_number, text, guessed in pages
+            if text is not None and text.strip()
         ):
-            assert content is not None
             with_text.add(number)
             metadata: Dict[str, Any] = {
                 "page_number": number,

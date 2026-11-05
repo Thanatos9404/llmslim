@@ -637,7 +637,8 @@ class Neo4jContextStore:
         self._owns_driver = driver is None
         self._closed = False
         if driver is None:
-            assert uri is not None
+            if not isinstance(uri, str):
+                raise TypeError("Neo4j uri must be a string such as neo4j+s://host")
             scheme = uri.split("://", 1)[0].lower() if "://" in uri else ""
             if scheme not in _URI_SCHEMES:
                 raise ValueError(
@@ -869,8 +870,7 @@ class Neo4jContextStore:
                     if duplicate:
                         # The fact is already current: link it rather than store a copy.
                         replacement = self._record(duplicate[0], scope)
-            else:
-                assert target_id is not None
+            elif target_id is not None:
                 replacement = await self._fetch(tx, scope, target_id)
                 if replacement is None:
                     raise Neo4jMemoryNotFoundError("the replacement memory was not found")
@@ -888,11 +888,12 @@ class Neo4jContextStore:
                     raise Neo4jSupersessionError(
                         "the replacement memory is itself superseded or no longer valid"
                     )
-            else:
-                assert pending is not None
+            elif pending is not None:
                 replacement = await self._create(
                     tx, scope, pending, created_at=now, valid_from=instant, end=None
                 )
+            else:  # neither a draft nor an ID, which supersede() refuses before the transaction
+                raise TypeError("new_memory must be a MemoryDraft or an existing memory ID")
             linked = await tx.run(
                 _LINK,
                 {

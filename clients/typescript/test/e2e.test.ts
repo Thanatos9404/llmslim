@@ -183,6 +183,43 @@ describe.skipIf(!python)("against llmslim serve", { timeout: 20_000 }, () => {
     expect(await client.memories.deleteAll({ userId: "nisha" })).toBe(4);
   });
 
+  it("returns the sections shown above the turns, field for field as the server sends them", async () => {
+    const day = (date: number) => `2026-10-${String(date).padStart(2, "0")}T09:00:00Z`;
+    const said = (date: number, user: string, reply: string) => [
+      { role: "user" as const, content: user, timestamp: day(date) },
+      { role: "assistant" as const, content: reply, timestamp: day(date) },
+    ];
+    const stored = await client.memories.add({
+      userId: "ravi",
+      messages: [
+        ...said(1, "From now on, always answer me in British English.", "Understood, British English from now on."),
+        ...said(3, "I prefer aisle seats on long flights.", "Noted: aisle seats on long flights."),
+        ...said(5, "I have never been to Japan, sadly.", "Japan is lovely; maybe one day."),
+        ...said(9, "We booked a trip to Kyoto for the spring.", "Kyoto in spring is wonderful, with the cherry blossom."),
+        ...said(12, "My sister lives in Pune and works as a nurse there.", "Good to know about your sister in Pune."),
+        ...said(15, "The car needs a service before the long drive to Goa.", "Book the service a week ahead of the Goa drive."),
+      ],
+    });
+    // The history is longer than the budget, so the search selects, and shows the stated preference in its section.
+    const request = { userId: "ravi", query: "What seat should I book?", budget: 120 };
+    const context = await client.memories.search(request);
+    expect(context.historyTokens).toBeGreaterThan(request.budget);
+    expect(context.text).toContain("Preferences the user stated earlier:");
+    expect(context.preferences).toHaveLength(1);
+    expect(context.preferences[0]).toMatchObject({ id: stored[2]!.id, role: "user", content: "I prefer aisle seats on long flights." });
+
+    const response = await fetch(`${client.baseUrl}/v1/memories/search`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ user_id: "ravi", query: request.query, budget: request.budget }),
+    });
+    const raw = (await response.json()) as Record<"turns" | "requests" | "preferences" | "conflicts", unknown>;
+    for (const name of ["turns", "requests", "preferences", "conflicts"] as const) {
+      expect(context[name]).toEqual(camelCase(raw[name]));
+    }
+    expect(await client.memories.deleteAll({ userId: "ravi" })).toBe(12);
+  });
+
   it("surfaces validation errors from the server", async () => {
     const error = await client.memories.search({ userId: "asha", query: "" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(LLMSlimError);

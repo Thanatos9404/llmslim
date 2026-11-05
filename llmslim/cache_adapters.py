@@ -10,18 +10,20 @@ import json
 import re
 from typing import Any, Mapping, Optional
 
-from .cache import CachePolicy, CacheTelemetry
+from .cache import CachePlan, CachePolicy, CacheTelemetry
 from .planning.models import InfeasibleContextError
 from .runtime import PreparedContext
 
 
-def _require(prepared: PreparedContext, policy: CachePolicy, provider: str) -> None:
+def _require(prepared: PreparedContext, policy: CachePolicy, provider: str) -> CachePlan:
+    """The prepared context's cache plan, once the context, the policy and the plan agree on ``provider``."""
     if not prepared.feasible:
         raise InfeasibleContextError(prepared.plan)
     if policy.provider != provider:
         raise ValueError(f"{provider} adapter requires a {provider} cache policy")
     if prepared.cache_plan is None or prepared.cache_plan.provider != provider:
         raise ValueError("prepared context and cache policy must use the same provider")
+    return prepared.cache_plan
 
 
 def _modern_openai(model: str) -> bool:
@@ -59,9 +61,7 @@ def openai_responses_request(
     A prior response is referenced only when the new input has exactly one
     appended user turn. This avoids silently duplicating assistant/tool output.
     """
-    _require(prepared, policy, "openai")
-    plan = prepared.cache_plan
-    assert plan is not None
+    plan = _require(prepared, policy, "openai")
     messages = [dict(message) for message in prepared.model_input.messages]
     request: dict[str, Any] = {
         "model": prepared.model_input.model,
@@ -199,9 +199,7 @@ def anthropic_messages_request(
 
 def gemini_generate_request(prepared: PreparedContext, policy: CachePolicy) -> dict[str, Any]:
     """Build generate_content arguments, using only a tenant-scoped cache ref."""
-    _require(prepared, policy, "gemini")
-    plan = prepared.cache_plan
-    assert plan is not None
+    plan = _require(prepared, policy, "gemini")
     if prepared.model_input.tools:
         raise ValueError("Gemini tool conversion is not supported by this text-only cache adapter")
     contents = []
@@ -235,11 +233,9 @@ def gemini_cached_content_request(
     prepared: PreparedContext, policy: CachePolicy, *, minimum_tokens: int = 2048
 ) -> dict[str, Any]:
     """Build a Google Gen AI caches.create request, never issue it implicitly."""
-    _require(prepared, policy, "gemini")
+    plan = _require(prepared, policy, "gemini")
     if policy.mode != "explicit":
         raise ValueError("Gemini cached resources require explicit cache mode")
-    plan = prepared.cache_plan
-    assert plan is not None
     if plan.stable_prefix_tokens < minimum_tokens:
         raise ValueError("stable prefix is too small for an explicit cached resource")
     if policy.ttl_seconds is None:

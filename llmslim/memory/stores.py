@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -143,6 +144,26 @@ class InMemoryStore:
 
 
 _COLUMNS = "id, seq, role, content, created_at, updated_at, user_id, agent_id, run_id, metadata"
+_LOCKED_RETRY_SECONDS = 5.0  # as long as sqlite3's busy timeout
+
+
+def _wal(conn: sqlite3.Connection) -> None:
+    """Switch the file to WAL, retrying while another connection holds it.
+
+    ``PRAGMA journal_mode=WAL`` needs the file to itself, and SQLite answers "database is locked" at once, without the
+    busy timeout other statements wait for, while another connection writes a file that is not in WAL mode yet. So
+    several processes opening a new memory file at once (two MCP clients starting ``llmslim mcp``, a server's
+    workers, imports run side by side) failed at start. A file already in WAL mode never waits here.
+    """
+    deadline = time.monotonic() + _LOCKED_RETRY_SECONDS
+    while True:
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as error:
+            if "locked" not in str(error) or time.monotonic() >= deadline:
+                raise
+        time.sleep(0.01)
 
 
 def _iso(value: Optional[datetime]) -> Optional[str]:
@@ -187,41 +208,50 @@ class SQLiteStore:
         self.path = str(path)
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(self.path, check_same_thread=False, isolation_level=None)
-        with self._lock:
-            if self.path != ":memory:":
-                self._conn.execute("PRAGMA journal_mode=WAL")  # readers do not block the writer
-            self._conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS llmslim_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS llmslim_memory (
-                    id TEXT PRIMARY KEY,
-                    seq INTEGER NOT NULL,
-                    role TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT,
-                    user_id TEXT,
-                    agent_id TEXT,
-                    run_id TEXT,
-                    metadata TEXT NOT NULL DEFAULT '{}'
-                );
-                CREATE INDEX IF NOT EXISTS llmslim_memory_scope
-                    ON llmslim_memory (user_id, agent_id, run_id, created_at, seq);
-                """
+        try:
+            with self._lock:
+                self._prepare()
+        except BaseException:
+            # Not a database, a newer schema, a disk error: don't keep the file open (Windows would refuse to
+            # move or delete it while the error is held).
+            self._conn.close()
+            raise
+
+    def _prepare(self) -> None:
+        if self.path != ":memory:":
+            _wal(self._conn)  # readers do not block the writer
+        self._conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS llmslim_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS llmslim_memory (
+                id TEXT PRIMARY KEY,
+                seq INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT,
+                user_id TEXT,
+                agent_id TEXT,
+                run_id TEXT,
+                metadata TEXT NOT NULL DEFAULT '{}'
+            );
+            CREATE INDEX IF NOT EXISTS llmslim_memory_scope
+                ON llmslim_memory (user_id, agent_id, run_id, created_at, seq);
+            """
+        )
+        row = self._conn.execute(
+            "SELECT value FROM llmslim_meta WHERE key = 'schema_version'"
+        ).fetchone()
+        if row is None:
+            # OR IGNORE: another process opening the new file may have written it since the SELECT.
+            self._conn.execute(
+                "INSERT OR IGNORE INTO llmslim_meta (key, value) VALUES ('schema_version', ?)",
+                (str(SCHEMA_VERSION),),
             )
-            row = self._conn.execute(
-                "SELECT value FROM llmslim_meta WHERE key = 'schema_version'"
-            ).fetchone()
-            if row is None:
-                self._conn.execute(
-                    "INSERT INTO llmslim_meta (key, value) VALUES ('schema_version', ?)",
-                    (str(SCHEMA_VERSION),),
-                )
-            elif int(row[0]) > SCHEMA_VERSION:
-                self._conn.close()
-                raise RuntimeError(
-                    f"{self.path} uses memory schema {row[0]}; this llmslim reads up to {SCHEMA_VERSION}. Upgrade llmslim."
-                )
+        elif int(row[0]) > SCHEMA_VERSION:
+            raise RuntimeError(
+                f"{self.path} uses memory schema {row[0]}; this llmslim reads up to {SCHEMA_VERSION}. Upgrade llmslim."
+            )
 
     def close(self) -> None:
         with self._lock:

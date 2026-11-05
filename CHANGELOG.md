@@ -409,6 +409,24 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   for 1 MB of prose with a 30,000-word vocabulary. The matrix now stays sparse and each chunk's rows are made dense
   when they are read: 180 MB or less in each of those cases. The rows hold the same values, so the output is the
   same, byte for byte. A custom embedding backend is read through its `encode` as before.
+- **The chat endpoint (experimental) handles more of what an upstream or a client sends.**
+  - **A key cut across two chunks of a stream.** Each chunk of a streamed answer was checked for the upstream key
+    on its own, so a key the upstream echoed across two chunks reached the client. The end of a chunk that could be
+    the start of the key is now held back until the next chunk shows whether it is, and the stream is cut off before
+    any of the key goes out.
+  - **Events on several `data:` lines, and bare CR line ends.** An event whose JSON spans several `data:` lines, as
+    the SSE specification allows, and a stream whose lines end with a CR alone were read as malformed, so the answer
+    was passed on but its turn was not stored. Both are read as the specification says now.
+  - **An error event after a line cut short.** When the upstream broke off in the middle of a line, the closing
+    `error` event was glued to that line, where a client couldn't read it. A blank line now ends the open event
+    first.
+  - **JSON errors.** An `X-LLMSlim-Memory-Budget` of thousands of digits, or with a digit such as `²`, and any
+    unexpected failure, got Starlette's plain-text 500. The header is now a 400, and other failures are a JSON 500
+    (`server_error`), as on the other routes.
+  - **Numbers too large for a float.** A request with `1e400` was forwarded with `Infinity`, which isn't JSON; it is
+    a 400 (`invalid_json`) now, as `NaN` and `Infinity` already were.
+  - **An upstream key that isn't ASCII** failed every request with a 500. `ChatUpstream`, and so `llmslim serve`,
+    refuses it at start.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

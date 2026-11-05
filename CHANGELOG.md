@@ -26,7 +26,7 @@ do, every name that left an `__all__` and where to import it from now, and how t
 - **A keyless `llmslim serve` or `llmslim proxy` answers only to this machine.** Other host names and other web sites
   get a 403; add names with `--allowed-host`. Servers with keys are unaffected.
 - **Errors from `llmslim serve`:** a 503 (`store_unavailable`, `Retry-After: 5`) when Postgres or MongoDB is down, and
-  a JSON 500 (`server_error`) for any other failure.
+  a JSON 500 (`server_error`) for any other failure. `POST /v1/memories` takes at most 1,000 messages (see Security).
 - **`fit` stays within about 2% of its budget for any text,** and cuts text that compression can't shrink that far.
 
 ### Breaking
@@ -323,6 +323,14 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   and out-of-range timestamps with a 500. A lone surrogate (`"\ud800"`) was kept by the in-process store and then
   broke every read of that scope; it is now refused before anything is stored. `Memory.add` refuses a timestamp with
   no UTC time (9999-12-31T23:59-01:00) with a `ValueError`.
+- **At most 1,000 messages per `POST /v1/memories`.** Only the 1 MB body cap bounded a request, so one could carry
+  tens of thousands of tiny messages, each a stored row and a read-back. A longer list is now a 400
+  (`invalid_request`, with a message that names the limit) and nothing of it is stored. Messages count as sent, empty
+  ones included. One string or one object is one message, as before.
+  - **Behaviour change:** a client that stores more than 1,000 messages in one request must split it. The limit is
+    fixed (`llmslim.server.MAX_MESSAGES`, internal), as the list page cap is: there is no flag for it. The TypeScript
+    client's `memories.add` throws the server's error, and `llmslim mcp`'s `remember` stores one message per call.
+    `llmslim import` is unaffected: it writes to the store directly, 500 turns at a time.
 - **XML with entity declarations is never parsed** by the XML optimizer, so entity-expansion bombs ("billion laughs",
   quadratic blowup) can't run even on a Python built with an old expat. Such text is compressed as plain text.
   Recent expat already refused them.

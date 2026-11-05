@@ -36,6 +36,7 @@ These commands work once 1.0.0rc1 is on PyPI. Until then, the main branch is wha
 | stores trace ids or compares `planner_version` with a constant | `planner_version` is the release | [The planner version is the release](#the-planner-version-is-the-release) |
 | reaches a keyless `llmslim serve` or `llmslim proxy` by a name other than this machine's | it answers 403 | [Keyless servers answer only to this machine](#keyless-servers-answer-only-to-this-machine) |
 | handles errors from `llmslim serve` | a database outage is a 503, other failures a JSON 500 | [Errors from the servers](#errors-from-the-servers) |
+| stores more than 1,000 messages in one `POST /v1/memories` | it answers 400 and stores nothing | [Errors from the servers](#errors-from-the-servers) |
 | calls `fit` on text that compression can't shrink | the result is cut to the budget | [Fit stays within about 2% of its budget](#fit-stays-within-about-2-of-its-budget) |
 
 ## Python 3.10 or newer
@@ -204,6 +205,9 @@ instruction, and DNS rebinding let a page read and delete every memory. So a key
   traceback in the server's log only. Read `error.type` rather than the message ([SERVER.md](SERVER.md)).
 - **Hostile JSON is a 400:** over-deep JSON, values of the wrong type (`"messages": 5`) and out-of-range timestamps,
   which 0.12 answered with a 500, and lone surrogates (`"\ud800"`), which its in-memory store kept.
+- **At most 1,000 messages per `POST /v1/memories`.** A longer `messages` list is a 400 (`invalid_request`) and
+  nothing of it is stored, where 0.12 stored any number that fitted in 1 MB. Send a longer history in several
+  requests. `Memory.add` in Python has no such limit, and `llmslim import` writes 500 turns at a time.
 - **`Memory.add` refuses a timestamp with no UTC time** (such as `9999-12-31T23:59-01:00`) with a `ValueError`.
 - **A store that can't be opened at start** (an unreachable database, a wrong password, a missing extra) ends
   `llmslim serve` and `llmslim mcp` with one line, `could not open the memory store: <error>`, instead of a traceback.

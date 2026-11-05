@@ -237,6 +237,53 @@ def test_malformed_and_oversized_bodies(memory):
     assert memory.get_all(user_id="u") == []
 
 
+def _batches(count):
+    """``count`` messages in each list shape ``POST /v1/memories`` takes: plain strings (user turns), ``{role,
+    content}`` objects, the two mixed, and objects whose content is a list of content parts."""
+    return {
+        "strings": [f"note {i}" for i in range(count)],
+        "objects": [
+            {"role": "user" if i % 2 == 0 else "assistant", "content": f"turn {i}"}
+            for i in range(count)
+        ],
+        "mixed": [
+            f"note {i}" if i % 2 == 0 else {"role": "assistant", "content": f"turn {i}"}
+            for i in range(count)
+        ],
+        "content parts": [
+            {"role": "user", "content": [{"type": "text", "text": f"part {i}"}]}
+            for i in range(count)
+        ],
+    }
+
+
+def test_a_request_stores_up_to_1000_messages(memory, client):
+    for shape, messages in _batches(1000).items():
+        items = _add(client, messages, user_id=shape)
+        assert len(items) == 1000, shape
+        assert len(memory.get_all(user_id=shape)) == 1000, shape
+    # One string or one object is one message, as before.
+    assert len(_add(client, "one note", user_id="single")) == 1
+    assert len(_add(client, {"role": "user", "content": "one turn"}, user_id="single")) == 1
+
+
+def test_more_than_1000_messages_are_refused_and_nothing_is_stored(memory, client):
+    shapes = _batches(1001)
+    # Counted as sent: empty messages, which would be skipped, still count towards the limit.
+    shapes["with empty ones"] = ["note"] * 500 + [""] * 501
+    for shape, messages in shapes.items():
+        response = client.post(
+            "/v1/memories", json={"messages": messages, "user_id": shape}, headers=AUTH
+        )
+        assert response.status_code == 400, (shape, response.text)
+        error = response.json()["error"]
+        assert error["type"] == "invalid_request", shape
+        assert "1000" in error["message"], error
+        assert memory.get_all(user_id=shape) == [], shape
+    # The refusal is the request's alone: the next one within the limit is stored whole.
+    assert len(_add(client, shapes["strings"][:1000], user_id="strings")) == 1000
+
+
 def test_list_paging_is_validated(client):
     for params in (
         {"user_id": "u", "limit": "0"},

@@ -95,7 +95,7 @@ error's type. Any other failure is a 500 (`"type": "server_error"`), with the tr
 
 | Method and path | Body or query | Returns |
 |---|---|---|
-| `POST /v1/memories` | `messages` (a string, a `{role, content}` object or a list of them), at least one of `user_id`, `agent_id`, `run_id`, optional `timestamp`, `metadata` | `201 {"items": [...]}`, the stored messages |
+| `POST /v1/memories` | `messages` (a string, a `{role, content}` object or a list of at most 1,000 of them), at least one of `user_id`, `agent_id`, `run_id`, optional `timestamp`, `metadata` | `201 {"items": [...]}`, the stored messages; a longer list is a 400 and stores nothing |
 | `GET /v1/memories` | `?user_id=&agent_id=&run_id=&since=&until=&limit=100&offset=0` | `{"items", "total", "offset", "limit"}`, oldest first |
 | `GET /v1/memories/{id}` | | one message |
 | `PATCH /v1/memories/{id}` | `content` and/or `metadata` | the updated message |
@@ -310,7 +310,9 @@ changed, so the loop's prefix holds.
   (or a host given with `--allowed-host`), and refuses with a 403 any request whose `Origin` is another site.
   Clients that send no `Origin` (curl, SDKs, the TypeScript client) are not affected. With keys, a browser can't
   attach the key to a cross-site request, and every `Host` is accepted unless you pin names with `--allowed-host`.
-- **Requests are capped:** bodies at 1 MB (413), search and fit budgets at 100,000 tokens, list pages at 1,000 items.
+- **Requests are capped:** bodies at 1 MB (413), messages at 1,000 per `POST /v1/memories` (400, and nothing of the
+  request is stored), search and fit budgets at 100,000 tokens, list pages at 1,000 items. The message cap counts what
+  was sent, empty messages included; send a longer history in several requests.
 - **Hostile text stays cheap.** Content detection, sentence splitting and code-span handling take time linear in the
   input, so a crafted 1 MB body can't hold a worker for minutes, and `fit` stays at most 2% over its budget for any
   text: when compression can't get within that (one long code block, say), the result is cut to the longest head

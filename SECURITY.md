@@ -75,8 +75,9 @@ errors. See `docs/planning/SECURITY.md` for the v0.6 threat model.
   redirects are not followed. The client's key is never forwarded; the server sends its own, from
   `LLMSLIM_UPSTREAM_API_KEY`. That key never appears in answers, errors or logs, and an upstream answer that echoes it
   is not passed on. An upstream URL with a user name or password is refused at start, without being echoed.
-- **Algorithmic cost.** Content detection, sentence splitting, code-span handling and the YAML comment stripper take
-  linear time on any input; `tests/test_security_dos.py` times each against inputs that used to take quadratic time.
+- **Algorithmic cost.** Content detection, sentence splitting, code-span handling, the YAML comment stripper and
+  `llmslim import`'s credential pass take linear time on any input; `tests/test_security_dos.py` times each against
+  inputs that used to take quadratic time.
   `fit` (`/v1/context/fit`, MCP `fit_context`) stays within about 2% of its budget for any text: it accepts a
   compressed result up to `budget * 1.02` tokens, and when compression can't get within that, it cuts the result to
   the longest head that fits the budget. XML with entity declarations is never parsed, so entity-expansion bombs can't

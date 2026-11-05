@@ -29,6 +29,19 @@ def _value(kind: str) -> Callable[[Match[str]], str]:
     return replace
 
 
+def _openai_key(found: Match[str]) -> str:
+    # The characters after "sk-" must include a digit. The pattern takes the whole run of key characters and this
+    # checks it, instead of a lookahead that read the run again from every "sk-" inside it (quadratic in a run such as
+    # "sk-sk-sk-...").
+    return _mark("openai-key") if re.search(r"[0-9]", found.group(0)[3:]) else found.group(0)
+
+
+def _jwt(found: Match[str]) -> str:
+    # A header is a token only with a payload and a signature after it (group 1). The pattern takes the header's whole
+    # run without them too, so the run is read once, not again from every "eyJ" inside it.
+    return _mark("jwt") if found.group(1) else found.group(0)
+
+
 def _assignment(found: Match[str]) -> str:
     value = found.group(2)
     # A value that looks like a key: letters and digits mixed, not a word, a call or a placeholder.
@@ -53,11 +66,7 @@ _RULES: List[Tuple[str, Pattern[str], _Replacement]] = [
         _mark("private-key"),
     ),
     ("anthropic-key", re.compile(rf"\bsk-ant-{_TOKEN}{{20,}}"), _mark("anthropic-key")),
-    (
-        "openai-key",
-        re.compile(rf"\bsk-(?=[A-Za-z_\-]*[0-9]){_TOKEN}{{20,}}"),
-        _mark("openai-key"),
-    ),
+    ("openai-key", re.compile(rf"\bsk-{_TOKEN}{{20,}}"), _openai_key),
     ("stripe-key", re.compile(r"\b[rs]k_(?:live|test)_[0-9A-Za-z]{16,}"), _mark("stripe-key")),
     (
         "aws-access-key",
@@ -80,8 +89,8 @@ _RULES: List[Tuple[str, Pattern[str], _Replacement]] = [
     ("google-api-key", re.compile(rf"\bAIza{_TOKEN}{{35}}"), _mark("google-api-key")),
     (
         "jwt",
-        re.compile(rf"\beyJ{_TOKEN}{{10,}}\.eyJ{_TOKEN}{{10,}}\.{_TOKEN}{{10,}}"),
-        _mark("jwt"),
+        re.compile(rf"\beyJ{_TOKEN}{{10,}}(\.eyJ{_TOKEN}{{10,}}\.{_TOKEN}{{10,}})?"),
+        _jwt,
     ),
     (
         "bearer-token",
@@ -94,8 +103,10 @@ _RULES: List[Tuple[str, Pattern[str], _Replacement]] = [
         _value("basic-auth"),
     ),
     (
+        # A scheme is short ("postgresql+psycopg"). Capping it at 256 characters keeps a long run of scheme characters
+        # with no "://" after it ("a.a.a...") from being read to its end again from every word boundary inside it.
         "url-password",
-        re.compile(r"(\b[A-Za-z][A-Za-z0-9+.\-]*://[^\s:/@]+:)([^\s/@]{3,})(@)"),
+        re.compile(r"(\b[A-Za-z][A-Za-z0-9+.\-]{0,255}://[^\s:/@]+:)([^\s/@]{3,})(@)"),
         _value("url-password"),
     ),
     (

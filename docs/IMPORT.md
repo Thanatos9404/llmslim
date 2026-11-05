@@ -126,10 +126,10 @@ Before anything is stored, a best-effort pass replaces obvious credentials with 
 - assignments such as `api_key = "..."`, `password: ...` or `token=...` whose value looks like a key (letters and
   digits, at least 12 characters).
 
-It runs on turn text and conversation titles, and the summary counts what it replaced. **It is best-effort:** it
-knows these shapes only, and it can't recognise a secret that looks like ordinary text. It lowers the risk of
-storing a credential from an old conversation; it does not remove it. Keep tool output off unless you need it, and
-`--no-redact` (`redact=False`) turns the pass off.
+It runs on turn text and conversation titles, in time linear in their length, and the summary counts what it
+replaced. **It is best-effort:** it knows these shapes only, and it can't recognise a secret that looks like
+ordinary text. It lowers the risk of storing a credential from an old conversation; it does not remove it. Keep tool
+output off unless you need it, and `--no-redact` (`redact=False`) turns the pass off.
 
 ## Options
 

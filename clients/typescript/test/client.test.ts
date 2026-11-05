@@ -85,6 +85,54 @@ describe("LLMSlim client", () => {
     });
   });
 
+  it("maps the sections shown above the turns as it maps the turns", async () => {
+    const request = { ...item, id: "req", content: "From now on, answer in British English.", metadata: { source: "chat" } };
+    const preference = { ...item, id: "pref", content: "I prefer aisle seats on long flights." };
+    const { fetch } = fakeFetch([
+      {
+        body: {
+          query: "What seat should I book?",
+          text: "Preferences the user stated earlier:\n- [2026-10-03 (Sat) 09:00] I prefer aisle seats on long flights.",
+          tokens: 30,
+          budget: 120,
+          history_tokens: 323,
+          sessions_total: 6,
+          sessions_kept: 1,
+          elapsed_ms: 1.0,
+          turns: [],
+          requests: [{ ...request, score: 0.0, partial: false }],
+          preferences: [{ ...preference, score: 0.25, partial: true }],
+          conflicts: [],
+        },
+      },
+      // A body without the sections (the server always sends them): each reads as empty, not undefined.
+      { body: { query: "q", text: "", tokens: 0, budget: 10, history_tokens: 0, sessions_total: 0, sessions_kept: 0, elapsed_ms: 0, turns: [] } },
+    ]);
+    const client = new LLMSlim({ fetch });
+    const context = await client.memories.search({ userId: "asha", query: "What seat should I book?", budget: 120 });
+    expect(context.requests).toEqual([
+      {
+        id: "req",
+        role: "user",
+        content: "From now on, answer in British English.",
+        createdAt: "2026-10-01T09:00:00+00:00",
+        updatedAt: null,
+        userId: "asha",
+        agentId: null,
+        runId: null,
+        metadata: { source: "chat" },
+        score: 0.0,
+        partial: false,
+      },
+    ]);
+    expect(context.preferences).toEqual([
+      { ...context.requests[0], id: "pref", content: preference.content, metadata: {}, score: 0.25, partial: true },
+    ]);
+    expect(context.conflicts).toEqual([]);
+    const bare = await client.memories.search({ userId: "asha", query: "q", budget: 10 });
+    expect([bare.requests, bare.preferences, bare.conflicts]).toEqual([[], [], []]);
+  });
+
   it("asks for an explanation and maps every field of it to camelCase", async () => {
     const kept = { turn_id: "abc", pool: "user", kind: "turn", part: 0, rank: 1, score: 0.42, tokens: 9, status: "kept", reason: null, side: null };
     const weighed = { ...kept, pool: "conflicts", kind: "statement", rank: null, score: null, status: "dropped", reason: "no_disagreement", side: "denies" };

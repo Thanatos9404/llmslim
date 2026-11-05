@@ -204,6 +204,11 @@ do, every name that left an `__all__` and where to import it from now, and how t
   camelCase. Without `explain` the context is as before, with no `explanation`. A test against a real `llmslim serve`
   checks the explanation field for field against what the server sent. It is not on npm yet: `llmslim` 0.2.0 doesn't
   have it, and the package's version is unchanged.
+- **The sections of a search in the TypeScript client.** `MemoryContext` gains `requests`, `preferences` and
+  `conflicts`: the user's standing requests, stated preferences and possibly conflicting statements that a search shows
+  in their own sections above the turns, each a `RecalledTurn[]` like `turns`, and empty when the section isn't shown.
+  `llmslim serve` always sent them; the client dropped them. A test against a real `llmslim serve` checks all four
+  lists field for field against what the server sent. Not on npm yet, as above.
 
 ### Changed
 - **The website moved to a private repository; Core is unchanged.** The source of llmslim.app, the `web/` folder,
@@ -397,6 +402,31 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   open a file, because it is not a database, was written by a newer llmslim or hit a disk error, the file stayed open
   while the error was alive, so on Windows it couldn't be moved or deleted. It is now closed before the error is
   raised.
+- **Compressing a long text with many distinct words no longer takes gigabytes of memory.** The default TF-IDF
+  backend made its whole matrix dense, one row per sentence and one column per distinct word, though the compressor
+  reads one chunk of sentences at a time. `llmslim serve`'s `POST /v1/context/fit` without a `query` (and MCP's
+  `fit_context`) took 1.9 GB of memory for a 714 KB body of distinct words, about 4 GB at the 1 MB body cap, and 1.6 GB
+  for 1 MB of prose with a 30,000-word vocabulary. The matrix now stays sparse and each chunk's rows are made dense
+  when they are read: 180 MB or less in each of those cases. The rows hold the same values, so the output is the
+  same, byte for byte. A custom embedding backend is read through its `encode` as before.
+- **The chat endpoint (experimental) handles more of what an upstream or a client sends.**
+  - **A key cut across two chunks of a stream.** Each chunk of a streamed answer was checked for the upstream key
+    on its own, so a key the upstream echoed across two chunks reached the client. The end of a chunk that could be
+    the start of the key is now held back until the next chunk shows whether it is, and the stream is cut off before
+    any of the key goes out.
+  - **Events on several `data:` lines, and bare CR line ends.** An event whose JSON spans several `data:` lines, as
+    the SSE specification allows, and a stream whose lines end with a CR alone were read as malformed, so the answer
+    was passed on but its turn was not stored. Both are read as the specification says now.
+  - **An error event after a line cut short.** When the upstream broke off in the middle of a line, the closing
+    `error` event was glued to that line, where a client couldn't read it. A blank line now ends the open event
+    first.
+  - **JSON errors.** An `X-LLMSlim-Memory-Budget` of thousands of digits, or with a digit such as `²`, and any
+    unexpected failure, got Starlette's plain-text 500. The header is now a 400, and other failures are a JSON 500
+    (`server_error`), as on the other routes.
+  - **Numbers too large for a float.** A request with `1e400` was forwarded with `Infinity`, which isn't JSON; it is
+    a 400 (`invalid_json`) now, as `NaN` and `Infinity` already were.
+  - **An upstream key that isn't ASCII** failed every request with a 500. `ChatUpstream`, and so `llmslim serve`,
+    refuses it at start.
 - **`llmslim serve` refuses `NaN` and `Infinity`, and answers every error in its JSON format.**
   - **`NaN` and `Infinity`** aren't JSON, but Python's parser reads them. `POST /v1/memories` with one in its
     `metadata` stored the turn and then answered 400, because the turn could not be written back as JSON; from then

@@ -1328,6 +1328,16 @@ def test_stream_reader_gives_up_on_too_much_text(monkeypatch):
         other = StreamReader()
         other.feed(bad)
         assert other.broken
+    # Nested deeper than a request may be (64): refused on every Python, on one line or spread over several,
+    # whether or not the parser could read it. Python 3.14's parser reads 100,000 levels without a RecursionError.
+    nested = b"[" * 65 + b"]" * 65
+    for bad in (b"data: " + nested + b"\n\n", b'data: {"a":\ndata: ' + nested + b"}\n\n"):
+        other = StreamReader()
+        other.feed(bad)
+        assert other.broken
+    within = StreamReader()
+    within.feed(b'data: {"a":\ndata: ' + b"[" * 60 + b"]" * 60 + b"}\n\n")
+    assert not within.broken
 
 
 def test_reply_text_handles_odd_answers():

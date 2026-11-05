@@ -720,3 +720,65 @@ class TestEdgeCases:
         assert (
             "never" in result.compressed_text.lower() or "ensure" in result.compressed_text.lower()
         )
+
+
+# ---------------------------------------------------------------------------
+# The TF-IDF matrix stays sparse: a long text with many distinct words made a dense matrix of sentences by vocabulary
+# (about 1.6 GB for a 1 MB text, 4 GB for 1 MB of distinct words), reachable through llmslim serve's fit and MCP's
+# fit_context.
+# ---------------------------------------------------------------------------
+
+
+def _distinct_words_text(sentences: int, seed: int = 5) -> str:
+    import random
+
+    rng = random.Random(seed)
+
+    def word() -> str:
+        return "".join(rng.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(8))
+
+    return " ".join(
+        f"The {word()} met the {word()} near the old river bank today." for _ in range(sentences)
+    )
+
+
+def test_sparse_rows_read_exactly_what_the_dense_matrix_holds():
+    from llmslim.embeddings import TfidfEmbeddingBackend, _SparseRows
+
+    texts = [s + "." for s in _distinct_words_text(40).split(".") if s.strip()]
+    backend = TfidfEmbeddingBackend()
+    rows = backend._encode_rows(texts)
+    assert isinstance(rows, _SparseRows) and len(rows) == len(texts)
+    dense = backend.encode(texts)
+    assert np.array_equal(rows.dense(), dense)
+    for k in (0, 7, len(texts) - 1, -1):
+        assert np.array_equal(rows[k], dense[k])
+    assert np.array_equal(rows[[3, 4, 9]], dense[[3, 4, 9]])
+    head = rows[:-1]
+    assert len(head) == len(texts) - 1 and np.array_equal(head[5], dense[5])
+    # one text, or no word but stop words: a small dense array, as encode gives
+    assert isinstance(backend._encode_rows(["Only one."]), np.ndarray)
+    assert np.array_equal(backend._encode_rows(["the and", "of a"]), np.ones((2, 1)))
+
+
+def test_the_compressor_reads_one_chunk_of_rows_at_a_time(monkeypatch):
+    from llmslim.embeddings import _SparseRows
+
+    def whole(self):
+        raise AssertionError("the whole TF-IDF matrix was made dense")
+
+    widest = []
+    read = _SparseRows.__getitem__
+
+    def recorded(self, index):
+        rows = read(self, index)
+        if isinstance(rows, np.ndarray):
+            widest.append(1 if rows.ndim == 1 else rows.shape[0])
+        return rows
+
+    monkeypatch.setattr(_SparseRows, "dense", whole)
+    monkeypatch.setattr(_SparseRows, "__getitem__", recorded)
+    text = _distinct_words_text(600)
+    result = ContextCompressor().compress(text, target_ratio=0.3)
+    assert 0 < result.compressed_tokens < result.original_tokens
+    assert widest and max(widest) < 100  # one chunk of sentences, never all 600

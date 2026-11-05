@@ -7,6 +7,7 @@ Azure. ``Memory("postgresql://...")`` uses it, and so do ``llmslim serve --db po
 
 from __future__ import annotations
 
+import os
 import re
 import threading
 from contextlib import contextmanager
@@ -42,12 +43,31 @@ def _missing_driver() -> ImportError:
     return ImportError('The Postgres memory store needs psycopg 3: pip install "llmslim[postgres]"')
 
 
+#: Seconds a store opened from a URL waits for each connection to Postgres, unless the URL's ``connect_timeout`` or
+#: libpq's ``PGCONNECT_TIMEOUT`` environment variable says otherwise (psycopg's own default is 130 seconds).
+DEFAULT_CONNECT_TIMEOUT = 10
+
+
+def _connection_kwargs(
+    conninfo: str, conninfo_to_dict: Any, environ: Mapping[str, str] = os.environ
+) -> Dict[str, Any]:
+    """What every connection of a store opened from ``conninfo`` is made with."""
+    kwargs: Dict[str, Any] = {"autocommit": True}
+    if "connect_timeout" not in conninfo_to_dict(conninfo) and "PGCONNECT_TIMEOUT" not in environ:
+        kwargs["connect_timeout"] = DEFAULT_CONNECT_TIMEOUT
+    return kwargs
+
+
 class PostgresStore:
     """Turns in one Postgres table.
 
     Pass a connection URL (``postgresql://user:password@host:5432/db``), in which case the store opens its own
     connection pool and closes it in :meth:`close`; a ``psycopg_pool.ConnectionPool``; or a single
     ``psycopg.Connection`` in autocommit mode. The store is safe to use from several threads.
+
+    With a URL, the store gives up on a server it can't reach after ``connect_timeout`` seconds and raises psycopg's
+    error: 10 seconds, unless the URL (``?connect_timeout=30``) or libpq's ``PGCONNECT_TIMEOUT`` environment variable
+    sets another value. The pool's later connections wait as long.
 
     The table (``llmslim_memory`` by default) and its ``<table>_meta`` table are created if they don't exist. Creation
     runs under an advisory lock, so several processes can start at once. The schema is versioned: a table written by
@@ -77,11 +97,17 @@ class PostgresStore:
         self._single: Any = None
         if isinstance(conninfo, str):
             try:
+                from psycopg.conninfo import conninfo_to_dict
                 from psycopg_pool import ConnectionPool
             except ImportError as error:  # pragma: no cover - exercised only without the extra
                 raise _missing_driver() from error
+            kwargs = _connection_kwargs(conninfo, conninfo_to_dict)
+            # Connect once before the pool opens, so a server that can't be reached fails within connect_timeout,
+            # with psycopg's own error. The pool alone keeps retrying in the background and gives up only after
+            # its own 30 seconds, with a PoolTimeout that doesn't say why.
+            psycopg.connect(conninfo, **kwargs).close()
             self._owned_pool = ConnectionPool(
-                conninfo, min_size=1, max_size=max_size, kwargs={"autocommit": True}, open=True
+                conninfo, min_size=1, max_size=max_size, kwargs=kwargs, open=True
             )
             self._pool: Any = self._owned_pool
         elif isinstance(conninfo, psycopg.Connection):

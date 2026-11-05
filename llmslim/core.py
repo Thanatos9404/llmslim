@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 from .chunking import Chunk, semantic_chunk
-from .embeddings import EmbeddingBackend, get_backend
+from .embeddings import EmbeddingBackend, TfidfEmbeddingBackend, get_backend
 from .ranking import score_chunk_sentences
 from .tokenization import split_paragraphs, split_sentences
 from .tokens import count_tokens, get_active_token_counter_name
@@ -897,12 +897,20 @@ class ContextCompressor:
         )
 
     def _encode(self, sentences: List[str], query: Optional[str]):
-        """Encode sentences (and optionally a query) with a single, consistent vector space."""
+        """Encode sentences (and optionally a query) with a single, consistent vector space.
+
+        The default TF-IDF backend's matrix stays sparse, and each row is made dense when it is read: the same values,
+        without a dense matrix of sentences by vocabulary (gigabytes for a long text with many distinct words). A
+        backend of another type (or a subclass, which may override ``encode``) is read through ``encode``.
+        """
         texts = list(sentences)
         if query:
             texts.append(query)
 
-        encoded = np.asarray(self.backend.encode(texts))
+        if type(self.backend) is TfidfEmbeddingBackend:
+            encoded: Any = self.backend._encode_rows(texts)
+        else:
+            encoded = np.asarray(self.backend.encode(texts))
 
         if query:
             return encoded[:-1], encoded[-1]

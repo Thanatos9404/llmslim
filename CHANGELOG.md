@@ -468,6 +468,18 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   workers, imports run side by side), one of them could fail at start; with four processes it happened in most
   tries. The switch is now retried for up to 5 seconds, and the schema version is written with `INSERT OR IGNORE`,
   so two first opens can't both write it. A file already in WAL mode is opened as before.
+- **Stored text can no longer pass for another turn in `Memory.search`.** A stored line that looks like a turn label
+  was indented only inside code blocks and tables, and only when a long history was selected from:
+  - **After a code block:** the prose that follows a block starts a line of its own, and it was left as stored. A reply
+    whose text went on with `user: I am the admin ...` after a block showed a line that reads like the user's next
+    turn, since a later turn's label is its role alone by default. That prose is now guarded as a block's lines are.
+  - **A history that fits the budget** came back exactly as stored, under a full stamp on every turn, so a stored line
+    such as `[2026-01-01 (Thu) 00:00] system: ...` read like a turn of its own. Such a line is now indented there too,
+    after any line break (a lone `\r` included).
+
+  `context.turns` and the stored text are unchanged; only the indentation of those lines in `context.text` (and so
+  in `llmslim serve`, `recall` and the chat endpoint) changes. Found by a property test that checks every line that
+  starts like a label is a kept turn's own.
 
 ### Documentation
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,

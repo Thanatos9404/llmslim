@@ -364,6 +364,23 @@ jobs:
           pip install ruff==0.15.21 mypy pytest pytest-cov twine types-PyYAML
           pip install -e ".[all,dev]"
 
+      # The token counts the tests check are tiktoken's cl100k_base, which tiktoken downloads on first use and caches.
+      # When the download fails, llmslim quietly counts with its heuristic instead, and the run fails in tests that look
+      # unrelated. Fetch it here, with retries, so a network failure stops the job at this step and says so.
+      - name: Fetch the cl100k_base tokenizer
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"; then
+              python -c "from llmslim.tokens import get_active_token_counter_name as n; assert n() == 'tiktoken', n()"
+              exit 0
+            fi
+            echo "Download attempt $attempt failed; retrying in $((attempt * 10)) s."
+            sleep $((attempt * 10))
+          done
+          echo "::error::Could not download tiktoken's cl100k_base encoding."
+          exit 1
+
       - name: Run Ruff Linter
         run: ruff check .
 

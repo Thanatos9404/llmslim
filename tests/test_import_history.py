@@ -1570,6 +1570,49 @@ def test_redaction_leaves_ordinary_text_alone(text):
     assert redact(text) == (text, {})
 
 
+def test_the_linear_redaction_patterns_redact_what_the_old_ones_did():
+    # The openai-key, jwt and url-password patterns were rewritten to take linear time (tests/test_security_dos.py).
+    # On random text built from the pieces they look for, they redact exactly what the old expressions did.
+    import random
+    import re
+    from collections import Counter
+
+    from llmslim.memory import _redact
+
+    token = r"[A-Za-z0-9_\-]"
+    old = {
+        "openai-key": (
+            re.compile(rf"\bsk-(?=[A-Za-z_\-]*[0-9]){token}{{20,}}"),
+            _redact._mark("openai-key"),
+        ),
+        "jwt": (
+            re.compile(rf"\beyJ{token}{{10,}}\.eyJ{token}{{10,}}\.{token}{{10,}}"),
+            _redact._mark("jwt"),
+        ),
+        "url-password": (
+            re.compile(r"(\b[A-Za-z][A-Za-z0-9+.\-]*://[^\s:/@]+:)([^\s/@]{3,})(@)"),
+            _redact._value("url-password"),
+        ),
+    }
+
+    def old_redact(text):
+        found: Counter = Counter()
+        for kind, pattern, replacement in _redact._RULES:
+            pattern, replacement = old.get(kind, (pattern, replacement))
+            text = _redact._apply(kind, pattern, replacement, text, found)
+        return text, found
+
+    pieces = [
+        *("sk-", "ant-", "eyJ", ".", "-", "_", "a", "Z", "1", "9", "://", ":", "@", "/", " ", "\n"),
+        *("x", "+", "postgresql", "abcdefghij", "0123456789", "token=", "Bearer ", "AKIA"),
+        "ABCDEFGHIJKLMNOP",
+    ]
+    rng = random.Random(1404)
+    for _ in range(20_000):
+        text = "".join(rng.choice(pieces) for _ in range(rng.randint(1, 30)))
+        assert redact(text) == old_redact(text), text
+
+
 def test_import_redacts_before_storing_and_counts_it(tmp_path):
     secret = _key("sk-", "proj-", "Q7x" * 10)
     path = _write_jsonl(

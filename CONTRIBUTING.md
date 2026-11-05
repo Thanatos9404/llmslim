@@ -13,7 +13,7 @@ All contributors are expected to adhere to the project's [Code of Conduct](CODE_
 ## Environment Setup
 
 ### Prerequisites
-- Python 3.10, 3.11, 3.12, or 3.13
+- Python 3.10, 3.11, 3.12, 3.13 or 3.14
 - Git
 
 ### Initializing Virtual Environment

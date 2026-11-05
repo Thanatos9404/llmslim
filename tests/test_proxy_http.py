@@ -179,6 +179,39 @@ def test_messages_are_rewritten_and_headers_forwarded(proxy, upstream):
     assert forwarded.startswith("[LLMSlim") and len(forwarded) < len(make_log())
 
 
+def test_a_request_without_a_query_is_forwarded_without_a_question_mark(proxy, upstream):
+    """`POST /v1/messages?`, with a bare "?", got a 404 from a strict upstream."""
+    proxy.post("/v1/messages", json=request(), headers=HEADERS)
+    proxy.post("/v1/messages/count_tokens", json=request(), headers=HEADERS)
+    proxy.get("/v1/models", headers=HEADERS)
+    proxy.get("/v1/models?", headers=HEADERS)  # a bare "?" from the client isn't passed on either
+    proxy.get("/v1/models?limit=5&after_id=a%20b", headers=HEADERS)
+    assert [sent.url.raw_path for sent in upstream.requests] == [
+        b"/v1/messages",
+        b"/v1/messages/count_tokens",
+        b"/v1/models",
+        b"/v1/models",
+        b"/v1/models?limit=5&after_id=a%20b",
+    ]
+
+
+def test_a_body_nested_past_the_parser_is_forwarded_unchanged(store):
+    """It was a 500: the proxy's own parse raised RecursionError. The upstream judges the request, as without it."""
+    sent = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(request.content)
+        return streamed(400, {"type": "error", "error": {"type": "invalid_request_error"}})
+
+    app = create_proxy_app(
+        store=store, upstream="https://api.example.test", transport=httpx.MockTransport(handler)
+    )
+    body = b'{"model": "m", "messages": ' + b"[" * 100_000 + b"]" * 100_000 + b"}"
+    with TestClient(app, base_url=LOCAL) as client:
+        response = client.post("/v1/messages", content=body, headers=HEADERS)
+    assert response.status_code == 400 and sent == [body]
+
+
 def test_a_whole_agent_loop_keeps_thinking_valid(proxy, upstream):
     """Turn 1 sends a long tool result; turn 2 replays it with the thinking the model produced after it. Without the
     byte-for-byte replay the fake API would reject turn 2, as Anthropic does."""

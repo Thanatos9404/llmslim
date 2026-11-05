@@ -136,9 +136,10 @@ GOLDEN_DATE_0_12 = json.loads(cases.GOLDEN_DATE_0_12.read_text(encoding="utf-8")
 @needs_tiktoken
 @pytest.mark.parametrize("kind", ["memory", "sqlite"])
 @pytest.mark.parametrize("case", cases.CASES, ids=CASE_IDS)
-def test_date_format_gives_back_the_0_12_output(case, kind, tmp_path):
-    # date_format="%Y-%m-%d" gives exactly what search returned before date_format defaulted to None: these hashes
-    # are the golden file's from before that change, ids, scores and token counts included.
+def test_date_format_gives_back_the_0_12_labels(case, kind, tmp_path):
+    # date_format="%Y-%m-%d" gives the labels search used before date_format defaulted to None. These hashes were the
+    # golden file's from before that change (ids, scores and token counts included) until selection began charging
+    # each kept turn what it adds in place, which lets more turns fit with any labels.
     store = store_for(kind, tmp_path / "memory.db")
     context = cases.run(case, store, date_format=cases.DATE_0_12)
     assert cases.pinned(context)["sha256"] == GOLDEN_DATE_0_12[case[0]]
@@ -350,7 +351,9 @@ def test_a_budget_of_zero_is_refused_and_one_token_keeps_nothing():
     assert explained("empty", budget=1)[1].mode == "whole_history"
 
 
-def test_a_turn_far_larger_than_the_budget():
+def test_a_turn_far_larger_than_the_budget(monkeypatch):
+    import llmslim.memory._turns as turns
+
     context, explanation = explained("huge_user")
     story, reply = explanation.turns
     assert story.status == "clipped" and story.reason == "user_turn_cap"
@@ -359,11 +362,17 @@ def test_a_turn_far_larger_than_the_budget():
     assert explanation.user_turn_cap == 120 and "4417" in context.text
     assert reply.reason == "windows" and len(reply.candidates) > 5
     assert {c.status for c in reply.candidates} == {"kept", "dropped"}
-    # Smaller budgets: the best piece is cut to fit as a last resort, or cut short by the exact count.
+    # Smaller budgets: the best piece is cut to fit as a last resort, or, when selection charged it too little (here
+    # with every turn's label free), cut short by the exact count.
     memory = cases.huge().memory
     question = CASE["huge_user"][2]
-    for budget, reason in ((19, "last_resort"), (32, "cut_at_fit")):
-        explanation = memory.search(question, user_id="u1", budget=budget, explain=True).explanation
+    for budget, reason, free in ((19, "last_resort", False), (36, "cut_at_fit", True)):
+        with monkeypatch.context() as patch:
+            if free:
+                patch.setattr(turns.Selection, "opening_cost", lambda self, piece, text: 0)
+            explanation = memory.search(
+                question, user_id="u1", budget=budget, explain=True
+            ).explanation
         clipped = [t for t in explanation.turns if t.status == "clipped"]
         assert [t.reason for t in clipped] == [reason]
         assert explanation.tokens <= budget
@@ -389,9 +398,8 @@ def test_duplicate_turns_are_left_out_as_duplicates():
     turns = by_id(explanation)
     assert turns["m0011"].status == "kept" and "Koregaon Park" in context.text
     assert (turns["m0012"].status, turns["m0012"].reason) == ("dropped", "duplicate")
-    # The same words in other case and punctuation is a duplicate too, but this one never got that far: there was
-    # no room left for it, and room is checked first.
-    assert (turns["m0013"].status, turns["m0013"].reason) == ("dropped", "over_budget")
+    # The same words in other case and punctuation is a duplicate too.
+    assert (turns["m0013"].status, turns["m0013"].reason) == ("dropped", "duplicate")
     assert turns["m0012"].candidates[0].score == turns["m0011"].candidates[0].score
 
 
@@ -579,7 +587,7 @@ def test_the_last_resort_clip_is_explained(monkeypatch):
     monkeypatch.setattr(
         turns, "fit", lambda chosen, budget, prefix: fit(chosen, budget * 10, prefix)
     )
-    monkeypatch.setattr(turns.Selection, "label_cost", lambda self, turn: 0)
+    monkeypatch.setattr(turns.Selection, "opening_cost", lambda self, piece, text: 0)
     memory = cases.lentils().memory
     for budget in (15, 40, 90):
         context = memory.search("Where did I move to?", user_id="u1", budget=budget, explain=True)

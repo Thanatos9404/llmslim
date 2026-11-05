@@ -208,6 +208,67 @@ def test_the_server_needs_a_scope(memory):
     assert build_server(memory, user_id=None, agent_id="planner") is not None
 
 
+@pytest.mark.parametrize(
+    "scope",
+    [
+        {"user_id": " "},
+        {"user_id": "\t\n"},
+        {"user_id": "asha", "agent_id": ""},
+        {"user_id": "asha", "agent_id": "  "},
+        {"user_id": "", "agent_id": "planner"},
+    ],
+)
+def test_a_blank_id_is_refused_when_the_server_is_built(memory, scope):
+    """The memory refuses a blank id on every read and write, so such a server failed on every tool call."""
+    with pytest.raises(ValueError, match="must be a non-empty string or None"):
+        build_server(memory, **scope)
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        ["--user-id", ""],
+        ["--user-id", "   "],
+        ["--user-id", "", "--agent-id", " "],
+        ["--user-id", "", "--transport", "http"],
+    ],
+)
+def test_cli_refuses_a_blank_scope_before_opening_the_database(
+    capsys, monkeypatch, tmp_path, flags
+):
+    for name in ("LLMSLIM_USER_ID", "LLMSLIM_AGENT_ID"):
+        monkeypatch.delenv(name, raising=False)
+    db = tmp_path / "memory.db"
+    with pytest.raises(SystemExit) as raised:
+        main(["--db", str(db), *flags])
+    assert raised.value.code == 2  # a usage error, not a traceback
+    assert "--user-id or --agent-id must name whose memory" in capsys.readouterr().err
+    assert not db.exists()
+
+
+def test_cli_blank_ids_mean_none_given(monkeypatch, tmp_path):
+    """As an empty variable already did, a blank flag or variable names no user or agent."""
+    monkeypatch.setenv("LLMSLIM_USER_ID", "  ")
+    monkeypatch.setenv("LLMSLIM_AGENT_ID", " ")
+    args = build_parser().parse_args([])
+    assert args.user_id == "default" and args.agent_id is None
+    built = {}
+
+    class Built:
+        def run(self, transport):
+            built["transport"] = transport
+
+    def build(memory, **scope):
+        built.update(scope)
+        return Built()
+
+    monkeypatch.setattr("llmslim.mcp_server.build_server", build)
+    assert main(["--db", str(tmp_path / "a.db"), "--user-id", "", "--agent-id", "planner"]) == 0
+    assert built == {"user_id": None, "agent_id": "planner", "transport": "stdio"}
+    assert main(["--db", str(tmp_path / "b.db"), "--agent-id", " "]) == 0
+    assert built == {"user_id": "default", "agent_id": None, "transport": "stdio"}
+
+
 def test_cli_defaults_and_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("LLMSLIM_MEMORY_DB", str(tmp_path / "env.db"))
     monkeypatch.setenv("LLMSLIM_USER_ID", "asha")

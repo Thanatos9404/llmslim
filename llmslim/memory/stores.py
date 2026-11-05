@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -143,6 +144,26 @@ class InMemoryStore:
 
 
 _COLUMNS = "id, seq, role, content, created_at, updated_at, user_id, agent_id, run_id, metadata"
+_LOCKED_RETRY_SECONDS = 5.0  # as long as sqlite3's busy timeout
+
+
+def _wal(conn: sqlite3.Connection) -> None:
+    """Switch the file to WAL, retrying while another connection holds it.
+
+    ``PRAGMA journal_mode=WAL`` needs the file to itself, and SQLite answers "database is locked" at once, without the
+    busy timeout other statements wait for, while another connection writes a file that is not in WAL mode yet. So
+    several processes opening a new memory file at once (two MCP clients starting ``llmslim mcp``, a server's
+    workers, imports run side by side) failed at start. A file already in WAL mode never waits here.
+    """
+    deadline = time.monotonic() + _LOCKED_RETRY_SECONDS
+    while True:
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as error:
+            if "locked" not in str(error) or time.monotonic() >= deadline:
+                raise
+        time.sleep(0.01)
 
 
 def _iso(value: Optional[datetime]) -> Optional[str]:
@@ -198,7 +219,7 @@ class SQLiteStore:
 
     def _prepare(self) -> None:
         if self.path != ":memory:":
-            self._conn.execute("PRAGMA journal_mode=WAL")  # readers do not block the writer
+            _wal(self._conn)  # readers do not block the writer
         self._conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS llmslim_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -222,8 +243,9 @@ class SQLiteStore:
             "SELECT value FROM llmslim_meta WHERE key = 'schema_version'"
         ).fetchone()
         if row is None:
+            # OR IGNORE: another process opening the new file may have written it since the SELECT.
             self._conn.execute(
-                "INSERT INTO llmslim_meta (key, value) VALUES ('schema_version', ?)",
+                "INSERT OR IGNORE INTO llmslim_meta (key, value) VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
             )
         elif int(row[0]) > SCHEMA_VERSION:

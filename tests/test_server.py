@@ -432,6 +432,116 @@ def test_lone_surrogates_are_refused_before_anything_is_stored(memory, client):
     assert listed.status_code == 200 and listed.json()["total"] == 1
 
 
+def test_nan_and_infinity_are_refused_before_anything_is_stored(memory, client):
+    # Python's parser reads NaN and Infinity, which aren't JSON. A turn stored with one in its metadata was answered
+    # with a 400 after it was stored, and then every list and search of its scope failed with a 400 too.
+    json_headers = {**AUTH, "content-type": "application/json"}
+    for path, raw in (
+        ("/v1/memories", b'{"user_id": "u", "messages": "x", "metadata": {"score": NaN}}'),
+        ("/v1/memories", b'{"user_id": "u", "messages": "x", "metadata": {"k": [-Infinity]}}'),
+        ("/v1/memories", b'{"user_id": "u", "messages": "x", "timestamp": Infinity}'),
+        ("/v1/memories/search", b'{"user_id": "u", "query": "x", "budget": NaN}'),
+        ("/v1/context/fit", b'{"text": "x", "budget": Infinity}'),
+    ):
+        response = client.post(path, content=raw, headers=json_headers)
+        assert response.status_code == 400, (path, raw, response.text)
+        assert response.json()["error"]["type"] == "invalid_json"
+    assert memory.get_all(user_id="u") == []
+    stored = _add(client, "still readable", user_id="u", metadata={"k": 1})[0]
+    patched = client.patch(
+        f"/v1/memories/{stored['id']}", content=b'{"metadata": {"k": NaN}}', headers=json_headers
+    )
+    assert patched.status_code == 400 and patched.json()["error"]["type"] == "invalid_json"
+    assert dict(memory.get(stored["id"]).metadata) == {"k": 1}
+    listed = client.get("/v1/memories", params={"user_id": "u"}, headers=AUTH)
+    assert listed.status_code == 200 and listed.json()["total"] == 1
+
+
+def test_head_on_a_stored_message_answers_like_get(memory, client):
+    # Starlette adds HEAD to a GET route; the item route had no handler for it and answered a plain-text 500.
+    stored = _add(client, "hello", user_id="u")[0]
+    found = client.head(f"/v1/memories/{stored['id']}", headers=AUTH)
+    assert found.status_code == 200 and found.content == b""
+    assert found.headers["content-type"] == "application/json"
+    assert client.head("/v1/memories/missing", headers=AUTH).status_code == 404
+    assert client.head("/v1/memories/missing").status_code == 401
+
+
+def test_unknown_routes_and_methods_answer_in_the_error_format(client):
+    # They were Starlette's plain-text "Not Found" and "Method Not Allowed".
+    for method, path, status, kind in (
+        ("GET", "/v1/nothing-here", 404, "not_found"),
+        ("POST", "/v2/memories", 404, "not_found"),
+        ("GET", "/", 404, "not_found"),
+        ("OPTIONS", "/v1/memories", 405, "method_not_allowed"),
+        ("PUT", "/v1/memories/abc", 405, "method_not_allowed"),
+        ("GET", "/v1/context/fit", 405, "method_not_allowed"),
+        ("DELETE", "/healthz", 405, "method_not_allowed"),
+    ):
+        response = client.request(method, path, headers=AUTH)
+        assert response.status_code == status, (method, path, response.text)
+        assert response.headers["content-type"] == "application/json"
+        assert response.json()["error"]["type"] == kind and response.json()["error"]["message"]
+    allowed = client.options("/v1/memories/abc", headers=AUTH).headers["allow"]
+    assert set(allowed.split(", ")) == {"GET", "HEAD", "PATCH", "DELETE"}
+
+
+def test_a_failure_outside_a_route_is_a_json_500(memory):
+    from starlette.routing import Route
+
+    app = create_app(memory, api_keys=[KEY])
+
+    async def broken(request):
+        raise RuntimeError("bug at db.example.com")
+
+    app.router.routes.append(Route("/broken", broken))
+    response = TestClient(app, raise_server_exceptions=False).get("/broken")
+    assert response.status_code == 500
+    assert response.json() == {"error": {"type": "server_error", "message": "the request failed"}}
+    assert "db.example.com" not in response.text
+
+
+def test_a_client_that_disconnects_mid_body_stores_nothing_and_logs_no_failure(memory, caplog):
+    import asyncio
+    import logging
+
+    app = create_app(memory, api_keys=[KEY])
+    events = iter(
+        [
+            {"type": "http.request", "body": b'{"user_id": "u", "mess', "more_body": True},
+            {"type": "http.disconnect"},
+        ]
+    )
+    sent = []
+
+    async def receive():
+        return next(events)
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/v1/memories",
+        "raw_path": b"/v1/memories",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(b"host", b"localhost"), (b"authorization", f"Bearer {KEY}".encode())],
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8080),
+    }
+    with caplog.at_level(logging.INFO, logger="llmslim.server"):
+        asyncio.run(app(scope, receive, send))
+    assert memory.get_all(user_id="u") == []
+    # It was logged as "POST /v1/memories failed", with a traceback, at ERROR.
+    records = [r for r in caplog.records if r.name == "llmslim.server"]
+    assert records and all(r.levelno < logging.WARNING and r.exc_info is None for r in records)
+
+
 def test_fit_holds_the_budget_for_text_compression_keeps_whole(client):
     # One long code block (or a run of inline code spans) is kept whole by compression; fit still holds the budget.
     for text in ("```\n" + "x = 1\n" * 20_000 + "```", "`a` " * 20_000):

@@ -401,15 +401,23 @@ def test_outlines_and_statements_of_pathological_text_are_quick():
 
 
 def _join_by_concatenation(parts):
-    """``_turns.join`` as it was written first (one string rebuilt per part): the reference for the faster one."""
+    """``_turns.join`` as it was written first (one string rebuilt per part): the reference for the faster one. Every
+    line but the first is guarded: prose that starts a line, and the lines after a prose part's first."""
+
+    def rest(text):
+        head, line_break, tail = text.partition("\n")
+        return f"{head}\n{_turns._guard(tail)}" if line_break else text
+
     out = ""
     for text, block in parts:
         if block:
             out = f"{out.rstrip()}\n{_turns._guard(text)}\n"
         elif out and not out.endswith("\n"):
-            out = f"{out} {text}"
+            out = f"{out} {rest(text)}"
+        elif out:
+            out = f"{out}{_turns._guard(text)}"
         else:
-            out = f"{out}{text}"
+            out = rest(text)
     return out.rstrip()
 
 

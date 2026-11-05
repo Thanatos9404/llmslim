@@ -542,6 +542,20 @@ def test_health_needs_no_key_and_the_endpoint_takes_only_post(memory):
         assert http.get(f"{base}/elsewhere", headers=auth).status_code == 404
 
 
+def test_health_answers_head_without_a_key_as_llmslim_serve_does(memory):
+    """Load balancers and `curl -I` check health with HEAD; a keyed server answered it 401."""
+    with serving(_app(memory)) as base, httpx2.Client(timeout=30) as http:
+        response = http.head(f"{base}/healthz")
+        assert response.status_code == 200 and response.content == b""
+        assert response.headers["content-type"] == "application/json"
+        for method in ("OPTIONS", "DELETE"):
+            assert http.request(method, f"{base}/healthz").status_code == 401
+        assert http.head(f"{base}/mcp").status_code == 401
+    with serving(_app(memory, keys=())) as base, httpx2.Client(timeout=30) as http:
+        assert http.head(f"{base}/healthz").status_code == 200
+        assert http.head(f"{base}/healthz", headers={"Host": "evil.example"}).status_code == 403
+
+
 # --------------------------------------------------------------------------- limits and hostile requests
 
 

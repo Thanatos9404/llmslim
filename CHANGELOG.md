@@ -16,7 +16,8 @@ do, every name that left an `__all__` and where to import it from now, and how t
   `mongodb`, `semantic`, `transformers-cache`, `llamaindex` and `gptme` extras have security fixes only for Python
   3.11 and newer (`SECURITY.md`).
 - **`Memory.search` shows a session's date once:** `date_format` defaults to `None`. `date_format="%Y-%m-%d"` gives
-  the 0.12 labels back, byte for byte.
+  the 0.12 labels back. The turns it selects can still differ from 0.12's, because search now fills its budget (see
+  Fixed).
 - **Smaller `__all__` lists.** Helpers and constants of `llmslim.server`, `llmslim.integrations.web_search` and the
   Sarvam modules are internal, and a star import from `llmslim.mcp` or `llmslim.integrations.openai_agents` brings
   only their own names. Every name still imports where it did; four Sarvam constants imported from
@@ -223,8 +224,9 @@ do, every name that left an `__all__` and where to import it from now, and how t
   selected from, the first kept turn of a session shows its full stamp, and so does a later turn whose time differs
   from the one shown last in its session. Any other kept turn used to repeat the date, `[2026-10-17] assistant: ...`.
   It now shows `assistant: ...` alone, under the stamp above it. Pass `date_format="%Y-%m-%d"` to get the old labels
-  back; the output is then byte for byte what 0.12 and the previous main returned. A history that fits the budget
-  whole still shows the full stamp on every turn.
+  back; the output was then byte for byte what 0.12 returned, until search began filling its budget (see Fixed),
+  which lets more turns in with either labels. A history that fits the budget whole still shows the full stamp on
+  every turn.
   - **Why:** the repeated date was most of each kept turn's label. Labels took 21-22% of a LoCoMo context and 11-15%
     of a LongMemEval one; without the repeated date they take 9-11% and 6-9%, so more turns fit.
   - **Measured on development data** (no model; share of questions whose labelled evidence is all in the context, at
@@ -363,6 +365,24 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   - LoCoMo (first speaker `user`, second `assistant`): 75.7% to 78.7% at 2,500 tokens (+3.0 points, 95% interval
     +0.4 to +6.1) and 88.3% to 92.2% at 10,000 (+3.9, +1.3 to +7.0);
   - LongMemEval: no loss, 89.6% to 89.9% and 94.8% to 95.1%.
+
+  This changes output content only; the API is unchanged.
+- **`Memory.search` fills its budget.** When a long history is selected from, each kept turn was charged its label
+  and the line break after it as if they stood alone. In the context, a label's closing space joins the next word's
+  token (`"user: "` alone is 3 tokens, `"user: Caroline"` is 3 in all), and a line break after a full stop joins it
+  (`".\n"` is one token). Each kept turn therefore cost about 2 tokens less than it was charged, and the context came
+  out short: on development data, 155 of 2,500 tokens and 640 of 10,000 were left unused on LoCoMo (6%), and 59 and
+  185 on LongMemEval (2%). The first kept part of a turn is now charged what it adds where it meets the context: its
+  label against the first word it opens, the line break against its last word, and the gap marks around a partial
+  window, which were not charged before. The same contexts now leave 5 and 4 tokens unused on LoCoMo, and 18 and 30
+  on LongMemEval. The budget is never exceeded: `fit` still counts the whole context.
+  - **Measured on development data** (no model; share of questions whose labelled evidence is all in the context,
+    at 2,500 and 10,000 tokens): LoCoMo goes from 80.0% to 80.4% and from 93.5% to 94.8% (1 and 3 questions up,
+    none down; both 95% intervals start at 0.0). LongMemEval goes from 89.9% to 89.9% and from 95.1% to 95.8%, with no
+    significant loss on any metric. Search time is within 6% of before.
+  - **The pinned search output** in `tests/fixtures/memory_search_golden.json` and
+    `memory_search_golden_date_0_12.json` was recorded again. With `date_format="%Y-%m-%d"`, the labels are 0.12's,
+    but more turns can fit than in 0.12.
 
   This changes output content only; the API is unchanged.
 - **Sarvam documents work with `sarvamai` 0.1.40.** That release renamed `doc_ai.digitise`, the call that creates and

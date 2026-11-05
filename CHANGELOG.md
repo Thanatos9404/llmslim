@@ -358,6 +358,35 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   - a `ZohoCRMContextSource` left with neither a token nor a token provider raises `ZohoAuthenticationError`.
 
   The other eight asserts could never fail; the code now proves the same thing without them. Nothing else changes.
+- **`Memory.search` keeps a correction with what it corrects.** A history kept verbatim holds both an old belief and
+  the later turn that corrects it, but a search often returned only the old one. A correction rarely shares words with
+  the question that needs it ("I'm allergic to peanuts" matches "suggest a snack", "it's not peanuts after all, it's
+  tree nuts" does not), and the requests and preferences sections promoted "I love a good steak" and "Never push
+  directly to main" to the top without "I went vegetarian" or "pushing docs fixes straight to main is fine now".
+  Three changes, all fixed rules with no model call:
+  - **A later statement on the same subject comes along.** The strongest match among the user turns, and among the
+    reply windows, brings along the user's later turns on its subject, ranked just below it. The subject is the words
+    of that turn (for a reply, also of the user turn it answers) that few exchanges of the history use: names,
+    numbers, paths, tools. The two later exchanges that share the rarest of them are linked.
+  - **A request or preference is shown with what the user said later on its subject**, on a line under it:
+    `  - [date] later: ...`. The two take room together; when they do not fit, neither is shown. The later turn is
+    not listed in `context.requests` or `context.preferences`.
+  - **A stated change is a preference:** "I no longer ...", "no meat anymore", "I've given up ...", "I switched to
+    ...", "I've changed my mind ...".
+
+  Measured with no model in the loop. On the 40-scenario free-prose correction test (240 searches per relevance: 3
+  distances, 2 budgets), the share of searches whose context carries the correction (shown as newer when the old
+  belief is there too) goes from 84.2% to 96.7% with lexical relevance, and the searches that return the old belief
+  without its correction from 32 to 4. That test was used to develop the change. On 46 new correction scenarios
+  written and frozen before the change was designed, run once: 87.3% to 93.8% (+6.5 points, 95% interval +1.4 to
+  +13.4; 18 searches up, none down) and old-belief-only from 25 to 8 of 276; with `relevance="semantic"`, 92.0% to
+  96.0% and 17 to 6. Eight scenarios where nothing is corrected keep their belief as often as before (46 and 48 of
+  48). An old belief shown at the top without its correction drops from 12 searches to 0 on the first set, and from
+  36 to 13 on the second. On the LongMemEval and LoCoMo development splits, the share of questions with all their
+  evidence kept does not drop at either budget (LongMemEval 89.9% to 90.3% at 2,500 tokens and 95.1% to 95.5% at
+  10,000; LoCoMo 80.0% to 80.0% and 93.5% to 93.9%). Still missed: a correction that shares no rare word with the
+  old belief and is not a stated change ("I can't stand cold weather ... beach" against "I got really into skiing").
+  This changes output content only; the API is unchanged.
 - **The Docker image runs on Postgres and MongoDB.** It installed only the `server` extra, so with
   `LLMSLIM_MEMORY_DB` set to a `postgresql://` or `mongodb://` URL the server failed at start for want of a driver. It
   now installs `server`, `postgres` and `mongodb`. CI runs the image against MongoDB (add, search, list and delete,

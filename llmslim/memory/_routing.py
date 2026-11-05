@@ -118,8 +118,9 @@ def route(query: str) -> str:
     return OTHER
 
 
-# A first-person statement of what the user likes, prefers, usually does or wants to avoid. Only user turns are
-# read, and only the sentence that states it is shown.
+# A first-person statement of what the user likes, prefers, usually does or wants to avoid, or of a change in it ("I
+# no longer ...", "I've given up ...", "I switched to ..."). Only user turns are read, and only the sentence that
+# states it is shown.
 PREFERENCE = re.compile(
     r"\bi(?:'d| would) (?:much |really )?(?:rather|prefer)\b"
     r"|\bi (?:really |strongly |generally |usually |always |definitely |much |personally |tend to )?"
@@ -133,16 +134,23 @@ PREFERENCE = re.compile(
     r"|\bi (?:hate|dislike|can'?t stand|avoid)\b"
     r"|\b(?:works?|worked) (?:best|better) for me\b|\bi find (?:it )?(?:\w+ ){0,4}(?:easier|harder|clearer|"
     r"more (?:helpful|useful|effective|comfortable))\b|\bmore comfortable (?:with|using)\b"
-    r"|\brather than\b",
+    r"|\brather than\b"
+    # A change the user made: what they no longer do, stopped, gave up or switched to, or changed their mind on.
+    r"|\bi(?:'m| am)? no longer\b"
+    r"|\bi\b[^.!?]{0,60}?\b(?:don'?t|do not|can'?t|cannot|won'?t|no)\b[^.!?]{0,40}?\bany ?more\b"
+    r"|\bi(?:'ve| have)? (?:stopped|quit|given up|gave up|cut out|cut back on|cut down on)\b"
+    r"|\bi(?:'ve| have)? (?:switched|moved|changed) (?:over )?(?:to|from)\b"
+    r"|\bi(?:'ve| have)? changed my mind\b|\bchange of heart\b",
     re.IGNORECASE,
 )
 # The same words asked rather than stated: "should I prioritize ...?", "how can I prioritize ...?", "when might I
 # prefer ...?", "what do I usually ...?". A sentence whose only match is one of these asks for advice and states no
 # preference.
 ASKED_PREFERENCE = re.compile(
-    r"\b(?:should|would|could|can|do|does|did|will|shall|must|might)\s+(?:i|we)\s+"
+    r"\b(?:should|would|could|can|do|does|did|will|shall|must|might|have|has)\s+(?:i|we)\s+"
     r"(?:(?:really|still|also|even|just|actually)\s+)?(?:prefer|favou?r|prioriti[sz]e|value|lean|like|love|enjoy|"
-    r"usually|typically|normally|generally|tend|always|avoid|hate|dislike)\b",
+    r"usually|typically|normally|generally|tend|always|avoid|hate|dislike|no longer|stopped|quit|given up|gave up|"
+    r"cut|switched|moved|changed)\b",
     re.IGNORECASE,
 )
 

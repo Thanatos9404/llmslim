@@ -7,7 +7,7 @@ import re
 import time
 import uuid
 from dataclasses import replace
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime, timedelta, timezone, tzinfo
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
@@ -384,18 +384,29 @@ def _outline(text: str, limit: int) -> str:
     return _lead("; ".join(points), limit) if points else ""
 
 
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+# Python 3.10's fromisoformat reads a fraction of a second of exactly 3 or 6 digits and an offset with a colon only;
+# 3.11 and newer also read other lengths ("...:00.1234567", as Go and Java write them) and "+0530". Both are rewritten
+# to the forms every supported Python reads, so a time means the same on each.
+_ISO_FRACTION = re.compile(r"(\d{2}:\d{2}:\d{2})\.(\d+)")
+_ISO_COMPACT_OFFSET = re.compile(r"(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?[+-]\d{2})(\d{2})$")
+
+
 def _as_datetime(value: Any) -> datetime:
     """A timestamp as an aware datetime: a datetime (naive means UTC), epoch seconds, or ISO-8601 text."""
     if isinstance(value, datetime):
         moment = value
     elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        # Added to the epoch: datetime.fromtimestamp refuses times before 1970 and after 3000 on Windows only.
         try:
-            moment = datetime.fromtimestamp(float(value), tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):  # OSError: out of range on Windows
+            moment = _EPOCH + timedelta(seconds=value)
+        except (OverflowError, ValueError):
             raise ValueError("timestamp is out of range") from None
     elif isinstance(value, str):
         text = value.strip()
-        moment = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text)
+        text = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
+        text = _ISO_FRACTION.sub(lambda m: f"{m.group(1)}.{(m.group(2) + '000000')[:6]}", text)
+        moment = datetime.fromisoformat(_ISO_COMPACT_OFFSET.sub(r"\1:\2", text))
     else:
         raise TypeError(
             f"timestamp must be a datetime, epoch seconds or ISO-8601 text, not {type(value).__name__}"
@@ -898,7 +909,7 @@ class Memory:
     def _session_key(self, item: MemoryItem) -> Tuple[Any, ...]:
         if item.run_id is not None:
             return ("run", item.user_id, item.agent_id, item.run_id)
-        return ("day", item.user_id, item.agent_id, item.created_at.astimezone(self.tz).date())
+        return ("day", item.user_id, item.agent_id, self._local(item).date())
 
     def _sessions(self, items: Iterable[MemoryItem]) -> List[List[MemoryItem]]:
         grouped: Dict[Tuple[Any, ...], List[MemoryItem]] = {}
@@ -918,14 +929,22 @@ class Memory:
             for item in session
         ]
 
+    def _local(self, item: MemoryItem) -> datetime:
+        """The turn's time in ``tz``, or in UTC when ``tz`` would take it past what a datetime holds (the first or
+        last hours of the years 1 and 9999), so one such turn can't break every read of its scope."""
+        try:
+            return item.created_at.astimezone(self.tz)
+        except OverflowError:
+            return item.created_at.astimezone(timezone.utc)
+
     def _stamp(self, item: MemoryItem) -> str:
-        return item.created_at.astimezone(self.tz).strftime(self.stamp_format)
+        return self._local(item).strftime(self.stamp_format)
 
     def _date(self, item: MemoryItem) -> Optional[str]:
         """What a later kept turn of a session shows when its time was already shown there: None for no date."""
         if self.date_format is None:
             return None
-        return item.created_at.astimezone(self.tz).strftime(self.date_format)
+        return self._local(item).strftime(self.date_format)
 
     def _section(
         self,

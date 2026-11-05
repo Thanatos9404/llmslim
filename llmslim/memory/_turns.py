@@ -14,6 +14,9 @@ themselves, not on rendered session text:
   part of its session's instead (the relevance of the session's replies of one window), as a user turn does.
 * **Repeated text is dropped** (``DEDUP_OVERLAP``): a candidate whose word 5-grams are mostly in the text already
   kept adds nothing.
+* **Later statements on the same subject come along** (``LINK_LATER``; see ``_later``): the user's later turns on
+  the subject of the strongest candidate of each pool rank just below it, so a correction that shares no word with
+  the question is kept with the earlier statement it corrects.
 * **One labelled block per turn, under its date.** A kept turn is rendered as ``[date] role: text``: prose on that
   line (markdown headings folded into the sentence they head, so no heading stands alone), code blocks and tables on
   the lines below, fenced. The first kept turn of a session shows its full stamp, and so does a later one whose time
@@ -35,6 +38,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 from ..focus import BM25, Unit, _query_terms, _rerank, rank, terms
 from ..tokenization import split_sentences
 from ..tokens import count_tokens
+from . import _later
 from ._types import MemoryItem
 
 # ------------------------------------------------------------------ settings (module constants, tuned on dev data)
@@ -54,6 +58,11 @@ RERANK_REPLY = 80  # reply windows the reranker reads
 # (``score_pool``). When this is off, every reply window inherits its session's.
 REPLY_GROUP = True
 DEDUP_OVERLAP = 0.8  # share of a candidate's word 5-grams already kept above which it is left out
+# The user's later turns on the subject of the strongest candidate of each pool (``LINK_ANCHORS`` per pool) rank at
+# ``LINK_WEIGHT`` of that candidate's relevance (``link_later``).
+LINK_LATER = True
+LINK_ANCHORS = 1
+LINK_WEIGHT = 0.9
 SHINGLE = 5
 SLACK = 1.0  # the context never runs over the budget (Memory.search clips what fit leaves over)
 GAP = " ... "  # marks text left out between two kept parts of one turn
@@ -379,6 +388,7 @@ class Piece:
     tokens: int
     score: float = 0.0
     trimmed: bool = False  # set when the piece holds only part of its turn (a digest opening)
+    focus: str = ""  # words a long user turn is also excerpted on (the subject it was linked by)
 
 
 @dataclass
@@ -792,7 +802,8 @@ class Selection:
         parts: List[Tuple[str, bool]]
         trimmed = False
         if user_cap and piece.tokens > user_cap:
-            parts, trimmed = excerpt(piece.segs, self.query, user_cap)
+            query = f"{self.query} {piece.focus}" if piece.focus else self.query
+            parts, trimmed = excerpt(piece.segs, query, user_cap)
             text = join(parts)
             cost = count_tokens(text)
         else:
@@ -953,12 +964,47 @@ def select_turns(
             pool, score_pool(pool, turns, ranked_query, scorer, n, by_turn, recency)
         ):
             piece.score = value
+    if LINK_LATER:
+        link_later(turns, user, other)
     if trace is not None:
         trace.pool("user", "turn", user)
         trace.pool("reply", "window", other)
     chosen = Selection(turns, budget, ranked_query, trace=trace)
     fill(chosen, user, other, budget, share, scorer is None, cap_for_user_turn(budget))
     return chosen
+
+
+def link_later(turns: Sequence[Turn], user: Sequence[Piece], other: Sequence[Piece]) -> None:
+    """Rank the user's later turns on the subject of the strongest piece of each pool (``LINK_ANCHORS`` of each;
+    ``_later.Subjects.later``, where a reply window's subject is its own text's) just below that piece: a linked user
+    turn gets ``LINK_WEIGHT`` of the piece's relevance, as a share of its pool's best, when that is more than its own.
+    A linked turn too long to keep whole is excerpted on the terms it shares as well. Replies are not linked: on
+    LongMemEval's development questions, later replies brought along took the room of the reply that held the
+    answer."""
+    pools = (user, other)
+    best = [max((p.score for p in pool), default=0.0) for pool in pools]
+    if not any(best):
+        return
+    subjects = _later.subjects_of(
+        tuple(t.item.content for t in turns), tuple(t.item.role for t in turns)
+    )
+    by_turn = {piece.turn: piece for piece in user}
+    raised: Dict[int, Tuple[float, Piece, Set[str]]] = {}
+    for k, pool in enumerate(pools):
+        strongest = sorted(
+            (p for p in pool if p.score > 0), key=lambda p: (-p.score, p.turn, p.part)
+        )
+        for anchor in strongest[:LINK_ANCHORS]:
+            subject = subjects.subject(anchor.turn, anchor.text if k == 1 else "")
+            linked, shared = subjects.later(anchor.turn, subject)
+            value = LINK_WEIGHT * anchor.score / best[k] * (best[0] or 1.0)
+            for turn in linked:
+                piece = by_turn.get(turn)
+                if piece is not None and value > raised.get(turn, (piece.score,))[0]:
+                    raised[turn] = (value, piece, shared)
+    for value, piece, shared in raised.values():
+        piece.score = value
+        piece.focus = " ".join(sorted(shared))
 
 
 def fill(

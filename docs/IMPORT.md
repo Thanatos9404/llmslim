@@ -71,8 +71,9 @@ Notes on each format:
 and everything else goes to the user `"default"`, the one `llmslim mcp` serves when none is named.
 
 **Times.** Timestamps keep their instant whatever their offset (`Z`, `+05:30`, `-0700`), and a timestamp without an
-offset is read as UTC. A message without a readable timestamp takes the time of the message before it in its
-session, so the order holds; one at the start of a session takes the session's start or its first known time, and a
+offset is read as UTC, and epoch seconds before 1970 are read too. A time UTC can't hold (`9999-12-31T23:59-01:00`)
+is unreadable. A message without a readable timestamp takes the time of the message before it in its session, so
+the order holds; one at the start of a session takes the session's start or its first known time, and a
 session with no time at all takes the time of the import. `--since` and `--until` select by these times
 (`since <= time < until`).
 
@@ -106,10 +107,11 @@ read is bounded:
 - **Zip archives** are read in place. An archive is refused if any entry name is absolute, has a drive letter or
   contains `..`, and the entry read is refused if it is encrypted.
 - **Malformed input.** A line or record that is not valid JSON, or not in the format's shape, is skipped and counted
-  (`malformed`); a file cut short keeps every complete record before the cut. `--strict` stops at the first one
-  instead.
+  (`malformed`); a file cut short, even in the middle of a character, keeps every complete record before the cut.
+  `--strict` stops at the first one instead.
 - **Encodings.** UTF-8, with or without a byte-order mark, and LF or CRLF line endings. A UTF-16 file (what Windows
-  PowerShell 5 writes with `>`) is refused with a message saying to save it as UTF-8.
+  PowerShell 5 writes with `>`) is refused with a message saying to save it as UTF-8. Half of a surrogate pair
+  escaped on its own (`"\ud83d"`, an emoji a client cut in two) is read as U+FFFD, the replacement character.
 - **Paths.** `~` is expanded on every platform, including Windows (PowerShell passes it through unexpanded).
 - **A folder of transcripts.** A transcript that can't be read is listed under `errors` and the others are still
   imported; the command then exits with 1.
@@ -126,10 +128,10 @@ Before anything is stored, a best-effort pass replaces obvious credentials with 
 - assignments such as `api_key = "..."`, `password: ...` or `token=...` whose value looks like a key (letters and
   digits, at least 12 characters).
 
-It runs on turn text and conversation titles, and the summary counts what it replaced. **It is best-effort:** it
-knows these shapes only, and it can't recognise a secret that looks like ordinary text. It lowers the risk of
-storing a credential from an old conversation; it does not remove it. Keep tool output off unless you need it, and
-`--no-redact` (`redact=False`) turns the pass off.
+It runs on turn text and conversation titles, in time linear in their length, and the summary counts what it
+replaced. **It is best-effort:** it knows these shapes only, and it can't recognise a secret that looks like
+ordinary text. It lowers the risk of storing a credential from an old conversation; it does not remove it. Keep tool
+output off unless you need it, and `--no-redact` (`redact=False`) turns the pass off.
 
 ## Options
 

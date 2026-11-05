@@ -9,6 +9,7 @@ higher-quality semantic embeddings.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -24,6 +25,32 @@ class EmbeddingBackend:
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         raise NotImplementedError
+
+
+class _SparseRows:
+    """The rows of a sparse matrix, each made dense only when it is read.
+
+    ``rows[i]`` is row ``i`` and ``rows[[i, j]]`` those rows, exactly as ``matrix.toarray()`` holds them, and a slice
+    is the rows it selects, still sparse. The whole dense matrix is sentences by vocabulary: for a long text with many
+    distinct words (a 1 MB request to ``llmslim serve``'s fit, say) that is gigabytes, while the compressor only ever
+    reads one chunk of sentences at a time.
+    """
+
+    def __init__(self, matrix: Any) -> None:
+        self._matrix = matrix.tocsr()
+
+    def __len__(self) -> int:
+        return int(self._matrix.shape[0])
+
+    def __getitem__(self, index: Any) -> Any:
+        if isinstance(index, slice):
+            return _SparseRows(self._matrix[index])
+        if isinstance(index, (int, np.integer)):
+            return self._matrix[int(index)].toarray()[0]
+        return self._matrix[index].toarray()
+
+    def dense(self) -> np.ndarray:
+        return self._matrix.toarray()
 
 
 class TfidfEmbeddingBackend(EmbeddingBackend):
@@ -52,13 +79,22 @@ class TfidfEmbeddingBackend(EmbeddingBackend):
                 return np.ones((len(texts), 1))
             return matrix[: len(texts)]
 
+        rows = self._encode_rows(texts)
+        return rows if isinstance(rows, np.ndarray) else rows.dense()
+
+    def _encode_rows(self, texts: Sequence[str]) -> np.ndarray | _SparseRows:
+        """:meth:`encode`, with the matrix kept sparse when it has two rows or more (see :class:`_SparseRows`), for
+        the compressor, which reads a few rows at a time."""
+        texts = list(texts)
+        if len(texts) < 2:
+            return self.encode(texts)
         try:
             matrix = self._vectorizer_cls(stop_words="english").fit_transform(texts)
         except ValueError:
             # Empty vocabulary (e.g. all-stopword input): fall back to a
             # uniform embedding so downstream similarity math still works.
             return np.ones((len(texts), 1))
-        return matrix.toarray()
+        return _SparseRows(matrix)
 
 
 class SentenceTransformerEmbeddingBackend(EmbeddingBackend):

@@ -33,6 +33,7 @@ import json
 import os
 import re
 import sys
+import types
 import typing
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
@@ -214,6 +215,50 @@ class _Text:
 
 _DOTTED = re.compile(r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)+([A-Za-z_][A-Za-z0-9_]*)")
 
+#: ``typing.Union[...]`` and ``X | Y``. Python 3.14 made them one type, whose repr is always ``X | Y``.
+_UNIONS = tuple(
+    union for union in (typing.Union, getattr(types, "UnionType", None)) if union is not None
+)
+
+
+def _plain_text(value: Any) -> str:
+    """``repr`` of a typing construct without module paths: ``typing.Optional[llmslim.core.ContextRole]`` is
+    ``Optional[ContextRole]``."""
+
+    return _DOTTED.sub(r"\1", repr(value)).replace("NoneType", "None")
+
+
+def _has_union(value: Any) -> bool:
+    if isinstance(value, (list, tuple)):  # the parameter list of a Callable
+        return any(_has_union(item) for item in value)
+    origin = typing.get_origin(value)
+    if origin is None:
+        return False
+    return origin in _UNIONS or _has_union(typing.get_args(value))
+
+
+def _union_text(value: Any) -> str:
+    """A typing construct that contains a union, with each union written as Python 3.10 to 3.13 print
+    ``typing.Union``: ``Optional[X]`` for one type and None, otherwise ``Union[X, Y]``. Python 3.14 prints every
+    union as ``X | Y``; this keeps the snapshot the same on every supported Python."""
+
+    if isinstance(value, list):  # the parameter list of a Callable
+        return "[" + ", ".join(_union_text(item) for item in value) + "]"
+    if not _has_union(value):
+        if value is Ellipsis:
+            return "..."
+        if isinstance(value, type) and typing.get_origin(value) is None:
+            # As typing prints a class inside brackets: "ContextRole", not "llmslim.core.ContextRole".
+            return value.__qualname__.rsplit(".", 1)[-1].replace("NoneType", "None")
+        return _plain_text(value)
+    origin, args = typing.get_origin(value), typing.get_args(value)
+    if origin in _UNIONS:
+        if len(args) == 2 and type(None) in args:
+            return f"Optional[{_union_text(args[1] if args[0] is type(None) else args[0])}]"
+        return "Union[" + ", ".join(_union_text(arg) for arg in args) + "]"
+    head = _plain_text(value).split("[", 1)[0]  # "Dict" for typing.Dict[str, int | None]
+    return head + "[" + ", ".join(_union_text(arg) for arg in args) + "]"
+
 
 def _annotation_text(value: Any) -> str:
     if isinstance(value, str):
@@ -224,8 +269,9 @@ def _annotation_text(value: Any) -> str:
         return value.__forward_arg__
     if isinstance(value, type) and typing.get_origin(value) is None:
         return value.__qualname__
-    # typing constructs: drop module paths ("typing.Optional[llmslim.core.ContextRole]" -> "Optional[ContextRole]").
-    return _DOTTED.sub(r"\1", repr(value)).replace("NoneType", "None")
+    if _has_union(value):
+        return _union_text(value)
+    return _plain_text(value)
 
 
 def _type_name(value: Any) -> str:

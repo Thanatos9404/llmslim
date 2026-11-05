@@ -56,6 +56,15 @@ export interface MemoryContext {
   sessionsKept: number;
   elapsedMs: number;
   turns: RecalledTurn[];
+  /**
+   * The user's standing requests ("always ...", "from now on ...") shown in their own section at the top of `text`.
+   * Empty when the section isn't shown.
+   */
+  requests: RecalledTurn[];
+  /** The preferences the user stated ("I prefer ...") shown in their section, after the requests. Empty when not shown. */
+  preferences: RecalledTurn[];
+  /** For a question such as "Have I ever ...?", the user's statements on it that may conflict. Empty when not shown. */
+  conflicts: RecalledTurn[];
   /** Why each turn and section was kept, cut or left out: only when the search was made with `explain: true`. */
   explanation?: SearchExplanation;
 }
@@ -229,6 +238,15 @@ function itemFromWire(item: Wire): MemoryItem {
     runId: (item.run_id as string | null) ?? null,
     metadata: (item.metadata as Record<string, unknown>) ?? {},
   };
+}
+
+/** The turns of a search response (`turns`, or a section: `requests`, `preferences`, `conflicts`). */
+function recalledFromWire(turns: unknown): RecalledTurn[] {
+  return ((turns as Wire[] | undefined) ?? []).map((turn) => ({
+    ...itemFromWire(turn),
+    score: turn.score as number,
+    partial: turn.partial as boolean,
+  }));
 }
 
 function candidateFromWire(candidate: Wire): ExplainedCandidate {
@@ -424,11 +442,10 @@ export class LLMSlim {
         sessionsTotal: body.sessions_total as number,
         sessionsKept: body.sessions_kept as number,
         elapsedMs: body.elapsed_ms as number,
-        turns: (body.turns as Wire[]).map((turn) => ({
-          ...itemFromWire(turn),
-          score: turn.score as number,
-          partial: turn.partial as boolean,
-        })),
+        turns: recalledFromWire(body.turns),
+        requests: recalledFromWire(body.requests),
+        preferences: recalledFromWire(body.preferences),
+        conflicts: recalledFromWire(body.conflicts),
       };
       if (body.explanation) context.explanation = explanationFromWire(body.explanation as Wire);
       return context;

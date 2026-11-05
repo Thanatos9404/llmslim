@@ -286,10 +286,18 @@ def _guard(block: str, label: "re.Pattern[str]" = _LABEL_LIKE) -> str:
     return "\n".join("  " + line if label.match(line) else line for line in block.split("\n"))
 
 
+def _guard_rest(text: str, label: "re.Pattern[str]") -> str:
+    """``text`` with the lines after its first guarded (``_guard``): its first line continues a line already
+    started."""
+    head, line_break, rest = text.partition("\n")
+    return f"{head}\n{_guard(rest, label)}" if line_break else text
+
+
 def join(parts: Sequence[Tuple[str, bool]], label: "re.Pattern[str]" = _LABEL_LIKE) -> str:
     """Segments (text, is_block) as one turn's text: prose on one line, blocks on their own lines. Text that opens
-    with a block starts with a line break, so the block's first line never shares the turn's label line. A block line
-    that looks like a turn label (``label``; ``_ROLE_LIKE`` where a label can be the role alone) is indented."""
+    with a block starts with a line break, so the block's first line never shares the turn's label line. Any line
+    but the label's that looks like a turn label (``label``; ``_ROLE_LIKE`` where a label can be the role alone) is
+    indented: a block's line, or prose that starts a line (after a block)."""
     # The text is built from pieces (never empty) and joined once: rebuilding it for every part took time quadratic
     # in a long turn's length, on every search.
     pieces: List[str] = []
@@ -309,10 +317,23 @@ def join(parts: Sequence[Tuple[str, bool]], label: "re.Pattern[str]" = _LABEL_LI
         elif pieces and not pieces[-1].endswith("\n"):
             pieces.append(" ")
             if text:
-                pieces.append(text)
+                pieces.append(_guard_rest(text, label))
         elif text:
-            pieces.append(text)
+            # Prose after a block starts a line of its own, so it is guarded as a block's lines are.
+            pieces.append(_guard(text, label) if pieces else _guard_rest(text, label))
     return "".join(pieces).rstrip()
+
+
+def guard_lines(text: str) -> str:
+    """A stored turn's text as the whole history shows it: as stored, except that a line after the first that looks
+    like a turn label (``_LABEL_LIKE``; every label there has its full stamp) is indented, so it cannot pass for one.
+    Lines end where ``str.splitlines`` ends them."""
+    lines = text.splitlines(keepends=True)
+    if len(lines) < 2:
+        return text
+    return lines[0] + "".join(
+        "  " + line if _LABEL_LIKE.match(line) else line for line in lines[1:]
+    )
 
 
 def labelled(label: str, body: str) -> str:

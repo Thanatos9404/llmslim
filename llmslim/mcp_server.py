@@ -82,6 +82,10 @@ def build_server(
     """
     if not user_id and not agent_id:
         raise ValueError("the server needs a user_id or an agent_id to scope its memory")
+    for name, value in (("user_id", user_id), ("agent_id", agent_id)):
+        # Checked here, not on each call: the memory refuses a blank id on every read and write.
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ValueError(f"{name} must be a non-empty string or None")
     try:
         from mcp.server.mcpserver import MCPServer
         from mcp.server.mcpserver.exceptions import ToolError
@@ -320,7 +324,10 @@ class _KeyGuard:
             await self.app(scope, receive, send)
             return
         path, method = scope.get("path", ""), scope.get("method", "")
-        if path == HEALTH_PATH and method == "GET":
+        if path == HEALTH_PATH and method in (
+            "GET",
+            "HEAD",
+        ):  # HEAD too, as llmslim serve answers it
             await _respond(send, 200, {"status": "ok"})
         elif not self.keys.accepts(_header(scope, b"authorization")):
             await _respond(
@@ -405,12 +412,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--user-id",
-        default=os.environ.get("LLMSLIM_USER_ID") or DEFAULT_USER,
+        default=_scope_id(os.environ.get("LLMSLIM_USER_ID")) or DEFAULT_USER,
         help='Whose memory this server holds (env LLMSLIM_USER_ID; default "default").',
     )
     parser.add_argument(
         "--agent-id",
-        default=os.environ.get("LLMSLIM_AGENT_ID") or None,
+        default=_scope_id(os.environ.get("LLMSLIM_AGENT_ID")),
         help="Optionally, the agent, so each agent keeps its own memory (env LLMSLIM_AGENT_ID).",
     )
     parser.add_argument(
@@ -461,11 +468,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _scope_id(value: Optional[str]) -> Optional[str]:
+    """A user or agent id from the command line or the environment: blank (empty or spaces) means none."""
+    return value if value is not None and value.strip() else None
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     if args.budget <= 0:
         raise SystemExit("--budget must be a positive number of tokens")
+    # Before the database is opened: a blank id would start a server whose every tool fails.
+    args.user_id, args.agent_id = _scope_id(args.user_id), _scope_id(args.agent_id)
+    if args.user_id is None and args.agent_id is None:
+        parser.error("--user-id or --agent-id must name whose memory this server holds")
     if args.transport == "http":
         return _serve_http(args, parser)
     http_only = [

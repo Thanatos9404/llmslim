@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import socket
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -541,6 +542,20 @@ def test_health_needs_no_key_and_the_endpoint_takes_only_post(memory):
         assert http.get(f"{base}/elsewhere", headers=auth).status_code == 404
 
 
+def test_health_answers_head_without_a_key_as_llmslim_serve_does(memory):
+    """Load balancers and `curl -I` check health with HEAD; a keyed server answered it 401."""
+    with serving(_app(memory)) as base, httpx2.Client(timeout=30) as http:
+        response = http.head(f"{base}/healthz")
+        assert response.status_code == 200 and response.content == b""
+        assert response.headers["content-type"] == "application/json"
+        for method in ("OPTIONS", "DELETE"):
+            assert http.request(method, f"{base}/healthz").status_code == 401
+        assert http.head(f"{base}/mcp").status_code == 401
+    with serving(_app(memory, keys=())) as base, httpx2.Client(timeout=30) as http:
+        assert http.head(f"{base}/healthz").status_code == 200
+        assert http.head(f"{base}/healthz", headers={"Host": "evil.example"}).status_code == 403
+
+
 # --------------------------------------------------------------------------- limits and hostile requests
 
 
@@ -836,6 +851,28 @@ def _free_port():
         return sock.getsockname()[1]
 
 
+def _reopen_after_a_kill(path: Path) -> Memory:
+    """The memory a killed server left behind.
+
+    On Windows ``terminate()`` kills the server outright, so it can't close its WAL database. With the SQLite that
+    Python 3.13.14 and 3.14.8 ship there (3.53; the 3.45 of Python 3.12.5 never does), opening that file in the
+    next few milliseconds can fail with "disk I/O error", even with plain ``sqlite3`` and no llmslim. The file is
+    intact: a moment later it opens with every row. Retry that one error, on Windows only, for a few seconds.
+    """
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            return Memory(path)
+        except sqlite3.OperationalError as error:
+            if (
+                sys.platform != "win32"
+                or "disk I/O error" not in str(error)
+                or time.monotonic() > deadline
+            ):
+                raise
+            time.sleep(0.05)
+
+
 def test_the_command_end_to_end(tmp_path):
     """`python -m llmslim.mcp_server --transport http` in its own process, reached by a real client."""
     port = _free_port()
@@ -893,5 +930,5 @@ def test_the_command_end_to_end(tmp_path):
     output = log.read_text(errors="replace")
     assert f'LLMSlim MCP server on http://127.0.0.1:{port}/mcp, memory of user "asha"' in output
     assert KEY not in output
-    stored = Memory(tmp_path / "memory.db").get_all(user_id="asha")
+    stored = _reopen_after_a_kill(tmp_path / "memory.db").get_all(user_id="asha")
     assert [item.content for item in stored] == ["I moved to Pune last month."]

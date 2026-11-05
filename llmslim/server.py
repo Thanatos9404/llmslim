@@ -109,8 +109,9 @@ def create_app(
     try:
         from starlette.applications import Starlette
         from starlette.concurrency import run_in_threadpool
+        from starlette.exceptions import HTTPException
         from starlette.middleware import Middleware
-        from starlette.requests import Request
+        from starlette.requests import ClientDisconnect, Request
         from starlette.responses import JSONResponse
         from starlette.routing import Route
     except ImportError as error:  # pragma: no cover - exercised only without the extra
@@ -127,7 +128,8 @@ def create_app(
         return keys.accepts(request.headers.get("authorization"))
 
     async def body(request: Request) -> Dict[str, Any]:
-        return await read_json_object(request, max_body_bytes)
+        # NaN and Infinity are not JSON: a stored one could never be sent back, so every read of its scope failed.
+        return await read_json_object(request, max_body_bytes, strict=True)
 
     def budget_of(value: Any, default: int) -> int:
         if value is None:
@@ -156,6 +158,13 @@ def create_app(
                 )
             except ImportError as error:
                 return JSONResponse({"error": {"type": "unavailable", "message": str(error)}}, 501)
+            except ClientDisconnect:
+                # The client went away before its body arrived: nothing ran and no one reads the answer.
+                logger.info("%s %s: the client disconnected", request.method, request.url.path)
+                return JSONResponse(
+                    {"error": {"type": "invalid_request", "message": "the client disconnected"}},
+                    400,
+                )
             except (ValueError, TypeError, OverflowError) as error:
                 # A value of the wrong type or out of range (a timestamp past year 9999, a message that is a
                 # number) is the caller's mistake: a 400 that says so, not a 500.
@@ -304,8 +313,9 @@ def create_app(
         return await endpoint(list_items)(request)
 
     async def memory_item(request: Request) -> JSONResponse:
-        handler = {"GET": get_item, "PATCH": update_item, "DELETE": delete_item}[request.method]
-        return await endpoint(handler)(request)
+        # HEAD comes with GET (Starlette adds it) and is answered as GET, without the body.
+        handler = {"GET": get_item, "HEAD": get_item, "PATCH": update_item, "DELETE": delete_item}
+        return await endpoint(handler[request.method])(request)
 
     def chat_route(handler: Callable[[Request, ChatRelay], Awaitable[Any]]) -> Callable[..., Any]:
         async def run(request: Request) -> Any:
@@ -365,10 +375,32 @@ def create_app(
         body = {"error": {"type": "forbidden", "message": message}}
         return json.dumps(body).encode("utf-8"), "application/json"
 
+    async def routing_error(request: Request, error: Exception) -> JSONResponse:
+        # Starlette's own answers for a path no route has (404) and a method its route doesn't take (405, with
+        # Allow), in the server's error format instead of plain text.
+        status = getattr(error, "status_code", 400)
+        kind, message = {
+            404: ("not_found", "no such route"),
+            405: ("method_not_allowed", f"{request.method} is not allowed on this route"),
+        }.get(status, ("invalid_request", "the request failed"))
+        return JSONResponse(
+            {"error": {"type": kind, "message": message}},
+            status,
+            headers=getattr(error, "headers", None),
+        )
+
+    async def unhandled(request: Request, error: Exception) -> JSONResponse:
+        # A failure outside a route's own error handling still answers in the server's error format; Starlette
+        # re-raises the error afterwards, so the traceback goes to the server's log.
+        return JSONResponse(
+            {"error": {"type": "server_error", "message": "the request failed"}}, 500
+        )
+
     return Starlette(
         routes=routes,
         lifespan=lifespan,
         middleware=[Middleware(HostGuard, policy=policy, reject=forbidden)],
+        exception_handlers={HTTPException: routing_error, Exception: unhandled},
     )
 
 

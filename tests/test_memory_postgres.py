@@ -100,9 +100,10 @@ def test_connections_wait_ten_seconds_unless_told_otherwise(monkeypatch):
         return Connection()
 
     def pool(conninfo, **kwargs):
-        made.append(("pool", kwargs["kwargs"]))
+        made.append(("pool", kwargs["kwargs"], kwargs["check"]))
         raise Refused
 
+    pool.check_connection = "check_connection"
     monkeypatch.setattr(psycopg, "connect", connect)
     monkeypatch.setattr(psycopg_pool, "ConnectionPool", pool)
     monkeypatch.delenv("PGCONNECT_TIMEOUT", raising=False)
@@ -110,7 +111,7 @@ def test_connections_wait_ten_seconds_unless_told_otherwise(monkeypatch):
         PostgresStore(UNREACHABLE)
     settings = {"autocommit": True, "connect_timeout": postgres.DEFAULT_CONNECT_TIMEOUT}
     assert postgres.DEFAULT_CONNECT_TIMEOUT == 10
-    assert made == [("connect", settings), "closed", ("pool", settings)]
+    assert made == [("connect", settings), "closed", ("pool", settings, "check_connection")]
     # The URL's connect_timeout, or libpq's environment variable, is left to psycopg.
     from psycopg.conninfo import conninfo_to_dict
 
@@ -176,6 +177,27 @@ def test_a_pool_or_an_autocommit_connection_can_be_passed_in(table):
         assert [i.content for i in store.list(Scope(user_id="u1"))] == ["from a pool"]
     with psycopg.connect(URL) as conn, pytest.raises(ValueError, match="autocommit"):
         PostgresStore(conn, table=table)
+
+
+@needs_db
+def test_a_connection_the_server_closed_while_idle_is_replaced(table):
+    """Neon closes idle connections when it scales to zero, and a restart or an idle timeout does the same. The next
+    request used to fail, once for each closed connection in the pool."""
+    name = f"llmslim_idle_{uuid.uuid4().hex[:8]}"
+    sep = "&" if "?" in URL else "?"
+    store = PostgresStore(f"{URL}{sep}application_name={name}", table=table, max_size=2)
+    try:
+        store.add([item("before")])
+        with psycopg.connect(URL, autocommit=True) as admin:
+            closed = admin.execute(
+                "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE application_name = %s",
+                (name,),
+            ).fetchone()[0]
+        assert closed >= 1
+        store.add([item("after")])
+        assert [i.content for i in store.list(Scope(user_id="u1"))] == ["before", "after"]
+    finally:
+        store.close()
 
 
 @needs_db

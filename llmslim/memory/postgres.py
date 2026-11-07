@@ -67,7 +67,9 @@ class PostgresStore:
 
     With a URL, the store gives up on a server it can't reach after ``connect_timeout`` seconds and raises psycopg's
     error: 10 seconds, unless the URL (``?connect_timeout=30``) or libpq's ``PGCONNECT_TIMEOUT`` environment variable
-    sets another value. The pool's later connections wait as long.
+    sets another value. The pool's later connections wait as long. The pool checks each connection before a request
+    uses it, so one the server closed while it sat idle (an idle timeout, a restart, Neon scaling to zero) is replaced
+    rather than failing the request.
 
     The table (``llmslim_memory`` by default) and its ``<table>_meta`` table are created if they don't exist. Creation
     runs under an advisory lock, so several processes can start at once. The schema is versioned: a table written by
@@ -107,7 +109,14 @@ class PostgresStore:
             # its own 30 seconds, with a PoolTimeout that doesn't say why.
             psycopg.connect(conninfo, **kwargs).close()
             self._owned_pool = ConnectionPool(
-                conninfo, min_size=1, max_size=max_size, kwargs=kwargs, open=True
+                conninfo,
+                min_size=1,
+                max_size=max_size,
+                kwargs=kwargs,
+                # A connection the server closed while it sat in the pool (an idle timeout, a restart, Neon scaling
+                # to zero) is replaced before a request gets it, instead of failing that request.
+                check=ConnectionPool.check_connection,
+                open=True,
             )
             self._pool: Any = self._owned_pool
         elif isinstance(conninfo, psycopg.Connection):

@@ -32,12 +32,14 @@ These commands work once 1.0.0rc1 is on PyPI. Until then, the main branch is wha
 |---|---|---|
 | runs on Python 3.9 | 1.0 needs Python 3.10 or newer | [Python 3.10 or newer](#python-310-or-newer) |
 | compares `Memory.search` text with recorded output | a session's date is shown once | [A session's date is shown once](#a-sessions-date-is-shown-once) |
+| reads the requests or preferences sections of `Memory.search` text line by line | a later turn on the same subject can follow each item | [Output that changes](#output-that-changes) |
 | imports a helper, constant or re-exported name from an integration module, `llmslim.mcp` or `llmslim.server`, or uses `from ... import *` | some names left `__all__` | [Names that left `__all__`](#names-that-left-__all__) |
 | stores trace ids or compares `planner_version` with a constant | `planner_version` is the release | [The planner version is the release](#the-planner-version-is-the-release) |
 | reaches a keyless `llmslim serve` or `llmslim proxy` by a name other than this machine's | it answers 403 | [Keyless servers answer only to this machine](#keyless-servers-answer-only-to-this-machine) |
 | handles errors from `llmslim serve` | a database outage is a 503, other failures a JSON 500 | [Errors from the servers](#errors-from-the-servers) |
 | stores more than 1,000 messages in one `POST /v1/memories` | it answers 400 and stores nothing | [Errors from the servers](#errors-from-the-servers) |
 | calls `fit` on text that compression can't shrink | the result is cut to the budget | [Fit stays within about 2% of its budget](#fit-stays-within-about-2-of-its-budget) |
+| catches `psycopg_pool.PoolTimeout` when a `postgresql://` store can't reach its server | psycopg's own error, within 10 seconds | [An unreachable Postgres fails sooner](#an-unreachable-postgres-fails-sooner) |
 
 ## Python 3.10 or newer
 
@@ -204,13 +206,31 @@ instruction, and DNS rebinding let a page read and delete every memory. So a key
 - **Any other failure in a `serve` route is a JSON 500,** `{"error": {"type": "server_error", ...}}`, with the
   traceback in the server's log only. Read `error.type` rather than the message ([SERVER.md](SERVER.md)).
 - **Hostile JSON is a 400:** over-deep JSON, values of the wrong type (`"messages": 5`) and out-of-range timestamps,
-  which 0.12 answered with a 500, and lone surrogates (`"\ud800"`), which its in-memory store kept.
+  which 0.12 answered with a 500, and lone surrogates (`"\ud800"`), which its in-memory store kept. A body nested more
+  than 64 levels deep is refused on every Python (`invalid_json`), and so is `NaN` or `Infinity` anywhere in a body,
+  which 0.12 stored and then could not send back.
+- **Every error is JSON.** A path no route has is a 404 (`"type": "not_found"`) and a method its route doesn't take a
+  405 (`"type": "method_not_allowed"`, with `Allow`), where 0.12 answered Starlette's plain-text "Not Found" and
+  "Method Not Allowed".
 - **At most 1,000 messages per `POST /v1/memories`.** A longer `messages` list is a 400 (`invalid_request`) and
   nothing of it is stored, where 0.12 stored any number that fitted in 1 MB. Send a longer history in several
   requests. `Memory.add` in Python has no such limit, and `llmslim import` writes 500 turns at a time.
 - **`Memory.add` refuses a timestamp with no UTC time** (such as `9999-12-31T23:59-01:00`) with a `ValueError`.
 - **A store that can't be opened at start** (an unreachable database, a wrong password, a missing extra) ends
   `llmslim serve` and `llmslim mcp` with one line, `could not open the memory store: <error>`, instead of a traceback.
+- **`llmslim mcp` needs a real user or agent id.** A blank `--user-id`, `--agent-id`, `LLMSLIM_USER_ID` or
+  `LLMSLIM_AGENT_ID` counts as not given, and a server left with neither is a usage error before the database is
+  opened. In Python, `build_server` raises `ValueError` for a blank `user_id` or `agent_id`. 0.12 ended in a traceback
+  or started a server whose every tool call failed.
+
+## An unreachable Postgres fails sooner
+
+A store opened from a `postgresql://` URL (`Memory("postgresql://...")`, `PostgresStore("postgresql://...")`, and the
+`--db` of `llmslim serve`, `llmslim mcp` and `llmslim import`) now connects once before it opens its pool. When the
+server can't be reached, it fails within the URL's `connect_timeout`, else libpq's `PGCONNECT_TIMEOUT`, else 10
+seconds, and raises psycopg's own error (such as `psycopg.OperationalError`, "connection timeout expired"). 0.12 waited
+30 seconds and raised `psycopg_pool.PoolTimeout`, which didn't say why. If you catch `PoolTimeout` around opening the
+store, catch `psycopg.OperationalError` too. A pool or connection you pass in is unchanged.
 
 ## Fit stays within about 2% of its budget
 
@@ -223,10 +243,20 @@ far over the budget it was. If you need a hard ceiling, ask for 2% less: a budge
 ## Output that changes
 
 Which turns `Memory.search` keeps, and the text it returns, is output content, which a release may improve
-([API stability](API_STABILITY.md#what-a-version-number-promises)). Besides the date labels above, 1.0 keeps more of
-the short replies in a conversation between two people stored as `user` and `assistant`: a reply short enough to be
-one window inherits its session's relevance, as a user turn does. Re-record any test that compares search output byte
-for byte.
+([API stability](API_STABILITY.md#what-a-version-number-promises)). Besides the date labels above, in 1.0:
+
+- **Search fills its budget.** Each kept turn is charged what it adds to the context, so more turns fit at the same
+  budget.
+- **Short replies come in with their session.** In a conversation between two people stored as `user` and
+  `assistant`, a reply short enough to be one window inherits its session's relevance, as a user turn does.
+- **A correction comes with what it corrects.** The strongest match brings along the user's later turns on its
+  subject. In the requests and preferences sections, an item can be followed by what the user said later on its
+  subject, on a line of its own: `  - [date] later: ...`. That later turn is not listed in `context.requests` or
+  `context.preferences`. A stated change ("I no longer ...", "I switched to ...") now counts as a preference.
+- **Stored text can't pass for a turn.** A stored line that looks like a turn label is indented by two spaces after a
+  code block too, and in a history that fits the budget whole. `context.turns` and the stored text are unchanged.
+
+Re-record any test that compares search output byte for byte.
 
 ## What does not change
 

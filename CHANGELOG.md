@@ -27,6 +27,14 @@ do, every name that left an `__all__` and where to import it from now, and how t
   get a 403; add names with `--allowed-host`. Servers with keys are unaffected.
 - **Errors from `llmslim serve`:** a 503 (`store_unavailable`, `Retry-After: 5`) when Postgres or MongoDB is down, and
   a JSON 500 (`server_error`) for any other failure. `POST /v1/memories` takes at most 1,000 messages (see Security).
+  A body with `NaN` or `Infinity`, or nested more than 64 levels deep, is a 400, and an unknown path or method is a
+  JSON 404 or 405 (see Fixed).
+- **`llmslim mcp` refuses a blank user or agent id** at start, and `build_server` raises `ValueError` for one (see
+  Fixed).
+- **An unreachable Postgres fails within 10 seconds with psycopg's own error,** not `psycopg_pool.PoolTimeout` after
+  30 seconds (see Fixed).
+- **`Memory.search` brings a correction along with what it corrects.** A request or preference can be followed by a
+  `  - [date] later: ...` line (see Fixed).
 - **`fit` stays within about 2% of its budget for any text,** and cuts text that compression can't shrink that far.
 
 ### Breaking

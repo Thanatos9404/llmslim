@@ -224,10 +224,10 @@ See the [architecture](docs/planning/ARCHITECTURE.md),
 ## Startup programs
 
 <a href="https://www.llmslim.app">
-  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 21 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j, Cartesia, Nebius, Notion, Snyk, Gitar, Composio and Future AGI" width="100%">
+  <img src="assets/llmslim-startup-programs.png" alt="LLMSlim is part of 24 startup programs: Sarvam, Zoho, MongoDB, Claude, OpenAI, Auth0, Zendesk, Mixpanel, Sentry, Descope, Pulumi, Honeycomb, Exa, Neo4j, Cartesia, Nebius, Notion, Snyk, Gitar, Composio, Future AGI, Reducto, Blacksmith and Neon" width="100%">
 </a>
 
-LLMSlim is part of 21 startup programs. They provide credits, tools, and guidance;
+LLMSlim is part of 24 startup programs. They provide credits, tools, and guidance;
 none of them is an investor, and membership does not imply endorsement.
 
 | Program | Company |
@@ -253,6 +253,9 @@ none of them is an investor, and membership does not imply endorsement.
 | [Gitar Open Source Program](https://www.sonarsource.com/plans-and-pricing/gitar/) | Sonar (Gitar) |
 | [Composio Startup Program](https://composio.dev/startups) | Composio |
 | [Future AGI for Startups](https://futureagi.com/startups/) | Future AGI |
+| [Reducto Startup Program](https://reducto.ai/startups) | Reducto |
+| [Blacksmith Startup Program](https://www.blacksmith.sh/pricing#startup) | Blacksmith |
+| [Neon Open Source Program](https://neon.com/programs/open-source) | Databricks (Neon) |
 
 Logos are trademarks of their owners and identify each program.
 

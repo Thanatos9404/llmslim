@@ -351,6 +351,11 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   expired`, a refused connection, a wrong password). The commands still print it in one line without the password.
   The pool's later connections use the same limit, instead of psycopg's 130 seconds. A pool or connection you pass in
   is unchanged.
+- **A Postgres connection closed while idle no longer fails a request.** The pool `PostgresStore` opens for a URL
+  handed out connections the server had closed while they sat idle (an idle timeout, a restart, Neon scaling to zero
+  after 5 minutes), so the next requests failed, one for each closed connection, and `llmslim serve` answered 503. The
+  pool now checks a connection before a request uses it (`ConnectionPool.check_connection`) and replaces a closed one.
+  A pool or connection you pass in is unchanged.
 - **No `assert` guards real input or state any more.** Python drops `assert` under `-O`, so these checks could vanish:
   - `MongoDBContextSource.search` with an `embedding_provider` but no `vector_index` (both are public attributes)
     raises `ValueError`, not `AssertionError`;
@@ -557,6 +562,9 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
     raised `OverflowError`. Such a turn is now shown in UTC.
 
 ### Documentation
+- **Postgres on Neon.** `docs/MEMORY.md` has a Neon section: the connection string from the console, when to use
+  Neon's pooled one, and what scale to zero means for the store. `docs/SERVER.md` runs the Docker image on Neon. The
+  site's Storage backends page has the same.
 - **`docs/SERVER.md` lists every field of a search response.** The routes table left out `query`, `elapsed_ms`,
   `requests`, `preferences` and `conflicts`, which `POST /v1/memories/search` has always returned. A new section says
   what each field holds. The fields documented there are stable (`docs/API_STABILITY.md`). The site's HTTP quickstart

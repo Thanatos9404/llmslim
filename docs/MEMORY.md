@@ -242,6 +242,23 @@ A store only persists and lists turns. Any object with the `MemoryStore` methods
 - Pass a URL, and the store opens a small connection pool. You can pass your own `psycopg_pool.ConnectionPool`, or an autocommit `psycopg.Connection`, instead.
 - With a URL, the store waits up to 10 seconds to connect, then raises psycopg's error (`llmslim serve` and `llmslim mcp` print it in one line, without the password). Set another limit in the URL (`?connect_timeout=30`) or with libpq's `PGCONNECT_TIMEOUT` environment variable. A refused connection or a wrong password ends the wait as soon as psycopg reports it, so if Postgres can start after llmslim (Docker Compose), wait for its health check first.
 - Times are stored as `TIMESTAMPTZ` and come back in UTC, whatever the session time zone.
+- The pool checks a connection before a request uses it. One the server closed while it sat idle (an idle timeout, a restart, a serverless database scaling to zero) is replaced instead of failing the request.
+
+**Postgres on Neon:** [Neon](https://neon.com) is serverless Postgres, and its Free plan is enough to start. Create a project in the [Neon console](https://console.neon.tech), click **Connect** and copy the connection string; it already has the `sslmode=require` Neon needs.
+
+```python
+# pip install "llmslim[postgres]"
+from llmslim.memory import Memory
+
+memory = Memory(
+    "postgresql://neondb_owner:<password>@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb"
+    "?sslmode=require&channel_binding=require"
+)
+```
+
+- One or a few llmslim processes can use the direct connection string, since the store keeps its own small pool. When many processes or serverless functions connect, use the pooled one (`-pooler` after the endpoint id in the host). The store uses nothing Neon's pooler leaves out: its advisory lock lasts one transaction, and it sets no session state.
+- Neon scales an idle compute to zero after 5 minutes without queries, and that closes its connections. The pool replaces them, so the first request after a quiet spell waits for the compute to wake (a few hundred milliseconds) rather than failing.
+- `llmslim serve`, `llmslim mcp` and the Docker image take the same string in `LLMSLIM_MEMORY_DB` ([SERVER.md](SERVER.md#run-it-for-other-machines)). A [Neon branch](https://neon.com/docs/introduction/branching) gives a test or preview environment its own copy of the memory.
 
 **MongoDB details:**
 - Install with `pip install "llmslim[mongodb]"` (PyMongo 4.13 or newer; it brings dnspython, which `mongodb+srv://`

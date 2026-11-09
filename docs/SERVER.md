@@ -45,6 +45,10 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
 # Postgres 12+
 docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
   -e LLMSLIM_MEMORY_DB="postgresql://llmslim:<password>@db.example.com:5432/llmslim" llmslim
+
+# Neon (serverless Postgres): the connection string from the console's Connect dialog
+docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
+  -e LLMSLIM_MEMORY_DB="postgresql://neondb_owner:<password>@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require" llmslim
 ```
 
 - Pass the URL in the environment rather than as `--db`, so the password stays out of the container's command line.
@@ -56,6 +60,8 @@ docker run -p 8080:8080 -e LLMSLIM_API_KEYS="<your key>" \
   seconds for Postgres (`?connect_timeout=` in the URL or `PGCONNECT_TIMEOUT` sets another limit), and for MongoDB
   the URL's `serverSelectionTimeoutMS` (PyMongo's default is 30 seconds). In Docker Compose, start the server once
   the database's health check passes.
+- Neon gives the server a Postgres without running one. When to use Neon's pooled connection string, and why the
+  first request after Neon scales to zero only waits, are under "Postgres on Neon" in [MEMORY.md](MEMORY.md#stores).
 - Once it is running, a database restart or outage makes the requests that need the database answer 503 until it is
   back, with no restart of the server. `GET /healthz` keeps answering: it checks the process, not the database.
 

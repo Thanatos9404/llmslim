@@ -19,6 +19,17 @@ token budget you set. It runs as an MCP server, a Python library or a small HTTP
 
 <sub>A real Python session with llmslim 0.11.1 from PyPI, typed by a script and recorded with asciinema (<a href="docs/assets/demo/memory_session.py">script</a>, <a href="docs/assets/demo/memory-demo.cast">recording</a>).</sub>
 
+<br>
+
+<sub>Sponsored by</sub><br>
+<a href="https://neon.com">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/sponsors/neon-logo-dark-color.svg">
+    <img src="docs/assets/sponsors/neon-logo-light-color.svg" alt="Neon, serverless Postgres" height="32">
+  </picture>
+</a><br>
+<sub><a href="https://neon.com/programs/open-source">Neon Open Source Program</a> · <a href="https://www.llmslim.app/docs/storage-backends#neon">LLMSlim memory on Neon</a></sub>
+
 </div>
 
 ## Use it in 30 seconds

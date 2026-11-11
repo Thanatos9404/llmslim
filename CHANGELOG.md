@@ -524,12 +524,18 @@ From a security review of 1.0's HTTP server, MCP server and proxy.
   there. And a ChatGPT node on the thread that is not an object, or whose message is not one, is counted as
   malformed; it was passed over like the root and counted nowhere.
 - **Several processes can open a new SQLite memory file at once.** `SQLiteStore` switches a file to WAL mode when it
-  opens it, and SQLite answers that switch "database is locked" at once, without the 5-second busy timeout other
-  statements wait for, while another connection is writing a file not yet in WAL mode. So when two or more processes
+  opens it, and SQLite answers that switch "database is locked" at once, without the busy timeout other statements
+  wait for, while another connection is writing a file not yet in WAL mode. So when two or more processes
   opened a memory file that did not exist yet (two MCP clients starting `llmslim mcp` on a new machine, a server's
   workers, imports run side by side), one of them could fail at start; with four processes it happened in most
-  tries. The switch is now retried for up to 5 seconds, and the schema version is written with `INSERT OR IGNORE`,
-  so two first opens can't both write it. A file already in WAL mode is opened as before.
+  tries. The switch is now retried for as long as the busy timeout (30 seconds, see below), and the schema version
+  is written with `INSERT OR IGNORE`, so two first opens can't both write it. A file already in WAL mode is opened as
+  before.
+- **A SQLite writer waits up to 30 seconds for another process's write, not 5.** `SQLiteStore` used `sqlite3`'s
+  default busy timeout, so when several processes wrote one memory file on a slow disk, a writer still queued after
+  5 seconds failed with "database is locked" and its turns were not stored. It happened once in CI, to one of three
+  processes writing 40 turns each on a Windows runner. The store now waits up to 30 seconds. One process's threads
+  were never affected: they share one connection behind a lock.
 - **Stored text can no longer pass for another turn in `Memory.search`.** A stored line that looks like a turn label
   was indented only inside code blocks and tables, and only when a long history was selected from:
   - **After a code block:** the prose that follows a block starts a line of its own, and it was left as stored. A reply

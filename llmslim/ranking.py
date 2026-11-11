@@ -398,7 +398,7 @@ def _centrality_scores(embeddings: np.ndarray) -> np.ndarray:
         normalized = _normalize_rows(np.asarray(embeddings, dtype=float))
         self_similarity = np.einsum("ij,ij->i", normalized, normalized)
         scores = (normalized @ normalized.sum(axis=0) - self_similarity) / (n - 1)
-    max_score = scores.max()
+    max_score = float(np.max(scores))
     if max_score > 0:
         scores = scores / max_score
     return scores

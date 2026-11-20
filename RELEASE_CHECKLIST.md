@@ -35,7 +35,9 @@ PyPI and GitHub.
 
 ### 4. Benchmark Quality & Performance Validation
 - [ ] `python -m benchmarks.benchmark_regression` passes without performance or accuracy degradation.
-- [ ] `python -m benchmarks.run --mode fast --no-archive` (the offline benchmark smoke test) passes.
+- [ ] `python -m benchmarks.run --mode fast --no-archive` (the offline benchmark smoke test) passes. It overwrites
+  the committed `benchmarks/results/latest.json`, `benchmarks/results/summary.json` and `benchmarks/reports/latest.md`
+  with its smoke-test output, so restore them before you commit: `git restore benchmarks/results benchmarks/reports`.
 - [ ] Latency remains < 50ms for typical 2K token chat prompts.
 - [ ] Imperative instruction preservation remains at **100%**.
 - [ ] Benchmark graphs updated if metrics changed (`python assets/generate_benchmark_charts.py`).
@@ -99,7 +101,8 @@ missed file fails CI.
 - [ ] Inspect wheel and tarball file lists (`unzip -l dist/*.whl`) to ensure no tests or scratch files are packaged.
 
 ### 7. Tag Creation & GitHub Release
-- [ ] Commit version bump:
+- [ ] Commit version bump. First check `git status` lists only the files bumped in section 6 (restore the benchmark
+  outputs, see section 4):
   ```bash
   git commit -am "chore(release): prepare release vX.Y.Z"
   ```
@@ -189,8 +192,11 @@ tagged on a release branch, and **`main` and every plugin pin stay on the last f
   files, `plugins/vscode/package.json` and its CHANGELOG, the README's prose version mentions and badges,
   `docs/MIGRATE_FROM_MEM0.md` and the `SECURITY.md` table. Those change with the final release.
 - [ ] Run sections 2 to 4 on the branch, push it, and check CI: `ci.yml` runs on pushes to `release/**` as well as
-  `main`.
+  `main`. Section 4 rewrites the committed benchmark results, so restore them and check `git status` lists only the
+  bumped files (and `docs/reference/api-reference.json`) before you commit:
   ```bash
+  git restore benchmarks/results benchmarks/reports
+  git status --short
   git commit -am "chore(release): prepare release v1.0.0rc1"
   git push -u origin release/1.0.0rc1
   ```
@@ -208,6 +214,10 @@ tagged on a release branch, and **`main` and every plugin pin stay on the last f
   in until the final release, and its known limitations; link `docs/UPGRADING.md`.
 - [ ] Check section 8 with `1.0.0rc1`, and also that a plain `pip install llmslim` in a clean environment still
   installs the last final release.
+- [ ] Once it is on PyPI, open a pull request to `main` for the two sentences that say the candidate is not out yet:
+  "These commands work once 1.0.0rc1 is on PyPI. Until then, ..." under "Try the release candidate" in
+  `docs/UPGRADING.md`, and "(`pip install "llmslim==1.0.0rc1"` once it is out)" in the README's Changelog section.
+  Only those sentences change; `main`'s version, pins and links stay.
 
 ### What is NOT published for a release candidate
 - [ ] No **MCP Registry** entry: a published candidate could become the registry's latest version, and `1.0.0rc1` is
@@ -215,8 +225,9 @@ tagged on a release branch, and **`main` and every plugin pin stay on the last f
 - [ ] No **VS Code Marketplace** or **Open VSX** release (don't run `vscode-publish.yml`).
 - [ ] No **Hermes catalog** re-pin and no **awesome-copilot** resubmission: both pin a commit for every user.
 - [ ] No **npm** release of `clients/typescript`, and no **Glama** release.
-- [ ] No change to `main`'s version, pins or links, and no **website** change: its `requirements.txt` and
-  `DEFAULT_DOCS_VERSION` stay on the final release, and `npm run sync:core` keeps following `main`.
+- [ ] No change to `main`'s version, pins or links (only the two sentences above), and no **website** change: its
+  `requirements.txt` and `DEFAULT_DOCS_VERSION` stay on the final release, and `npm run sync:core` keeps following
+  `main`.
 
 ### Fixes while the candidate is out
 - [ ] Every fix lands on `main` first, by pull request, as usual.

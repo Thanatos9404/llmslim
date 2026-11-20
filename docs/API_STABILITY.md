@@ -197,8 +197,8 @@ older release refuses a store with a newer schema rather than misreading it.
 |---|---|---|
 | `LLMSLIM_HOST`, `LLMSLIM_PORT`, `LLMSLIM_API_KEYS`, `LLMSLIM_ALLOWED_HOSTS` | `llmslim serve` (the last also `llmslim mcp --transport http`) | Stable |
 | `LLMSLIM_MCP_HOST`, `LLMSLIM_MCP_PORT`, `LLMSLIM_MCP_API_KEYS` | `llmslim mcp --transport http` | Experimental |
-| `LLMSLIM_MEMORY_DB` | `llmslim serve`, `llmslim mcp` | Stable |
-| `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp` | Stable |
+| `LLMSLIM_MEMORY_DB` | `llmslim serve`, `llmslim mcp`, `llmslim import` | Stable |
+| `LLMSLIM_USER_ID`, `LLMSLIM_AGENT_ID` | `llmslim mcp`, `llmslim import` | Stable |
 | `LLMSLIM_RERANK_MODEL` | the cross-encoder reranker | Stable |
 | `LLMSLIM_PROXY_DB`, `LLMSLIM_PROXY_UPSTREAM` | `llmslim proxy`, `llmslim wrap` | Experimental |
 | `LLMSLIM_UPSTREAM_URL`, `LLMSLIM_UPSTREAM_API_KEY` | the chat endpoint of `llmslim serve` | Experimental |

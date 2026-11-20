@@ -144,7 +144,10 @@ class InMemoryStore:
 
 
 _COLUMNS = "id, seq, role, content, created_at, updated_at, user_id, agent_id, run_id, metadata"
-_LOCKED_RETRY_SECONDS = 5.0  # as long as sqlite3's busy timeout
+# How long a statement waits for another connection's write lock before "database is locked". sqlite3's default is
+# 5 seconds, which several processes writing one file on a slow disk (a CI runner, a network drive) outlasted.
+_BUSY_TIMEOUT_SECONDS = 30.0
+_LOCKED_RETRY_SECONDS = _BUSY_TIMEOUT_SECONDS  # as long as the busy timeout
 
 
 def _wal(conn: sqlite3.Connection) -> None:
@@ -207,7 +210,9 @@ class SQLiteStore:
     def __init__(self, path: Union[str, Path] = "llmslim_memory.db") -> None:
         self.path = str(path)
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False, isolation_level=None)
+        self._conn = sqlite3.connect(
+            self.path, timeout=_BUSY_TIMEOUT_SECONDS, check_same_thread=False, isolation_level=None
+        )
         try:
             with self._lock:
                 self._prepare()
